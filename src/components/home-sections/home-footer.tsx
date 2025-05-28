@@ -4,7 +4,9 @@ import { Input } from "@/components/ui/input";
 import {
   ArrowRight,
   Brain,
+  FileText,
   Github,
+  GraduationCap,
   Linkedin,
   Mail,
   Sparkles,
@@ -60,16 +62,25 @@ export function HomeFooter() {
               </div>
             </div>
 
-            {/* Study Tools */}
+            {/* Learning Tools */}
             <div>
               <h3 className="font-semibold mb-4 flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-primary" />
-                Study Tools
+                Learning Tools
               </h3>
               <ul className="space-y-3">
                 <li>
                   <Link
-                    href="/flashcards"
+                    href="/dashboard/adaptive-learning/quizzes"
+                    className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2 group"
+                  >
+                    Smart Quizzes
+                    <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/dashboard/adaptive-learning/flashcards"
                     className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2 group"
                   >
                     Smart Flashcards
@@ -78,102 +89,153 @@ export function HomeFooter() {
                 </li>
                 <li>
                   <Link
-                    href="/quizzes"
+                    href="/dashboard/course-planner"
                     className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2 group"
                   >
-                    Adaptive Quizzes
+                    Course Planner
                     <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </Link>
                 </li>
                 <li>
                   <Link
-                    href="#"
+                    href="/dashboard/adaptive-learning/multiple-choice"
                     className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2 group"
                   >
-                    Study Plan Generator
-                    <Badge variant="outline" className="text-xs px-1.5 py-0.5">
-                      New
-                    </Badge>
+                    Multiple Choice
+                    <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </Link>
                 </li>
                 <li>
                   <Link
-                    href="#"
+                    href="/dashboard/adaptive-learning/open-questions"
                     className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2 group"
                   >
-                    AI Study Assistant
-                    <Badge variant="outline" className="text-xs px-1.5 py-0.5">
-                      Beta
-                    </Badge>
+                    Open Questions
+                    <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </Link>
                 </li>
               </ul>
             </div>
 
-            {/* Resources */}
+            {/* Resources & Support */}
             <div>
-              <h3 className="font-semibold mb-4">Resources</h3>
+              <h3 className="font-semibold mb-4 flex items-center gap-2">
+                <GraduationCap className="w-4 h-4 text-primary" />
+                Resources & Support
+              </h3>
               <ul className="space-y-3">
                 <li>
                   <Link
-                    href="#"
-                    className="text-muted-foreground hover:text-foreground transition-colors"
+                    href="/dashboard/course-materials/files"
+                    className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2 group"
                   >
-                    Study Tips Blog
+                    Course Materials
+                    <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </Link>
                 </li>
                 <li>
                   <Link
-                    href="#"
-                    className="text-muted-foreground hover:text-foreground transition-colors"
+                    href="/dashboard/course-materials/notes"
+                    className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2 group"
                   >
-                    Success Stories
+                    Study Notes
+                    <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </Link>
                 </li>
                 <li>
                   <Link
-                    href="#"
-                    className="text-muted-foreground hover:text-foreground transition-colors"
+                    href="/dashboard/ask-ai"
+                    className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2 group"
                   >
-                    Privacy Policy
+                    Ask AI
+                    <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </Link>
                 </li>
                 <li>
                   <Link
-                    href="#"
-                    className="text-muted-foreground hover:text-foreground transition-colors"
+                    href="/dashboard/feedback"
+                    className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2 group"
                   >
-                    Terms of Service
+                    Feedback
+                    <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </Link>
                 </li>
               </ul>
             </div>
 
-            {/* Newsletter */}
+            {/* Legal & Blog */}
             <div>
               <h3 className="font-semibold mb-4 flex items-center gap-2">
-                <Mail className="w-4 h-4 text-primary" />
-                Stay Updated
+                <FileText className="w-4 h-4 text-primary" />
+                Legal & Blog
               </h3>
-              <p className="text-muted-foreground mb-4 text-sm">
-                Get weekly study tips, AI insights, and exclusive offers for
-                students.
-              </p>
-              <div className="space-y-3">
-                <div className="flex gap-2">
-                  <Input
-                    type="email"
-                    placeholder="Enter your email"
-                    className="flex-1"
-                  />
-                  <Button size="sm" className="px-3">
-                    <ArrowRight className="w-4 h-4" />
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Join 5,000+ students already subscribed
-                </p>
+              <ul className="space-y-3">
+                <li>
+                  <Link
+                    href="/legal/terms-of-service"
+                    className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2 group"
+                  >
+                    Terms of Service
+                    <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/legal/privacy-policy"
+                    className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2 group"
+                  >
+                    Privacy Policy
+                    <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/legal/cookie-policy"
+                    className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2 group"
+                  >
+                    Cookie Policy
+                    <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/blog"
+                    className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2 group"
+                  >
+                    Blog
+                    <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </Link>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* Newsletter Section */}
+        <div className="border-t py-8">
+          <div className="max-w-2xl mx-auto text-center">
+            <h3 className="font-semibold mb-4 flex items-center justify-center gap-2">
+              <Mail className="w-4 h-4 text-primary" />
+              Stay Updated
+            </h3>
+            <p className="text-muted-foreground mb-6 text-sm">
+              Get weekly study tips, AI insights, and exclusive offers for
+              students.
+            </p>
+            <div className="space-y-3">
+              <div className="flex gap-2 max-w-md mx-auto">
+                <Input
+                  type="email"
+                  placeholder="Enter your email"
+                  className="flex-1"
+                />
+                <Button size="sm" className="px-3">
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
               </div>
+              <p className="text-xs text-muted-foreground">
+                Join 100+ students already subscribed
+              </p>
             </div>
           </div>
         </div>
