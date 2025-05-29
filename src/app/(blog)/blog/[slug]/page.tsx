@@ -37,12 +37,14 @@ Remember that AI is a tool to enhance your learning, not replace it. Combine AI-
   },
 };
 
-export async function generateMetadata({
-  params,
-}: {
-  params: { slug: string };
-}): Promise<Metadata> {
-  const post = blogPosts[params.slug as keyof typeof blogPosts];
+interface Props {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  const post = blogPosts[slug as keyof typeof blogPosts];
 
   if (!post) {
     return {
@@ -57,8 +59,9 @@ export async function generateMetadata({
   };
 }
 
-export default function BlogPostPage({ params }: { params: { slug: string } }) {
-  const post = blogPosts[params.slug as keyof typeof blogPosts];
+export default async function BlogPostPage({ params }: Props) {
+  const { slug } = await params;
+  const post = blogPosts[slug as keyof typeof blogPosts];
 
   if (!post) {
     return (
