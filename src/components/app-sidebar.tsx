@@ -19,6 +19,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import {
@@ -124,6 +125,13 @@ const bottomRoutes = [
 export function AppSidebar() {
   const pathname = usePathname();
   const [openItems, setOpenItems] = useState<string[]>([]);
+  const { setOpenMobile } = useSidebar();
+  
+  const closeMobileSidebar = () => {
+    if (window.innerWidth < 768) {
+      setOpenMobile(false);
+    }
+  };
 
   const toggleItem = (href: string) => {
     setOpenItems((prev) =>
@@ -173,6 +181,7 @@ export function AppSidebar() {
                             <Link
                               href={route.href}
                               className="flex items-center gap-2"
+                              onClick={closeMobileSidebar}
                             >
                               <route.icon className="h-4 w-4" />
                               <span className="group-data-[collapsible=icon]:hidden">
@@ -200,7 +209,10 @@ export function AppSidebar() {
                                         "bg-sidebar-accent text-sidebar-accent-foreground"
                                     )}
                                   >
-                                    <Link href={subItem.href}>
+                                    <Link 
+                                      href={subItem.href}
+                                      onClick={closeMobileSidebar}
+                                    >
                                       <subItem.icon className="h-4 w-4" />
                                       <span className="group-data-[collapsible=icon]:hidden">
                                         {subItem.label}
@@ -222,7 +234,10 @@ export function AppSidebar() {
                             "bg-sidebar-accent text-sidebar-accent-foreground"
                         )}
                       >
-                        <Link href={route.href}>
+                        <Link 
+                          href={route.href}
+                          onClick={closeMobileSidebar}
+                        >
                           <route.icon className="h-4 w-4" />
                           <span className="group-data-[collapsible=icon]:hidden">
                             {route.label}
@@ -256,7 +271,10 @@ export function AppSidebar() {
                           "bg-sidebar-accent text-sidebar-accent-foreground"
                       )}
                     >
-                      <Link href={route.href}>
+                      <Link 
+                        href={route.href}
+                        onClick={closeMobileSidebar}
+                      >
                         <route.icon className="h-4 w-4" />
                         <span className="group-data-[collapsible=icon]:hidden">
                           {route.label}

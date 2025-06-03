@@ -110,9 +110,9 @@ export default function SignInPage() {
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
-      {/* Left Side - Hero/Quote Section */}
+      {/* Left Side - Hero/Quote Section - Hidden on mobile */}
       <motion.div
-        className="lg:w-1/2 bg-gradient-to-br from-blue-500 via-blue-600 to-purple-700 relative overflow-hidden flex flex-col justify-center items-center p-8 lg:p-12 min-h-[40vh] md:min-h-screen"
+        className="hidden md:flex lg:w-1/2 bg-gradient-to-br from-blue-500 via-blue-600 to-purple-700 relative overflow-hidden flex-col justify-center items-center p-8 lg:p-12 min-h-[40vh] md:min-h-screen"
         initial={{ opacity: 0, x: -50 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.8 }}

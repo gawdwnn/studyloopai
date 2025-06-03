@@ -145,9 +145,9 @@ export default function SignUpPage() {
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
-      {/* Left Side - Hero/Testimonial Section */}
+      {/* Left Side - Hero/Testimonial Section - Hidden on mobile */}
       <motion.div
-        className="md:w-2/5 bg-gradient-to-br from-blue-500 via-blue-600 to-purple-700 relative overflow-hidden flex flex-col justify-center items-center p-8 lg:p-12 min-h-[40vh] md:min-h-screen"
+        className="hidden md:flex md:w-2/5 bg-gradient-to-br from-blue-500 via-blue-600 to-purple-700 relative overflow-hidden flex-col justify-center items-center p-8 lg:p-12 min-h-[40vh] md:min-h-screen"
         initial={{ opacity: 0, x: -50 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.8 }}
@@ -490,36 +490,38 @@ export default function SignUpPage() {
                   />
 
                   {/* Country */}
-                  <FormField
-                    control={form.control}
-                    name="country"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Country of Residence</FormLabel>
-                        <FormControl>
-                          <div className="relative group">
-                            <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 z-10 group-focus-within:text-primary transition-colors" />
-                            <Select
-                              onValueChange={field.onChange}
-                              value={field.value}
-                            >
-                              <SelectTrigger className="pl-10 focus:ring-2 focus:ring-primary/20 transition-all">
-                                <SelectValue placeholder="Select your country" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {countries.map((country) => (
-                                  <SelectItem key={country} value={country}>
-                                    {country}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <div className="w-full">
+                    <FormField
+                      control={form.control}
+                      name="country"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Country of Residence</FormLabel>
+                          <FormControl>
+                            <div className="relative group">
+                              <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 z-10 group-focus-within:text-primary transition-colors" />
+                              <Select
+                                onValueChange={field.onChange}
+                                value={field.value}
+                              >
+                                <SelectTrigger className="w-full pl-10 focus:ring-2 focus:ring-primary/20 transition-all">
+                                  <SelectValue placeholder="Select your country" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {countries.map((country) => (
+                                    <SelectItem key={country} value={country}>
+                                      {country}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
 
                   {/* Checkboxes */}
                   <div className="space-y-4">
@@ -533,26 +535,27 @@ export default function SignUpPage() {
                               checked={field.value}
                               onCheckedChange={field.onChange}
                               aria-label="Agree to terms and conditions"
+                              className="mt-1 flex-shrink-0"
                             />
                           </FormControl>
                           <div className="space-y-1 leading-none">
-                            <FormLabel className="text-sm">
-                              I accept the{" "}
+                            <FormLabel className="text-xs sm:text-sm">
+                              <span className="block sm:inline">I accept the{" "}</span>
                               <Link
-                                href="/terms"
-                                className="text-primary hover:underline"
+                                href="/legal/terms-of-service"
+                                className="text-primary hover:underline text-xs sm:text-sm"
                               >
                                 Terms of Use
                               </Link>{" "}
-                              and{" "}
+                              <span className="block sm:inline">and{" "}</span>
                               <Link
-                                href="/privacy"
-                                className="text-primary hover:underline"
+                                href="/legal/privacy-policy"
+                                className="text-primary hover:underline text-xs sm:text-sm"
                               >
                                 Privacy Policy
                               </Link>
                             </FormLabel>
-                            <FormMessage />
+                            <FormMessage className="text-xs" />
                           </div>
                         </FormItem>
                       )}
