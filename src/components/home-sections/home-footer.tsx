@@ -247,20 +247,6 @@ export function HomeFooter() {
               <span>
                 © {new Date().getFullYear()} StudyLoop. All rights reserved.
               </span>
-              <span className="hidden md:inline">•</span>
-              <Link
-                href="#"
-                className="hover:text-foreground transition-colors"
-              >
-                Terms
-              </Link>
-              <span>•</span>
-              <Link
-                href="#"
-                className="hover:text-foreground transition-colors"
-              >
-                Privacy
-              </Link>
             </div>
             <div className="flex items-center gap-2 text-sm">
               <span className="text-muted-foreground">Powered by</span>

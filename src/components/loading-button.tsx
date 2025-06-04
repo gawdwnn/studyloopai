@@ -33,7 +33,11 @@ const LoadingButton = forwardRef<HTMLButtonElement, LoadingButtonProps>(
         ref={ref}
         variant={variant}
         size={size}
-        className={cn("relative overflow-hidden", className)}
+        className={cn(
+          "relative overflow-hidden hover:cursor-pointer",
+          className,
+          (disabled || loading) && "hover:cursor-not-allowed"
+        )}
         disabled={disabled || loading}
         {...props}
       >
