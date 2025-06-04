@@ -116,7 +116,8 @@ export default function SignUpPage() {
       if (signUpError) throw signUpError;
 
       // Then create the user plan
-      await createUserPlan(plan);
+      // TODO: Implement plan selection backend
+      // await createUserPlan(plan);
 
       router.push("/auth/verify-email");
     } catch (error) {
@@ -535,7 +536,7 @@ export default function SignUpPage() {
                               checked={field.value}
                               onCheckedChange={field.onChange}
                               aria-label="Agree to terms and conditions"
-                              className="mt-1 flex-shrink-0"
+                              className="flex-shrink-0"
                             />
                           </FormControl>
                           <div className="space-y-1 leading-none">

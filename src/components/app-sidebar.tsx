@@ -22,6 +22,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
+import { getBrowserClient } from "@/lib/supabase/client";
 import {
   BookMarked,
   BookOpen,
@@ -34,6 +35,7 @@ import {
   GraduationCap,
   HelpCircle,
   Home,
+  LogOut,
   MessageSquare,
   Settings,
   User,
@@ -42,7 +44,19 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
-const routes = [
+interface RouteItem {
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  href: string;
+  subItems?: Array<{
+    label: string;
+    href: string;
+    icon: React.ComponentType<{ className?: string }>;
+  }>;
+  onClick?: (e: React.MouseEvent) => void;
+}
+
+const routes: RouteItem[] = [
   {
     label: "Overview",
     icon: Home,
@@ -104,7 +118,7 @@ const routes = [
   },
 ];
 
-const bottomRoutes = [
+const bottomRoutes: RouteItem[] = [
   {
     label: "Ask AI",
     icon: BrainCog,
@@ -119,6 +133,29 @@ const bottomRoutes = [
     label: "Account",
     icon: User,
     href: "/dashboard/account",
+  },
+  {
+    label: "Sign Out",
+    icon: LogOut,
+    href: "#",
+    onClick: async (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      try {
+        const response = await fetch("/api/auth/signout", {
+          method: "POST",
+        });
+
+        if (response.ok) {
+          window.location.href = "/auth/signin";
+        } else {
+          console.error("Error signing out");
+        }
+      } catch (error) {
+        console.error("Error signing out:", error);
+      }
+    },
   },
 ];
 
@@ -178,16 +215,31 @@ export function AppSidebar() {
                                 "bg-sidebar-accent text-sidebar-accent-foreground"
                             )}
                           >
-                            <Link
-                              href={route.href}
-                              className="flex items-center gap-2"
-                              onClick={closeMobileSidebar}
-                            >
-                              <route.icon className="h-4 w-4" />
-                              <span className="group-data-[collapsible=icon]:hidden">
-                                {route.label}
-                              </span>
-                            </Link>
+                            {route.onClick ? (
+                              <button
+                                onClick={(e) => {
+                                  closeMobileSidebar();
+                                  route.onClick?.(e);
+                                }}
+                                className="flex w-full items-center gap-2 text-left"
+                              >
+                                <route.icon className="h-4 w-4" />
+                                <span className="group-data-[collapsible=icon]:hidden">
+                                  {route.label}
+                                </span>
+                              </button>
+                            ) : (
+                              <Link
+                                href={route.href}
+                                className="flex items-center gap-2"
+                                onClick={closeMobileSidebar}
+                              >
+                                <route.icon className="h-4 w-4" />
+                                <span className="group-data-[collapsible=icon]:hidden">
+                                  {route.label}
+                                </span>
+                              </Link>
+                            )}
                             <ChevronDown
                               className={cn(
                                 "ml-auto h-4 w-4 shrink-0 transition-transform duration-200 group-data-[collapsible=icon]:hidden",
@@ -209,7 +261,7 @@ export function AppSidebar() {
                                         "bg-sidebar-accent text-sidebar-accent-foreground"
                                     )}
                                   >
-                                    <Link 
+                                    <Link
                                       href={subItem.href}
                                       onClick={closeMobileSidebar}
                                     >
@@ -234,10 +286,7 @@ export function AppSidebar() {
                             "bg-sidebar-accent text-sidebar-accent-foreground"
                         )}
                       >
-                        <Link 
-                          href={route.href}
-                          onClick={closeMobileSidebar}
-                        >
+                        <Link href={route.href} onClick={closeMobileSidebar}>
                           <route.icon className="h-4 w-4" />
                           <span className="group-data-[collapsible=icon]:hidden">
                             {route.label}
@@ -264,22 +313,37 @@ export function AppSidebar() {
                 return (
                   <SidebarMenuItem key={route.href}>
                     <SidebarMenuButton
-                      asChild
                       className={cn(
                         "w-full",
                         isActive &&
                           "bg-sidebar-accent text-sidebar-accent-foreground"
                       )}
                     >
-                      <Link 
-                        href={route.href}
-                        onClick={closeMobileSidebar}
-                      >
-                        <route.icon className="h-4 w-4" />
-                        <span className="group-data-[collapsible=icon]:hidden">
-                          {route.label}
-                        </span>
-                      </Link>
+                      {route.onClick ? (
+                        <button
+                          onClick={(e) => {
+                            closeMobileSidebar();
+                            route.onClick?.(e);
+                          }}
+                          className="flex w-full items-center gap-2 text-left cursor-pointer"
+                        >
+                          <route.icon className="h-4 w-4" />
+                          <span className="group-data-[collapsible=icon]:hidden">
+                            {route.label}
+                          </span>
+                        </button>
+                      ) : (
+                        <Link
+                          href={route.href}
+                          onClick={closeMobileSidebar}
+                          className="flex items-center gap-2 cursor-pointer"
+                        >
+                          <route.icon className="h-4 w-4" />
+                          <span className="group-data-[collapsible=icon]:hidden">
+                            {route.label}
+                          </span>
+                        </Link>
+                      )}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 );

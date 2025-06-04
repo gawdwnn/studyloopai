@@ -1,5 +1,5 @@
 import { getReqResClient } from "@/lib/supabase/server";
-import type { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 export async function middleware(req: NextRequest) {
   const { client: supabase, response } = getReqResClient(req);
@@ -9,8 +9,6 @@ export async function middleware(req: NextRequest) {
     data: { session },
   } = await supabase.auth.getSession();
 
-  // Protected routes - temporarily disabled for testing
-  /*
   if (!session && req.nextUrl.pathname.startsWith("/dashboard")) {
     const redirectUrl = req.nextUrl.clone();
     redirectUrl.pathname = "/auth/signin";
@@ -22,7 +20,6 @@ export async function middleware(req: NextRequest) {
   if (session && req.nextUrl.pathname.startsWith("/auth")) {
     return NextResponse.redirect(new URL("/dashboard", req.url));
   }
-  */
 
   return response;
 }
