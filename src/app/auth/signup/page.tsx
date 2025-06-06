@@ -23,7 +23,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { createUserPlan } from "@/lib/actions/plans";
 import { type AuthErrorDetails, getAuthErrorMessage } from "@/lib/errors/auth";
 import { getBrowserClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -104,7 +103,7 @@ export default function SignUpPage() {
         email: formData.email,
         password: formData.password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
           data: {
             first_name: formData.firstName,
             last_name: formData.lastName,
@@ -541,14 +540,16 @@ export default function SignUpPage() {
                           </FormControl>
                           <div className="space-y-1 leading-none">
                             <FormLabel className="text-xs sm:text-sm">
-                              <span className="block sm:inline">I accept the{" "}</span>
+                              <span className="block sm:inline">
+                                I accept the{" "}
+                              </span>
                               <Link
                                 href="/legal/terms-of-service"
                                 className="text-primary hover:underline text-xs sm:text-sm"
                               >
                                 Terms of Use
                               </Link>{" "}
-                              <span className="block sm:inline">and{" "}</span>
+                              <span className="block sm:inline">and </span>
                               <Link
                                 href="/legal/privacy-policy"
                                 className="text-primary hover:underline text-xs sm:text-sm"

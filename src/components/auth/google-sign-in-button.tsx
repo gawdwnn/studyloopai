@@ -22,7 +22,7 @@ export function GoogleSignInButton({
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
         },
       });
 
@@ -47,9 +47,9 @@ export function GoogleSignInButton({
         <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
       ) : (
         <>
-          <svg 
-            className="w-4 h-4 mr-2" 
-            viewBox="0 0 24 24" 
+          <svg
+            className="w-4 h-4 mr-2"
+            viewBox="0 0 24 24"
             aria-hidden="true"
             role="img"
           >

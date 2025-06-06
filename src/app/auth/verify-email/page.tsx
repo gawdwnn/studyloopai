@@ -43,7 +43,7 @@ export default function VerifyEmailPage() {
         type: "signup",
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
         },
       });
 
