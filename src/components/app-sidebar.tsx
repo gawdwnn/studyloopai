@@ -22,7 +22,6 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
-import { getBrowserClient } from "@/lib/supabase/client";
 import {
   BookMarked,
   BookOpen,
@@ -43,6 +42,7 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
 
 interface RouteItem {
   label: string;
@@ -138,24 +138,6 @@ const bottomRoutes: RouteItem[] = [
     label: "Sign Out",
     icon: LogOut,
     href: "#",
-    onClick: async (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-
-      try {
-        const response = await fetch("/api/auth/signout", {
-          method: "POST",
-        });
-
-        if (response.ok) {
-          window.location.href = "/auth/signin";
-        } else {
-          console.error("Error signing out");
-        }
-      } catch (error) {
-        console.error("Error signing out:", error);
-      }
-    },
   },
 ];
 
@@ -163,7 +145,7 @@ export function AppSidebar() {
   const pathname = usePathname();
   const [openItems, setOpenItems] = useState<string[]>([]);
   const { setOpenMobile } = useSidebar();
-  
+
   const closeMobileSidebar = () => {
     if (window.innerWidth < 768) {
       setOpenMobile(false);
@@ -177,6 +159,8 @@ export function AppSidebar() {
         : [...prev, href]
     );
   };
+
+  const { signOut } = useAuth();
 
   return (
     <Sidebar collapsible="icon">
@@ -217,9 +201,10 @@ export function AppSidebar() {
                           >
                             {route.onClick ? (
                               <button
-                                onClick={(e) => {
+                                type="button"
+                                onClick={async (e) => {
                                   closeMobileSidebar();
-                                  route.onClick?.(e);
+                                  await route.onClick?.(e);
                                 }}
                                 className="flex w-full items-center gap-2 text-left"
                               >
@@ -319,12 +304,10 @@ export function AppSidebar() {
                           "bg-sidebar-accent text-sidebar-accent-foreground"
                       )}
                     >
-                      {route.onClick ? (
+                      {route.label === "Sign Out" ? (
                         <button
-                          onClick={(e) => {
-                            closeMobileSidebar();
-                            route.onClick?.(e);
-                          }}
+                          type="button"
+                          onClick={signOut}
                           className="flex w-full items-center gap-2 text-left cursor-pointer"
                         >
                           <route.icon className="h-4 w-4" />

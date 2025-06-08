@@ -11,8 +11,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { type AuthErrorDetails, getAuthErrorMessage } from "@/lib/errors/auth";
-import { getBrowserClient } from "@/lib/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import type { AuthErrorDetails } from "@/lib/errors/auth";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Mail } from "lucide-react";
 import Link from "next/link";
@@ -30,7 +30,7 @@ export default function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<AuthErrorDetails | null>(null);
   const [success, setSuccess] = useState(false);
-  const supabase = getBrowserClient();
+  const { resetPasswordForEmail } = useAuth();
 
   const form = useForm<ForgotPasswordFormData>({
     resolver: zodResolver(forgotPasswordSchema),
@@ -43,27 +43,22 @@ export default function ForgotPasswordPage() {
     setLoading(true);
     setError(null);
 
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/reset-password`,
-      });
+    const { error: resetError } = await resetPasswordForEmail(data.email);
 
-      if (error) throw error;
+    if (resetError) {
+      setError(resetError);
 
-      setSuccess(true);
-    } catch (error) {
-      const errorDetails = getAuthErrorMessage(error);
-      setError(errorDetails);
-
-      if (errorDetails.field) {
-        form.setError(errorDetails.field as keyof ForgotPasswordFormData, {
+      if (resetError.field) {
+        form.setError(resetError.field as keyof ForgotPasswordFormData, {
           type: "manual",
-          message: errorDetails.message,
+          message: resetError.message,
         });
       }
-    } finally {
-      setLoading(false);
+    } else {
+      setSuccess(true);
     }
+
+    setLoading(false);
   };
 
   if (success) {
