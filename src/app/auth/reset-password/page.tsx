@@ -12,13 +12,12 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { type AuthErrorDetails, getAuthErrorMessage } from "@/lib/errors/auth";
-import { getBrowserClient } from "@/lib/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import type { AuthErrorDetails } from "@/lib/errors/auth";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff, Lock } from "lucide-react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 
@@ -51,19 +50,7 @@ export default function ResetPasswordPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [success, setSuccess] = useState(false);
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const supabase = getBrowserClient();
-
-  // Get the reset token from the URL
-  const resetToken = searchParams.get("token");
-
-  // Redirect if no token is present
-  useEffect(() => {
-    if (!resetToken) {
-      router.push("/auth/forgot-password");
-    }
-  }, [resetToken, router]);
+  const { updatePassword } = useAuth();
 
   const form = useForm<ResetPasswordFormData>({
     resolver: zodResolver(resetPasswordSchema),
@@ -74,42 +61,22 @@ export default function ResetPasswordPage() {
   });
 
   const onSubmit = async (data: ResetPasswordFormData) => {
-    if (!resetToken) {
-      setError({
-        message: "Invalid or expired reset link. Please request a new one.",
-        type: "server_error",
-      });
-      return;
-    }
-
     setLoading(true);
     setError(null);
 
-    try {
-      const { error } = await supabase.auth.updateUser({
-        password: data.password,
+    const { error: updateError } = await updatePassword(data.password);
+
+    if (updateError) {
+      setError({
+        ...updateError,
+        message:
+          "Your password reset link may be invalid or expired. Please request a new one.",
       });
-
-      if (error) throw error;
-
+    } else {
       setSuccess(true);
-      // Redirect to sign in after 3 seconds
-      setTimeout(() => {
-        router.push("/auth/signin");
-      }, 3000);
-    } catch (error) {
-      const errorDetails = getAuthErrorMessage(error);
-      setError(errorDetails);
-
-      if (errorDetails.field) {
-        form.setError(errorDetails.field as keyof ResetPasswordFormData, {
-          type: "manual",
-          message: errorDetails.message,
-        });
-      }
-    } finally {
-      setLoading(false);
     }
+
+    setLoading(false);
   };
 
   if (success) {
@@ -117,19 +84,36 @@ export default function ResetPasswordPage() {
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-card px-4 py-8 shadow sm:rounded-lg sm:px-10">
           <div className="text-center">
-            <h2 className="text-2xl font-bold text-foreground">
-              Password Reset Successful
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
+              <svg
+                className="h-6 w-6 text-green-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-label="Success checkmark"
+              >
+                <title>Success checkmark</title>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            </div>
+            <h2 className="mt-4 text-2xl font-bold text-foreground">
+              Password Reset Successful!
             </h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Your password has been successfully reset. You will be redirected
-              to the sign in page shortly.
+              Your password has been successfully updated. You can now sign in
+              with your new password.
             </p>
             <div className="mt-6">
               <Link
                 href="/auth/signin"
-                className="text-sm font-medium text-primary hover:text-primary/80"
+                className="inline-flex w-full justify-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
               >
-                Return to sign in
+                Sign In Now
               </Link>
             </div>
           </div>
@@ -146,15 +130,23 @@ export default function ResetPasswordPage() {
             Reset your password
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Enter your new password below
+            Enter your new password below.
           </p>
         </div>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            {error && !error.field && (
+            {error && (
               <Alert variant="destructive">
-                <AlertDescription>{error.message}</AlertDescription>
+                <AlertDescription>
+                  {error.message}{" "}
+                  <Link
+                    href="/auth/forgot-password"
+                    className="font-bold underline"
+                  >
+                    Request a new link.
+                  </Link>
+                </AlertDescription>
               </Alert>
             )}
 
@@ -249,15 +241,6 @@ export default function ResetPasswordPage() {
             </LoadingButton>
           </form>
         </Form>
-
-        <div className="mt-6 text-center">
-          <Link
-            href="/auth/signin"
-            className="text-sm font-medium text-primary hover:text-primary/80"
-          >
-            Return to sign in
-          </Link>
-        </div>
       </div>
     </div>
   );

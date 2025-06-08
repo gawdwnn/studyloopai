@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
-import { getBrowserClient } from "@/lib/supabase/client";
-import { type AuthErrorDetails, getAuthErrorMessage } from "@/lib/errors/auth";
+import { useAuth } from "@/hooks/useAuth";
+import type { AuthErrorDetails } from "@/lib/errors/auth";
 import { useState } from "react";
 
 interface GoogleSignInButtonProps {
@@ -8,28 +8,21 @@ interface GoogleSignInButtonProps {
   variant?: "signin" | "signup";
 }
 
-export function GoogleSignInButton({ 
+export function GoogleSignInButton({
   onError,
-  variant = "signin"
+  variant = "signin",
 }: GoogleSignInButtonProps) {
   const [loading, setLoading] = useState(false);
-  const supabase = getBrowserClient();
+  const { signInWithOAuth } = useAuth();
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
-        },
-      });
-
-      if (error) throw error;
-    } catch (error) {
-      const errorDetails = getAuthErrorMessage(error);
-      onError?.(errorDetails);
+      const { error } = await signInWithOAuth("google");
+      if (error) {
+        onError?.(error);
+      }
     } finally {
       setLoading(false);
     }
@@ -76,4 +69,4 @@ export function GoogleSignInButton({
       )}
     </Button>
   );
-} 
+}

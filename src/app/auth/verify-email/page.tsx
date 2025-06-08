@@ -8,7 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getBrowserClient } from "@/lib/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { Mail } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -16,14 +16,12 @@ import { useEffect, useState } from "react";
 export default function VerifyEmailPage() {
   const [email, setEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const supabase = getBrowserClient();
+  const { getUser, resendVerificationEmail } = useAuth();
 
   useEffect(() => {
-    const getEmail = async () => {
+    const fetchUser = async () => {
       try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+        const { user } = await getUser();
         setEmail(user?.email ?? null);
       } catch (error) {
         console.error("Error fetching user:", error);
@@ -32,22 +30,21 @@ export default function VerifyEmailPage() {
       }
     };
 
-    getEmail();
-  }, [supabase.auth]);
+    fetchUser();
+  }, [getUser]);
 
   const handleResendEmail = async () => {
     if (!email) return;
 
     try {
-      const { error } = await supabase.auth.resend({
-        type: "signup",
-        email,
-        options: {
-          emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
-        },
-      });
+      const { error } = await resendVerificationEmail(email);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error resending verification email:", error);
+        alert("Failed to resend verification email. Please try again.");
+        return;
+      }
+
       alert("Verification email resent successfully!");
     } catch (error) {
       console.error("Error resending verification email:", error);

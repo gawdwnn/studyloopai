@@ -23,10 +23,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { type AuthErrorDetails, getAuthErrorMessage } from "@/lib/errors/auth";
-import { getBrowserClient } from "@/lib/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import type { AuthErrorDetails } from "@/lib/errors/auth";
+import { signUpSchema, type SignUpFormData } from "@/lib/validations/auth";
 import { cn } from "@/lib/utils";
-import { type SignUpFormData, signUpSchema } from "@/lib/validations/auth";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AnimatePresence, motion } from "framer-motion";
 import { Eye, EyeOff, Mail, MapPin, Star, User, Users } from "lucide-react";
@@ -71,7 +71,7 @@ export default function SignUpPage() {
   const [currentStep, setCurrentStep] = useState<"account" | "plan">("account");
   const [formData, setFormData] = useState<SignUpFormData | null>(null);
   const router = useRouter();
-  const supabase = getBrowserClient();
+  const { signUp } = useAuth();
 
   const form = useForm<SignUpFormData>({
     resolver: zodResolver(signUpSchema),
@@ -95,44 +95,36 @@ export default function SignUpPage() {
     setLoading(true);
     setError(null);
 
-    try {
-      if (!formData) throw new Error("Form data is missing");
-
-      // First create the user account
-      const { error: signUpError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
-          data: {
-            first_name: formData.firstName,
-            last_name: formData.lastName,
-            country: formData.country,
-          },
-        },
+    if (!formData) {
+      setError({
+        type: "unknown_error",
+        message: "Form data is missing. Please try again.",
       });
+      setLoading(false);
+      return;
+    }
 
-      if (signUpError) throw signUpError;
+    const { error: signUpError } = await signUp(formData);
 
+    if (signUpError) {
+      setError(signUpError);
+
+      if (signUpError.field && currentStep === "account") {
+        form.setError(signUpError.field as keyof SignUpFormData, {
+          type: "manual",
+          message: signUpError.message,
+        });
+        setCurrentStep("account");
+      }
+    } else {
       // Then create the user plan
       // TODO: Implement plan selection backend
       // await createUserPlan(plan);
 
       router.push("/auth/verify-email");
-    } catch (error) {
-      const errorDetails = getAuthErrorMessage(error);
-      setError(errorDetails);
-
-      if (errorDetails.field && currentStep === "account") {
-        form.setError(errorDetails.field as keyof SignUpFormData, {
-          type: "manual",
-          message: errorDetails.message,
-        });
-        setCurrentStep("account");
-      }
-    } finally {
-      setLoading(false);
     }
+
+    setLoading(false);
   };
 
   // Auto-rotate testimonials

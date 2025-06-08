@@ -7,6 +7,7 @@ export type AuthErrorType =
   | "invalid_email"
   | "weak_password"
   | "email_exists"
+  | "user_not_found"
   | "network_error"
   | "server_error"
   | "too_many_requests"
@@ -21,73 +22,95 @@ export interface AuthErrorDetails {
 export function getAuthErrorMessage(error: unknown): AuthErrorDetails {
   // Handle Supabase AuthError
   if (error instanceof AuthError) {
-    // Check for error status code first
-    const status = 'status' in error ? error.status : null;
-    const code = 'code' in error ? error.code : null;
-    
-    if (status === 400) {
-      // Handle 400 Bad Request errors
+    // Use optional chaining for safer access
+    const status = "status" in error ? error.status : null;
+    const code = "code" in error ? error.code : null;
+
+    // Handle 400 Bad Request & 422 Unprocessable Entity errors
+    if (status === 400 || status === 422) {
       switch (code) {
-        case 'invalid_credentials':
-        case 'invalid_grant':
+        case "invalid_credentials":
+        case "invalid_grant":
           return {
-            type: 'invalid_credentials',
-            message: 'Invalid email or password',
-            field: 'email',
+            type: "invalid_credentials",
+            message: "Invalid email or password.",
+            field: "email",
           };
-        case 'email_not_confirmed':
+        case "email_not_confirmed":
           return {
-            type: 'email_not_confirmed',
-            message: 'Please verify your email address before signing in',
-            field: 'email',
+            type: "email_not_confirmed",
+            message: "Please verify your email address before signing in.",
+            field: "email",
           };
-        case 'email_not_verified':
+        case "user_not_found":
           return {
-            type: 'email_not_verified',
-            message: 'Please verify your email address before signing in',
-            field: 'email',
+            type: "user_not_found",
+            message: "A user with this email address was not found.",
+            field: "email",
           };
-        case 'invalid_email':
+        case "email_not_verified":
           return {
-            type: 'invalid_credentials',
-            message: 'Invalid email format',
-            field: 'email',
+            type: "email_not_verified",
+            message: "Please verify your email address before signing in.",
+            field: "email",
           };
-        case 'weak_password':
+        case "invalid_email":
           return {
-            type: 'weak_password',
-            message: 'Password is too weak. Please use a stronger password.',
-            field: 'password',
+            type: "invalid_credentials",
+            message: "Invalid email format.",
+            field: "email",
           };
-        case 'email_exists':
+        case "weak_password":
           return {
-            type: 'email_exists',
-            message: 'An account with this email already exists',
-            field: 'email',
+            type: "weak_password",
+            message: "Password is too weak. Please use a stronger password.",
+            field: "password",
+          };
+        case "email_exists":
+        case "user_already_exists":
+          return {
+            type: "email_exists",
+            message: "An account with this email already exists.",
+            field: "email",
+          };
+        case "same_password":
+          return {
+            type: "weak_password",
+            message: "New password must be different from the old one.",
+            field: "password",
+          };
+        case "otp_expired":
+          return {
+            type: "invalid_credentials",
+            message: "The verification link has expired. Please try again.",
           };
       }
-    } else if (status === 429) {
-      // Rate limiting
+    }
+
+    // Rate limiting
+    if (status === 429) {
       return {
-        type: 'too_many_requests',
-        message: 'Too many requests. Please try again later.',
-      };
-    } else if (status && status >= 500) {
-      // Server errors
-      return {
-        type: 'server_error',
-        message: 'Our servers are experiencing issues. Please try again later.',
+        type: "too_many_requests",
+        message: "Too many requests. Please try again later.",
       };
     }
 
-    // Fallback for unhandled error codes
+    // Server errors
+    if (status && status >= 500) {
+      return {
+        type: "server_error",
+        message: "Our servers are experiencing issues. Please try again later.",
+      };
+    }
+
+    // Fallback for unhandled Supabase error codes
     return {
-      type: 'server_error',
-      message: error.message || 'An unexpected error occurred',
+      type: "server_error",
+      message: error.message || "An unexpected error occurred.",
     };
   }
 
-  // Handle network errors
+  // Handle generic network or other errors
   if (error instanceof Error) {
     return {
       type: "unknown_error",
