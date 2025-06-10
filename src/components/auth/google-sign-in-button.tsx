@@ -33,7 +33,7 @@ export function GoogleSignInButton({
       variant="outline"
       onClick={handleGoogleSignIn}
       disabled={loading}
-      className="w-full"
+      className="w-full cursor-pointer"
       aria-label={`Sign ${variant === "signin" ? "in" : "up"} with Google`}
     >
       {loading ? (

@@ -1,49 +1,68 @@
 "use server";
 
-import { createServerActionClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
+import { revalidatePath } from "next/cache";
 import { PLANS } from "../plans/config";
 import type { PlanId } from "../plans/types";
 import { FEATURE_IDS } from "../plans/types";
+import { getServerClient } from "../supabase/server";
 
-export async function createUserPlan(planId: PlanId) {
-  const supabase = createServerActionClient({ cookies });
+export async function createUserPlan(planId: PlanId, userId?: string) {
+  const supabase = getServerClient();
 
-  // Get the current user
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-  if (userError || !user) {
-    throw new Error("User not found");
+  let effectiveUserId = userId;
+
+  // Get the current user if userId is not provided
+  if (!effectiveUserId) {
+    const {
+      data: { user: sessionUser },
+      error: userError,
+    } = await supabase.auth.getUser();
+    if (userError || !sessionUser) {
+      throw new Error("User not found");
+    }
+    effectiveUserId = sessionUser.id;
   }
 
-  // Calculate expires_at based on plan
-  let expiresAt = null;
+  // Calculate current_period_end based on plan
+  let currentPeriodEnd = null;
   if (planId === "monthly") {
-    expiresAt = new Date();
-    expiresAt.setMonth(expiresAt.getMonth() + 1);
+    currentPeriodEnd = new Date();
+    currentPeriodEnd.setMonth(currentPeriodEnd.getMonth() + 1);
   } else if (planId === "yearly") {
-    expiresAt = new Date();
-    expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+    currentPeriodEnd = new Date();
+    currentPeriodEnd.setFullYear(currentPeriodEnd.getFullYear() + 1);
   }
 
-  // Create the user plan
+  // Create the user plan with correct column names
   const { error: planError } = await supabase.from("user_plans").insert({
-    user_id: user.id,
+    user_id: effectiveUserId,
     plan_id: planId,
-    started_at: new Date().toISOString(),
-    expires_at: expiresAt?.toISOString() || null,
+    current_period_end: currentPeriodEnd?.toISOString() || null,
     is_active: true,
+    // started_at, created_at, updated_at will use database defaults
   });
 
   if (planError) {
-    throw new Error("Failed to create user plan");
+    throw new Error(`Failed to create user plan: ${planError.message}`);
   }
+
+  // Update user's signup step to complete
+  const { error: updateUserError } = await supabase
+    .from("users")
+    .update({ signup_step: 2, updated_at: new Date().toISOString() })
+    .eq("user_id", effectiveUserId);
+
+  if (updateUserError) {
+    throw new Error(
+      `Failed to update user signup step: ${updateUserError.message}`
+    );
+  }
+
+  revalidatePath("/dashboard");
 }
 
 export async function getUserPlan() {
-  const supabase = createServerActionClient({ cookies });
+  const supabase = getServerClient();
 
   const {
     data: { user },
@@ -72,16 +91,16 @@ export async function isPlanActive() {
     const plan = await getUserPlan();
     if (!plan) return false;
 
-    // Check if plan has expired
-    if (plan.expires_at) {
-      const expiresAt = new Date(plan.expires_at);
+    // Check if plan has expired - using correct column name
+    if (plan.current_period_end) {
+      const expiresAt = new Date(plan.current_period_end);
       const now = new Date();
       return now < expiresAt;
     }
 
     // Free plan or no expiration
     return true;
-  } catch (error) {
+  } catch (_error) {
     return false;
   }
 }
@@ -103,7 +122,7 @@ export async function hasFeatureAccess(featureId: keyof typeof FEATURE_IDS) {
       (f) => f.id === FEATURE_IDS[featureId]
     );
     return feature?.included ?? false;
-  } catch (error) {
+  } catch (_error) {
     return false;
   }
 }
@@ -130,7 +149,7 @@ export async function getFeatureLimit(featureId: keyof typeof FEATURE_IDS) {
     // Extract numeric limit from feature name (e.g., "Up to 3 document uploads" -> 3)
     const match = feature.name.match(/(\d+)/);
     return match ? Number.parseInt(match[1], 10) : null;
-  } catch (error) {
+  } catch (_error) {
     return null;
   }
 }
