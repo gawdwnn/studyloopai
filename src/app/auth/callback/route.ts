@@ -1,53 +1,66 @@
-import { getServerClient } from "@/lib/supabase/server";
+import { createUserPlan } from "@/lib/actions/plans";
+import type { PlanId } from "@/lib/plans/types";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 
-export async function GET(request: NextRequest) {
-  const requestUrl = new URL(request.url);
+export async function GET(req: NextRequest) {
+  const cookieStore = await cookies();
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error("Missing Supabase environment variables");
+  }
+
+  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      getAll() {
+        return cookieStore.getAll();
+      },
+      setAll(cookiesToSet) {
+        for (const { name, value, options } of cookiesToSet) {
+          cookieStore.set(name, value, options);
+        }
+      },
+    },
+  });
+
+  const requestUrl = new URL(req.url);
   const code = requestUrl.searchParams.get("code");
-  const error = requestUrl.searchParams.get("error");
-  const errorDescription = requestUrl.searchParams.get("error_description");
   const next = requestUrl.searchParams.get("next") || "/dashboard";
 
-  // If Supabase returns an error, redirect to signin page with the error message
-  if (error || errorDescription) {
-    const errorMessage = errorDescription || error;
-    return NextResponse.redirect(
-      new URL(
-        `/auth/signin?error=${encodeURIComponent(
-          errorMessage || "Sorry, we couldn't authenticate you."
-        )}`,
-        request.url
-      )
-    );
+  if (code) {
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+
+    if (error) {
+      // If there's an error during code exchange, redirect to the sign-in page with an error message.
+      return NextResponse.redirect(
+        `${requestUrl.origin}/auth/signin?error=auth_error&error_description=${encodeURIComponent(
+          error.message
+        )}`
+      );
+    }
+
+    // Check if this is an email verification callback with a selected plan
+    if (data.user?.user_metadata?.selected_plan) {
+      try {
+        const selectedPlan = data.user.user_metadata.selected_plan as PlanId;
+
+        // Complete the signup by creating the user plan
+        await createUserPlan(selectedPlan, data.user.id);
+
+        // Plan created successfully, user signup is now complete
+        // Middleware will handle the rest of the flow
+      } catch {
+        // Continue to redirect, middleware will handle incomplete signup
+      }
+    }
   }
 
-  // If there's no code, the link is invalid.
-  if (!code) {
-    return NextResponse.redirect(
-      new URL(
-        `/auth/signin?error=${encodeURIComponent(
-          "Invalid or missing authentication code."
-        )}`,
-        request.url
-      )
-    );
-  }
-
-  const supabase = getServerClient();
-  const { error: authError } = await supabase.auth.exchangeCodeForSession(code);
-
-  // If the code exchange fails, redirect with the specific error
-  if (authError) {
-    return NextResponse.redirect(
-      new URL(
-        `/auth/signin?error=${encodeURIComponent(
-          authError.message || "Email link is invalid or has expired."
-        )}`,
-        request.url
-      )
-    );
-  }
-
-  // On success, redirect to the 'next' URL, which defaults to dashboard
-  return NextResponse.redirect(new URL(next, request.url));
+  // On successful authentication, redirect to the intended destination
+  // The database trigger automatically creates the user record with signup_step = 1
+  // The middleware will handle redirecting to plan selection if needed
+  return NextResponse.redirect(`${requestUrl.origin}${next}`);
 }

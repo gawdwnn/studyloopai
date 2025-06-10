@@ -1,32 +1,15 @@
 "use client";
 
 import { getAuthErrorMessage } from "@/lib/errors/auth";
+import { getSiteUrl } from "@/lib/get-site-url";
+import { getBrowserClient } from "@/lib/supabase/client";
 import type { SignInFormData, SignUpFormData } from "@/lib/validations/auth";
-import { createBrowserClient } from "@supabase/ssr";
-
-// Helper function to get the correct site URL
-const getSiteUrl = () => {
-  // Use the browser's origin, which is reliable for both local and production.
-  if (typeof window !== "undefined") {
-    return window.location.origin;
-  }
-
-  // Fallback for server-side rendering.
-  // Vercel provides NEXT_PUBLIC_VERCEL_URL.
-  return (
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    process.env.NEXT_PUBLIC_VERCEL_URL ||
-    "http://localhost:3000"
-  );
-};
+import { useRouter } from "next/navigation";
 
 export function useAuth() {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
-  );
+  const router = useRouter();
+  const supabase = getBrowserClient();
 
-  // Sign in with email and password
   const signInWithPassword = async (data: SignInFormData) => {
     try {
       const { error, data: authData } = await supabase.auth.signInWithPassword({
@@ -42,7 +25,6 @@ export function useAuth() {
     }
   };
 
-  // Sign up with email and password
   const signUp = async (data: SignUpFormData) => {
     try {
       const { error, data: authData } = await supabase.auth.signUp({
@@ -66,7 +48,6 @@ export function useAuth() {
     }
   };
 
-  // Sign in with OAuth provider (currently Google)
   const signInWithOAuth = async (provider: "google") => {
     try {
       const { error, data } = await supabase.auth.signInWithOAuth({
@@ -84,7 +65,6 @@ export function useAuth() {
     }
   };
 
-  // Sign out
   const signOut = async () => {
     try {
       const { error } = await supabase.auth.signOut();
@@ -92,16 +72,13 @@ export function useAuth() {
       if (error) {
         return { error: getAuthErrorMessage(error) };
       }
-
-      // Redirect after successful signout
-      window.location.assign("/auth/signin");
+      router.push("/auth/signin");
       return { error: null };
     } catch (error) {
       return { error: getAuthErrorMessage(error) };
     }
   };
 
-  // Reset password for email
   const resetPasswordForEmail = async (email: string) => {
     try {
       const redirectUrl = `${getSiteUrl()}/auth/reset-password`;
@@ -116,7 +93,6 @@ export function useAuth() {
     }
   };
 
-  // Update user password (for reset password flow)
   const updatePassword = async (password: string) => {
     try {
       const { error } = await supabase.auth.updateUser({
@@ -130,7 +106,6 @@ export function useAuth() {
     }
   };
 
-  // Get current user
   const getUser = async () => {
     try {
       const { data, error } = await supabase.auth.getUser();
@@ -141,7 +116,6 @@ export function useAuth() {
     }
   };
 
-  // Get current session
   const getSession = async () => {
     try {
       const { data, error } = await supabase.auth.getSession();
@@ -152,7 +126,6 @@ export function useAuth() {
     }
   };
 
-  // Resend verification email
   const resendVerificationEmail = async (email: string) => {
     try {
       const { error } = await supabase.auth.resend({
