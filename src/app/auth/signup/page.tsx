@@ -25,7 +25,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { emailSignUp } from "@/lib/actions/auth";
 import { createUserPlan } from "@/lib/actions/plans";
-import type { AuthErrorDetails } from "@/lib/errors/auth";
+import { type AuthErrorDetails, getAuthErrorMessage } from "@/lib/errors/auth";
 import type { PlanId } from "@/lib/plans/types";
 import { cn } from "@/lib/utils";
 import { type SignUpFormData, signUpSchema } from "@/lib/validations/auth";
@@ -94,30 +94,17 @@ function SignUpFormComponent() {
           `/auth/verify-email?email=${encodeURIComponent(formData.email)}`
         );
       } catch (e) {
-        if (e instanceof Error) {
-          const errorMessage = e.message.toLowerCase();
-          // Check for a common Supabase error for existing users.
-          if (errorMessage.includes("user already registered")) {
-            setError({
-              type: "email_exists",
-              message: "A user with this email already exists.",
-              field: "email",
-            });
-            form.setError("email", {
-              type: "manual",
-              message: "A user with this email already exists.",
-            });
-            // Go back to the account step to show the error on the correct field.
-            setCurrentStep("account");
-          } else {
-            setError({ type: "unknown_error", message: e.message });
-          }
-        } else {
-          setError({
-            type: "unknown_error",
-            message: "An unexpected error occurred.",
+        const errorDetails = getAuthErrorMessage(e);
+        setError(errorDetails);
+
+        if (errorDetails.field) {
+          form.setError(errorDetails.field as keyof SignUpFormData, {
+            type: "manual",
+            message: errorDetails.message,
           });
         }
+        // Go back to the account step to show the error on the correct field.
+        setCurrentStep("account");
       } finally {
         setLoading(false);
       }
@@ -127,14 +114,8 @@ function SignUpFormComponent() {
         await createUserPlan(planId);
         router.push("/dashboard");
       } catch (e) {
-        if (e instanceof Error) {
-          setError({ type: "unknown_error", message: e.message });
-        } else {
-          setError({
-            type: "unknown_error",
-            message: "An unexpected error occurred.",
-          });
-        }
+        const errorDetails = getAuthErrorMessage(e);
+        setError(errorDetails);
       } finally {
         setLoading(false);
       }

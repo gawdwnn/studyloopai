@@ -7,7 +7,7 @@ import { FEATURE_IDS } from "../plans/types";
 import { getServerClient } from "../supabase/server";
 
 export async function createUserPlan(planId: PlanId, userId?: string) {
-  const supabase = getServerClient();
+  const supabase = await getServerClient();
 
   let effectiveUserId = userId;
 
@@ -62,7 +62,7 @@ export async function createUserPlan(planId: PlanId, userId?: string) {
 }
 
 export async function getUserPlan() {
-  const supabase = getServerClient();
+  const supabase = await getServerClient();
 
   const {
     data: { user },

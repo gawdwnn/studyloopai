@@ -2,13 +2,13 @@
 
 import { getAuthErrorMessage } from "@/lib/errors/auth";
 import { getSiteUrl } from "@/lib/get-site-url";
-import { getBrowserClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/supabase/client";
 import type { SignInFormData, SignUpFormData } from "@/lib/validations/auth";
 import { useRouter } from "next/navigation";
 
 export function useAuth() {
   const router = useRouter();
-  const supabase = getBrowserClient();
+  const supabase = createClient();
 
   const signInWithPassword = async (data: SignInFormData) => {
     try {

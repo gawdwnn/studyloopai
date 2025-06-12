@@ -1,31 +1,10 @@
 import { createUserPlan } from "@/lib/actions/plans";
 import type { PlanId } from "@/lib/plans/types";
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { getServerClient } from "@/lib/supabase/server";
 import { type NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
-  const cookieStore = await cookies();
-
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error("Missing Supabase environment variables");
-  }
-
-  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      getAll() {
-        return cookieStore.getAll();
-      },
-      setAll(cookiesToSet) {
-        for (const { name, value, options } of cookiesToSet) {
-          cookieStore.set(name, value, options);
-        }
-      },
-    },
-  });
+  const supabase = await getServerClient();
 
   const requestUrl = new URL(req.url);
   const code = requestUrl.searchParams.get("code");

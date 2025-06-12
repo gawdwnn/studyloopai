@@ -1,7 +1,6 @@
 "use server";
 
-import { createServerActionClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
+import { getServerClient } from "@/lib/supabase/server";
 
 import { getSiteUrl } from "@/lib/get-site-url";
 import type { PlanId } from "@/lib/plans/types";
@@ -13,7 +12,7 @@ import type { SignUpFormData } from "@/lib/validations/auth";
  * User is NOT signed in after this action.
  */
 export async function emailSignUp(formData: SignUpFormData, planId: PlanId) {
-  const supabase = createServerActionClient({ cookies });
+  const supabase = await getServerClient();
 
   // Create user in Supabase auth with email verification
   const {
@@ -34,7 +33,7 @@ export async function emailSignUp(formData: SignUpFormData, planId: PlanId) {
   });
 
   if (signUpError) {
-    throw new Error(signUpError.message);
+    throw signUpError;
   }
 
   if (!user) {

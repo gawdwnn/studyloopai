@@ -14,8 +14,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
 import type { AuthErrorDetails } from "@/lib/errors/auth";
+import { getAuthErrorMessage } from "@/lib/errors/auth";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Eye, EyeOff, Lock } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -23,22 +24,11 @@ import * as z from "zod";
 
 const resetPasswordSchema = z
   .object({
-    password: z
-      .string()
-      .min(8, "Password must be at least 8 characters")
-      .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
-      .regex(/[a-z]/, "Password must contain at least one lowercase letter")
-      .regex(/[0-9]/, "Password must contain at least one number")
-      .regex(
-        /[^A-Za-z0-9]/,
-        "Password must contain at least one special character"
-      ),
-    confirmPassword: z
-      .string()
-      .min(8, "Password must be at least 8 characters"),
+    password: z.string().min(8, "Password must be at least 8 characters long"),
+    confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords don't match",
+    message: "Passwords do not match",
     path: ["confirmPassword"],
   });
 
@@ -47,9 +37,9 @@ type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
 export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<AuthErrorDetails | null>(null);
+  const [success, setSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [success, setSuccess] = useState(false);
   const { updatePassword } = useAuth();
 
   const form = useForm<ResetPasswordFormData>({
@@ -67,11 +57,14 @@ export default function ResetPasswordPage() {
     const { error: updateError } = await updatePassword(data.password);
 
     if (updateError) {
-      setError({
-        ...updateError,
-        message:
-          "Your password reset link may be invalid or expired. Please request a new one.",
-      });
+      const errorDetails = getAuthErrorMessage(updateError);
+      setError(errorDetails);
+      if (errorDetails.field) {
+        form.setError(errorDetails.field as keyof ResetPasswordFormData, {
+          type: "manual",
+          message: errorDetails.message,
+        });
+      }
     } else {
       setSuccess(true);
     }
@@ -105,15 +98,15 @@ export default function ResetPasswordPage() {
               Password Reset Successful!
             </h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Your password has been successfully updated. You can now sign in
-              with your new password.
+              Your password has been updated. You can now sign in with your new
+              password.
             </p>
             <div className="mt-6">
               <Link
                 href="/auth/signin"
-                className="inline-flex w-full justify-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                className="text-sm font-medium text-primary hover:text-primary/80"
               >
-                Sign In Now
+                Return to sign in
               </Link>
             </div>
           </div>
@@ -127,7 +120,7 @@ export default function ResetPasswordPage() {
       <div className="bg-card px-4 py-8 shadow sm:rounded-lg sm:px-10">
         <div className="text-center mb-6">
           <h2 className="text-2xl font-bold text-foreground">
-            Reset your password
+            Reset Your Password
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
             Enter your new password below.
@@ -136,20 +129,11 @@ export default function ResetPasswordPage() {
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            {error && (
+            {error && !error.field && (
               <Alert variant="destructive">
-                <AlertDescription>
-                  {error.message}{" "}
-                  <Link
-                    href="/auth/forgot-password"
-                    className="font-bold underline"
-                  >
-                    Request a new link.
-                  </Link>
-                </AlertDescription>
+                <AlertDescription>{error.message}</AlertDescription>
               </Alert>
             )}
-
             <FormField
               control={form.control}
               name="password"
@@ -158,21 +142,16 @@ export default function ResetPasswordPage() {
                   <FormLabel>New Password</FormLabel>
                   <FormControl>
                     <div className="relative group">
-                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 group-focus-within:text-primary transition-colors" />
                       <Input
                         type={showPassword ? "text" : "password"}
                         placeholder="••••••••"
-                        className="pl-10 focus:ring-2 focus:ring-primary/20 transition-all"
-                        aria-label="New password"
+                        className="pr-10"
                         {...field}
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                        aria-label={
-                          showPassword ? "Hide password" : "Show password"
-                        }
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
                       >
                         {showPassword ? (
                           <EyeOff className="w-4 h-4" />
@@ -182,14 +161,11 @@ export default function ResetPasswordPage() {
                       </button>
                     </div>
                   </FormControl>
-                  <div className="space-y-2">
-                    <PasswordStrength password={field.value} className="mt-2" />
-                  </div>
+                  <PasswordStrength password={field.value} />
                   <FormMessage />
                 </FormItem>
               )}
             />
-
             <FormField
               control={form.control}
               name="confirmPassword"
@@ -198,12 +174,10 @@ export default function ResetPasswordPage() {
                   <FormLabel>Confirm New Password</FormLabel>
                   <FormControl>
                     <div className="relative group">
-                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 group-focus-within:text-primary transition-colors" />
                       <Input
                         type={showConfirmPassword ? "text" : "password"}
                         placeholder="••••••••"
-                        className="pl-10 focus:ring-2 focus:ring-primary/20 transition-all"
-                        aria-label="Confirm new password"
+                        className="pr-10"
                         {...field}
                       />
                       <button
@@ -211,12 +185,7 @@ export default function ResetPasswordPage() {
                         onClick={() =>
                           setShowConfirmPassword(!showConfirmPassword)
                         }
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                        aria-label={
-                          showConfirmPassword
-                            ? "Hide password"
-                            : "Show password"
-                        }
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
                       >
                         {showConfirmPassword ? (
                           <EyeOff className="w-4 h-4" />
@@ -230,12 +199,11 @@ export default function ResetPasswordPage() {
                 </FormItem>
               )}
             />
-
             <LoadingButton
               type="submit"
               className="w-full h-12 text-base"
               loading={loading}
-              loadingText="Resetting password..."
+              loadingText="Resetting Password..."
             >
               Reset Password
             </LoadingButton>

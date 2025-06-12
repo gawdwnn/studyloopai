@@ -15,7 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/hooks/useAuth";
-import type { AuthErrorDetails } from "@/lib/errors/auth";
+import { type AuthErrorDetails, getAuthErrorMessage } from "@/lib/errors/auth";
 import { type SignInFormData, signInSchema } from "@/lib/validations/auth";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AnimatePresence, motion } from "framer-motion";
@@ -36,8 +36,11 @@ function SignInForm() {
 
   useEffect(() => {
     const urlError = searchParams.get("error");
+    const errorDescription = searchParams.get("error_description");
     if (urlError) {
-      setError({ type: "server_error", message: urlError });
+      setError(
+        getAuthErrorMessage(new Error(errorDescription ?? "An error occurred."))
+      );
     }
   }, [searchParams]);
 
