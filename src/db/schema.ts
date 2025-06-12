@@ -5,6 +5,7 @@ import {
   pgEnum,
   pgSchema,
   pgTable,
+  text,
   timestamp,
   uuid,
   varchar,
@@ -72,6 +73,59 @@ export const userPlans = pgTable("user_plans", {
   startedAt: timestamp("started_at").defaultNow().notNull(),
   currentPeriodEnd: timestamp("current_period_end"),
   isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Courses table
+export const courses = pgTable("courses", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.userId, { onDelete: "cascade" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  language: varchar("language", { length: 50 }).default("english"),
+  durationWeeks: integer("duration_weeks").default(12),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Course weeks table
+export const courseWeeks = pgTable("course_weeks", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  courseId: uuid("course_id")
+    .notNull()
+    .references(() => courses.id, { onDelete: "cascade" }),
+  weekNumber: integer("week_number").notNull(),
+  title: varchar("title", { length: 255 }),
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Course materials table
+export const courseMaterials = pgTable("course_materials", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  courseId: uuid("course_id")
+    .notNull()
+    .references(() => courses.id, { onDelete: "cascade" }),
+  weekId: uuid("week_id").references(() => courseWeeks.id, {
+    onDelete: "set null",
+  }),
+  title: varchar("title", { length: 255 }).notNull(),
+  fileName: varchar("file_name", { length: 255 }),
+  filePath: varchar("file_path", { length: 500 }),
+  fileSize: integer("file_size"),
+  mimeType: varchar("mime_type", { length: 100 }),
+  uploadStatus: varchar("upload_status", { length: 50 }).default("pending"),
+  processingMetadata: jsonb("processing_metadata"),
+  uploadedBy: uuid("uploaded_by")
+    .notNull()
+    .references(() => users.userId),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
