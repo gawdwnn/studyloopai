@@ -1,8 +1,6 @@
-import type { CookieOptions } from "@supabase/ssr";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
-import { type NextRequest, NextResponse } from "next/server";
 
 // Environment validation with type assertion
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -30,52 +28,25 @@ export const getAdminClient = () => {
 };
 
 // Server client with cookie management
-export const getServerClient = () => {
-  const cookieStore = cookies();
+export const getServerClient = async () => {
+  const cookieStore = await cookies();
 
   return createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
-      async getAll() {
-        return (await cookieStore).getAll();
+      getAll() {
+        return cookieStore.getAll();
       },
-      async setAll(
-        cookiesToSet: { name: string; value: string; options?: CookieOptions }[]
-      ) {
-        const store = await cookieStore;
-        for (const { name, value, options } of cookiesToSet) {
-          store.set(name, value, options);
+      setAll(cookiesToSet) {
+        try {
+          for (const { name, value, options } of cookiesToSet) {
+            cookieStore.set(name, value, options);
+          }
+        } catch {
+          // The `setAll` method was called from a Server Component.
+          // This can be ignored if you have middleware refreshing
+          // user sessions.
         }
       },
     },
   });
-};
-
-// Request/Response client for middleware and API routes
-export const getReqResClient = (request: NextRequest) => {
-  const response = NextResponse.next({ request });
-
-  return {
-    client: createServerClient(supabaseUrl, supabaseAnonKey, {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(
-          cookiesToSet: {
-            name: string;
-            value: string;
-            options?: CookieOptions;
-          }[]
-        ) {
-          for (const { name, value } of cookiesToSet) {
-            request.cookies.set(name, value);
-          }
-          for (const { name, value, options } of cookiesToSet) {
-            response.cookies.set(name, value, options);
-          }
-        },
-      },
-    }),
-    response,
-  };
 };

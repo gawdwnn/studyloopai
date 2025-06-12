@@ -1,207 +1,122 @@
 "use client";
 
+import { LoadingButton } from "@/components/loading-button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
-import { AlertCircle, CheckCircle, Mail } from "lucide-react";
+import type { AuthErrorDetails } from "@/lib/errors/auth";
+import { getAuthErrorMessage } from "@/lib/errors/auth";
+import { MailCheck } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useState } from "react";
 
 function VerifyEmailContent() {
-  const [email, setEmail] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [resendLoading, setResendLoading] = useState(false);
-  const [resendStatus, setResendStatus] = useState<
-    "idle" | "success" | "error"
-  >("idle");
-  const [resendError, setResendError] = useState<string | null>(null);
-  const { getUser, resendVerificationEmail } = useAuth();
   const searchParams = useSearchParams();
+  const email = searchParams.get("email");
+  const { resendVerificationEmail } = useAuth();
 
-  useEffect(() => {
-    const fetchEmailAddress = async () => {
-      try {
-        // First try to get email from URL parameters (for new flow)
-        const emailFromParams = searchParams.get("email");
-        if (emailFromParams) {
-          setEmail(emailFromParams);
-          setLoading(false);
-          return;
-        }
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<AuthErrorDetails | null>(null);
+  const [success, setSuccess] = useState(false);
 
-        // Fallback: try to get email from authenticated user (for existing flow)
-        const { user } = await getUser();
-        setEmail(user?.email ?? null);
-      } catch {
-        // If no user and no email param, we can't show the page properly
-        setEmail(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchEmailAddress();
-  }, [getUser, searchParams]);
-
-  const handleResendEmail = async () => {
-    if (!email) return;
-
-    setResendLoading(true);
-    setResendStatus("idle");
-    setResendError(null);
-
-    try {
-      const { error } = await resendVerificationEmail(email);
-
-      if (error) {
-        setResendStatus("error");
-        setResendError(
-          error.message ||
-            "Failed to resend verification email. Please try again."
-        );
-        return;
-      }
-
-      setResendStatus("success");
-    } catch {
-      setResendStatus("error");
-      setResendError("An unexpected error occurred. Please try again.");
-    } finally {
-      setResendLoading(false);
+  const handleResend = async () => {
+    if (!email) {
+      setError({
+        type: "unknown_error",
+        message:
+          "Email not found in URL. Please go back and try signing up again.",
+      });
+      return;
     }
+    setLoading(true);
+    setError(null);
+    setSuccess(false);
+
+    const { error: resendError } = await resendVerificationEmail(email);
+
+    if (resendError) {
+      setError(getAuthErrorMessage(resendError));
+    } else {
+      setSuccess(true);
+    }
+    setLoading(false);
   };
 
-  if (loading) {
-    return (
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <Card>
-          <CardHeader>
-            <CardTitle>Loading...</CardTitle>
-          </CardHeader>
-        </Card>
-      </div>
-    );
-  }
-
-  // If we don't have an email address, show a generic message
   if (!email) {
     return (
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <Card>
-          <CardHeader>
-            <div className="flex justify-center mb-4">
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                <Mail className="w-6 h-6 text-primary" />
-              </div>
-            </div>
-            <CardTitle className="text-center text-2xl font-bold">
-              Check your email
-            </CardTitle>
-            <CardDescription className="text-center">
-              We've sent you a verification link to complete your registration.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="text-sm text-muted-foreground space-y-2">
-              <p>
-                To complete your registration, please click the verification
-                link in the email we just sent you.
-              </p>
-              <p>If you don't see the email, please check your spam folder.</p>
-            </div>
-
-            <div className="flex flex-col space-y-3">
-              <Link href="/auth/signin" className="w-full">
-                <Button variant="outline" className="w-full">
-                  Return to sign in
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="text-center">
+        <h2 className="text-2xl font-bold text-destructive">Invalid Link</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          The verification link is missing required information. Please return
+          to the sign-up page.
+        </p>
+        <div className="mt-6">
+          <Link
+            href="/auth/signup"
+            className="text-sm font-medium text-primary hover:text-primary/80"
+          >
+            Return to sign up
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-      <Card>
-        <CardHeader>
-          <div className="flex justify-center mb-4">
-            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-              <Mail className="w-6 h-6 text-primary" />
-            </div>
-          </div>
-          <CardTitle className="text-center text-2xl font-bold">
-            Check your email
-          </CardTitle>
-          <CardDescription className="text-center">
-            We've sent a verification link to{" "}
-            <span className="font-medium text-foreground">{email}</span>
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="text-sm text-muted-foreground space-y-2">
-            <p>
-              To complete your registration, please click the verification link
-              in the email we just sent you.
-            </p>
-            <p>
-              If you don't see the email, please check your spam folder or try
-              resending the verification email.
-            </p>
-          </div>
+    <div className="text-center">
+      <MailCheck className="mx-auto h-12 w-12 text-primary" />
+      <h2 className="mt-4 text-2xl font-bold text-foreground">
+        Verify your email
+      </h2>
+      <p className="mt-2 text-sm text-muted-foreground">
+        We've sent a verification link to{" "}
+        <span className="font-bold text-foreground">{email}</span>. Please check
+        your inbox and click the link to complete your signup.
+      </p>
 
-          {/* Resend Status Messages */}
-          {resendStatus === "success" && (
-            <Alert className="border-green-200 bg-green-50">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              <AlertDescription className="text-green-800">
-                Verification email sent successfully! Check your inbox.
-              </AlertDescription>
-            </Alert>
-          )}
+      <div className="mt-6 space-y-4">
+        {success && (
+          <Alert variant="default" className="text-left">
+            <AlertDescription>
+              A new verification link has been sent to your email address.
+            </AlertDescription>
+          </Alert>
+        )}
+        {error && (
+          <Alert variant="destructive" className="text-left">
+            <AlertDescription>{error.message}</AlertDescription>
+          </Alert>
+        )}
+        <LoadingButton
+          onClick={handleResend}
+          loading={loading}
+          className="w-full"
+          loadingText="Sending..."
+        >
+          Resend verification link
+        </LoadingButton>
+      </div>
 
-          {resendStatus === "error" && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{resendError}</AlertDescription>
-            </Alert>
-          )}
-
-          <div className="flex flex-col space-y-3">
-            <Button
-              variant="outline"
-              onClick={handleResendEmail}
-              disabled={resendLoading}
-              className="w-full"
-            >
-              {resendLoading ? "Resending..." : "Resend verification email"}
-            </Button>
-            <Link href="/auth/signin" className="w-full">
-              <Button variant="ghost" className="w-full">
-                Return to sign in
-              </Button>
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="mt-6">
+        <Link
+          href="/auth/signin"
+          className="text-sm font-medium text-primary hover:text-primary/80"
+        >
+          Return to sign in
+        </Link>
+      </div>
     </div>
   );
 }
 
 export default function VerifyEmailPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <VerifyEmailContent />
-    </Suspense>
+    <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+      <div className="bg-card px-4 py-8 shadow sm:rounded-lg sm:px-10">
+        <Suspense fallback={<div>Loading...</div>}>
+          <VerifyEmailContent />
+        </Suspense>
+      </div>
+    </div>
   );
 }
