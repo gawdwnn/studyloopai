@@ -1,3 +1,4 @@
+import { relations } from "drizzle-orm";
 import {
   boolean,
   integer,
@@ -10,6 +11,28 @@ import {
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
+
+// Processing metadata interface for course materials
+export interface ProcessingMetadata {
+  flashcards?: {
+    total: number;
+    completed: number;
+  };
+  multipleChoice?: {
+    total: number;
+    completed: number;
+  };
+  openQuestions?: {
+    total: number;
+    completed: number;
+  };
+  summaries?: {
+    total: number;
+    completed: number;
+  };
+  processingStatus?: "pending" | "processing" | "completed" | "failed";
+  lastProcessed?: string;
+}
 
 // Enums
 export const userRoleEnum = pgEnum("user_role", [
@@ -129,3 +152,52 @@ export const courseMaterials = pgTable("course_materials", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+// Relations
+export const coursesRelations = relations(courses, ({ many, one }) => ({
+  user: one(users, {
+    fields: [courses.userId],
+    references: [users.userId],
+  }),
+  weeks: many(courseWeeks),
+  materials: many(courseMaterials),
+}));
+
+export const courseWeeksRelations = relations(courseWeeks, ({ one, many }) => ({
+  course: one(courses, {
+    fields: [courseWeeks.courseId],
+    references: [courses.id],
+  }),
+  materials: many(courseMaterials),
+}));
+
+export const courseMaterialsRelations = relations(
+  courseMaterials,
+  ({ one }) => ({
+    course: one(courses, {
+      fields: [courseMaterials.courseId],
+      references: [courses.id],
+    }),
+    week: one(courseWeeks, {
+      fields: [courseMaterials.weekId],
+      references: [courseWeeks.id],
+    }),
+    uploadedByUser: one(users, {
+      fields: [courseMaterials.uploadedBy],
+      references: [users.userId],
+    }),
+  })
+);
+
+export const usersRelations = relations(users, ({ many }) => ({
+  courses: many(courses),
+  uploadedMaterials: many(courseMaterials),
+  userPlans: many(userPlans),
+}));
+
+export const userPlansRelations = relations(userPlans, ({ one }) => ({
+  user: one(users, {
+    fields: [userPlans.userId],
+    references: [users.userId],
+  }),
+}));

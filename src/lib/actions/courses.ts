@@ -1,13 +1,13 @@
 "use server";
 
 import { db } from "@/db";
-import { courses } from "@/db/schema";
+import { courseMaterials, courses } from "@/db/schema";
 import { getServerClient } from "@/lib/supabase/server";
 import {
   type CourseCreationData,
   CourseCreationSchema,
 } from "@/lib/validations/courses";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 export async function createCourse(formData: CourseCreationData) {
@@ -30,40 +30,65 @@ export async function createCourse(formData: CourseCreationData) {
     })
     .returning();
 
-  revalidatePath("/dashboard/materials");
+  revalidatePath("/dashboard/course-materials");
   return newCourse;
 }
 
 export async function getUserCourses() {
-  const supabase = await getServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return [];
-  }
-
-  const userCourses = await db.query.courses.findMany({
-    where: eq(courses.userId, user.id),
-  });
+  const userCourses = await db.query.courses.findMany();
 
   return userCourses;
 }
 
 export async function getCourseById(courseId: string) {
-  const supabase = await getServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return null;
-  }
-
   const course = await db.query.courses.findFirst({
-    where: and(eq(courses.id, courseId), eq(courses.userId, user.id)),
+    where: eq(courses.id, courseId),
   });
 
   return course;
+}
+
+export async function getCourseMaterials(courseId: string) {
+  const course = await db.query.courses.findFirst({
+    where: eq(courses.id, courseId),
+    columns: { id: true },
+  });
+
+  if (!course) {
+    return [];
+  }
+
+  const materials = await db.query.courseMaterials.findMany({
+    where: eq(courseMaterials.courseId, courseId),
+    with: {
+      week: {
+        columns: {
+          weekNumber: true,
+        },
+      },
+    },
+    orderBy: (courseMaterials, { desc }) => [desc(courseMaterials.createdAt)],
+  });
+
+  return materials;
+}
+
+export async function getAllUserMaterials() {
+  const materials = await db.query.courseMaterials.findMany({
+    with: {
+      week: {
+        columns: {
+          weekNumber: true,
+        },
+      },
+      course: {
+        columns: {
+          name: true,
+        },
+      },
+    },
+    orderBy: (courseMaterials, { desc }) => [desc(courseMaterials.createdAt)],
+  });
+
+  return materials;
 }

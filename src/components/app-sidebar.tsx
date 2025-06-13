@@ -71,18 +71,6 @@ const routes: RouteItem[] = [
     label: "Course Materials",
     icon: BookOpen,
     href: "/dashboard/course-materials",
-    subItems: [
-      {
-        label: "Uploaded Files",
-        href: "/dashboard/course-materials/files",
-        icon: BookOpen,
-      },
-      {
-        label: "Study Notes",
-        href: "/dashboard/course-materials/notes",
-        icon: BookMarked,
-      },
-    ],
   },
   {
     label: "Adaptive Learning",
