@@ -1,6 +1,5 @@
 import { getFeatureLimit, hasFeatureAccess } from "@/lib/actions/plans";
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
+import { getServerClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
@@ -17,7 +16,7 @@ export async function POST(request: Request) {
     // 2. Check upload limit
     const uploadLimit = await getFeatureLimit("DOCUMENT_UPLOADS");
     if (uploadLimit !== null) {
-      const supabase = createRouteHandlerClient({ cookies });
+      const supabase = await getServerClient();
       const {
         data: { user },
       } = await supabase.auth.getUser();
