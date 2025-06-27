@@ -3,15 +3,11 @@
 import { deleteCourseMaterial } from "@/lib/actions/course-materials";
 import { getAllUserMaterials, getUserCourses } from "@/lib/actions/courses";
 import { useQuery } from "@tanstack/react-query";
-import { useRef, useTransition } from "react";
+import { useTransition } from "react";
 import { toast } from "sonner";
 
 import { CourseMaterialUploadWizard } from "@/components/course/course-material-upload-wizard";
 import { CourseMaterialsTable } from "@/components/course/course-materials-table";
-import {
-  ProcessingIndicator,
-  useProcessingJobs,
-} from "@/components/course/processing-indicator";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -21,8 +17,6 @@ import {
 } from "@/components/ui/tooltip";
 
 export default function CourseMaterialsPage() {
-  const { jobs, addJob, updateJob, dismissJob } = useProcessingJobs();
-  const jobIdMapRef = useRef<Map<string, string>>(new Map()); // Map wizard jobId to processing jobId
   const [isPending, startTransition] = useTransition();
 
   const { data: courses = [] } = useQuery({
@@ -40,40 +34,9 @@ export default function CourseMaterialsPage() {
   });
 
   const handleUploadSuccess = () => {
+    // The new row will appear and its status will be tracked in-line
+    // A refetch ensures we get the new material with its runId
     refetchMaterials();
-  };
-
-  const handleJobStart = (wizardJobId: string, title: string) => {
-    // Add a new processing job when upload starts
-    const processingJobId = addJob({
-      title,
-      status: "processing",
-    });
-
-    // Map the wizard job ID to the processing job ID
-    jobIdMapRef.current.set(wizardJobId, processingJobId);
-  };
-
-  const handleJobUpdate = (
-    wizardJobId: string,
-    status: "processing" | "completed" | "failed",
-    error?: string
-  ) => {
-    // Get the actual processing job ID
-    const processingJobId = jobIdMapRef.current.get(wizardJobId);
-
-    if (processingJobId) {
-      // Update the job status
-      updateJob(processingJobId, {
-        status,
-        ...(error && { error }),
-      });
-
-      // Clean up the mapping when job is complete
-      if (status === "completed" || status === "failed") {
-        jobIdMapRef.current.delete(wizardJobId);
-      }
-    }
   };
 
   const handleDeleteMaterial = async (
@@ -95,7 +58,7 @@ export default function CourseMaterialsPage() {
     });
   };
 
-  const hasNoCourses = false;
+  const hasNoCourses = !isLoading && courses.length === 0;
 
   return (
     <>
@@ -118,8 +81,6 @@ export default function CourseMaterialsPage() {
                     <CourseMaterialUploadWizard
                       courses={courses}
                       onUploadSuccess={handleUploadSuccess}
-                      onJobStart={handleJobStart}
-                      onJobUpdate={handleJobUpdate}
                     />
                   ) : (
                     <Button disabled>Upload Course Materials</Button>
@@ -142,9 +103,6 @@ export default function CourseMaterialsPage() {
           isDeleting={isPending}
         />
       </div>
-
-      {/* Background Processing Indicator */}
-      <ProcessingIndicator jobs={jobs} onDismiss={dismissJob} />
     </>
   );
 }

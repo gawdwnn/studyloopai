@@ -50,7 +50,10 @@ export async function addCourseMaterial(material: {
   revalidatePath(`/dashboard/course-materials/${material.courseId}`);
 }
 
-export async function deleteCourseMaterial(materialId: string) {
+export async function deleteCourseMaterial(
+  materialId: string,
+  filePath?: string | null
+) {
   const supabase = await getServerClient();
   const {
     data: { user },
@@ -60,23 +63,12 @@ export async function deleteCourseMaterial(materialId: string) {
     throw new Error("You must be logged in to delete course materials.");
   }
 
-  const material = await db.query.courseMaterials.findFirst({
-    where: eq(courseMaterials.id, materialId),
-  });
-
-  // If material is null, either it doesn't exist or user doesn't have access
-  // RLS handles the access control, so we just return early
-  if (!material) {
-    // Don't throw an error - RLS may have filtered it out due to access control
-    return;
-  }
-
   // Delete the file from Supabase Storage if it exists
-  if (material.filePath) {
+  if (filePath) {
     try {
       const { error: storageError } = await supabase.storage
         .from("course-materials")
-        .remove([material.filePath]);
+        .remove([filePath]);
 
       if (storageError) {
         console.error("Failed to delete file from storage:", storageError);
@@ -89,9 +81,15 @@ export async function deleteCourseMaterial(materialId: string) {
   }
 
   // This will also cascade delete related document_chunks and generated_content
-  await db.delete(courseMaterials).where(eq(courseMaterials.id, materialId));
+  // RLS ensures the user can only delete materials they own.
+  const [deletedMaterial] = await db
+    .delete(courseMaterials)
+    .where(eq(courseMaterials.id, materialId))
+    .returning({ courseId: courseMaterials.courseId });
 
   // Revalidate the course materials page
-  revalidatePath("/dashboard/course-materials");
-  revalidatePath(`/dashboard/course-materials/${material.courseId}`);
+  if (deletedMaterial) {
+    revalidatePath("/dashboard/course-materials");
+    revalidatePath(`/dashboard/course-materials/${deletedMaterial.courseId}`);
+  }
 }

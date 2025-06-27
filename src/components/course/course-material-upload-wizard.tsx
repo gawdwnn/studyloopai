@@ -33,12 +33,6 @@ import { uploadAndGenerateContent } from "@/lib/actions/content-generation";
 interface CourseMaterialUploadWizardProps {
   courses: (typeof courses.$inferSelect)[];
   onUploadSuccess: () => void;
-  onJobStart?: (jobId: string, title: string) => void;
-  onJobUpdate?: (
-    jobId: string,
-    status: "processing" | "completed" | "failed",
-    error?: string
-  ) => void;
 }
 
 export interface GenerationConfig {
@@ -89,8 +83,6 @@ const DEFAULT_GENERATION_CONFIG: GenerationConfig = {
 export function CourseMaterialUploadWizard({
   courses,
   onUploadSuccess,
-  onJobStart,
-  onJobUpdate,
 }: CourseMaterialUploadWizardProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState<WizardStep>(
@@ -169,52 +161,22 @@ export function CourseMaterialUploadWizard({
     };
 
     try {
-      // Generate a unique job ID for tracking
-      const jobId = crypto.randomUUID();
-      const jobTitle = `${selectedCourse?.name} - ${weekName}`;
+      const result = await uploadAndGenerateContent(uploadData);
 
-      // Notify parent about job start (for processing indicator)
-      onJobStart?.(jobId, jobTitle);
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
 
-      // Start background processing immediately
-      const processingPromise = uploadAndGenerateContent(uploadData);
-
-      // Show immediate feedback and close dialog
+      // Show immediate feedback
       toast.success("Upload started! Processing in background...", {
-        description: `Generating content for ${weekName}`,
+        description: "View progress in the materials table.",
         duration: 4000,
       });
 
-      // Close dialog immediately - processing continues in background
+      // Close dialog - processing continues in background
       handleClose();
       onUploadSuccess(); // Refresh the materials list
-
-      // Handle the result asynchronously without blocking UI
-      processingPromise
-        .then((result) => {
-          if (result.success) {
-            onJobUpdate?.(jobId, "completed");
-            toast.success("Content generation completed!", {
-              description: `${weekName} materials are ready`,
-              duration: 5000,
-            });
-            onUploadSuccess(); // Refresh again when complete
-          } else {
-            onJobUpdate?.(jobId, "failed", result.error);
-            toast.error("Content generation failed", {
-              description: result.error || "Please try uploading again",
-              duration: 6000,
-            });
-          }
-        })
-        .catch((error) => {
-          console.error("Background processing error:", error);
-          onJobUpdate?.(jobId, "failed", "An unexpected error occurred");
-          toast.error("Content generation failed", {
-            description: "An unexpected error occurred",
-            duration: 6000,
-          });
-        });
     } catch (error) {
       toast.error("Failed to start upload. Please try again.");
       console.error("Upload initiation error:", error);

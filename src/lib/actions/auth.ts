@@ -14,7 +14,6 @@ import type { SignUpFormData } from "@/lib/validations/auth";
 export async function emailSignUp(formData: SignUpFormData, planId: PlanId) {
   const supabase = await getServerClient();
 
-  // Create user in Supabase auth with email verification
   const {
     data: { user },
     error: signUpError,
@@ -27,7 +26,7 @@ export async function emailSignUp(formData: SignUpFormData, planId: PlanId) {
         first_name: formData.firstName,
         last_name: formData.lastName,
         country: formData.country,
-        selected_plan: planId, // Store the selected plan to be used after verification
+        selected_plan: planId,
       },
     },
   });

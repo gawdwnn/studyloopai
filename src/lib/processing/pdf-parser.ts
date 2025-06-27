@@ -1,28 +1,81 @@
-import pdfParse from "pdf-parse";
+import { extractText } from "unpdf";
+import {
+  PDF_PROCESSING_LIMITS,
+  PDF_VALIDATION,
+  PDF_PROCESSING_DEFAULTS,
+  PDF_ERROR_MESSAGES,
+} from "@/lib/constants/pdf-processing";
+
+// Lazy load PDF.js only when needed to avoid DOM issues
+let pdfjsLib: any = null;
+
+async function loadPDFJS() {
+  if (!pdfjsLib) {
+    // Use legacy build for Node.js compatibility
+    pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
+    // Disable worker in Node.js environment
+    if (typeof window === 'undefined') {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+    }
+  }
+  return pdfjsLib;
+}
 
 /**
  * PDF Parser for StudyLoop AI
- * Handles PDF text extraction with robust error recovery
+ * Uses unpdf for serverless-compatible PDF text extraction
  */
 
 export interface PDFParseResult {
-  text: string;
-  metadata: {
-    pages: number;
-    info?: Record<string, unknown>;
-    pageTexts?: string[];
-    totalChars: number;
-    extractedAt: string;
-  };
   success: boolean;
+  text?: string;
+  metadata?: {
+    pageCount?: number;
+    processingTime?: number;
+    extractionMethod?: 'unpdf' | 'pdfjs';
+  };
   error?: string;
 }
 
 export interface PDFParseOptions {
-  maxPages?: number;
-  preservePageBreaks?: boolean;
   cleanText?: boolean;
-  extractPagewise?: boolean;
+  preservePageBreaks?: boolean;
+  timeout?: number; // milliseconds
+}
+
+/**
+ * Extract text using PDF.js (fallback method with better font handling)
+ */
+async function extractWithPDFJS(buffer: Buffer): Promise<PDFParseResult> {
+  try {
+    const pdfLib = await loadPDFJS();
+    const uint8Array = new Uint8Array(buffer);
+    const pdf = await pdfLib.getDocument({ data: uint8Array }).promise;
+    
+    let fullText = '';
+    const totalPages = pdf.numPages;
+    
+    for (let i = 1; i <= totalPages; i++) {
+      const page = await pdf.getPage(i);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items
+        .filter((item: any) => item.str) // Filter out non-text items
+        .map((item: any) => item.str)
+        .join(' ');
+      fullText += `${pageText} `;
+    }
+    
+    return {
+      success: true,
+      text: fullText.trim(),
+      metadata: {
+        pageCount: totalPages,
+        processingTime: 0, // Will be set by caller
+      },
+    };
+  } catch (error) {
+    throw new Error(`PDF.js extraction failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 }
 
 /**
@@ -32,243 +85,167 @@ export async function parsePDF(
   buffer: Buffer,
   options: PDFParseOptions = {}
 ): Promise<PDFParseResult> {
-  const {
-    maxPages,
-    preservePageBreaks = true,
-    cleanText = true,
-    extractPagewise = false,
-  } = options;
+  const startTime = Date.now();
 
   try {
-    // Validate buffer
-    if (!buffer || buffer.length === 0) {
-      throw new Error("Empty or invalid PDF buffer");
+    // Validate buffer first
+    const validation = validatePDFBuffer(buffer);
+    if (!validation.isValid) {
+      return {
+        success: false,
+        error: validation.error,
+      };
     }
 
-    // Check if buffer starts with PDF header
-    const pdfHeader = buffer.subarray(0, 4).toString();
-    if (pdfHeader !== "%PDF") {
-      throw new Error("Invalid PDF format - missing PDF header");
-    }
+    const timeout = options.timeout ?? PDF_PROCESSING_DEFAULTS.TIMEOUT;
+    
+    // Strategy 1: Try unpdf first (fastest, serverless-friendly)
+    try {
+      const uint8Array = new Uint8Array(buffer);
+      const extractionPromise = extractText(uint8Array);
+      
+      const result = await Promise.race([
+        extractionPromise,
+        new Promise<never>((_, reject) =>
+          setTimeout(
+            () => reject(new Error(PDF_ERROR_MESSAGES.PROCESSING_TIMEOUT)),
+            timeout
+          )
+        ),
+      ]);
 
-    // Parse PDF
-    const data = await pdfParse(buffer, {
-      max: maxPages,
-      version: "v1.10.100", // Specify pdf2pic version for consistency
-    });
+      let text = Array.isArray(result.text) ? result.text.join(' ') : result.text;
+      
+      if (text && text.trim().length > 0) {
+        // Success with unpdf
+        const shouldCleanText = options.cleanText ?? PDF_PROCESSING_DEFAULTS.CLEAN_TEXT;
+        const shouldPreservePageBreaks = options.preservePageBreaks ?? PDF_PROCESSING_DEFAULTS.PRESERVE_PAGE_BREAKS;
 
-    if (!data || !data.text) {
-      throw new Error("No text content extracted from PDF");
-    }
+        if (shouldPreservePageBreaks) {
+          text = text.replace(/\f/g, "\n--- PAGE BREAK ---\n");
+        }
 
-    let extractedText = data.text;
-    let pageTexts: string[] | undefined;
+        if (shouldCleanText) {
+          text = cleanPDFText(text);
+        }
 
-    // Clean text if requested
-    if (cleanText) {
-      extractedText = cleanPDFText(extractedText);
-    }
+        const processingTime = Date.now() - startTime;
 
-    // Extract page-wise text if requested
-    if (extractPagewise) {
-      pageTexts = await extractPagewiseText(buffer, maxPages);
-      if (cleanText && pageTexts) {
-        pageTexts = pageTexts.map(cleanPDFText);
+        return {
+          success: true,
+          text,
+          metadata: {
+            pageCount: result.totalPages,
+            processingTime,
+            extractionMethod: 'unpdf',
+          },
+        };
       }
+    } catch (unpdfError) {
+      console.warn('unpdf extraction failed:', unpdfError instanceof Error ? unpdfError.message : 'Unknown error');
     }
 
-    // Preserve page breaks if requested
-    if (preservePageBreaks) {
-      extractedText = preservePageBreaks
-        ? extractedText
-        : extractedText.replace(/\f/g, "\n\n");
+    // Strategy 2: Fallback to PDF.js (better font handling)
+    try {
+      const pdfJsResult = await Promise.race([
+        extractWithPDFJS(buffer),
+        new Promise<never>((_, reject) =>
+          setTimeout(
+            () => reject(new Error(PDF_ERROR_MESSAGES.PROCESSING_TIMEOUT)),
+            timeout
+          )
+        ),
+      ]);
+
+      if (pdfJsResult.text && pdfJsResult.text.trim().length > 0) {
+        let text = pdfJsResult.text;
+        
+        // Apply text processing options
+        const shouldCleanText = options.cleanText ?? PDF_PROCESSING_DEFAULTS.CLEAN_TEXT;
+        const shouldPreservePageBreaks = options.preservePageBreaks ?? PDF_PROCESSING_DEFAULTS.PRESERVE_PAGE_BREAKS;
+
+        if (shouldPreservePageBreaks) {
+          text = text.replace(/\f/g, "\n--- PAGE BREAK ---\n");
+        }
+
+        if (shouldCleanText) {
+          text = cleanPDFText(text);
+        }
+
+        const processingTime = Date.now() - startTime;
+
+        return {
+          success: true,
+          text,
+          metadata: {
+            pageCount: pdfJsResult.metadata?.pageCount,
+            processingTime,
+            extractionMethod: 'pdfjs',
+          },
+        };
+      }
+    } catch (pdfJsError) {
+      console.warn('PDF.js extraction failed:', pdfJsError instanceof Error ? pdfJsError.message : 'Unknown error');
     }
 
+    // All extraction methods failed
     return {
-      text: extractedText,
-      metadata: {
-        pages: data.numpages || 0,
-        info: data.info || {},
-        pageTexts,
-        totalChars: extractedText.length,
-        extractedAt: new Date().toISOString(),
-      },
-      success: true,
+      success: false,
+      error: PDF_ERROR_MESSAGES.NO_TEXT_CONTENT,
     };
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown PDF parsing error";
-
-    // Log error for debugging
-    console.error("PDF parsing failed:", {
-      error: errorMessage,
-      bufferSize: buffer?.length || 0,
-      timestamp: new Date().toISOString(),
-    });
-
     return {
-      text: "",
-      metadata: {
-        pages: 0,
-        totalChars: 0,
-        extractedAt: new Date().toISOString(),
-      },
       success: false,
-      error: errorMessage,
+      error:
+        error instanceof Error ? error.message : "Unknown PDF parsing error",
     };
   }
 }
 
 /**
- * Clean extracted PDF text
+ * Enhanced text cleaning for PDF content
  */
 function cleanPDFText(text: string): string {
-  return (
-    text
-      // Remove excessive whitespace
-      .replace(/\s+/g, " ")
-      // Remove page form feeds
-      .replace(/\f/g, "\n\n")
-      // Remove multiple consecutive line breaks
-      .replace(/\n{3,}/g, "\n\n")
-      // Remove leading/trailing whitespace
-      .trim()
-      // Remove special PDF characters that don't add value
-      .split("")
-      .filter((char) => {
-        const code = char.charCodeAt(0);
-        return !(code >= 0 && code <= 31) && !(code >= 127 && code <= 159);
-      })
-      .join("")
-      // Normalize quotes
-      .replace(/[""]/g, '"')
-      .replace(/['']/g, "'")
-  );
+  return text
+    .replace(/(\w)-\n(\w)/g, "$1$2") // Fix hyphenated words across lines
+    .replace(/\f/g, "\n") // Convert form feeds to newlines
+    .replace(/•/g, "*") // Normalize bullet points
+    .replace(/\s*\n\s*/g, " ") // Normalize line breaks to spaces
+    .replace(/\s{2,}/g, " ") // Collapse multiple spaces
+    .replace(/^\s+|\s+$/gm, "") // Trim each line
+    .replace(/\n{3,}/g, "\n\n") // Limit consecutive newlines
+    .trim();
 }
 
-/**
- * Extract text from each page separately
- */
-async function extractPagewiseText(
-  buffer: Buffer,
-  maxPages?: number
-): Promise<string[]> {
-  try {
-    // For page-wise extraction, we would need a more sophisticated approach
-    // This is a simplified version that splits on form feed characters
-    const fullText = await pdfParse(buffer, { max: maxPages });
-
-    if (!fullText.text) return [];
-
-    // Split by form feed character (page break)
-    const pages = fullText.text.split("\f");
-
-    return pages.filter((page) => page.trim().length > 0);
-  } catch (error) {
-    console.error("Page-wise extraction failed:", error);
-    return [];
-  }
-}
 
 /**
  * Validate PDF file before processing
  */
-export function validatePDFBuffer(buffer: Buffer): {
-  isValid: boolean;
-  error?: string;
-  metadata?: {
-    size: number;
-    hasValidHeader: boolean;
-  };
-} {
-  try {
-    if (!buffer || buffer.length === 0) {
-      return {
-        isValid: false,
-        error: "Empty buffer provided",
-      };
-    }
+export function validatePDFBuffer(buffer: Buffer): { isValid: boolean; error?: string } {
+  if (!buffer || buffer.length < PDF_PROCESSING_LIMITS.MIN_FILE_SIZE) {
+    return { isValid: false, error: PDF_ERROR_MESSAGES.FILE_TOO_SMALL };
+  }
 
-    // Check minimum file size (PDF header + minimal content)
-    if (buffer.length < 100) {
-      return {
-        isValid: false,
-        error: "File too small to be a valid PDF",
-        metadata: {
-          size: buffer.length,
-          hasValidHeader: false,
-        },
-      };
-    }
-
-    // Check PDF header
-    const header = buffer.subarray(0, 4).toString();
-    const hasValidHeader = header === "%PDF";
-
-    if (!hasValidHeader) {
-      return {
-        isValid: false,
-        error: "Invalid PDF header",
-        metadata: {
-          size: buffer.length,
-          hasValidHeader: false,
-        },
-      };
-    }
-
-    // Check for PDF trailer
-    const lastBytes = buffer.subarray(-100).toString();
-    const hasTrailer = lastBytes.includes("%%EOF");
-
-    if (!hasTrailer) {
-      return {
-        isValid: false,
-        error: "Invalid PDF structure - missing EOF marker",
-        metadata: {
-          size: buffer.length,
-          hasValidHeader: true,
-        },
-      };
-    }
-
-    return {
-      isValid: true,
-      metadata: {
-        size: buffer.length,
-        hasValidHeader: true,
-      },
-    };
-  } catch (error) {
+  if (buffer.length > PDF_PROCESSING_LIMITS.MAX_FILE_SIZE) {
     return {
       isValid: false,
-      error: error instanceof Error ? error.message : "Validation failed",
+      error: PDF_ERROR_MESSAGES.FILE_TOO_LARGE,
     };
   }
-}
 
-/**
- * Get PDF text preview (first N characters)
- */
-export async function getPDFPreview(
-  buffer: Buffer,
-  maxChars = 500
-): Promise<string> {
-  try {
-    const result = await parsePDF(buffer, {
-      maxPages: 1,
-      cleanText: true,
-    });
-
-    if (!result.success || !result.text) {
-      return "Preview not available";
-    }
-
-    return (
-      result.text.substring(0, maxChars) +
-      (result.text.length > maxChars ? "..." : "")
-    );
-  } catch (error) {
-    console.error("PDF preview generation failed:", error);
-    return "Preview not available";
+  if (buffer.toString("utf8", 0, PDF_VALIDATION.PDF_HEADER.length) !== PDF_VALIDATION.PDF_HEADER) {
+    return { isValid: false, error: PDF_ERROR_MESSAGES.INVALID_HEADER };
   }
+
+  // Check for minimum PDF structure
+  const bufferStr = buffer.toString("utf8");
+  if (!bufferStr.includes(PDF_VALIDATION.PDF_FOOTER)) {
+    return {
+      isValid: false,
+      error: PDF_ERROR_MESSAGES.CORRUPTED_FILE,
+    };
+  }
+
+  return { isValid: true };
 }
+

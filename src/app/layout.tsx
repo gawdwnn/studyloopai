@@ -1,6 +1,7 @@
 import { ReactQueryProvider } from "@/components/providers/react-query-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { getSiteUrl } from "@/lib/get-site-url";
 import type { Metadata } from "next";
 import { Geist_Mono, Montserrat } from "next/font/google";
 import "./globals.css";
@@ -16,8 +17,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Studyloopai",
-  description: "AI-Powered Personalised Study Platform",
+  metadataBase: new URL(getSiteUrl()),
+  title: {
+    default: "StudyLoop AI",
+    template: "%s | StudyLoop AI",
+  },
+  description: "AI-powered learning platform for students.",
 };
 
 export default function RootLayout({
@@ -26,7 +31,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${montserrat.variable} ${geistMono.variable} antialiased`}
       >

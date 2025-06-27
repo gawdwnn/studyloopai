@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { FILE_UPLOAD_LIMITS, FILE_UPLOAD_DISPLAY } from "@/lib/constants/file-upload";
 import { FileIcon, UploadCloudIcon, XIcon } from "lucide-react";
 import { useCallback } from "react";
 import { type FileRejection, useDropzone } from "react-dropzone";
@@ -17,8 +18,8 @@ interface FileUploadDropzoneProps {
 
 export function FileUploadDropzone({
   onFilesAdded,
-  acceptedFileTypes = { "application/pdf": [".pdf"] },
-  maxFileSize = 2 * 1024 * 1024, // 2MB
+  acceptedFileTypes = FILE_UPLOAD_LIMITS.ACCEPTED_FILE_TYPES,
+  maxFileSize = FILE_UPLOAD_LIMITS.MAX_FILE_SIZE,
   className,
   files,
   onRemoveFile,
@@ -37,9 +38,7 @@ export function FileUploadDropzone({
             });
 
             if (error.code === "file-too-large") {
-              toast.error(
-                `File is too large. Max size is ${maxFileSize / 1024 / 1024}MB.`
-              );
+              toast.error(FILE_UPLOAD_DISPLAY.FILE_TOO_LARGE);
             } else if (error.code === "file-invalid-type") {
               toast.error("Invalid file type. Only PDFs are accepted.");
             } else {
@@ -51,7 +50,7 @@ export function FileUploadDropzone({
       }
       onFilesAdded(acceptedFiles);
     },
-    [onFilesAdded, maxFileSize]
+[onFilesAdded]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -91,7 +90,7 @@ export function FileUploadDropzone({
               </>
             )}
           </p>
-          <p className="text-xs text-muted-foreground">PDF (max. 2MB)</p>
+          <p className="text-xs text-muted-foreground">{FILE_UPLOAD_DISPLAY.DROPZONE_TEXT}</p>
         </div>
       </div>
       {files.length > 0 && (

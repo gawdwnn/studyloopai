@@ -27,13 +27,30 @@ export async function GET(req: NextRequest) {
       try {
         const selectedPlan = data.user.user_metadata.selected_plan as PlanId;
 
+        // Validate the plan before proceeding
+        if (!selectedPlan || typeof selectedPlan !== 'string') {
+          console.error('Auth callback: Invalid plan in user metadata:', selectedPlan);
+          return NextResponse.redirect(
+            `${requestUrl.origin}/auth/signup?step=plan&error=invalid_plan`
+          );
+        }
+
         // Complete the signup by creating the user plan
         await createUserPlan(selectedPlan, data.user.id);
 
         // Plan created successfully, user signup is now complete
         // Middleware will handle the rest of the flow
-      } catch {
-        // Continue to redirect, middleware will handle incomplete signup
+      } catch (error) {
+        // Log the specific error for debugging
+        console.error('Auth callback: Failed to create user plan:', error);
+        
+        // Redirect to plan selection with error message
+        // This ensures the user can retry plan creation
+        return NextResponse.redirect(
+          `${requestUrl.origin}/auth/signup?step=plan&error=plan_creation_failed&error_description=${encodeURIComponent(
+            'Failed to create subscription plan. Please try again.'
+          )}`
+        );
       }
     }
   }

@@ -49,19 +49,10 @@ export async function getCourseById(courseId: string) {
 }
 
 export async function getCourseMaterials(courseId: string) {
-  const course = await db.query.courses.findFirst({
-    where: eq(courses.id, courseId),
-    columns: { id: true },
-  });
-
-  if (!course) {
-    return [];
-  }
-
   const materials = await db.query.courseMaterials.findMany({
     where: eq(courseMaterials.courseId, courseId),
     with: {
-      week: {
+      courseWeek: {
         columns: {
           weekNumber: true,
         },
@@ -76,7 +67,7 @@ export async function getCourseMaterials(courseId: string) {
 export async function getAllUserMaterials() {
   const materials = await db.query.courseMaterials.findMany({
     with: {
-      week: {
+      courseWeek: {
         columns: {
           weekNumber: true,
         },
