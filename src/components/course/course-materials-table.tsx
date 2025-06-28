@@ -1,5 +1,6 @@
 "use client";
 
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { MaterialStatusIndicator } from "@/components/course/material-status-indicator";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,7 +21,6 @@ import type {
 import { Search, TrashIcon } from "lucide-react";
 import { useState } from "react";
 
-// Type for course materials with relations
 type CourseMaterialWithRelations = typeof courseMaterials.$inferSelect & {
   course?: Pick<typeof courses.$inferSelect, "name"> | null;
   courseWeek?: Pick<typeof courseWeeks.$inferSelect, "weekNumber"> | null;
@@ -182,22 +182,33 @@ export function CourseMaterialsTable({
                       </TableCell>
 
                       <TableCell className="text-center whitespace-nowrap">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() =>
+                        <ConfirmDialog
+                          trigger={
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              disabled={isDeleting}
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive disabled:opacity-50"
+                            >
+                              <TrashIcon
+                                className={`h-4 w-4 ${isDeleting ? "animate-pulse" : ""}`}
+                              />
+                            </Button>
+                          }
+                          title="Delete Course Material"
+                          description={`Are you sure you want to delete "${material.fileName || material.title}"? This action cannot be undone and will also remove all learning features.`}
+                          confirmText="Delete"
+                          cancelText="Cancel"
+                          variant="destructive"
+                          onConfirm={() =>
                             onDeleteMaterial(
                               material.id,
                               material.fileName || material.title
                             )
                           }
+                          isLoading={isDeleting}
                           disabled={isDeleting}
-                          className="h-8 w-8 text-muted-foreground hover:text-destructive disabled:opacity-50"
-                        >
-                          <TrashIcon
-                            className={`h-4 w-4 ${isDeleting ? "animate-pulse" : ""}`}
-                          />
-                        </Button>
+                        />
                       </TableCell>
                     </TableRow>
                   );

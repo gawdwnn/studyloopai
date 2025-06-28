@@ -30,11 +30,13 @@ export async function uploadAndGenerateContent(
       return { success: false, error: "Course not found or access denied" };
     }
 
+
     // 1. Create a single CourseMaterial entry to track this job
     const [material] = await db
       .insert(courseMaterials)
       .values({
         courseId: uploadData.courseId,
+        weekId: uploadData.weekId,
         title:
           uploadData.files.map((f) => f.name).join(", ") || "Generated Content",
         uploadStatus: "pending",

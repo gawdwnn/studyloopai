@@ -1,10 +1,11 @@
 "use server";
 
 import { db } from "@/db";
-import { courseMaterials, courseWeeks } from "@/db/schema";
-import { getServerClient } from "@/lib/supabase/server";
-import { and, eq } from "drizzle-orm";
+import { courseMaterials, courseWeeks, documentChunks } from "@/db/schema";
+import { getServerClient, getAdminClient } from "@/lib/supabase/server";
+import { and, eq, count } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { cancelTriggerRun, getTriggerRunStatus } from "@/lib/trigger/job-management";
 
 export async function addCourseMaterial(material: {
   courseId: string;
@@ -55,6 +56,8 @@ export async function deleteCourseMaterial(
   filePath?: string | null
 ) {
   const supabase = await getServerClient();
+  const adminSupabase = getAdminClient();
+  
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -63,33 +66,302 @@ export async function deleteCourseMaterial(
     throw new Error("You must be logged in to delete course materials.");
   }
 
-  // Delete the file from Supabase Storage if it exists
-  if (filePath) {
-    try {
-      const { error: storageError } = await supabase.storage
-        .from("course-materials")
-        .remove([filePath]);
+  // Validate materialId format
+  if (!materialId || typeof materialId !== 'string' || materialId.trim() === '') {
+    throw new Error("Invalid material ID provided.");
+  }
 
-      if (storageError) {
-        console.error("Failed to delete file from storage:", storageError);
-        // Continue with database deletion even if storage deletion fails
+  let material: any;
+  let chunkCount = 0;
+  let allFilePaths: string[] = [];
+  
+  try {
+    // Step 1: Fetch material with ownership verification and get all related data
+    material = await db.query.courseMaterials.findFirst({
+      where: eq(courseMaterials.id, materialId),
+      with: {
+        course: true,
+      },
+    });
+
+    if (!material) {
+      throw new Error("Course material not found or you don't have permission to delete it.");
+    }
+
+    // Verify ownership through course relationship
+    if (material.course.userId !== user.id) {
+      throw new Error("You don't have permission to delete this course material.");
+    }
+
+    // Get count of document chunks that will be deleted
+    const [chunkCountResult] = await db
+      .select({ count: count() })
+      .from(documentChunks)
+      .where(eq(documentChunks.materialId, materialId));
+    
+    chunkCount = chunkCountResult.count;
+
+    // Build comprehensive list of files to delete
+    if (material.filePath) {
+      allFilePaths.push(material.filePath);
+    }
+    if (filePath && filePath !== material.filePath) {
+      allFilePaths.push(filePath);
+    }
+
+    // Step 2: Cancel running background job if exists
+    let jobCancellationResult = null;
+    if (material.runId) {
+      try {
+        // First check the job status
+        const statusResult = await getTriggerRunStatus(material.runId);
+        
+        if (statusResult.success && statusResult.isActive) {
+          // Attempt to cancel the active job
+          jobCancellationResult = await cancelTriggerRun(material.runId);
+          
+          if (jobCancellationResult.success) {
+            console.log(`Successfully cancelled background job`, {
+              materialId,
+              runId: material.runId,
+              previousStatus: jobCancellationResult.previousStatus,
+              newStatus: jobCancellationResult.newStatus,
+            });
+          } else {
+            console.warn(`Could not cancel background job`, {
+              materialId,
+              runId: material.runId,
+              error: jobCancellationResult.error,
+              canCancel: jobCancellationResult.canCancel,
+            });
+          }
+        } else if (statusResult.success) {
+          console.log(`Background job not active, no cancellation needed`, {
+            materialId,
+            runId: material.runId,
+            status: statusResult.status,
+          });
+        } else {
+          console.warn(`Could not check job status`, {
+            materialId,
+            runId: material.runId,
+            error: statusResult.error,
+          });
+        }
+      } catch (jobError) {
+        console.warn(`Exception during job cancellation for runId ${material.runId}:`, jobError);
+        // Continue with deletion - job cancellation is not critical
       }
+    }
+
+    // Step 3: Execute deletion in transaction
+    const deletionResult = await db.transaction(async (tx) => {
+      // Delete document chunks first (explicit delete for logging)
+      if (chunkCount > 0) {
+        await tx.delete(documentChunks).where(eq(documentChunks.materialId, materialId));
+      }
+
+      // Delete the main course material record
+      const [deletedMaterial] = await tx
+        .delete(courseMaterials)
+        .where(eq(courseMaterials.id, materialId))
+        .returning({ 
+          courseId: courseMaterials.courseId,
+          title: courseMaterials.title,
+          fileSize: courseMaterials.fileSize
+        });
+
+      if (!deletedMaterial) {
+        throw new Error("Failed to delete course material from database.");
+      }
+
+      return deletedMaterial;
+    });
+
+    // Step 4: Clean up storage files (after successful DB deletion)
+    const storageErrors: string[] = [];
+    
+    for (const pathToDelete of allFilePaths) {
+      try {
+        const { error: storageError } = await adminSupabase.storage
+          .from("course-materials")
+          .remove([pathToDelete]);
+
+        if (storageError) {
+          storageErrors.push(`${pathToDelete}: ${storageError.message}`);
+          console.error(`Failed to delete file from storage: ${pathToDelete}`, storageError);
+        }
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        storageErrors.push(`${pathToDelete}: ${errorMsg}`);
+        console.error(`Exception deleting file from storage: ${pathToDelete}`, error);
+      }
+    }
+
+    // Step 5: Log successful deletion with metrics
+    console.log(`Successfully deleted course material:`, {
+      materialId,
+      title: material.title,
+      courseId: deletionResult.courseId,
+      userId: user.id,
+      filesDeleted: allFilePaths.length,
+      chunksDeleted: chunkCount,
+      fileSize: material.fileSize,
+      storageErrors: storageErrors.length > 0 ? storageErrors : undefined,
+    });
+
+    // Step 6: Revalidate related pages
+    revalidatePath("/dashboard/course-materials");
+    revalidatePath(`/dashboard/course-materials/${deletionResult.courseId}`);
+
+    // Return summary of deletion
+    return {
+      success: true,
+      materialId,
+      courseId: deletionResult.courseId,
+      chunksDeleted: chunkCount,
+      filesDeleted: allFilePaths.length,
+      storageErrors: storageErrors.length > 0 ? storageErrors : undefined,
+      jobCancelled: jobCancellationResult?.success || false,
+      jobCancellationDetails: jobCancellationResult || undefined,
+    };
+
+  } catch (error) {
+    // Comprehensive error logging
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    
+    console.error(`Failed to delete course material ${materialId}:`, {
+      error: errorMessage,
+      materialId,
+      userId: user.id,
+      materialExists: !!material,
+      runId: material?.runId,
+      chunksToDelete: chunkCount,
+      filesToDelete: allFilePaths.length,
+    });
+
+    // Re-throw with user-friendly message
+    if (error instanceof Error) {
+      throw error;
+    }
+    
+    throw new Error(`Failed to delete course material: ${errorMessage}`);
+  }
+}
+
+/**
+ * Utility function to clean up orphaned files in storage
+ * This can be used for maintenance or recovery scenarios
+ */
+export async function cleanupOrphanedFiles(courseId: string) {
+  const supabase = await getServerClient();
+  const adminSupabase = getAdminClient();
+  
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error("You must be logged in to perform cleanup operations.");
+  }
+
+  try {
+    // Get all files in storage for this user
+    const { data: storageFiles, error: listError } = await adminSupabase.storage
+      .from("course-materials")
+      .list(user.id, { limit: 1000 });
+
+    if (listError) {
+      throw new Error(`Failed to list storage files: ${listError.message}`);
+    }
+
+    if (!storageFiles || storageFiles.length === 0) {
+      return { orphanedFiles: 0, cleanedUp: 0 };
+    }
+
+    // Get all file paths from database for this course
+    const dbMaterials = await db.query.courseMaterials.findMany({
+      where: eq(courseMaterials.courseId, courseId),
+      columns: { filePath: true },
+    });
+
+    const dbFilePaths = new Set(dbMaterials.map(m => m.filePath).filter(Boolean));
+
+    // Find orphaned files
+    const orphanedFiles: string[] = [];
+    
+    for (const file of storageFiles) {
+      const fullPath = `${user.id}/${file.name}`;
+      if (!dbFilePaths.has(fullPath)) {
+        orphanedFiles.push(fullPath);
+      }
+    }
+
+    // Clean up orphaned files
+    let cleanedCount = 0;
+    if (orphanedFiles.length > 0) {
+      const { error: removeError } = await adminSupabase.storage
+        .from("course-materials")
+        .remove(orphanedFiles);
+
+      if (!removeError) {
+        cleanedCount = orphanedFiles.length;
+      }
+    }
+
+    return {
+      orphanedFiles: orphanedFiles.length,
+      cleanedUp: cleanedCount,
+      files: orphanedFiles,
+    };
+
+  } catch (error) {
+    console.error(`Failed to cleanup orphaned files for course ${courseId}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Enhanced deletion with pre-flight checks and batch operations
+ */
+export async function deleteMultipleCourseMaterials(materialIds: string[]) {
+  if (!materialIds || materialIds.length === 0) {
+    throw new Error("No material IDs provided for deletion.");
+  }
+
+  if (materialIds.length > 50) {
+    throw new Error("Cannot delete more than 50 materials at once. Please batch your requests.");
+  }
+
+  const supabase = await getServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error("You must be logged in to delete course materials.");
+  }
+
+  const results: Array<{ materialId: string; success: boolean; error?: string }> = [];
+
+  // Process deletions sequentially to avoid overwhelming the system
+  for (const materialId of materialIds) {
+    try {
+      await deleteCourseMaterial(materialId);
+      results.push({ materialId, success: true });
     } catch (error) {
-      console.error("Error deleting file from storage:", error);
-      // Continue with database deletion even if storage deletion fails
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      results.push({ materialId, success: false, error: errorMessage });
     }
   }
 
-  // This will also cascade delete related document_chunks and generated_content
-  // RLS ensures the user can only delete materials they own.
-  const [deletedMaterial] = await db
-    .delete(courseMaterials)
-    .where(eq(courseMaterials.id, materialId))
-    .returning({ courseId: courseMaterials.courseId });
+  const successCount = results.filter(r => r.success).length;
+  const failureCount = results.filter(r => !r.success).length;
 
-  // Revalidate the course materials page
-  if (deletedMaterial) {
-    revalidatePath("/dashboard/course-materials");
-    revalidatePath(`/dashboard/course-materials/${deletedMaterial.courseId}`);
-  }
+  return {
+    total: materialIds.length,
+    successful: successCount,
+    failed: failureCount,
+    results,
+  };
 }

@@ -24,6 +24,7 @@ export default function CourseMaterialsPage() {
     queryFn: () => getUserCourses(),
   });
 
+
   const {
     data: courseMaterials = [],
     refetch: refetchMaterials,

@@ -17,7 +17,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -29,6 +28,8 @@ import {
 import { Separator } from "@/components/ui/separator";
 import type { courses } from "@/db/schema";
 import { uploadAndGenerateContent } from "@/lib/actions/content-generation";
+import { getCourseWeeks } from "@/lib/actions/courses";
+import { useQuery } from "@tanstack/react-query";
 
 interface CourseMaterialUploadWizardProps {
   courses: (typeof courses.$inferSelect)[];
@@ -47,8 +48,7 @@ export interface GenerationConfig {
 
 export interface UploadData {
   courseId: string;
-  weekNumber: number;
-  weekName: string;
+  weekId: string;
   files: File[];
   outputLanguage: string;
   generationConfig: GenerationConfig;
@@ -92,7 +92,6 @@ export function CourseMaterialUploadWizard({
   // Step 1 data
   const [selectedCourseId, setSelectedCourseId] = useState<string>("");
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
-  const [weekName, setWeekName] = useState<string>("");
   const [files, setFiles] = useState<File[]>([]);
   const [outputLanguage, setOutputLanguage] = useState<string>("english");
 
@@ -103,11 +102,16 @@ export function CourseMaterialUploadWizard({
 
   const selectedCourse = courses.find((c) => c.id === selectedCourseId);
 
+  const { data: courseWeeks = [], isLoading: isLoadingWeeks } = useQuery({
+    queryKey: ["course-weeks", selectedCourseId],
+    queryFn: () => getCourseWeeks(selectedCourseId),
+    enabled: !!selectedCourseId,
+  });
+
   const resetWizard = () => {
     setCurrentStep(WIZARD_STEPS.COURSE_AND_FILES);
     setSelectedCourseId("");
     setSelectedWeek(null);
-    setWeekName("");
     setFiles([]);
     setOutputLanguage("english");
     setGenerationConfig(DEFAULT_GENERATION_CONFIG);
@@ -122,7 +126,6 @@ export function CourseMaterialUploadWizard({
     return (
       selectedCourseId &&
       selectedWeek &&
-      weekName.trim() &&
       files.length > 0 &&
       outputLanguage
     );
@@ -151,10 +154,19 @@ export function CourseMaterialUploadWizard({
       return;
     }
 
+    // Find the weekId from the selected week number
+    const selectedWeekData = courseWeeks.find(
+      (week) => week.courseId === selectedCourseId && week.weekNumber === selectedWeek
+    );
+    
+    if (!selectedWeekData) {
+      toast.error("Selected week not found");
+      return;
+    }
+
     const uploadData: UploadData = {
       courseId: selectedCourseId,
-      weekNumber: selectedWeek,
-      weekName: weekName.trim(),
+      weekId: selectedWeekData.id,
       files,
       outputLanguage,
       generationConfig,
@@ -168,42 +180,21 @@ export function CourseMaterialUploadWizard({
         return;
       }
 
-      // Show immediate feedback
       toast.success("Upload started! Processing in background...", {
         description: "View progress in the materials table.",
         duration: 4000,
       });
 
-      // Close dialog - processing continues in background
       handleClose();
-      onUploadSuccess(); // Refresh the materials list
+      onUploadSuccess();
     } catch (error) {
       toast.error("Failed to start upload. Please try again.");
       console.error("Upload initiation error:", error);
     }
   };
 
-  // Generate week name suggestions based on week number
-  // TODO: use AI to generate week name suggestions
-  const getWeekNameSuggestion = (weekNum: number) => {
-    const suggestions = [
-      "Introduction & Fundamentals",
-      "Core Concepts",
-      "Advanced Topics",
-      "Practical Applications",
-      "Case Studies",
-      "Review & Assessment",
-      "Project Work",
-      "Final Preparations",
-    ];
-    return suggestions[weekNum - 1] || `Week ${weekNum} Content`;
-  };
-
   const handleWeekChange = (weekNum: number) => {
     setSelectedWeek(weekNum);
-    if (!weekName) {
-      setWeekName(getWeekNameSuggestion(weekNum));
-    }
   };
 
   return (
@@ -282,31 +273,20 @@ export function CourseMaterialUploadWizard({
           <div className="space-y-6">
             <CourseWeekSelector
               courses={courses}
+              courseWeeks={courseWeeks}
               selectedCourseId={selectedCourseId}
-              onCourseChange={setSelectedCourseId}
+              onCourseChange={(courseId) => {
+                setSelectedCourseId(courseId);
+                setSelectedWeek(null);
+              }}
               selectedWeek={selectedWeek}
               onWeekChange={handleWeekChange}
+              isLoading={isLoadingWeeks}
               showBadges={true}
               courseLabel="Course"
               weekLabel="Week"
               required={true}
             />
-
-            {/* Week Name */}
-            <div className="space-y-2">
-              <Label htmlFor="week-name">Week Name *</Label>
-              <Input
-                id="week-name"
-                placeholder="e.g., Introduction to Machine Learning"
-                value={weekName}
-                onChange={(e) => setWeekName(e.target.value)}
-              />
-              {selectedWeek && !weekName && (
-                <p className="text-xs text-muted-foreground">
-                  Suggestion: {getWeekNameSuggestion(selectedWeek)}
-                </p>
-              )}
-            </div>
 
             {/* Output Language */}
             <div className="space-y-2">
@@ -345,15 +325,15 @@ export function CourseMaterialUploadWizard({
             {selectedWeek && (
               <UploadSummary
                 course={selectedCourse}
+                courseWeeks={courseWeeks}
                 weekNumber={selectedWeek}
-                weekName={weekName}
                 files={files}
                 outputLanguage={outputLanguage}
               />
             )}
-
             <Separator />
 
+            {/* //TODO: generaion config feature end-end */}
             <GenerationSettings
               config={generationConfig}
               onConfigChange={setGenerationConfig}
