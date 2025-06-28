@@ -11,12 +11,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import type { courses } from "@/db/schema";
+import type { courses, courseWeeks } from "@/db/schema";
 
 interface UploadSummaryProps {
   course: typeof courses.$inferSelect | undefined;
+  courseWeeks: (typeof courseWeeks.$inferSelect)[];
   weekNumber: number;
-  weekName: string;
   files: File[];
   outputLanguage: string;
 }
@@ -35,12 +35,18 @@ const formatFileSize = (bytes: number): string => {
 
 export function UploadSummary({
   course,
+  courseWeeks,
   weekNumber,
-  weekName,
   files,
   outputLanguage,
 }: UploadSummaryProps) {
   const totalSize = files.reduce((sum, file) => sum + file.size, 0);
+  
+  // Find the week data for the selected week
+  const selectedWeek = courseWeeks.find(
+    (week) => week.courseId === course?.id && week.weekNumber === weekNumber
+  );
+  const weekTitle = selectedWeek?.title || `Week ${weekNumber}`;
 
   return (
     <Card className="bg-muted/30">
@@ -62,7 +68,7 @@ export function UploadSummary({
               <div>
                 <p className="text-sm font-medium">{course?.name}</p>
                 <p className="text-xs text-muted-foreground">
-                  Week {weekNumber}: {weekName}
+                  {weekTitle}
                 </p>
               </div>
             </div>

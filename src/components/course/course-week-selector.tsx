@@ -9,10 +9,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { courses } from "@/db/schema";
+import type { courses, courseWeeks } from "@/db/schema";
 
 interface CourseWeekSelectorProps {
   courses: (typeof courses.$inferSelect)[];
+  courseWeeks: (typeof courseWeeks.$inferSelect)[];
   selectedCourseId: string | null;
   onCourseChange: (courseId: string) => void;
   selectedWeek: number | null;
@@ -28,6 +29,7 @@ interface CourseWeekSelectorProps {
 
 export function CourseWeekSelector({
   courses,
+  courseWeeks,
   selectedCourseId,
   onCourseChange,
   selectedWeek,
@@ -40,10 +42,9 @@ export function CourseWeekSelector({
   weekPlaceholder = "Select a week...",
   required = false,
 }: CourseWeekSelectorProps) {
-  const selectedCourse = courses.find(
-    (course) => course.id === selectedCourseId
+  const availableWeeks = courseWeeks.filter(
+    (week) => week.courseId === selectedCourseId
   );
-  const durationWeeks = selectedCourse?.durationWeeks ?? 0;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -68,7 +69,11 @@ export function CourseWeekSelector({
                   <div className="flex items-center justify-between w-full">
                     <span className="truncate">{course.name}</span>
                     <Badge variant="secondary" className="ml-2 shrink-0">
-                      {course.durationWeeks}w
+                      {
+                        courseWeeks.filter((w) => w.courseId === course.id)
+                          .length
+                      }
+                      w
                     </Badge>
                   </div>
                 ) : (
@@ -94,19 +99,19 @@ export function CourseWeekSelector({
         <Select
           value={selectedWeek?.toString() ?? ""}
           onValueChange={(value) => onWeekChange(Number.parseInt(value, 10))}
-          disabled={!selectedCourseId || isLoading}
+          disabled={
+            !selectedCourseId || isLoading || availableWeeks.length === 0
+          }
         >
           <SelectTrigger id="week-select" className="w-full">
             <SelectValue placeholder={weekPlaceholder} />
           </SelectTrigger>
           <SelectContent>
-            {Array.from({ length: durationWeeks }, (_, i) => i + 1).map(
-              (week) => (
-                <SelectItem key={week} value={week.toString()}>
-                  Week {week}
-                </SelectItem>
-              )
-            )}
+            {availableWeeks.map((week) => (
+              <SelectItem key={week.id} value={week.weekNumber.toString()}>
+                {week.title}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
         {!selectedCourseId && (

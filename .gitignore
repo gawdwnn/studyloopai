@@ -40,7 +40,14 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+.trigger
 .cursor/
 .windsurf/
 .cursorignore
 /docs
+.claude/
+/supabase/.temp/
+/CLAUDE.md
+
+# TODO: ignore all *mcp.json files
+mcp.json

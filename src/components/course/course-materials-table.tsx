@@ -1,5 +1,7 @@
 "use client";
 
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { MaterialStatusIndicator } from "@/components/course/material-status-indicator";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -19,10 +21,9 @@ import type {
 import { Search, TrashIcon } from "lucide-react";
 import { useState } from "react";
 
-// Type for course materials with relations
 type CourseMaterialWithRelations = typeof courseMaterials.$inferSelect & {
   course?: Pick<typeof courses.$inferSelect, "name"> | null;
-  week?: Pick<typeof courseWeeks.$inferSelect, "weekNumber"> | null;
+  courseWeek?: Pick<typeof courseWeeks.$inferSelect, "weekNumber"> | null;
 };
 
 interface CourseMaterialsTableProps {
@@ -93,17 +94,18 @@ export function CourseMaterialsTable({
                 <TableHead className="min-w-[200px] whitespace-nowrap">
                   PDF Name
                 </TableHead>
+                <TableHead className="w-40 whitespace-nowrap">Status</TableHead>
                 <TableHead className="text-center w-32 whitespace-nowrap">
-                  Golden Notes Flashcards
+                  Notes
                 </TableHead>
                 <TableHead className="text-center w-32 whitespace-nowrap">
-                  Multiple Choice Exercises
+                  Flashcards
+                </TableHead>
+                <TableHead className="text-center w-32 whitespace-nowrap">
+                  MCQ Exercises
                 </TableHead>
                 <TableHead className="text-center w-32 whitespace-nowrap">
                   Open Questions
-                </TableHead>
-                <TableHead className="text-center w-32 whitespace-nowrap">
-                  Summaries
                 </TableHead>
                 <TableHead className="w-16 whitespace-nowrap" />
               </TableRow>
@@ -116,7 +118,7 @@ export function CourseMaterialsTable({
                   return (
                     <TableRow key={material.id}>
                       <TableCell className="font-medium text-center whitespace-nowrap">
-                        {material.week?.weekNumber || "N/A"}
+                        {material.courseWeek?.weekNumber || "N/A"}
                       </TableCell>
                       <TableCell className="font-medium whitespace-nowrap">
                         <div>
@@ -126,6 +128,26 @@ export function CourseMaterialsTable({
                               {material.course.name}
                             </div>
                           )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <MaterialStatusIndicator
+                          uploadStatus={material.uploadStatus || "pending"}
+                          embeddingStatus={
+                            material.embeddingStatus || "pending"
+                          }
+                          totalChunks={material.totalChunks || 0}
+                          embeddedChunks={material.embeddedChunks || 0}
+                        />
+                      </TableCell>
+                      <TableCell className="text-center whitespace-nowrap">
+                        <div className="space-y-1">
+                          <div className="text-sm font-medium">
+                            {processingData.summaries.total}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {processingData.summaries.completed}
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell className="text-center whitespace-nowrap">
@@ -158,33 +180,35 @@ export function CourseMaterialsTable({
                           </div>
                         </div>
                       </TableCell>
+
                       <TableCell className="text-center whitespace-nowrap">
-                        <div className="space-y-1">
-                          <div className="text-sm font-medium">
-                            {processingData.summaries.total}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {processingData.summaries.completed}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-center whitespace-nowrap">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() =>
+                        <ConfirmDialog
+                          trigger={
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              disabled={isDeleting}
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive disabled:opacity-50"
+                            >
+                              <TrashIcon
+                                className={`h-4 w-4 ${isDeleting ? "animate-pulse" : ""}`}
+                              />
+                            </Button>
+                          }
+                          title="Delete Course Material"
+                          description={`Are you sure you want to delete "${material.fileName || material.title}"? This action cannot be undone and will also remove all learning features.`}
+                          confirmText="Delete"
+                          cancelText="Cancel"
+                          variant="destructive"
+                          onConfirm={() =>
                             onDeleteMaterial(
                               material.id,
                               material.fileName || material.title
                             )
                           }
+                          isLoading={isDeleting}
                           disabled={isDeleting}
-                          className="h-8 w-8 text-muted-foreground hover:text-destructive disabled:opacity-50"
-                        >
-                          <TrashIcon
-                            className={`h-4 w-4 ${isDeleting ? "animate-pulse" : ""}`}
-                          />
-                        </Button>
+                        />
                       </TableCell>
                     </TableRow>
                   );
@@ -192,7 +216,7 @@ export function CourseMaterialsTable({
               ) : (
                 <TableRow>
                   <TableCell
-                    colSpan={7}
+                    colSpan={8}
                     className="text-center py-8 text-muted-foreground"
                   >
                     {searchTerm

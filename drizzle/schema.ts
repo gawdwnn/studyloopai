@@ -1,0 +1,211 @@
+import {
+  boolean,
+  foreignKey,
+  index,
+  integer,
+  jsonb,
+  pgEnum,
+  pgSchema,
+  pgTable,
+  text,
+  timestamp,
+  unique,
+  uuid,
+  varchar,
+  vector,
+} from "drizzle-orm/pg-core";
+
+// Enums
+export const planId = pgEnum("plan_id", ["free", "monthly", "yearly"]);
+export const subscriptionStatus = pgEnum("subscription_status", [
+  "trialing",
+  "active",
+  "canceled",
+  "incomplete",
+  "incomplete_expired",
+  "past_due",
+  "unpaid",
+  "paused",
+]);
+export const userRole = pgEnum("user_role", ["student", "instructor", "admin"]);
+
+// Processing metadata type for course materials
+export type ProcessingMetadata = {
+  processingStatus?: "pending" | "processing" | "completed" | "failed";
+  flashcards?: {
+    total: number;
+    completed: number;
+  };
+  multipleChoice?: {
+    total: number;
+    completed: number;
+  };
+  openQuestions?: {
+    total: number;
+    completed: number;
+  };
+  summaries?: {
+    total: number;
+    completed: number;
+  };
+  error?: string;
+};
+
+// This is a minimal definition of the auth.users table from Supabase.
+// It's used to establish a foreign key relationship with the public.users table.
+// It is managed by Supabase so we are only defining it for type safety.
+export const usersInAuth = pgSchema("auth").table("users", {
+  id: uuid("id").primaryKey(),
+});
+
+// Course materials table
+export const courseMaterials = pgTable(
+  "course_materials",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    courseId: uuid("course_id").notNull(),
+    weekId: uuid("week_id"),
+    title: varchar({ length: 255 }).notNull(),
+    fileName: varchar("file_name", { length: 255 }),
+    filePath: varchar("file_path", { length: 500 }),
+    fileSize: integer("file_size"),
+    mimeType: varchar("mime_type", { length: 100 }),
+    uploadStatus: varchar("upload_status", { length: 50 }).default("pending"),
+    processingMetadata: jsonb("processing_metadata"),
+    runId: text("run_id"),
+    uploadedBy: uuid("uploaded_by").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    embeddingStatus: varchar("embedding_status", { length: 50 }).default(
+      "pending"
+    ),
+    embeddingMetadata: jsonb("embedding_metadata").default({}),
+    totalChunks: integer("total_chunks").default(0),
+    embeddedChunks: integer("embedded_chunks").default(0),
+  },
+  (table) => [
+    index("idx_course_materials_course_id").using("btree", table.courseId),
+  ]
+);
+
+// Course weeks table
+export const courseWeeks = pgTable(
+  "course_weeks",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    courseId: uuid("course_id").notNull(),
+    weekNumber: integer("week_number").notNull(),
+    title: varchar({ length: 255 }),
+    startDate: timestamp("start_date"),
+    endDate: timestamp("end_date"),
+    isActive: boolean("is_active").default(true),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("idx_course_weeks_course_id").using("btree", table.courseId),
+    unique("course_weeks_course_id_week_number_unique").on(
+      table.courseId,
+      table.weekNumber
+    ),
+  ]
+);
+
+// Courses table
+export const courses = pgTable(
+  "courses",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    userId: uuid("user_id").notNull(),
+    name: varchar({ length: 255 }).notNull(),
+    description: text(),
+    language: varchar({ length: 50 }).default("english"),
+    durationWeeks: integer("duration_weeks").default(12),
+    isActive: boolean("is_active").default(true),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("idx_courses_user_id").using("btree", table.userId),
+  ]
+);
+
+// Document chunks table
+export const documentChunks = pgTable(
+  "document_chunks",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    materialId: uuid("material_id").notNull(),
+    content: text().notNull(),
+    embedding: vector({ dimensions: 1536 }),
+    metadata: jsonb().default({}),
+    chunkIndex: integer("chunk_index").notNull(),
+    tokenCount: integer("token_count"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("idx_document_chunks_chunk_index").using(
+      "btree",
+      table.materialId.asc().nullsLast().op("uuid_ops"),
+      table.chunkIndex.asc().nullsLast().op("int4_ops")
+    ),
+    index("idx_document_chunks_embedding").using(
+      "hnsw",
+      table.embedding.asc().nullsLast().op("vector_cosine_ops")
+    ),
+    index("idx_document_chunks_material_id").using(
+      "btree",
+      table.materialId.asc().nullsLast().op("uuid_ops")
+    ),
+  ]
+);
+
+// User plans table
+export const userPlans = pgTable(
+  "user_plans",
+  {
+    userPlanId: uuid("user_plan_id").defaultRandom().primaryKey().notNull(),
+    userId: uuid("user_id").notNull(),
+    planId: planId("plan_id").notNull(),
+    startedAt: timestamp("started_at").defaultNow().notNull(),
+    isActive: boolean("is_active").default(true).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    stripeSubscriptionId: varchar("stripe_subscription_id", { length: 255 }),
+    stripePriceId: varchar("stripe_price_id", { length: 255 }),
+    subscriptionStatus: subscriptionStatus("subscription_status"),
+    currentPeriodEnd: timestamp("current_period_end"),
+  },
+  (table) => [
+    unique("user_plans_stripe_subscription_id_unique").on(
+      table.stripeSubscriptionId
+    ),
+  ]
+);
+
+// Users table
+export const users = pgTable(
+  "users",
+  {
+    userId: uuid("user_id").primaryKey().notNull(),
+    email: varchar({ length: 255 }).notNull(),
+    firstName: varchar("first_name", { length: 100 }),
+    lastName: varchar("last_name", { length: 100 }),
+    role: userRole().default("student").notNull(),
+    avatarUrl: varchar("avatar_url", { length: 500 }),
+    timezone: varchar({ length: 50 }).default("UTC"),
+    preferences: jsonb(),
+    isActive: boolean("is_active").default(true).notNull(),
+    lastLoginAt: timestamp("last_login_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    stripeCustomerId: varchar("stripe_customer_id", { length: 255 }),
+    signupStep: integer("signup_step").default(1).notNull(),
+    country: varchar({ length: 100 }),
+  },
+  (table) => [
+    unique("users_email_unique").on(table.email),
+    unique("users_stripe_customer_id_unique").on(table.stripeCustomerId),
+  ]
+);
