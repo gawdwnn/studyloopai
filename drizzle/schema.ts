@@ -1,6 +1,5 @@
 import {
   boolean,
-  foreignKey,
   index,
   integer,
   jsonb,
@@ -32,23 +31,73 @@ export const userRole = pgEnum("user_role", ["student", "instructor", "admin"]);
 // Processing metadata type for course materials
 export type ProcessingMetadata = {
   processingStatus?: "pending" | "processing" | "completed" | "failed";
+  
+  // Content generation tracking
   flashcards?: {
     total: number;
     completed: number;
+    generatedAt?: string;
   };
   multipleChoice?: {
     total: number;
     completed: number;
+    generatedAt?: string;
   };
   openQuestions?: {
     total: number;
     completed: number;
+    generatedAt?: string;
   };
   summaries?: {
     total: number;
     completed: number;
+    generatedAt?: string;
   };
+  
+  // Processing details
   error?: string;
+  processingTimeMs?: number;
+  extractedText?: boolean;
+  chunkingCompleted?: boolean;
+  embeddingCompleted?: boolean;
+  
+  // Future content type metadata
+  videoDurationMs?: number; // For videos
+  audioTranscribed?: boolean; // For audio
+  thumbnailGenerated?: boolean; // For videos/images
+  contentExtracted?: boolean; // For weblinks
+};
+
+// Content metadata type for different content types
+export type ContentMetadata = {
+  // PDF-specific
+  pageCount?: number;
+  pdfVersion?: string;
+  hasImages?: boolean;
+  
+  // Video-specific (future)
+  duration?: number;
+  resolution?: string;
+  format?: string;
+  frameRate?: number;
+  
+  // Audio-specific (future)
+  sampleRate?: number;
+  bitrate?: number;
+  
+  // Image-specific (future)
+  width?: number;
+  height?: number;
+  
+  // Weblink-specific (future)
+  url?: string;
+  title?: string;
+  domain?: string;
+  scrapedAt?: string;
+  
+  // Common
+  language?: string;
+  encoding?: string;
 };
 
 // This is a minimal definition of the auth.users table from Supabase.
@@ -82,9 +131,21 @@ export const courseMaterials = pgTable(
     embeddingMetadata: jsonb("embedding_metadata").default({}),
     totalChunks: integer("total_chunks").default(0),
     embeddedChunks: integer("embedded_chunks").default(0),
+    
+    // New columns for standalone materials
+    contentType: varchar("content_type", { length: 50 }).default("pdf"),
+    originalFilename: varchar("original_filename", { length: 255 }),
+    processingStartedAt: timestamp("processing_started_at"),
+    processingCompletedAt: timestamp("processing_completed_at"),
+    contentMetadata: jsonb("content_metadata").default({}),
+    sourceUrl: text("source_url"), // For weblinks in future
+    transcriptPath: varchar("transcript_path", { length: 500 }), // For video/audio in future
+    thumbnailPath: varchar("thumbnail_path", { length: 500 }), // For videos/images in future
   },
   (table) => [
     index("idx_course_materials_course_id").using("btree", table.courseId),
+    index("idx_course_materials_content_type").using("btree", table.contentType),
+    index("idx_course_materials_processing_status").using("btree", table.processingMetadata),
   ]
 );
 

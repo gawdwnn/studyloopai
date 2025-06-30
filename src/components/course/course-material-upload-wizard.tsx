@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import type { courses } from "@/db/schema";
-import { uploadAndGenerateContent } from "@/lib/actions/content-generation";
+import { uploadAndProcessMaterialsBatch } from "@/lib/actions/content-processing-batch";
 import { getCourseWeeks } from "@/lib/actions/courses";
 import { useQuery } from "@tanstack/react-query";
 
@@ -52,6 +52,14 @@ export interface UploadData {
   files: File[];
   outputLanguage: string;
   generationConfig: GenerationConfig;
+}
+
+export interface MaterialUploadData {
+  courseId: string;
+  weekId?: string;
+  file: File;
+  generationConfig: GenerationConfig;
+  contentType?: string;
 }
 
 const WIZARD_STEPS = {
@@ -124,10 +132,7 @@ export function CourseMaterialUploadWizard({
 
   const canProceedToStep2 = () => {
     return (
-      selectedCourseId &&
-      selectedWeek &&
-      files.length > 0 &&
-      outputLanguage
+      selectedCourseId && selectedWeek && files.length > 0 && outputLanguage
     );
   };
 
@@ -154,36 +159,52 @@ export function CourseMaterialUploadWizard({
       return;
     }
 
-    // Find the weekId from the selected week number
     const selectedWeekData = courseWeeks.find(
-      (week) => week.courseId === selectedCourseId && week.weekNumber === selectedWeek
+      (week) =>
+        week.courseId === selectedCourseId && week.weekNumber === selectedWeek
     );
-    
+
     if (!selectedWeekData) {
       toast.error("Selected week not found");
       return;
     }
 
-    const uploadData: UploadData = {
-      courseId: selectedCourseId,
-      weekId: selectedWeekData.id,
-      files,
-      outputLanguage,
-      generationConfig,
-    };
-
     try {
-      const result = await uploadAndGenerateContent(uploadData);
+      const materialData: MaterialUploadData[] = files.map((file) => ({
+        courseId: selectedCourseId,
+        weekId: selectedWeekData.id,
+        file,
+        generationConfig,
+      }));
 
-      if (!result.success) {
-        toast.error(result.error);
+      const result = await uploadAndProcessMaterialsBatch(materialData);
+
+      if (result.success) {
+        const successCount = result.successCount || 0;
+        const failedCount = result.failedMaterials?.length || 0;
+
+        toast.success(
+          `Batch upload started! Processing ${successCount} materials.`,
+          {
+            description:
+              failedCount > 0
+                ? `${failedCount} file(s) failed to upload.`
+                : "All files are processing in background.",
+            duration: 4000,
+          }
+        );
+
+        if (result.failedMaterials?.length) {
+          for (const failure of result.failedMaterials) {
+            toast.error(
+              `Failed to upload ${failure.fileName}: ${failure.error}`
+            );
+          }
+        }
+      } else {
+        toast.error(`Batch upload failed: ${result.error}`);
         return;
       }
-
-      toast.success("Upload started! Processing in background...", {
-        description: "View progress in the materials table.",
-        duration: 4000,
-      });
 
       handleClose();
       onUploadSuccess();
