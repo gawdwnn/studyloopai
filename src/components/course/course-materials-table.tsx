@@ -18,7 +18,20 @@ import type {
   courseWeeks,
   courses,
 } from "@/db/schema";
-import { Search, TrashIcon } from "lucide-react";
+import {
+  CONTENT_TYPES,
+  CONTENT_TYPE_LABELS,
+} from "@/lib/constants/file-upload";
+import {
+  AudioLines,
+  File,
+  FileText,
+  Image,
+  Link,
+  Search,
+  TrashIcon,
+  Video,
+} from "lucide-react";
 import { useState } from "react";
 
 type CourseMaterialWithRelations = typeof courseMaterials.$inferSelect & {
@@ -40,6 +53,24 @@ export function CourseMaterialsTable({
   isDeleting,
 }: CourseMaterialsTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
+
+  // Helper function to get content type icon
+  const getContentTypeIcon = (contentType: string) => {
+    switch (contentType) {
+      case CONTENT_TYPES.PDF:
+        return <FileText className="h-4 w-4 text-red-500" />;
+      case CONTENT_TYPES.VIDEO:
+        return <Video className="h-4 w-4 text-blue-500" />;
+      case CONTENT_TYPES.AUDIO:
+        return <AudioLines className="h-4 w-4 text-green-500" />;
+      case CONTENT_TYPES.IMAGE:
+        return <Image className="h-4 w-4 text-purple-500" />;
+      case CONTENT_TYPES.WEBLINK:
+        return <Link className="h-4 w-4 text-cyan-500" />;
+      default:
+        return <File className="h-4 w-4 text-gray-500" />;
+    }
+  };
 
   // Helper function to get processing metadata with fallback
   const getProcessingData = (material: CourseMaterialWithRelations) => {
@@ -92,7 +123,7 @@ export function CourseMaterialsTable({
               <TableRow className="bg-muted/50">
                 <TableHead className="w-16 whitespace-nowrap">Week</TableHead>
                 <TableHead className="min-w-[200px] whitespace-nowrap">
-                  PDF Name
+                  Material Name
                 </TableHead>
                 <TableHead className="w-40 whitespace-nowrap">Status</TableHead>
                 <TableHead className="text-center w-32 whitespace-nowrap">
@@ -121,13 +152,19 @@ export function CourseMaterialsTable({
                         {material.courseWeek?.weekNumber || "N/A"}
                       </TableCell>
                       <TableCell className="font-medium whitespace-nowrap">
-                        <div>
-                          <div>{material.fileName || material.title}</div>
-                          {material.course && (
-                            <div className="text-xs text-muted-foreground">
-                              {material.course.name}
-                            </div>
-                          )}
+                        <div className="flex items-center gap-2">
+                          {getContentTypeIcon(material.contentType || "pdf")}
+                          <div>
+                            <div>{material.fileName || material.title}</div>
+                            {material.course && (
+                              <div className="text-xs text-muted-foreground">
+                                {material.course.name} •{" "}
+                                {CONTENT_TYPE_LABELS[
+                                  material.contentType as keyof typeof CONTENT_TYPE_LABELS
+                                ] || "PDF Document"}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell>

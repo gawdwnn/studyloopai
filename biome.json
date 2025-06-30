@@ -33,18 +33,33 @@
       "recommended": true,
       "correctness": {
         "noUnusedVariables": "error",
-        "useExhaustiveDependencies": "error"
+        "useExhaustiveDependencies": "error",
+        "noUndeclaredVariables": "error"
       },
       "suspicious": {
         "noExplicitAny": "error",
-        "noConsoleLog": "warn"
+        "noConsoleLog": "warn",
+        "noArrayIndexKey": "error",
+        "noAssignInExpressions": "error"
       },
       "style": {
         "useConst": "error",
-        "useTemplate": "error"
+        "useTemplate": "error",
+        "noNegationElse": "error",
+        "useCollapsedElseIf": "error"
       },
       "a11y": {
-        "recommended": true
+        "recommended": true,
+        "noBlankTarget": "error",
+        "useAltText": "error",
+        "useKeyWithClickEvents": "error"
+      },
+      "complexity": {
+        "noBannedTypes": "error",
+        "noUselessTypeConstraint": "error"
+      },
+      "nursery": {
+        "useSortedClasses": "off"
       }
     }
   },
@@ -53,6 +68,29 @@
       "quoteStyle": "double",
       "trailingCommas": "es5",
       "semicolons": "always"
+    },
+    "globals": ["React"]
+  },
+  "overrides": [
+    {
+      "include": ["src/app/**/*"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noConsoleLog": "off"
+          }
+        }
+      }
+    },
+    {
+      "include": ["*.config.*", "next.config.*"],
+      "linter": {
+        "rules": {
+          "style": {
+            "useNodejsImportProtocol": "off"
+          }
+        }
+      }
     }
-  }
+  ]
 }
