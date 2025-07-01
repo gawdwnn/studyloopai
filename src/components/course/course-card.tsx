@@ -1,8 +1,8 @@
 "use client";
 
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Progress } from "@/components/ui/progress";
 import type { courses } from "@/db/schema";
 import { deleteCourse, updateCourse } from "@/lib/actions/courses";
@@ -14,160 +14,157 @@ import { useEffect, useRef, useState, useTransition } from "react";
 type Course = typeof courses.$inferSelect;
 
 interface CourseCardProps {
-  course: Course;
+	course: Course;
 }
 
 export function CourseCard({ course }: CourseCardProps) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [title, setTitle] = useState(course.name);
-  const [isHovered, setIsHovered] = useState(false);
-  const [isPending, startTransition] = useTransition();
-  const inputRef = useRef<HTMLInputElement>(null);
+	const [isEditing, setIsEditing] = useState(false);
+	const [title, setTitle] = useState(course.name);
+	const [isHovered, setIsHovered] = useState(false);
+	const [isPending, startTransition] = useTransition();
+	const inputRef = useRef<HTMLInputElement>(null);
 
-  const examDate = addWeeks(
-    new Date(course.createdAt),
-    course.durationWeeks || 12
-  );
+	const examDate = addWeeks(new Date(course.createdAt), course.durationWeeks || 12);
 
-  const handleEdit = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsEditing(true);
-  };
+	const handleEdit = (e: React.MouseEvent) => {
+		e.preventDefault();
+		e.stopPropagation();
+		setIsEditing(true);
+	};
 
-  useEffect(() => {
-    if (isEditing && inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [isEditing]);
+	useEffect(() => {
+		if (isEditing && inputRef.current) {
+			inputRef.current.focus();
+		}
+	}, [isEditing]);
 
-  const handleConfirmDelete = async () => {
-    startTransition(async () => {
-      try {
-        await deleteCourse(course.id);
-      } catch (error) {
-        console.error("Failed to delete course:", error);
-        alert("Failed to delete course. Please try again.");
-      }
-    });
-  };
+	const handleConfirmDelete = async () => {
+		startTransition(async () => {
+			try {
+				await deleteCourse(course.id);
+			} catch (error) {
+				console.error("Failed to delete course:", error);
+				alert("Failed to delete course. Please try again.");
+			}
+		});
+	};
 
-  const handleSave = async () => {
-    if (title.trim() !== course.name && title.trim() !== "") {
-      startTransition(async () => {
-        try {
-          await updateCourse(course.id, { name: title.trim() });
-        } catch (error) {
-          console.error("Failed to update course:", error);
-          alert("Failed to update course. Please try again.");
-          setTitle(course.name); // Revert on error
-        }
-      });
-    }
-    setIsEditing(false);
-  };
+	const handleSave = async () => {
+		if (title.trim() !== course.name && title.trim() !== "") {
+			startTransition(async () => {
+				try {
+					await updateCourse(course.id, { name: title.trim() });
+				} catch (error) {
+					console.error("Failed to update course:", error);
+					alert("Failed to update course. Please try again.");
+					setTitle(course.name); // Revert on error
+				}
+			});
+		}
+		setIsEditing(false);
+	};
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleSave();
-    }
-    if (e.key === "Escape") {
-      setIsEditing(false);
-      setTitle(course.name);
-    }
-  };
+	const handleKeyDown = (e: React.KeyboardEvent) => {
+		if (e.key === "Enter") {
+			handleSave();
+		}
+		if (e.key === "Escape") {
+			setIsEditing(false);
+			setTitle(course.name);
+		}
+	};
 
-  const handleBlur = () => {
-    handleSave();
-  };
+	const handleBlur = () => {
+		handleSave();
+	};
 
-  return (
-    <Link href={`/dashboard/courses/${course.id}`} className="inline-block">
-      <div
-        className="relative w-80 h-48"
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-      >
-        <Card className="w-full h-full border-0 shadow-lg overflow-hidden hover:shadow-md transition-shadow">
-          <div
-            className="absolute top-0 right-0 w-6 h-6 bg-muted-foreground/20"
-            style={{
-              clipPath: "polygon(0 0, 100% 100%, 0 100%)",
-            }}
-          />
-          <div
-            className="absolute bottom-0 right-0 w-6 h-6 bg-muted-foreground/20"
-            style={{
-              clipPath: "polygon(100% 0, 100% 100%, 0 100%)",
-            }}
-          />
+	return (
+		<Link href={`/dashboard/courses/${course.id}`} className="inline-block">
+			<div
+				className="relative w-80 h-48"
+				onMouseEnter={() => setIsHovered(true)}
+				onMouseLeave={() => setIsHovered(false)}
+			>
+				<Card className="w-full h-full border-0 shadow-lg overflow-hidden hover:shadow-md transition-shadow">
+					<div
+						className="absolute top-0 right-0 w-6 h-6 bg-muted-foreground/20"
+						style={{
+							clipPath: "polygon(0 0, 100% 100%, 0 100%)",
+						}}
+					/>
+					<div
+						className="absolute bottom-0 right-0 w-6 h-6 bg-muted-foreground/20"
+						style={{
+							clipPath: "polygon(100% 0, 100% 100%, 0 100%)",
+						}}
+					/>
 
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg leading-6">
-              {isEditing ? (
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  onBlur={handleBlur}
-                  className="w-full bg-blue-50/50 border-blue-200 rounded px-2 py-1 outline-none focus:border-blue-400 focus:bg-blue-50 transition-colors"
-                  onClick={(e) => e.stopPropagation()}
-                />
-              ) : (
-                <span className="truncate block">{title}</span>
-              )}
-            </CardTitle>
-          </CardHeader>
+					<CardHeader className="pb-2">
+						<CardTitle className="text-lg leading-6">
+							{isEditing ? (
+								<input
+									ref={inputRef}
+									type="text"
+									value={title}
+									onChange={(e) => setTitle(e.target.value)}
+									onKeyDown={handleKeyDown}
+									onBlur={handleBlur}
+									className="w-full bg-blue-50/50 border-blue-200 rounded px-2 py-1 outline-none focus:border-blue-400 focus:bg-blue-50 transition-colors"
+									onClick={(e) => e.stopPropagation()}
+								/>
+							) : (
+								<span className="truncate block">{title}</span>
+							)}
+						</CardTitle>
+					</CardHeader>
 
-          <CardContent className="pt-0 h-full flex flex-col justify-end">
-            <div className="flex items-center justify-between">
-              <div className="flex-1 mr-4">
-                <Progress value={30} className="h-2" />
-              </div>
+					<CardContent className="pt-0 h-full flex flex-col justify-end">
+						<div className="flex items-center justify-between">
+							<div className="flex-1 mr-4">
+								<Progress value={30} className="h-2" />
+							</div>
 
-              <div className="flex flex-col items-end text-sm text-muted-foreground">
-                <span className="font-medium">Exam</span>
-                <span>{format(examDate, "MMM, dd")}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+							<div className="flex flex-col items-end text-sm text-muted-foreground">
+								<span className="font-medium">Exam</span>
+								<span>{format(examDate, "MMM, dd")}</span>
+							</div>
+						</div>
+					</CardContent>
+				</Card>
 
-        {/* Edit/Delete buttons */}
-        {isHovered && !isEditing && (
-          <div className="absolute top-2 right-6 flex gap-1 bg-background/80 backdrop-blur-sm rounded-md p-1 z-10">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleEdit}
-              disabled={isPending}
-              className="h-8 w-8 p-0 hover:bg-muted"
-            >
-              <Edit2 className="h-4 w-4" />
-            </Button>
-            <ConfirmDialog
-              trigger={
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={isPending}
-                  className="h-8 w-8 p-0 hover:bg-destructive/20 hover:text-destructive"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              }
-              title="Delete Course"
-              description={`Are you sure you want to delete "${course.name}"? This action cannot be undone and will permanently remove the course and all its materials.`}
-              confirmText="Delete Course"
-              variant="destructive"
-              onConfirm={handleConfirmDelete}
-              isLoading={isPending}
-            />
-          </div>
-        )}
-      </div>
-    </Link>
-  );
+				{/* Edit/Delete buttons */}
+				{isHovered && !isEditing && (
+					<div className="absolute top-2 right-6 flex gap-1 bg-background/80 backdrop-blur-sm rounded-md p-1 z-10">
+						<Button
+							variant="ghost"
+							size="sm"
+							onClick={handleEdit}
+							disabled={isPending}
+							className="h-8 w-8 p-0 hover:bg-muted"
+						>
+							<Edit2 className="h-4 w-4" />
+						</Button>
+						<ConfirmDialog
+							trigger={
+								<Button
+									variant="ghost"
+									size="sm"
+									disabled={isPending}
+									className="h-8 w-8 p-0 hover:bg-destructive/20 hover:text-destructive"
+								>
+									<Trash2 className="h-4 w-4" />
+								</Button>
+							}
+							title="Delete Course"
+							description={`Are you sure you want to delete "${course.name}"? This action cannot be undone and will permanently remove the course and all its materials.`}
+							confirmText="Delete Course"
+							variant="destructive"
+							onConfirm={handleConfirmDelete}
+							isLoading={isPending}
+						/>
+					</div>
+				)}
+			</div>
+		</Link>
+	);
 }

@@ -1,31 +1,21 @@
 import { relations } from "drizzle-orm/relations";
-import {
-	courseMaterials,
-	courseWeeks,
-	courses,
-	documentChunks,
-	userPlans,
-	users,
-} from "./schema";
+import { courseMaterials, courseWeeks, courses, documentChunks, userPlans, users } from "./schema";
 
-export const courseMaterialsRelations = relations(
-	courseMaterials,
-	({ one, many }) => ({
-		course: one(courses, {
-			fields: [courseMaterials.courseId],
-			references: [courses.id],
-		}),
-		user: one(users, {
-			fields: [courseMaterials.uploadedBy],
-			references: [users.userId],
-		}),
-		courseWeek: one(courseWeeks, {
-			fields: [courseMaterials.weekId],
-			references: [courseWeeks.id],
-		}),
-		documentChunks: many(documentChunks),
-	})
-);
+export const courseMaterialsRelations = relations(courseMaterials, ({ one, many }) => ({
+	course: one(courses, {
+		fields: [courseMaterials.courseId],
+		references: [courses.id],
+	}),
+	user: one(users, {
+		fields: [courseMaterials.uploadedBy],
+		references: [users.userId],
+	}),
+	courseWeek: one(courseWeeks, {
+		fields: [courseMaterials.weekId],
+		references: [courseWeeks.id],
+	}),
+	documentChunks: many(documentChunks),
+}));
 
 export const coursesRelations = relations(courses, ({ one, many }) => ({
 	courseMaterials: many(courseMaterials),

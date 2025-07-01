@@ -1,96 +1,107 @@
 {
-  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
-  "vcs": {
-    "enabled": true,
-    "clientKind": "git",
-    "useIgnoreFile": true
-  },
-  "files": {
-    "ignoreUnknown": true,
-    "ignore": [
-      "node_modules",
-      ".next",
-      "out",
-      "build",
-      "dist",
-      "coverage",
-      ".vercel",
-      "*.tsbuildinfo",
-      "next-env.d.ts"
-    ]
-  },
-  "formatter": {
-    "enabled": true,
-    "indentStyle": "tab",
-    "ignore": []
-  },
-  "organizeImports": {
-    "enabled": true
-  },
-  "linter": {
-    "enabled": true,
-    "rules": {
-      "recommended": true,
-      "correctness": {
-        "noUnusedVariables": "error",
-        "useExhaustiveDependencies": "error",
-        "noUndeclaredVariables": "error"
-      },
-      "suspicious": {
-        "noExplicitAny": "error",
-        "noConsoleLog": "warn",
-        "noArrayIndexKey": "error",
-        "noAssignInExpressions": "error"
-      },
-      "style": {
-        "useConst": "error",
-        "useTemplate": "error",
-        "noNegationElse": "error",
-        "useCollapsedElseIf": "error"
-      },
-      "a11y": {
-        "recommended": true,
-        "noBlankTarget": "error",
-        "useAltText": "error",
-        "useKeyWithClickEvents": "error"
-      },
-      "complexity": {
-        "noBannedTypes": "error",
-        "noUselessTypeConstraint": "error"
-      },
-      "nursery": {
-        "useSortedClasses": "off"
-      }
-    }
-  },
-  "javascript": {
-    "formatter": {
-      "quoteStyle": "double",
-      "trailingCommas": "es5",
-      "semicolons": "always"
-    },
-    "globals": ["React"]
-  },
-  "overrides": [
-    {
-      "include": ["src/app/**/*"],
-      "linter": {
-        "rules": {
-          "suspicious": {
-            "noConsoleLog": "off"
-          }
-        }
-      }
-    },
-    {
-      "include": ["*.config.*", "next.config.*"],
-      "linter": {
-        "rules": {
-          "style": {
-            "useNodejsImportProtocol": "off"
-          }
-        }
-      }
-    }
-  ]
+	"$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+	"vcs": {
+		"enabled": true,
+		"clientKind": "git",
+		"useIgnoreFile": true
+	},
+	"files": {
+		"ignoreUnknown": true,
+		"ignore": [
+			"node_modules",
+			".next",
+			"out",
+			"build",
+			"dist",
+			"coverage",
+			".vercel",
+			"*.tsbuildinfo",
+			"next-env.d.ts",
+			"src/components/ui/**/*"
+		]
+	},
+	"formatter": {
+		"enabled": true,
+		"indentStyle": "tab",
+		"lineWidth": 100,
+		"lineEnding": "lf"
+	},
+	"organizeImports": {
+		"enabled": true
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"recommended": true,
+			"correctness": {
+				"useExhaustiveDependencies": "error",
+				"noUnusedImports": "error",
+				"noUnusedVariables": "error",
+				"noUnusedFunctionParameters": "warn"
+			},
+			"suspicious": {
+				"noExplicitAny": "error",
+				"noConsoleLog": "warn",
+				"noArrayIndexKey": "error",
+				"noAssignInExpressions": "error"
+			},
+			"style": {
+				"useConst": "error",
+				"useTemplate": "error",
+				"noNegationElse": "error",
+				"useCollapsedElseIf": "error"
+			},
+			"a11y": {
+				"recommended": true,
+				"noBlankTarget": "error",
+				"useAltText": "error",
+				"useKeyWithClickEvents": "error"
+			},
+			"complexity": {
+				"noBannedTypes": "error",
+				"noUselessTypeConstraint": "error",
+				"useDateNow": "warn"
+			},
+			"nursery": {
+				"useSortedClasses": "off"
+			}
+		}
+	},
+	"javascript": {
+		"formatter": {
+			"quoteStyle": "double",
+			"trailingCommas": "es5",
+			"semicolons": "always",
+			"jsxQuoteStyle": "double"
+		},
+		"globals": ["React"]
+	},
+	"json": {
+		"formatter": {
+			"enabled": true,
+			"indentStyle": "tab"
+		}
+	},
+	"overrides": [
+		{
+			"include": ["src/app/**/*"],
+			"linter": {
+				"rules": {
+					"suspicious": {
+						"noConsoleLog": "off"
+					}
+				}
+			}
+		},
+		{
+			"include": ["*.config.*", "next.config.*"],
+			"linter": {
+				"rules": {
+					"style": {
+						"useNodejsImportProtocol": "off"
+					}
+				}
+			}
+		}
+	]
 }

@@ -12,32 +12,32 @@ import type { SignUpFormData } from "@/lib/validations/auth";
  * User is NOT signed in after this action.
  */
 export async function emailSignUp(formData: SignUpFormData, planId: PlanId) {
-  const supabase = await getServerClient();
+	const supabase = await getServerClient();
 
-  const {
-    data: { user },
-    error: signUpError,
-  } = await supabase.auth.signUp({
-    email: formData.email,
-    password: formData.password,
-    options: {
-      emailRedirectTo: `${getSiteUrl()}/auth/callback`,
-      data: {
-        first_name: formData.firstName,
-        last_name: formData.lastName,
-        country: formData.country,
-        selected_plan: planId,
-      },
-    },
-  });
+	const {
+		data: { user },
+		error: signUpError,
+	} = await supabase.auth.signUp({
+		email: formData.email,
+		password: formData.password,
+		options: {
+			emailRedirectTo: `${getSiteUrl()}/auth/callback`,
+			data: {
+				first_name: formData.firstName,
+				last_name: formData.lastName,
+				country: formData.country,
+				selected_plan: planId,
+			},
+		},
+	});
 
-  if (signUpError) {
-    throw signUpError;
-  }
+	if (signUpError) {
+		throw signUpError;
+	}
 
-  if (!user) {
-    throw new Error("Could not sign up user.");
-  }
+	if (!user) {
+		throw new Error("Could not sign up user.");
+	}
 
-  return { user };
+	return { user };
 }

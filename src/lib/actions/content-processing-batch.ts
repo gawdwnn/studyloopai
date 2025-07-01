@@ -9,10 +9,10 @@ import type { MaterialUploadData } from "@/components/course/course-material-upl
 import { db } from "@/db";
 import { type ProcessingMetadata, courseMaterials } from "@/db/schema";
 import {
-  CONTENT_TYPES,
-  FILE_UPLOAD_LIMITS,
-  getContentTypeFromFilename,
-  getContentTypeFromMime,
+	CONTENT_TYPES,
+	FILE_UPLOAD_LIMITS,
+	getContentTypeFromFilename,
+	getContentTypeFromMime,
 } from "@/lib/constants/file-upload";
 import { getServerClient } from "@/lib/supabase/server";
 import { uploadCourseMaterial } from "@/lib/supabase/storage";
@@ -20,291 +20,277 @@ import { tasks } from "@trigger.dev/sdk";
 import { eq } from "drizzle-orm";
 
 interface BatchUploadResult {
-  success: boolean;
-  batchId?: string;
-  successCount?: number;
-  error?: string;
-  failedMaterials?: Array<{
-    fileName: string;
-    error: string;
-  }>;
+	success: boolean;
+	batchId?: string;
+	successCount?: number;
+	error?: string;
+	failedMaterials?: Array<{
+		fileName: string;
+		error: string;
+	}>;
 }
 
 /**
  * Process multiple materials in a single efficient batch operation
  */
 export async function uploadAndProcessMaterialsBatch(
-  materials: MaterialUploadData[]
+	materials: MaterialUploadData[]
 ): Promise<BatchUploadResult> {
-  if (!materials || materials.length === 0) {
-    return { success: false, error: "No materials provided" };
-  }
+	if (!materials || materials.length === 0) {
+		return { success: false, error: "No materials provided" };
+	}
 
-  if (materials.length > 50) {
-    return {
-      success: false,
-      error:
-        "Maximum 50 materials allowed per batch. Please split into smaller batches.",
-    };
-  }
+	if (materials.length > 50) {
+		return {
+			success: false,
+			error: "Maximum 50 materials allowed per batch. Please split into smaller batches.",
+		};
+	}
 
-  try {
-    // Validate file sizes and types upfront
-    const validationErrors: Array<{ fileName: string; error: string }> = [];
+	try {
+		// Validate file sizes and types upfront
+		const validationErrors: Array<{ fileName: string; error: string }> = [];
 
-    for (const material of materials) {
-      const file = material.file;
+		for (const material of materials) {
+			const file = material.file;
 
-      // Check file size
-      if (file.size > FILE_UPLOAD_LIMITS.MAX_FILE_SIZE) {
-        validationErrors.push({
-          fileName: file.name,
-          error: `File too large. Max size is ${FILE_UPLOAD_LIMITS.MAX_FILE_SIZE / 1024 / 1024}MB`,
-        });
-      }
+			// Check file size
+			if (file.size > FILE_UPLOAD_LIMITS.MAX_FILE_SIZE) {
+				validationErrors.push({
+					fileName: file.name,
+					error: `File too large. Max size is ${FILE_UPLOAD_LIMITS.MAX_FILE_SIZE / 1024 / 1024}MB`,
+				});
+			}
 
-      // Check file type (v1: PDF only)
-      if (
-        !Object.keys(FILE_UPLOAD_LIMITS.ACCEPTED_FILE_TYPES).includes(file.type)
-      ) {
-        validationErrors.push({
-          fileName: file.name,
-          error: "Only PDF files are currently supported",
-        });
-      }
-    }
+			// Check file type (v1: PDF only)
+			if (!Object.keys(FILE_UPLOAD_LIMITS.ACCEPTED_FILE_TYPES).includes(file.type)) {
+				validationErrors.push({
+					fileName: file.name,
+					error: "Only PDF files are currently supported",
+				});
+			}
+		}
 
-    if (validationErrors.length > 0) {
-      return {
-        success: false,
-        error: `Validation failed for ${validationErrors.length} files`,
-        failedMaterials: validationErrors,
-      };
-    }
+		if (validationErrors.length > 0) {
+			return {
+				success: false,
+				error: `Validation failed for ${validationErrors.length} files`,
+				failedMaterials: validationErrors,
+			};
+		}
 
-    const supabase = await getServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+		const supabase = await getServerClient();
+		const {
+			data: { user },
+		} = await supabase.auth.getUser();
 
-    if (!user) {
-      return { success: false, error: "Authentication required" };
-    }
+		if (!user) {
+			return { success: false, error: "Authentication required" };
+		}
 
-    // Phase 1: Create all material records and upload files
-    const materialCreationResults: Array<{
-      materialId: string;
-      filePath: string;
-      fileName: string;
-      success: boolean;
-      error?: string;
-    }> = [];
+		// Phase 1: Create all material records and upload files
+		const materialCreationResults: Array<{
+			materialId: string;
+			filePath: string;
+			fileName: string;
+			success: boolean;
+			error?: string;
+		}> = [];
 
-    for (const materialData of materials) {
-      try {
-        // Detect content type
-        const contentType =
-          materialData.contentType ||
-          getContentTypeFromMime(materialData.file.type) ||
-          getContentTypeFromFilename(materialData.file.name);
+		for (const materialData of materials) {
+			try {
+				// Detect content type
+				const contentType =
+					materialData.contentType ||
+					getContentTypeFromMime(materialData.file.type) ||
+					getContentTypeFromFilename(materialData.file.name);
 
-        // Create material record
-        const [material] = await db
-          .insert(courseMaterials)
-          .values({
-            courseId: materialData.courseId,
-            weekId: materialData.weekId,
-            title: materialData.file.name,
-            fileName: materialData.file.name,
-            originalFilename: materialData.file.name,
-            fileSize: materialData.file.size,
-            mimeType: materialData.file.type,
-            contentType,
-            uploadStatus: "pending",
-            processingMetadata: { processingStatus: "pending" },
-            processingStartedAt: new Date(),
-            uploadedBy: user.id,
-          })
-          .returning();
+				// Create material record
+				const [material] = await db
+					.insert(courseMaterials)
+					.values({
+						courseId: materialData.courseId,
+						weekId: materialData.weekId,
+						title: materialData.file.name,
+						fileName: materialData.file.name,
+						originalFilename: materialData.file.name,
+						fileSize: materialData.file.size,
+						mimeType: materialData.file.type,
+						contentType,
+						uploadStatus: "pending",
+						processingMetadata: { processingStatus: "pending" },
+						processingStartedAt: new Date(),
+						uploadedBy: user.id,
+					})
+					.returning();
 
-        // Upload file to storage
-        const uploadResult = await uploadCourseMaterial(
-          user.id,
-          material.id,
-          materialData.file.name,
-          materialData.file
-        );
+				// Upload file to storage
+				const uploadResult = await uploadCourseMaterial(
+					user.id,
+					material.id,
+					materialData.file.name,
+					materialData.file
+				);
 
-        if (!uploadResult.success) {
-          materialCreationResults.push({
-            materialId: material.id,
-            filePath: "",
-            fileName: materialData.file.name,
-            success: false,
-            error: uploadResult.error || "Failed to upload file",
-          });
-          continue;
-        }
+				if (!uploadResult.success) {
+					materialCreationResults.push({
+						materialId: material.id,
+						filePath: "",
+						fileName: materialData.file.name,
+						success: false,
+						error: uploadResult.error || "Failed to upload file",
+					});
+					continue;
+				}
 
-        const filePath =
-          uploadResult.filePath ||
-          `${user.id}/${material.id}/${materialData.file.name}`;
+				const filePath =
+					uploadResult.filePath || `${user.id}/${material.id}/${materialData.file.name}`;
 
-        // Update material with upload completion
-        await db
-          .update(courseMaterials)
-          .set({
-            filePath,
-            uploadStatus: "completed",
-          })
-          .where(eq(courseMaterials.id, material.id));
+				// Update material with upload completion
+				await db
+					.update(courseMaterials)
+					.set({
+						filePath,
+						uploadStatus: "completed",
+					})
+					.where(eq(courseMaterials.id, material.id));
 
-        materialCreationResults.push({
-          materialId: material.id,
-          filePath,
-          fileName: materialData.file.name,
-          success: true,
-        });
-      } catch (error) {
-        materialCreationResults.push({
-          materialId: "",
-          filePath: "",
-          fileName: materialData.file.name,
-          success: false,
-          error: error instanceof Error ? error.message : "Unknown error",
-        });
-      }
-    }
+				materialCreationResults.push({
+					materialId: material.id,
+					filePath,
+					fileName: materialData.file.name,
+					success: true,
+				});
+			} catch (error) {
+				materialCreationResults.push({
+					materialId: "",
+					filePath: "",
+					fileName: materialData.file.name,
+					success: false,
+					error: error instanceof Error ? error.message : "Unknown error",
+				});
+			}
+		}
 
-    // Filter successful materials for batch processing
-    const successfulMaterials = materialCreationResults.filter(
-      (result) => result.success
-    );
-    const failedMaterials = materialCreationResults
-      .filter((result) => !result.success)
-      .map((result) => ({
-        fileName: result.fileName,
-        error: result.error || "Unknown error",
-      }));
+		// Filter successful materials for batch processing
+		const successfulMaterials = materialCreationResults.filter((result) => result.success);
+		const failedMaterials = materialCreationResults
+			.filter((result) => !result.success)
+			.map((result) => ({
+				fileName: result.fileName,
+				error: result.error || "Unknown error",
+			}));
 
-    if (successfulMaterials.length === 0) {
-      return {
-        success: false,
-        error: "All materials failed to upload",
-        failedMaterials,
-      };
-    }
+		if (successfulMaterials.length === 0) {
+			return {
+				success: false,
+				error: "All materials failed to upload",
+				failedMaterials,
+			};
+		}
 
-    // Phase 2: Trigger batch processing using tasks.batchTrigger
-    const batchPayloads = successfulMaterials.map((material) => ({
-      payload: {
-        materialId: material.materialId,
-        filePath: material.filePath,
-        contentType: CONTENT_TYPES.PDF, // Default for now, can be enhanced
-      },
-    }));
+		// Phase 2: Trigger batch processing using tasks.batchTrigger
+		const batchPayloads = successfulMaterials.map((material) => ({
+			payload: {
+				materialId: material.materialId,
+				filePath: material.filePath,
+				contentType: CONTENT_TYPES.PDF, // Default for now, can be enhanced
+			},
+		}));
 
-    const batchHandle = await tasks.batchTrigger(
-      "process-and-embed-individual-material",
-      batchPayloads
-    );
+		const batchHandle = await tasks.batchTrigger(
+			"process-and-embed-individual-material",
+			batchPayloads
+		);
 
-    // Update all successful materials with batch run ID
-    if (successfulMaterials.length > 0) {
-      // Update each material individually with batch ID
-      for (const material of successfulMaterials) {
-        await db
-          .update(courseMaterials)
-          .set({
-            runId: batchHandle.batchId,
-            processingMetadata: {
-              processingStatus: "processing",
-              batchId: batchHandle.batchId,
-            },
-          })
-          .where(eq(courseMaterials.id, material.materialId));
-      }
-    }
+		// Update all successful materials with batch run ID
+		if (successfulMaterials.length > 0) {
+			// Update each material individually with batch ID
+			for (const material of successfulMaterials) {
+				await db
+					.update(courseMaterials)
+					.set({
+						runId: batchHandle.batchId,
+						processingMetadata: {
+							processingStatus: "processing",
+							batchId: batchHandle.batchId,
+						},
+					})
+					.where(eq(courseMaterials.id, material.materialId));
+			}
+		}
 
-    return {
-      success: true,
-      batchId: batchHandle.batchId,
-      successCount: successfulMaterials.length,
-      failedMaterials: failedMaterials.length > 0 ? failedMaterials : undefined,
-    };
-  } catch (error) {
-    console.error("Batch upload and processing failed:", error);
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error occurred";
-    return {
-      success: false,
-      error: errorMessage,
-    };
-  }
+		return {
+			success: true,
+			batchId: batchHandle.batchId,
+			successCount: successfulMaterials.length,
+			failedMaterials: failedMaterials.length > 0 ? failedMaterials : undefined,
+		};
+	} catch (error) {
+		console.error("Batch upload and processing failed:", error);
+		const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+		return {
+			success: false,
+			error: errorMessage,
+		};
+	}
 }
 
 /**
  * Get batch processing status
  */
 export async function getBatchProcessingStatus(batchId: string): Promise<{
-  success: boolean;
-  status?: string;
-  completedCount?: number;
-  totalCount?: number;
-  error?: string;
+	success: boolean;
+	status?: string;
+	completedCount?: number;
+	totalCount?: number;
+	error?: string;
 }> {
-  try {
-    // Query materials with this batch ID
-    const materials = await db.query.courseMaterials.findMany({
-      where: eq(courseMaterials.runId, batchId),
-      columns: {
-        id: true,
-        processingMetadata: true,
-        embeddingStatus: true,
-      },
-    });
+	try {
+		// Query materials with this batch ID
+		const materials = await db.query.courseMaterials.findMany({
+			where: eq(courseMaterials.runId, batchId),
+			columns: {
+				id: true,
+				processingMetadata: true,
+				embeddingStatus: true,
+			},
+		});
 
-    if (materials.length === 0) {
-      return { success: false, error: "Batch not found" };
-    }
+		if (materials.length === 0) {
+			return { success: false, error: "Batch not found" };
+		}
 
-    const totalCount = materials.length;
-    const completedCount = materials.filter((m) => {
-      const metadata = m.processingMetadata as ProcessingMetadata;
-      return (
-        metadata?.processingStatus === "completed" ||
-        m.embeddingStatus === "completed"
-      );
-    }).length;
+		const totalCount = materials.length;
+		const completedCount = materials.filter((m) => {
+			const metadata = m.processingMetadata as ProcessingMetadata;
+			return metadata?.processingStatus === "completed" || m.embeddingStatus === "completed";
+		}).length;
 
-    const allCompleted = completedCount === totalCount;
-    const hasFailures = materials.some((m) => {
-      const metadata = m.processingMetadata as ProcessingMetadata;
-      return (
-        metadata?.processingStatus === "failed" ||
-        m.embeddingStatus === "failed"
-      );
-    });
+		const allCompleted = completedCount === totalCount;
+		const hasFailures = materials.some((m) => {
+			const metadata = m.processingMetadata as ProcessingMetadata;
+			return metadata?.processingStatus === "failed" || m.embeddingStatus === "failed";
+		});
 
-    let status = "processing";
-    if (allCompleted) {
-      status = "completed";
-    } else if (hasFailures) {
-      status = "partial_failure";
-    }
+		let status = "processing";
+		if (allCompleted) {
+			status = "completed";
+		} else if (hasFailures) {
+			status = "partial_failure";
+		}
 
-    return {
-      success: true,
-      status,
-      completedCount,
-      totalCount,
-    };
-  } catch (error) {
-    console.error("Failed to get batch status:", error);
-    return {
-      success: false,
-      error:
-        error instanceof Error ? error.message : "Failed to get batch status",
-    };
-  }
+		return {
+			success: true,
+			status,
+			completedCount,
+			totalCount,
+		};
+	} catch (error) {
+		console.error("Failed to get batch status:", error);
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : "Failed to get batch status",
+		};
+	}
 }

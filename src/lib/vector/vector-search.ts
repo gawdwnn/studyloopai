@@ -36,12 +36,7 @@ export async function searchSimilarChunks(
 	options: SearchOptions = {}
 ): Promise<VectorSearchResponse> {
 	const startTime = Date.now();
-	const {
-		limit = 10,
-		threshold = 0.7,
-		materialIds,
-		includeMetadata = true,
-	} = options;
+	const { limit = 10, threshold = 0.7, materialIds, includeMetadata = true } = options;
 
 	try {
 		// Generate embedding for the query
@@ -70,16 +65,11 @@ export async function searchSimilarChunks(
 				materialTitle: courseMaterials.title,
 			})
 			.from(documentChunks)
-			.leftJoin(
-				courseMaterials,
-				eq(documentChunks.materialId, courseMaterials.id)
-			)
+			.leftJoin(courseMaterials, eq(documentChunks.materialId, courseMaterials.id))
 			.where(
 				and(
 					sql`1 - ${cosineDistance(documentChunks.embedding, queryEmbedding)} > ${threshold}`,
-					materialIds
-						? sql`${documentChunks.materialId} = ANY(${materialIds})`
-						: undefined
+					materialIds ? sql`${documentChunks.materialId} = ANY(${materialIds})` : undefined
 				)
 			)
 			.orderBy(desc(similarity))
@@ -158,10 +148,7 @@ export async function findSimilarChunks(
 				materialTitle: courseMaterials.title,
 			})
 			.from(documentChunks)
-			.leftJoin(
-				courseMaterials,
-				eq(documentChunks.materialId, courseMaterials.id)
-			)
+			.leftJoin(courseMaterials, eq(documentChunks.materialId, courseMaterials.id))
 			.where(
 				and(
 					sql`${documentChunks.id} != ${chunkId}`,
