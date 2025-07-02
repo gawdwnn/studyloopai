@@ -1,0 +1,313 @@
+/**
+ * AI Content Generation Prompts
+ * Optimized prompts for different educational content types
+ */
+
+export interface PromptContext {
+	content: string;
+	difficulty: "beginner" | "intermediate" | "advanced";
+	count: number;
+	language?: string;
+	focus?: "conceptual" | "practical" | "mixed";
+}
+
+export interface ContentGenerationPrompt {
+	systemPrompt: string;
+	userPrompt: (context: PromptContext) => string;
+	outputSchema: object;
+}
+
+// Golden Notes Generation
+export const goldenNotesPrompt: ContentGenerationPrompt = {
+	systemPrompt: `You are an expert educational content creator specializing in distilling complex information into clear, actionable golden notes. Your task is to identify and extract the most important concepts, key points, and essential knowledge from educational material.
+
+Guidelines:
+- Focus on core concepts that students must understand
+- Create clear, concise explanations
+- Prioritize practical knowledge and real-world applications
+- Use active voice and clear language
+- Include relevant examples when helpful
+- Structure information hierarchically (main concepts → details)`,
+
+	userPrompt: ({ content, difficulty, count, focus }) => `
+Please analyze the following educational content and create ${count} golden notes that capture the most important concepts and knowledge.
+
+Content to analyze:
+${content}
+
+Requirements:
+- Difficulty level: ${difficulty}
+- Focus: ${focus || "conceptual"}
+- Generate exactly ${count} golden notes
+- Each note should be comprehensive but concise (150-300 words)
+- Include a clear title for each note
+- Prioritize based on importance (1 = most important, ${count} = least important)
+
+Output as a JSON array with this structure:
+[
+  {
+    "title": "Clear, descriptive title",
+    "content": "Comprehensive explanation of the concept",
+    "priority": 1,
+    "category": "topic category"
+  }
+]`,
+
+	outputSchema: {
+		type: "array",
+		items: {
+			type: "object",
+			properties: {
+				title: { type: "string" },
+				content: { type: "string" },
+				priority: { type: "number" },
+				category: { type: "string" },
+			},
+			required: ["title", "content", "priority"],
+		},
+	},
+};
+
+// Flashcards Generation
+export const flashcardsPrompt: ContentGenerationPrompt = {
+	systemPrompt: `You are an expert in creating effective flashcards for active recall and spaced repetition learning. Your flashcards should test understanding, not just memorization, and follow proven educational principles.
+
+Guidelines:
+- Create clear, specific questions that test understanding
+- Provide complete, accurate answers
+- Avoid overly complex or multi-part questions
+- Use various question types (definition, application, comparison, etc.)
+- Ensure questions are self-contained (no external context needed)
+- Focus on testable knowledge and key concepts`,
+
+	userPrompt: ({ content, difficulty, count }) => `
+Create ${count} flashcards from the following educational content. Focus on key concepts, definitions, and important facts that students should remember.
+
+Content to analyze:
+${content}
+
+Requirements:
+- Difficulty level: ${difficulty}
+- Generate exactly ${count} flashcards
+- Questions should be clear and specific
+- Answers should be complete but concise
+- Vary question types (what, how, why, when, etc.)
+- Test understanding, not just memorization
+
+Output as a JSON array with this structure:
+[
+  {
+    "question": "Clear, specific question",
+    "answer": "Complete, accurate answer",
+    "difficulty": "${difficulty}"
+  }
+]`,
+
+	outputSchema: {
+		type: "array",
+		items: {
+			type: "object",
+			properties: {
+				question: { type: "string" },
+				answer: { type: "string" },
+				difficulty: { type: "string" },
+			},
+			required: ["question", "answer", "difficulty"],
+		},
+	},
+};
+
+// Multiple Choice Questions Generation
+export const multipleChoicePrompt: ContentGenerationPrompt = {
+	systemPrompt: `You are an expert in creating high-quality multiple choice questions for educational assessment. Your questions should effectively test student understanding and include plausible distractors.
+
+Guidelines:
+- Create clear, unambiguous questions
+- Include one correct answer and 3 plausible distractors
+- Avoid "all of the above" or "none of the above" options
+- Make distractors believable but clearly incorrect
+- Test understanding and application, not just recall
+- Provide clear explanations for the correct answer`,
+
+	userPrompt: ({ content, difficulty, count }) => `
+Create ${count} multiple choice questions from the following educational content. Each question should test understanding of key concepts.
+
+Content to analyze:
+${content}
+
+Requirements:
+- Difficulty level: ${difficulty}
+- Generate exactly ${count} questions
+- Each question has 4 options (A, B, C, D)
+- Include clear explanations for correct answers
+- Make distractors plausible but incorrect
+- Test different types of knowledge (facts, concepts, applications)
+
+Output as a JSON array with this structure:
+[
+  {
+    "question": "Clear question text",
+    "options": ["Option A", "Option B", "Option C", "Option D"],
+    "correctAnswer": "A",
+    "explanation": "Why this answer is correct",
+    "difficulty": "${difficulty}"
+  }
+]`,
+
+	outputSchema: {
+		type: "array",
+		items: {
+			type: "object",
+			properties: {
+				question: { type: "string" },
+				options: {
+					type: "array",
+					items: { type: "string" },
+					minItems: 4,
+					maxItems: 4,
+				},
+				correctAnswer: { type: "string" },
+				explanation: { type: "string" },
+				difficulty: { type: "string" },
+			},
+			required: ["question", "options", "correctAnswer", "explanation", "difficulty"],
+		},
+	},
+};
+
+// Open Questions Generation
+export const openQuestionsPrompt: ContentGenerationPrompt = {
+	systemPrompt: `You are an expert in creating thought-provoking open-ended questions that encourage critical thinking and deep understanding. Your questions should promote analysis, synthesis, and evaluation of concepts.
+
+Guidelines:
+- Create questions that require explanation, analysis, or synthesis
+- Encourage critical thinking and deeper understanding
+- Provide comprehensive sample answers
+- Include grading rubrics with clear criteria
+- Focus on application and understanding, not just recall
+- Vary question types (explain, analyze, compare, evaluate, etc.)`,
+
+	userPrompt: ({ content, difficulty, count }) => `
+Create ${count} open-ended questions from the following educational content. These should be discussion or essay questions that encourage deep thinking.
+
+Content to analyze:
+${content}
+
+Requirements:
+- Difficulty level: ${difficulty}
+- Generate exactly ${count} questions
+- Questions should require explanation or analysis
+- Include comprehensive sample answers
+- Provide grading rubrics with specific criteria
+- Encourage critical thinking and application
+
+Output as a JSON array with this structure:
+[
+  {
+    "question": "Thought-provoking question requiring explanation",
+    "sampleAnswer": "Comprehensive sample answer showing expected depth",
+    "gradingRubric": {
+      "excellent": "Criteria for excellent response",
+      "good": "Criteria for good response", 
+      "needs_improvement": "Criteria for response needing improvement"
+    },
+    "difficulty": "${difficulty}"
+  }
+]`,
+
+	outputSchema: {
+		type: "array",
+		items: {
+			type: "object",
+			properties: {
+				question: { type: "string" },
+				sampleAnswer: { type: "string" },
+				gradingRubric: {
+					type: "object",
+					properties: {
+						excellent: { type: "string" },
+						good: { type: "string" },
+						needs_improvement: { type: "string" },
+					},
+				},
+				difficulty: { type: "string" },
+			},
+			required: ["question", "sampleAnswer", "gradingRubric", "difficulty"],
+		},
+	},
+};
+
+// Summaries Generation
+export const summariesPrompt: ContentGenerationPrompt = {
+	systemPrompt: `You are an expert in creating comprehensive yet concise summaries of educational content. Your summaries should capture the essential information while remaining accessible and well-organized.
+
+Guidelines:
+- Identify and highlight main concepts and themes
+- Organize information logically and hierarchically
+- Maintain clarity while being comprehensive
+- Include key facts, concepts, and relationships
+- Use clear headings and structure
+- Preserve important details while eliminating redundancy`,
+
+	userPrompt: ({ content, difficulty, count }) => `
+Create a comprehensive summary of the following educational content. The summary should capture all essential information in a clear, organized format.
+
+Content to analyze:
+${content}
+
+Requirements:
+- Target word count: approximately ${count * 50} words
+- Difficulty level: ${difficulty}
+- Include clear title and structure
+- Organize information logically
+- Highlight key concepts and relationships
+- Maintain clarity and readability
+
+Output as a JSON object with this structure:
+{
+  "title": "Descriptive title for the summary",
+  "content": "Well-structured summary content",
+  "wordCount": actual_word_count,
+  "summaryType": "general"
+}`,
+
+	outputSchema: {
+		type: "object",
+		properties: {
+			title: { type: "string" },
+			content: { type: "string" },
+			wordCount: { type: "number" },
+			summaryType: { type: "string" },
+		},
+		required: ["title", "content", "wordCount", "summaryType"],
+	},
+};
+
+// Helper function to get prompt by content type
+export function getPromptByType(contentType: string): ContentGenerationPrompt | null {
+	switch (contentType) {
+		case "goldenNotes":
+			return goldenNotesPrompt;
+		case "flashcards":
+			return flashcardsPrompt;
+		case "multipleChoice":
+			return multipleChoicePrompt;
+		case "openQuestions":
+			return openQuestionsPrompt;
+		case "summaries":
+			return summariesPrompt;
+		default:
+			return null;
+	}
+}
+
+// Content type validation
+export const SUPPORTED_CONTENT_TYPES = [
+	"goldenNotes",
+	"flashcards",
+	"multipleChoice",
+	"openQuestions",
+	"summaries",
+] as const;
+
+export type SupportedContentType = (typeof SUPPORTED_CONTENT_TYPES)[number];

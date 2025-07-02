@@ -118,11 +118,21 @@ export async function uploadAndProcessMaterialsBatch(
 						mimeType: materialData.file.type,
 						contentType,
 						uploadStatus: "pending",
-						processingMetadata: { processingStatus: "pending" },
+						processingMetadata: {
+							processingStatus: "pending",
+						},
 						processingStartedAt: new Date(),
 						uploadedBy: user.id,
 					})
 					.returning();
+
+				// Save user generation config
+				if (materialData.generationConfig) {
+					const { saveMaterialGenerationConfig } = await import(
+						"@/lib/services/generation-config-service"
+					);
+					await saveMaterialGenerationConfig(material.id, user.id, materialData.generationConfig);
+				}
 
 				// Upload file to storage
 				const uploadResult = await uploadCourseMaterial(
@@ -189,40 +199,33 @@ export async function uploadAndProcessMaterialsBatch(
 			};
 		}
 
-		// Phase 2: Trigger batch processing using tasks.batchTrigger
-		const batchPayloads = successfulMaterials.map((material) => ({
-			payload: {
+		// Phase 2: Trigger orchestrator task to handle embedding & AI generation
+		const ingestHandle = await tasks.trigger("ingest-course-materials", {
+			userId: user.id,
+			materials: successfulMaterials.map((material) => ({
 				materialId: material.materialId,
 				filePath: material.filePath,
-				contentType: CONTENT_TYPES.PDF, // Default for now, can be enhanced
-			},
-		}));
+				contentType: CONTENT_TYPES.PDF, // TODO: derive real type
+			})),
+		});
 
-		const batchHandle = await tasks.batchTrigger(
-			"process-and-embed-individual-material",
-			batchPayloads
-		);
-
-		// Update all successful materials with batch run ID
-		if (successfulMaterials.length > 0) {
-			// Update each material individually with batch ID
-			for (const material of successfulMaterials) {
-				await db
-					.update(courseMaterials)
-					.set({
-						runId: batchHandle.batchId,
-						processingMetadata: {
-							processingStatus: "processing",
-							batchId: batchHandle.batchId,
-						},
-					})
-					.where(eq(courseMaterials.id, material.materialId));
-			}
+		// Optionally link each material to the orchestrator run for observability
+		for (const material of successfulMaterials) {
+			await db
+				.update(courseMaterials)
+				.set({
+					runId: ingestHandle.id,
+					processingMetadata: {
+						processingStatus: "processing",
+						batchId: ingestHandle.id,
+					},
+				})
+				.where(eq(courseMaterials.id, material.materialId));
 		}
 
 		return {
 			success: true,
-			batchId: batchHandle.batchId,
+			batchId: ingestHandle.id, // Rename meaningfully on caller
 			successCount: successfulMaterials.length,
 			failedMaterials: failedMaterials.length > 0 ? failedMaterials : undefined,
 		};

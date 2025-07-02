@@ -134,12 +134,6 @@ export async function deleteCourseMaterial(materialId: string, filePath?: string
 					jobCancellationResult = await cancelTriggerRun(material.runId);
 
 					if (jobCancellationResult.success) {
-						console.log("Successfully cancelled background job", {
-							materialId,
-							runId: material.runId,
-							previousStatus: jobCancellationResult.previousStatus,
-							newStatus: jobCancellationResult.newStatus,
-						});
 					} else {
 						console.warn("Could not cancel background job", {
 							materialId,
@@ -149,11 +143,6 @@ export async function deleteCourseMaterial(materialId: string, filePath?: string
 						});
 					}
 				} else if (statusResult.success) {
-					console.log("Background job not active, no cancellation needed", {
-						materialId,
-						runId: material.runId,
-						status: statusResult.status,
-					});
 				} else {
 					console.warn("Could not check job status", {
 						materialId,
@@ -208,18 +197,6 @@ export async function deleteCourseMaterial(materialId: string, filePath?: string
 				console.error("Exception deleting files from storage:", error);
 			}
 		}
-
-		// Step 5: Log successful deletion with metrics
-		console.log(`Successfully deleted course material:`, {
-			materialId,
-			title: material.title,
-			courseId: deletionResult.courseId,
-			userId: user.id,
-			filesDeleted: allFilePaths.length,
-			chunksDeleted: chunkCount,
-			fileSize: material.fileSize,
-			storageErrors: storageErrors.length > 0 ? storageErrors : undefined,
-		});
 
 		// Step 6: Revalidate related pages
 		revalidatePath("/dashboard/course-materials");

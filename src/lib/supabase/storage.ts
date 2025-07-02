@@ -1,6 +1,5 @@
 /**
  * Supabase Storage Utilities
- * Centralized storage operations for course materials
  */
 
 import { getAdminClient, getServerClient } from "@/lib/supabase/server";
@@ -394,4 +393,33 @@ export async function removeCourseMaterial(filePath: string): Promise<StorageRem
  */
 export async function removeCourseMaterials(filePaths: string[]): Promise<StorageRemoveResult> {
 	return removeFilesAdmin(COURSE_MATERIALS_BUCKET, filePaths);
+}
+
+/**
+ * Create a signed upload URL for a file
+ */
+export async function createSignedUploadUrl(
+	bucket: string,
+	filePath: string
+): Promise<{ success: boolean; signedUrl?: string; error?: string }> {
+	try {
+		const supabase = getAdminClient();
+		const { data, error } = await supabase.storage.from(bucket).createSignedUploadUrl(filePath);
+
+		if (error) {
+			return { success: false, error: error.message };
+		}
+
+		return { success: true, signedUrl: data.signedUrl };
+	} catch (err) {
+		return {
+			success: false,
+			error: err instanceof Error ? err.message : "Unknown error while creating signed URL",
+		};
+	}
+}
+
+// wrapper for course materials bucket
+export async function createSignedUploadUrlForCourseMaterial(filePath: string) {
+	return createSignedUploadUrl(COURSE_MATERIALS_BUCKET, filePath);
 }

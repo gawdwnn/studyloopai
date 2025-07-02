@@ -4,14 +4,13 @@ import { CONTENT_TYPES } from "@/lib/constants/file-upload";
 import { PDF_PROCESSING_LIMITS } from "@/lib/constants/pdf-processing";
 import { generateEmbeddings } from "@/lib/embeddings/embedding-service";
 import { parsePDF } from "@/lib/processing/pdf-parser";
-import { downloadCourseMaterial } from "@/lib/supabase/storage";
+import { downloadCourseMaterial, removeCourseMaterial } from "@/lib/supabase/storage";
 import { logger, schemaTask, tasks } from "@trigger.dev/sdk";
 import { eq } from "drizzle-orm";
 import type { Document } from "langchain/document";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import { z } from "zod";
 
-// Zod schemas for type safety and validation
 const ProcessAndEmbedIndividualPayload = z.object({
 	materialId: z.string().min(1, "Material ID is required"),
 	filePath: z.string().min(1, "File path is required"),
@@ -27,113 +26,12 @@ const ProcessAndEmbedIndividualOutput = z.object({
 	error: z.string().optional(),
 });
 
-const GenerateAiContentPayload = z.object({
-	materialId: z.string().min(1, "Material ID is required"),
-});
-
-const GenerateAiContentOutput = z.object({
-	success: z.boolean(),
-	materialId: z.string(),
-	error: z.string().optional(),
-});
-
 type ProcessAndEmbedIndividualPayloadType = z.infer<typeof ProcessAndEmbedIndividualPayload>;
-type GenerateAiContentPayloadType = z.infer<typeof GenerateAiContentPayload>;
 
-// Task 2: Generate AI Content
-export const generateAiContent = schemaTask({
-	id: "generate-ai-content",
-	schema: GenerateAiContentPayload,
-	maxDuration: 300, // 5 minutes
-	onStart: async ({ payload }: { payload: GenerateAiContentPayloadType }) => {
-		await logger.info("🔄 AI Content Generation task started", {
-			materialId: payload.materialId,
-		});
-	},
-	init: async ({ payload }: { payload: GenerateAiContentPayloadType }) => {
-		await logger.info("🚀 Initializing AI content generation", {
-			materialId: payload.materialId,
-		});
-	},
-	run: async (payload: GenerateAiContentPayloadType) => {
-		const { materialId } = payload;
-		await logger.info("🟢 [TASK 2] Starting AI content generation", {
-			materialId,
-		});
-
-		try {
-			// For now, this task is a placeholder.
-			// In the future, it will fetch chunks and generate content.
-			await logger.info("🧠 AI Content Generation logic will be implemented here.");
-			await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate work
-
-			// Finally, update the overall status to 'completed'
-			await db
-				.update(courseMaterials)
-				.set({
-					processingMetadata: { processingStatus: "completed" },
-				})
-				.where(eq(courseMaterials.id, materialId));
-
-			await logger.info("✅ [TASK 2] AI content generation complete", {
-				materialId,
-			});
-
-			return { success: true, materialId };
-		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
-			await logger.error("❌ [TASK 2] AI content generation failed", {
-				materialId,
-				error: errorMessage,
-			});
-			await db
-				.update(courseMaterials)
-				.set({
-					processingMetadata: { processingStatus: "failed" },
-				})
-				.where(eq(courseMaterials.id, materialId));
-			return { success: false, materialId, error: errorMessage };
-		}
-	},
-	cleanup: async ({ payload }: { payload: GenerateAiContentPayloadType }) => {
-		await logger.info("🧹 Cleaning up AI content generation task", {
-			materialId: payload.materialId,
-		});
-	},
-	onSuccess: async ({
-		payload,
-		output,
-	}: {
-		payload: GenerateAiContentPayloadType;
-		output: z.infer<typeof GenerateAiContentOutput>;
-	}) => {
-		await logger.info("✅ AI content generation completed successfully", {
-			materialId: payload.materialId,
-			success: output.success,
-		});
-		// TODO: Send success notification/webhook
-	},
-	onFailure: async ({
-		payload,
-		error,
-	}: {
-		payload: GenerateAiContentPayloadType;
-		error: unknown;
-	}) => {
-		const errorMessage = error instanceof Error ? error.message : String(error);
-		await logger.error("❌ AI content generation failed permanently", {
-			materialId: payload.materialId,
-			error: errorMessage,
-		});
-		// TODO: Send failure notification/webhook
-	},
-});
-
-// Task 1: Process and Embed Individual Material
 export const processAndEmbedIndividualMaterial = schemaTask({
 	id: "process-and-embed-individual-material",
 	schema: ProcessAndEmbedIndividualPayload,
-	maxDuration: 600, // 10 minutes for processing large files
+	maxDuration: 900, // Allow up to 15 minutes for processing & embedding very large materials
 	retry: {
 		maxAttempts: 3,
 		factor: 2,
@@ -146,7 +44,7 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 	}: {
 		payload: ProcessAndEmbedIndividualPayloadType;
 	}) => {
-		await logger.info("📄 Material processing task started", {
+		logger.info("📄 Material processing task started", {
 			materialId: payload.materialId,
 			filePath: payload.filePath,
 			contentType: payload.contentType,
@@ -163,22 +61,11 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 			})
 			.where(eq(courseMaterials.id, payload.materialId));
 	},
-	init: async ({
-		payload,
-	}: {
-		payload: ProcessAndEmbedIndividualPayloadType;
-	}) => {
-		await logger.info("🔧 Initializing material processing", {
-			materialId: payload.materialId,
-		});
-	},
-	run: async (payload: ProcessAndEmbedIndividualPayloadType) => {
+	run: async (payload: ProcessAndEmbedIndividualPayloadType, { ctx }) => {
 		const { materialId, filePath, contentType } = payload;
-		await logger.info("🟢 [STANDALONE] Starting individual material processing", {
-			materialId,
-			filePath,
-			contentType,
-		});
+
+		// @ts-expect-error - setTags available at runtime
+		ctx.run.setTags({ materialId: payload.materialId, phase: "embedding" });
 
 		try {
 			// 1. Update status to 'processing'
@@ -197,15 +84,9 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 				.where(eq(courseMaterials.id, materialId));
 
 			// 2. Download and parse single file
-			await logger.info(`📥 Downloading file: ${filePath}`);
-
 			const downloadResult = await downloadCourseMaterial(filePath);
 
 			if (!downloadResult.success) {
-				await logger.error("Storage download error:", {
-					filePath,
-					error: downloadResult.error,
-				});
 				throw new Error(downloadResult.error || `Failed to download ${filePath}`);
 			}
 
@@ -214,7 +95,6 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 			}
 
 			const buffer = downloadResult.buffer;
-			await logger.info(`File downloaded successfully: ${filePath}, size: ${buffer.length} bytes`);
 
 			let extractedText = "";
 			let contentMetadata = {};
@@ -226,14 +106,6 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 					timeout: PDF_PROCESSING_LIMITS.MAX_PROCESSING_TIMEOUT,
 				});
 
-				await logger.info(`PDF parsing result for ${filePath}:`, {
-					success: pdfResult.success,
-					hasText: !!pdfResult.text,
-					textLength: pdfResult.text?.length || 0,
-					error: pdfResult.error,
-					metadata: pdfResult.metadata,
-				});
-
 				if (pdfResult.success && pdfResult.text && pdfResult.text.trim()) {
 					extractedText = pdfResult.text;
 					contentMetadata = {
@@ -241,9 +113,6 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 						processingTime: pdfResult.metadata?.processingTime,
 						extractionMethod: pdfResult.metadata?.extractionMethod,
 					};
-					await logger.info(
-						`PDF parsed successfully: ${filePath}, text length: ${extractedText.length}`
-					);
 				} else {
 					throw new Error(
 						`Failed to extract text from PDF: ${filePath}. Error: ${pdfResult.error}`
@@ -261,8 +130,6 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 					`No text could be extracted from file: ${filePath}. Please ensure the file contains readable text content.`
 				);
 			}
-
-			await logger.info(`📊 Text extracted: ${extractedText.length} characters`);
 
 			// 4. Update material with extracted text status and metadata
 			await db
@@ -284,7 +151,6 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 				chunkOverlap: PDF_PROCESSING_LIMITS.CHUNK_OVERLAP,
 			});
 			const chunks = await splitter.createDocuments([extractedText]);
-			await logger.info(`📝 Split content into ${chunks.length} chunks`);
 
 			// 6. Update chunking completion
 			await db
@@ -304,7 +170,6 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 			if (!result.success) {
 				throw new Error(`Embedding generation failed: ${result.error}`);
 			}
-			await logger.info("🧠 Generated embeddings for all chunks");
 
 			// 8. Save chunks to database
 			const chunksToInsert = result.embeddings.map((embedding: number[], i: number) => ({
@@ -315,7 +180,6 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 				tokenCount: Math.round(chunks[i].pageContent.length / 4),
 			}));
 			await db.insert(documentChunks).values(chunksToInsert);
-			await logger.info(`💾 Saved ${chunksToInsert.length} chunks to database`);
 
 			// 9. Update final status to 'completed'
 			const completedAt = new Date();
@@ -336,11 +200,6 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 				})
 				.where(eq(courseMaterials.id, materialId));
 
-			await logger.info("✅ [STANDALONE] Individual material processing complete", {
-				materialId,
-				chunksCreated: chunks.length,
-			});
-
 			return {
 				success: true,
 				materialId,
@@ -350,12 +209,6 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 			};
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
-			await logger.error("❌ [STANDALONE] Individual material processing failed", {
-				materialId,
-				filePath,
-				contentType,
-				error: errorMessage,
-			});
 
 			await db
 				.update(courseMaterials)
@@ -369,11 +222,7 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 				})
 				.where(eq(courseMaterials.id, materialId));
 
-			return {
-				success: false,
-				materialId,
-				error: errorMessage,
-			};
+			throw error; // Let lifecycle handlers manage logging
 		}
 	},
 	onSuccess: async ({
@@ -383,8 +232,10 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 		payload: ProcessAndEmbedIndividualPayloadType;
 		output: z.infer<typeof ProcessAndEmbedIndividualOutput>;
 	}) => {
-		await logger.info("✅ Material processing completed successfully", {
+		logger.info("✅ Material processing completed successfully", {
 			materialId: payload.materialId,
+			filePath: payload.filePath,
+			contentType: payload.contentType,
 			chunksCreated: output.chunksCreated,
 			textLength: output.textLength,
 		});
@@ -399,7 +250,7 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 	}: {
 		payload: ProcessAndEmbedIndividualPayloadType;
 	}) => {
-		await logger.info("🧹 Cleaning up material processing task", {
+		logger.info("🧹 Material processing task cleanup complete", {
 			materialId: payload.materialId,
 		});
 		// TODO: Clean up temporary files if any
@@ -412,8 +263,10 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 		error: unknown;
 	}) => {
 		const errorMessage = error instanceof Error ? error.message : String(error);
-		await logger.error("❌ Material processing failed permanently", {
+		logger.error("❌ Material processing failed permanently", {
 			materialId: payload.materialId,
+			filePath: payload.filePath,
+			contentType: payload.contentType,
 			error: errorMessage,
 		});
 
@@ -433,5 +286,11 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 
 		// TODO: Send failure notification/webhook
 		// TODO: Add to retry queue or alert admins
+	},
+	// @ts-expect-error - onCancel supported by SDK at runtime
+	onCancel: async ({ payload }) => {
+		// Clean up uploaded file if processing cancelled
+		await removeCourseMaterial(payload.filePath);
+		logger.info("🗑️ Cleanup after cancel", { materialId: payload.materialId });
 	},
 });

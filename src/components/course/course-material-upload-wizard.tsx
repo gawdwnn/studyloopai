@@ -27,8 +27,10 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import type { courses } from "@/db/schema";
-import { uploadAndProcessMaterialsBatch } from "@/lib/actions/content-processing-batch";
 import { getCourseWeeks } from "@/lib/actions/courses";
+import { completeUpload, presignUpload } from "@/lib/services/course-material-service";
+import { createClient } from "@/lib/supabase/client";
+import { COURSE_MATERIALS_BUCKET } from "@/lib/supabase/storage";
 import { useQuery } from "@tanstack/react-query";
 
 interface CourseMaterialUploadWizardProps {
@@ -163,43 +165,50 @@ export function CourseMaterialUploadWizard({
 			return;
 		}
 
+		const supabase = createClient();
+		const uploadedMaterialIds: string[] = [];
+
 		try {
-			const materialData: MaterialUploadData[] = files.map((file) => ({
-				courseId: selectedCourseId,
-				weekId: selectedWeekData.id,
-				file,
-				generationConfig,
-			}));
-
-			const result = await uploadAndProcessMaterialsBatch(materialData);
-
-			if (result.success) {
-				const successCount = result.successCount || 0;
-				const failedCount = result.failedMaterials?.length || 0;
-
-				toast.success(`Batch upload started! Processing ${successCount} materials.`, {
-					description:
-						failedCount > 0
-							? `${failedCount} file(s) failed to upload.`
-							: "All files are processing in background.",
-					duration: 4000,
+			for (const file of files) {
+				// Step 1: presign
+				const presignRes = await presignUpload({
+					courseId: selectedCourseId,
+					weekId: selectedWeekData.id,
+					fileName: file.name,
+					mimeType: file.type,
+					generationConfig,
 				});
 
-				if (result.failedMaterials?.length) {
-					for (const failure of result.failedMaterials) {
-						toast.error(`Failed to upload ${failure.fileName}: ${failure.error}`);
-					}
+				// Step 2: upload via signed URL
+				const { error: uploadErr } = await supabase.storage
+					.from(COURSE_MATERIALS_BUCKET)
+					.uploadToSignedUrl(presignRes.filePath, presignRes.signedUrl, file);
+
+				if (uploadErr) {
+					toast.error(`Upload failed for ${file.name}: ${uploadErr.message}`);
+					continue;
 				}
-			} else {
-				toast.error(`Batch upload failed: ${result.error}`);
+
+				uploadedMaterialIds.push(presignRes.materialId);
+			}
+
+			if (uploadedMaterialIds.length === 0) {
+				toast.error("No files uploaded successfully");
 				return;
 			}
 
+			// Step 3: notify backend to start processing
+			await completeUpload(uploadedMaterialIds);
+
+			toast.success(
+				`Uploaded ${uploadedMaterialIds.length} file(s). Processing will continue in background.`
+			);
+
 			handleClose();
 			onUploadSuccess();
-		} catch (error) {
-			toast.error("Failed to start upload. Please try again.");
-			console.error("Upload initiation error:", error);
+		} catch (err) {
+			toast.error("Upload failed. Please try again.");
+			console.error(err);
 		}
 	};
 
@@ -336,7 +345,6 @@ export function CourseMaterialUploadWizard({
 						)}
 						<Separator />
 
-						{/* //TODO: generaion config feature end-end */}
 						<GenerationSettings config={generationConfig} onConfigChange={setGenerationConfig} />
 					</div>
 				)}

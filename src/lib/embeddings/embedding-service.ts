@@ -43,9 +43,6 @@ export async function generateEmbeddings(
 		const newEmbeddingsMap = new Map<string, number[]>();
 
 		if (uncachedTexts.length > 0) {
-			console.log(
-				`Cache miss for ${uncachedTexts.length} of ${texts.length} embeddings. Generating new ones.`
-			);
 			const batches = createBatches(
 				uncachedTexts.map((t) => t.text),
 				batchSize
