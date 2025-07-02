@@ -28,9 +28,13 @@ import {
 import { Separator } from "@/components/ui/separator";
 import type { courses } from "@/db/schema";
 import { getCourseWeeks } from "@/lib/actions/courses";
-import { completeUpload, presignUpload } from "@/lib/services/course-material-service";
+import { COURSE_MATERIALS_BUCKET } from "@/lib/constants/storage";
+import {
+	type CompleteUploadResponse,
+	completeUpload,
+	presignUpload,
+} from "@/lib/services/course-material-service";
 import { createClient } from "@/lib/supabase/client";
-import { COURSE_MATERIALS_BUCKET } from "@/lib/supabase/storage";
 import { useQuery } from "@tanstack/react-query";
 
 interface CourseMaterialUploadWizardProps {
@@ -198,7 +202,8 @@ export function CourseMaterialUploadWizard({
 			}
 
 			// Step 3: notify backend to start processing
-			await completeUpload(uploadedMaterialIds);
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+			const _uploadResult: CompleteUploadResponse = await completeUpload(uploadedMaterialIds);
 
 			toast.success(
 				`Uploaded ${uploadedMaterialIds.length} file(s). Processing will continue in background.`

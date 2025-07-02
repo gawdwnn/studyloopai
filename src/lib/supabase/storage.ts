@@ -2,6 +2,7 @@
  * Supabase Storage Utilities
  */
 
+import { COURSE_MATERIALS_BUCKET } from "@/lib/constants/storage";
 import { getAdminClient, getServerClient } from "@/lib/supabase/server";
 
 export interface StorageUploadOptions {
@@ -358,7 +359,6 @@ export async function getSignedUrl(
 }
 
 // Course materials specific helpers
-export const COURSE_MATERIALS_BUCKET = "course-materials";
 
 /**
  * Upload a course material file

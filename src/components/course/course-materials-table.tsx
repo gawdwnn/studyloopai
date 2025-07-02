@@ -20,6 +20,7 @@ import { useState } from "react";
 type CourseMaterialWithRelations = typeof courseMaterials.$inferSelect & {
 	course?: Pick<typeof courses.$inferSelect, "name"> | null;
 	courseWeek?: Pick<typeof courseWeeks.$inferSelect, "weekNumber"> | null;
+	publicAccessToken?: string | null;
 };
 
 interface CourseMaterialsTableProps {
@@ -144,6 +145,8 @@ export function CourseMaterialsTable({
 													embeddingStatus={material.embeddingStatus || "pending"}
 													totalChunks={material.totalChunks || 0}
 													embeddedChunks={material.embeddedChunks || 0}
+													runId={material.runId || undefined}
+													publicToken={material.publicAccessToken || undefined}
 												/>
 											</TableCell>
 											<TableCell className="text-center whitespace-nowrap">
