@@ -74,7 +74,6 @@ class OfflineHandler {
 	 * Handle online event - process queued operations
 	 */
 	private handleOnline(): void {
-		console.log("Connection restored - processing queued operations");
 		this.isOffline = false;
 		this.lastOnline = new Date();
 		this.notifyListeners();
@@ -85,7 +84,6 @@ class OfflineHandler {
 	 * Handle offline event - start queuing operations
 	 */
 	private handleOffline(): void {
-		console.log("Connection lost - operations will be queued");
 		this.isOffline = true;
 		this.notifyListeners();
 	}
@@ -111,8 +109,7 @@ class OfflineHandler {
 		};
 
 		this.queue.push(queuedOp);
-		const queueLength = this.queue.length;
-		console.log(`Operation queued: ${type} (${queueLength} in queue)`);
+		const _queueLength = this.queue.length;
 		this.notifyListeners();
 
 		// Return a promise that resolves when the operation is processed
@@ -133,8 +130,7 @@ class OfflineHandler {
 		}
 
 		this.processingQueue = true;
-		const queueLength = this.queue.length;
-		console.log(`Processing ${queueLength} queued operations`);
+		const _queueLength = this.queue.length;
 
 		// Process operations in order
 		while (this.queue.length > 0 && !this.isOffline) {
@@ -142,7 +138,6 @@ class OfflineHandler {
 			if (!operation) continue;
 
 			try {
-				console.log(`Processing queued ${operation.type} operation`);
 				const result = await operation.operation();
 
 				// Resolve the original promise
@@ -155,8 +150,7 @@ class OfflineHandler {
 
 				// Retry if under max retries
 				if (operation.retries < operation.maxRetries) {
-					const retryInfo = `${operation.retries}/${operation.maxRetries}`;
-					console.log(`Retrying operation (${retryInfo})`);
+					const _retryInfo = `${operation.retries}/${operation.maxRetries}`;
 					this.queue.unshift(operation); // Put back at front
 				} else {
 					const maxRetries = operation.maxRetries;
@@ -175,7 +169,6 @@ class OfflineHandler {
 
 		this.processingQueue = false;
 		this.notifyListeners();
-		console.log("Queue processing completed");
 	}
 
 	/**

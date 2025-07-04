@@ -13,11 +13,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import type {
-	courseMaterials,
-	courseWeeks,
-	courses,
-} from "@/db/schema";
+import type { courseMaterials, courseWeeks, courses } from "@/db/schema";
 import { CONTENT_TYPES, CONTENT_TYPE_LABELS } from "@/lib/constants/file-upload";
 import { AudioLines, File, FileText, Image, Link, Search, TrashIcon, Video } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -36,6 +32,7 @@ interface CourseMaterialsTableProps {
 	isLoading: boolean;
 	onDeleteMaterial: (materialId: string, materialName: string) => void;
 	isDeleting: boolean;
+	deletingMaterials?: Set<string>;
 }
 
 export function CourseMaterialsTable({
@@ -43,6 +40,7 @@ export function CourseMaterialsTable({
 	isLoading,
 	onDeleteMaterial,
 	isDeleting,
+	deletingMaterials = new Set(),
 }: CourseMaterialsTableProps) {
 	const [searchTerm, setSearchTerm] = useState("");
 
@@ -63,7 +61,6 @@ export function CourseMaterialsTable({
 				return <File className="h-4 w-4 text-gray-500" />;
 		}
 	};
-
 
 	// Filter materials based on search term
 	const filteredMaterials = courseMaterials.filter(
@@ -123,75 +120,91 @@ export function CourseMaterialsTable({
 						</TableHeader>
 						<TableBody>
 							{sortedMaterials.length > 0 ? (
-								sortedMaterials.map((material) => (
-									<TableRow key={material.id}>
-										<TableCell className="font-medium text-center whitespace-nowrap">
-											<span className="text-sm font-medium">
-												{material.courseWeek?.weekNumber
-													? `Week ${material.courseWeek.weekNumber}`
-													: "Unassigned"}
-											</span>
-										</TableCell>
-										<TableCell className="font-medium">
-											<span className="text-sm font-medium">
-												{material.course?.name || "Unknown Course"}
-											</span>
-										</TableCell>
-										<TableCell className="font-medium">
-											<div className="flex items-center gap-2">
-												{getContentTypeIcon(material.contentType || "pdf")}
-												<div>
-													<div>{material.fileName || material.title}</div>
-													<div className="text-xs text-muted-foreground">
-														{CONTENT_TYPE_LABELS[
-															material.contentType as keyof typeof CONTENT_TYPE_LABELS
-														] || "PDF Document"}
+								sortedMaterials.map((material) => {
+									const isBeingDeleted = deletingMaterials.has(material.id);
+									return (
+										<TableRow
+											key={material.id}
+											className={`transition-all duration-300 ${
+												isBeingDeleted
+													? "opacity-50 bg-destructive/5 animate-pulse"
+													: "hover:bg-muted/50"
+											}`}
+										>
+											<TableCell className="font-medium text-center whitespace-nowrap">
+												<span className="text-sm font-medium">
+													{material.courseWeek?.weekNumber
+														? `Week ${material.courseWeek.weekNumber}`
+														: "Unassigned"}
+												</span>
+											</TableCell>
+											<TableCell className="font-medium">
+												<span className="text-sm font-medium">
+													{material.course?.name || "Unknown Course"}
+												</span>
+											</TableCell>
+											<TableCell className="font-medium">
+												<div className="flex items-center gap-2">
+													{getContentTypeIcon(material.contentType || "pdf")}
+													<div>
+														<div>{material.fileName || material.title}</div>
+														<div className="text-xs text-muted-foreground">
+															{CONTENT_TYPE_LABELS[
+																material.contentType as keyof typeof CONTENT_TYPE_LABELS
+															] || "PDF Document"}
+														</div>
 													</div>
 												</div>
-											</div>
-										</TableCell>
+											</TableCell>
 
-										<TableCell>
-											<MaterialStatusIndicator
-												uploadStatus={material.uploadStatus || "pending"}
-												embeddingStatus={material.embeddingStatus || "pending"}
-												totalChunks={material.totalChunks || 0}
-												embeddedChunks={material.embeddedChunks || 0}
-												runId={material.runId || undefined}
-												publicToken={material.publicAccessToken || undefined}
-											/>
-										</TableCell>
+											<TableCell>
+												<MaterialStatusIndicator
+													uploadStatus={material.uploadStatus || "pending"}
+													embeddingStatus={material.embeddingStatus || "pending"}
+													totalChunks={material.totalChunks || 0}
+													embeddedChunks={material.embeddedChunks || 0}
+													runId={material.runId || undefined}
+													publicToken={material.publicAccessToken || undefined}
+												/>
+											</TableCell>
 
-										<TableCell>
-											<GeneratedContentBadges material={material} />
-										</TableCell>
+											<TableCell>
+												<GeneratedContentBadges material={material} />
+											</TableCell>
 
-										<TableCell className="text-center whitespace-nowrap">
-											<ConfirmDialog
-												trigger={
-													<Button
-														variant="ghost"
-														size="icon"
-														disabled={isDeleting}
-														className="h-8 w-8 text-muted-foreground hover:text-destructive disabled:opacity-50"
-													>
-														<TrashIcon className={`h-4 w-4 ${isDeleting ? "animate-pulse" : ""}`} />
-													</Button>
-												}
-												title="Delete Course Material"
-												description={`Are you sure you want to delete "${material.fileName || material.title}"? This action cannot be undone and will also remove all learning features.`}
-												confirmText="Delete"
-												cancelText="Cancel"
-												variant="destructive"
-												onConfirm={() =>
-													onDeleteMaterial(material.id, material.fileName || material.title)
-												}
-												isLoading={isDeleting}
-												disabled={isDeleting}
-											/>
-										</TableCell>
-									</TableRow>
-								))
+											<TableCell className="text-center whitespace-nowrap">
+												{isBeingDeleted ? (
+													<div className="flex items-center justify-center h-8 w-8">
+														<div className="h-4 w-4 border-2 border-destructive border-t-transparent rounded-full animate-spin" />
+													</div>
+												) : (
+													<ConfirmDialog
+														trigger={
+															<Button
+																variant="ghost"
+																size="icon"
+																disabled={isDeleting || isBeingDeleted}
+																className="h-8 w-8 text-muted-foreground hover:text-destructive disabled:opacity-50"
+															>
+																<TrashIcon className="h-4 w-4" />
+															</Button>
+														}
+														title="Delete Course Material"
+														description={`Are you sure you want to delete "${material.fileName || material.title}"? This action cannot be undone and will also remove all learning features.`}
+														confirmText="Delete"
+														cancelText="Cancel"
+														variant="destructive"
+														onConfirm={() =>
+															onDeleteMaterial(material.id, material.fileName || material.title)
+														}
+														isLoading={isDeleting}
+														disabled={isDeleting || isBeingDeleted}
+													/>
+												)}
+											</TableCell>
+										</TableRow>
+									);
+								})
 							) : (
 								<TableRow>
 									<TableCell colSpan={6} className="text-center py-8 text-muted-foreground">

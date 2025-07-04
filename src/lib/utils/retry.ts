@@ -46,7 +46,6 @@ export async function withRetry<T>(
 
 	for (let attempt = 1; attempt <= config.maxAttempts; attempt++) {
 		try {
-			console.log(`Retry attempt ${attempt}/${config.maxAttempts}`);
 			const result = await operation();
 
 			return {
@@ -68,8 +67,6 @@ export async function withRetry<T>(
 			const baseDelay = config.baseDelay * config.backoffFactor ** (attempt - 1);
 			const jitter = Math.random() * 0.1 * baseDelay; // Add 10% jitter
 			const delay = Math.min(baseDelay + jitter, config.maxDelay);
-
-			console.log(`Retrying in ${Math.round(delay)}ms...`);
 			await new Promise((resolve) => setTimeout(resolve, delay));
 		}
 	}

@@ -1,11 +1,14 @@
 "use server";
 
 import { db } from "@/db";
-import { courseMaterials, courseWeeks, courses, generationConfigs } from "@/db/schema";
+import { courseMaterials, courseWeeks, courses } from "@/db/schema";
+import { deleteAiContentForMaterials } from "@/lib/services/ai-content-deletion-service";
+import { cancelMultipleJobs, extractRunIds } from "@/lib/services/job-cancellation-service";
+import { cleanupStorageFiles, extractFilePaths } from "@/lib/services/storage-cleanup-service";
 import { getServerClient } from "@/lib/supabase/server";
 import { withErrorHandling } from "@/lib/utils/error-handling";
 import { type CourseCreationData, CourseCreationSchema } from "@/lib/validations/courses";
-import { asc, desc, eq, inArray } from "drizzle-orm";
+import { asc, count, desc, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 export async function createCourse(formData: CourseCreationData) {
@@ -77,7 +80,6 @@ export async function getCourseById(courseId: string) {
 		null // fallback null
 	);
 }
-
 
 export async function getAllUserMaterials() {
 	return await withErrorHandling(
@@ -155,52 +157,142 @@ export async function updateCourse(courseId: string, data: Partial<CourseCreatio
 	}
 }
 
-// TODO: make delete course async
 export async function deleteCourse(courseId: string) {
-	try {
-		const supabase = await getServerClient();
-		const {
-			data: { user },
-		} = await supabase.auth.getUser();
+	const supabase = await getServerClient();
+	const {
+		data: { user },
+	} = await supabase.auth.getUser();
 
-		if (!user) {
-			throw new Error("You must be logged in to delete a course.");
+	if (!user) {
+		throw new Error("You must be logged in to delete a course.");
+	}
+
+	// Validate courseId format
+	if (!courseId || typeof courseId !== "string" || courseId.trim() === "") {
+		throw new Error("Invalid course ID provided.");
+	}
+
+	let course: { id: string; name: string; userId: string } | undefined;
+	let materialsData: Array<{
+		id: string;
+		filePath: string | null;
+		runId: string | null;
+	}> = [];
+
+	try {
+		// Step 1: Fetch course with ownership verification and get all related data
+		course = await db.query.courses.findFirst({
+			where: eq(courses.id, courseId),
+			columns: { id: true, name: true, userId: true },
+		});
+
+		if (!course) {
+			throw new Error("Course not found or you don't have permission to delete it.");
 		}
 
-		// Get all material IDs for this course first
-		const materialIds = await db
-			.select({ id: courseMaterials.id })
+		// Verify ownership
+		if (course.userId !== user.id) {
+			throw new Error("You don't have permission to delete this course.");
+		}
+
+		// Get all materials for this course with file paths and runIds
+		materialsData = await db
+			.select({
+				id: courseMaterials.id,
+				filePath: courseMaterials.filePath,
+				runId: courseMaterials.runId,
+			})
 			.from(courseMaterials)
 			.where(eq(courseMaterials.courseId, courseId));
 
-		// Delete generation configs for all materials in this course
-		if (materialIds.length > 0) {
-			await db.delete(generationConfigs).where(
-				inArray(
-					generationConfigs.materialId,
-					materialIds.map((m) => m.id)
-				)
-			);
-		}
+		// Step 2: Cancel running background jobs for all materials
+		const runIds = extractRunIds(materialsData);
+		const jobCancellationResult = await cancelMultipleJobs(runIds);
 
-		// Delete course materials (cascade)
-		await db.delete(courseMaterials).where(eq(courseMaterials.courseId, courseId));
+		// Step 3: Execute comprehensive deletion in transaction
+		const deletionResult = await db.transaction(async (tx) => {
+			const materialIds = materialsData.map((m) => m.id);
 
-		// Delete course weeks
-		await db.delete(courseWeeks).where(eq(courseWeeks.courseId, courseId));
+			// Delete AI content and get counts
+			const aiContentResult = await deleteAiContentForMaterials(tx, materialIds);
 
-		// Delete the course
-		await db.delete(courses).where(eq(courses.id, courseId));
+			// Get course weeks count
+			const [weeksCountResult] = await tx
+				.select({ count: count() })
+				.from(courseWeeks)
+				.where(eq(courseWeeks.courseId, courseId));
 
+			const weeksCount = weeksCountResult.count;
+
+			// Delete course materials
+			if (materialIds.length > 0) {
+				await tx.delete(courseMaterials).where(eq(courseMaterials.courseId, courseId));
+			}
+
+			// Delete course weeks
+			if (weeksCount > 0) {
+				await tx.delete(courseWeeks).where(eq(courseWeeks.courseId, courseId));
+			}
+
+			// Delete the main course record
+			const [deletedCourse] = await tx.delete(courses).where(eq(courses.id, courseId)).returning({
+				id: courses.id,
+				name: courses.name,
+			});
+
+			if (!deletedCourse) {
+				throw new Error("Failed to delete course from database.");
+			}
+
+			return {
+				...deletedCourse,
+				materialsDeleted: materialIds.length,
+				configsDeleted: aiContentResult.configsDeleted,
+				aiContentDeleted: aiContentResult.aiContentDeleted,
+				chunksDeleted: aiContentResult.chunksDeleted,
+				weeksDeleted: weeksCount,
+			};
+		});
+
+		// Step 4: Clean up storage files (after successful DB deletion)
+		const allFilePaths = extractFilePaths(materialsData);
+		const storageResult = await cleanupStorageFiles(allFilePaths);
+
+		// Step 5: Revalidate related pages
 		revalidatePath("/dashboard");
-	} catch (error) {
-		console.error("Failed to delete course:", error);
+		revalidatePath("/dashboard/courses");
 
-		// Re-throw for UI error handling, but with user-friendly message
-		if (error instanceof Error && error.message.includes("logged in")) {
-			throw error; // Auth errors should be thrown as-is
+		// Return comprehensive deletion summary
+		return {
+			success: true,
+			courseId,
+			courseName: deletionResult.name,
+			materialsDeleted: deletionResult.materialsDeleted,
+			configsDeleted: deletionResult.configsDeleted,
+			aiContentDeleted: deletionResult.aiContentDeleted,
+			chunksDeleted: deletionResult.chunksDeleted,
+			weeksDeleted: deletionResult.weeksDeleted,
+			filesDeleted: storageResult.filesDeleted,
+			jobsCancelled: jobCancellationResult.jobsCancelled,
+			storageErrors: storageResult.hasErrors ? storageResult.storageErrors : undefined,
+		};
+	} catch (error) {
+		// Comprehensive error logging
+		const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+
+		console.error(`Failed to delete course ${courseId}:`, {
+			error: errorMessage,
+			courseId,
+			userId: user.id,
+			courseExists: !!course,
+			materialsCount: materialsData.length,
+		});
+
+		// Re-throw with user-friendly message
+		if (error instanceof Error) {
+			throw error;
 		}
 
-		throw new Error("Failed to delete course. Please try again.");
+		throw new Error(`Failed to delete course: ${errorMessage}`);
 	}
 }

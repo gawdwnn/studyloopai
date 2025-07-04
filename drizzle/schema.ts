@@ -258,6 +258,11 @@ export const flashcards = pgTable(
 		index("idx_flashcards_material_id").using("btree", table.materialId),
 		index("idx_flashcards_difficulty").using("btree", table.difficulty),
 		index("idx_flashcards_week_id").using("btree", table.weekId),
+		foreignKey({
+			columns: [table.materialId],
+			foreignColumns: [courseMaterials.id],
+			name: "flashcards_material_id_fkey",
+		}).onDelete("cascade"),
 	]
 );
 
@@ -281,6 +286,11 @@ export const multipleChoiceQuestions = pgTable(
 		index("idx_mcq_material_id").using("btree", table.materialId),
 		index("idx_mcq_difficulty").using("btree", table.difficulty),
 		index("idx_mcq_week_id").using("btree", table.weekId),
+		foreignKey({
+			columns: [table.materialId],
+			foreignColumns: [courseMaterials.id],
+			name: "multiple_choice_questions_material_id_fkey",
+		}).onDelete("cascade"),
 	]
 );
 
@@ -303,6 +313,11 @@ export const openQuestions = pgTable(
 		index("idx_open_questions_material_id").using("btree", table.materialId),
 		index("idx_open_questions_difficulty").using("btree", table.difficulty),
 		index("idx_open_questions_week_id").using("btree", table.weekId),
+		foreignKey({
+			columns: [table.materialId],
+			foreignColumns: [courseMaterials.id],
+			name: "open_questions_material_id_fkey",
+		}).onDelete("cascade"),
 	]
 );
 
@@ -325,6 +340,11 @@ export const summaries = pgTable(
 		index("idx_summaries_material_id").using("btree", table.materialId),
 		index("idx_summaries_type").using("btree", table.summaryType),
 		index("idx_summaries_week_id").using("btree", table.weekId),
+		foreignKey({
+			columns: [table.materialId],
+			foreignColumns: [courseMaterials.id],
+			name: "summaries_material_id_fkey",
+		}).onDelete("cascade"),
 	]
 );
 
@@ -348,6 +368,11 @@ export const goldenNotes = pgTable(
 		index("idx_golden_notes_priority").using("btree", table.priority),
 		index("idx_golden_notes_category").using("btree", table.category),
 		index("idx_golden_notes_week_id").using("btree", table.weekId),
+		foreignKey({
+			columns: [table.materialId],
+			foreignColumns: [courseMaterials.id],
+			name: "golden_notes_material_id_fkey",
+		}).onDelete("cascade"),
 	]
 );
 

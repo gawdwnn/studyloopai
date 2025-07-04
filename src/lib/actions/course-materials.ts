@@ -1,17 +1,12 @@
 "use server";
 
 import { db } from "@/db";
-import {
-	courseMaterials,
-	courseWeeks,
-	courses,
-	documentChunks,
-	generationConfigs,
-} from "@/db/schema";
+import { courseMaterials, courseWeeks, courses } from "@/db/schema";
+import { deleteAiContentForMaterial } from "@/lib/services/ai-content-deletion-service";
+import { cancelSingleJob } from "@/lib/services/job-cancellation-service";
+import { cleanupStorageFiles, extractFilePaths } from "@/lib/services/storage-cleanup-service";
 import { getServerClient } from "@/lib/supabase/server";
-import { removeCourseMaterials } from "@/lib/supabase/storage";
-import { cancelTriggerRun, getTriggerRunStatus } from "@/lib/trigger/job-management";
-import { and, count, eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 export async function addCourseMaterial(material: {
@@ -70,7 +65,6 @@ export async function addCourseMaterial(material: {
 	revalidatePath(`/dashboard/course-materials/${material.courseId}`);
 }
 
-// TODO: make delete course material async ie immediately update the UI and offload the deletion to a background job
 export async function deleteCourseMaterial(materialId: string, filePath?: string | null) {
 	const supabase = await getServerClient();
 
@@ -92,8 +86,6 @@ export async function deleteCourseMaterial(materialId: string, filePath?: string
 				course: typeof courses.$inferSelect;
 		  })
 		| undefined;
-	let chunkCount = 0;
-	const allFilePaths: string[] = [];
 
 	try {
 		// Step 1: Fetch material with ownership verification and get all related data
@@ -113,74 +105,16 @@ export async function deleteCourseMaterial(materialId: string, filePath?: string
 			throw new Error("You don't have permission to delete this course material.");
 		}
 
-		// Get count of document chunks that will be deleted
-		const [chunkCountResult] = await db
-			.select({ count: count() })
-			.from(documentChunks)
-			.where(eq(documentChunks.materialId, materialId));
-
-		chunkCount = chunkCountResult.count;
-
-		// Build comprehensive list of files to delete
-		if (material.filePath) {
-			allFilePaths.push(material.filePath);
-		}
-		if (filePath && filePath !== material.filePath) {
-			allFilePaths.push(filePath);
-		}
-
 		// Step 2: Cancel running background job if exists
 		let jobCancellationResult = null;
 		if (material.runId) {
-			try {
-				// First check the job status
-				const statusResult = await getTriggerRunStatus(material.runId);
-
-				if (statusResult.success && statusResult.isActive) {
-					// Attempt to cancel the active job
-					jobCancellationResult = await cancelTriggerRun(material.runId);
-
-					if (jobCancellationResult.success) {
-					} else {
-						console.warn("Could not cancel background job", {
-							materialId,
-							runId: material.runId,
-							error: jobCancellationResult.error,
-							canCancel: jobCancellationResult.canCancel,
-						});
-					}
-				} else if (statusResult.success) {
-				} else {
-					console.warn("Could not check job status", {
-						materialId,
-						runId: material.runId,
-						error: statusResult.error,
-					});
-				}
-			} catch (jobError) {
-				console.warn("Exception during job cancellation for runId:", material.runId, jobError);
-				// Continue with deletion - job cancellation is not critical
-			}
+			jobCancellationResult = await cancelSingleJob(material.runId);
 		}
 
 		// Step 3: Execute deletion in transaction
 		const deletionResult = await db.transaction(async (tx) => {
-			// Delete generation configs first (explicit delete for logging)
-			const [configCountResult] = await tx
-				.select({ count: count() })
-				.from(generationConfigs)
-				.where(eq(generationConfigs.materialId, materialId));
-
-			const configCount = configCountResult.count;
-
-			if (configCount > 0) {
-				await tx.delete(generationConfigs).where(eq(generationConfigs.materialId, materialId));
-			}
-
-			// Delete document chunks (explicit delete for logging)
-			if (chunkCount > 0) {
-				await tx.delete(documentChunks).where(eq(documentChunks.materialId, materialId));
-			}
+			// Delete AI content and get counts
+			const aiContentResult = await deleteAiContentForMaterial(tx, materialId);
 
 			// Delete the main course material record
 			const [deletedMaterial] = await tx
@@ -196,40 +130,31 @@ export async function deleteCourseMaterial(materialId: string, filePath?: string
 				throw new Error("Failed to delete course material from database.");
 			}
 
-			return { ...deletedMaterial, configsDeleted: configCount };
+			return {
+				...deletedMaterial,
+				configsDeleted: aiContentResult.configsDeleted,
+				aiContentDeleted: aiContentResult.aiContentDeleted,
+				chunksDeleted: aiContentResult.chunksDeleted,
+			};
 		});
 
 		// Step 4: Clean up storage files (after successful DB deletion)
-		const storageErrors: string[] = [];
+		const allFilePaths = extractFilePaths([material], filePath ? [filePath] : []);
+		const storageResult = await cleanupStorageFiles(allFilePaths);
 
-		if (allFilePaths.length > 0) {
-			try {
-				const storageResult = await removeCourseMaterials(allFilePaths);
-
-				if (!storageResult.success) {
-					storageErrors.push(storageResult.error || "Unknown storage error");
-					console.error("Failed to delete files from storage:", storageResult.error);
-				}
-			} catch (error) {
-				const errorMsg = error instanceof Error ? error.message : "Unknown error";
-				storageErrors.push(errorMsg);
-				console.error("Exception deleting files from storage:", error);
-			}
-		}
-
-		// Step 6: Revalidate related pages
+		// Step 5: Revalidate related pages
 		revalidatePath("/dashboard/course-materials");
 		revalidatePath(`/dashboard/course-materials/${deletionResult.courseId}`);
-
 		// Return summary of deletion
 		return {
 			success: true,
 			materialId,
 			courseId: deletionResult.courseId,
-			chunksDeleted: chunkCount,
+			chunksDeleted: deletionResult.chunksDeleted,
 			configsDeleted: deletionResult.configsDeleted,
-			filesDeleted: allFilePaths.length,
-			storageErrors: storageErrors.length > 0 ? storageErrors : undefined,
+			aiContentDeleted: deletionResult.aiContentDeleted,
+			filesDeleted: storageResult.filesDeleted,
+			storageErrors: storageResult.hasErrors ? storageResult.storageErrors : undefined,
 			jobCancelled: jobCancellationResult?.success || false,
 			jobCancellationDetails: jobCancellationResult || undefined,
 		};
@@ -243,8 +168,6 @@ export async function deleteCourseMaterial(materialId: string, filePath?: string
 			userId: user.id,
 			materialExists: !!material,
 			runId: material?.runId,
-			chunksToDelete: chunkCount,
-			filesToDelete: allFilePaths.length,
 		});
 
 		// Re-throw with user-friendly message
