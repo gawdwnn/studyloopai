@@ -1,5 +1,6 @@
 import {
 	boolean,
+	foreignKey,
 	index,
 	integer,
 	jsonb,
@@ -28,51 +29,55 @@ export const subscriptionStatus = pgEnum("subscription_status", [
 ]);
 export const userRole = pgEnum("user_role", ["student", "instructor", "admin"]);
 
-// Processing metadata type for course materials
+// Processing metadata type for course materials - DOCUMENT PROCESSING ONLY
 export type ProcessingMetadata = {
 	processingStatus?: "pending" | "processing" | "completed" | "failed";
-
-	// Generation results tracking
-	generationResults?: {
-		totalGenerated: number;
-		contentTypes: Record<string, { count: number; success: boolean }>;
-		generatedAt: string;
-	};
-
-	// Content generation tracking
-	flashcards?: {
-		total: number;
-		completed: number;
-		generatedAt?: string;
-	};
-	multipleChoice?: {
-		total: number;
-		completed: number;
-		generatedAt?: string;
-	};
-	openQuestions?: {
-		total: number;
-		completed: number;
-		generatedAt?: string;
-	};
-	summaries?: {
-		total: number;
-		completed: number;
-		generatedAt?: string;
-	};
-
-	// Processing details
 	error?: string;
 	processingTimeMs?: number;
 	extractedText?: boolean;
 	chunkingCompleted?: boolean;
 	embeddingCompleted?: boolean;
 
-	// Future content type metadata
+	// Future content type processing metadata
 	videoDurationMs?: number; // For videos
 	audioTranscribed?: boolean; // For audio
 	thumbnailGenerated?: boolean; // For videos/images
 	contentExtracted?: boolean; // For weblinks
+};
+
+// Week-level content generation metadata type - AI CONTENT GENERATION TRACKING
+export type WeekContentGenerationMetadata = {
+	// Batch trigger information
+	batchInfo?: {
+		goldenNotes: { batchId: string; status?: string };
+		flashcards: { batchId: string; status?: string };
+		mcqs: { batchId: string; status?: string };
+		openQuestions: { batchId: string; status?: string };
+		summaries: { batchId: string; status?: string };
+	};
+
+	// Content generation results
+	totalMaterialsProcessed?: number;
+	generationResults?: {
+		totalGenerated: number;
+		contentCounts: {
+			goldenNotes: number;
+			flashcards: number;
+			mcqs: number;
+			openQuestions: number;
+			summaries: number;
+		};
+		generatedAt: string;
+	};
+
+	// Timing information
+	startedAt?: string;
+	completedAt?: string;
+	durationMs?: number;
+
+	// Error handling
+	errors?: string[];
+	partialSuccess?: boolean;
 };
 
 // Content metadata type for different content types
@@ -165,11 +170,24 @@ export const courseWeeks = pgTable(
 		startDate: timestamp("start_date"),
 		endDate: timestamp("end_date"),
 		isActive: boolean("is_active").default(true),
+
+		// Content generation tracking
+		contentGenerationStatus: varchar("content_generation_status", { length: 50 }).default(
+			"pending"
+		),
+		contentGenerationMetadata: jsonb("content_generation_metadata").default({}),
+		contentGenerationTriggeredAt: timestamp("content_generation_triggered_at"),
+		contentGenerationCompletedAt: timestamp("content_generation_completed_at"),
+
 		createdAt: timestamp("created_at").defaultNow().notNull(),
 		updatedAt: timestamp("updated_at").defaultNow().notNull(),
 	},
 	(table) => [
 		index("idx_course_weeks_course_id").using("btree", table.courseId),
+		index("idx_course_weeks_content_generation_status").using(
+			"btree",
+			table.contentGenerationStatus
+		),
 		unique("course_weeks_course_id_week_number_unique").on(table.courseId, table.weekNumber),
 	]
 );
@@ -396,6 +414,16 @@ export const generationConfigs = pgTable(
 		index("idx_generation_configs_difficulty").using("btree", table.difficulty),
 		index("idx_generation_configs_performance").using("btree", table.userPerformanceLevel),
 		index("idx_generation_configs_active").using("btree", table.isActive),
+		foreignKey({
+			columns: [table.materialId],
+			foreignColumns: [courseMaterials.id],
+			name: "generation_configs_material_id_fkey",
+		}).onDelete("cascade"),
+		foreignKey({
+			columns: [table.userId],
+			foreignColumns: [usersInAuth.id],
+			name: "generation_configs_user_id_fkey",
+		}).onDelete("cascade"),
 	]
 );
 

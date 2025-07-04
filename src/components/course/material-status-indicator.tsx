@@ -21,8 +21,9 @@ export function MaterialStatusIndicator({
 	runId,
 	publicToken,
 }: MaterialStatusIndicatorProps) {
-	// Subscribe to real-time status if runId provided
-	const rt = runId ? useRealtimeRun(runId, { accessToken: publicToken }) : undefined;
+	// Only instantiate the realtime subscription when **both** runId and a valid access token are available.
+	// This avoids runtime errors when the token is missing or has expired.
+	const rt = runId && publicToken ? useRealtimeRun(runId, { accessToken: publicToken }) : undefined;
 	const rtStatus = rt?.run?.status;
 
 	if (rtStatus) {

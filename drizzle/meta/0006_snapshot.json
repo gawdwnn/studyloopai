@@ -1,6 +1,6 @@
 {
-	"id": "b182234d-68f8-4049-ac24-6016d906fb7f",
-	"prevId": "f9492394-25ac-40bb-b263-21290709e914",
+	"id": "1e5e1245-2457-42f0-9252-c0da73882a37",
+	"prevId": "22f85900-dc2c-45e1-8340-c3201e5f233f",
 	"version": "7",
 	"dialect": "postgresql",
 	"tables": {
@@ -277,6 +277,32 @@
 					"notNull": false,
 					"default": true
 				},
+				"content_generation_status": {
+					"name": "content_generation_status",
+					"type": "varchar(50)",
+					"primaryKey": false,
+					"notNull": false,
+					"default": "'pending'"
+				},
+				"content_generation_metadata": {
+					"name": "content_generation_metadata",
+					"type": "jsonb",
+					"primaryKey": false,
+					"notNull": false,
+					"default": "'{}'::jsonb"
+				},
+				"content_generation_triggered_at": {
+					"name": "content_generation_triggered_at",
+					"type": "timestamp",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"content_generation_completed_at": {
+					"name": "content_generation_completed_at",
+					"type": "timestamp",
+					"primaryKey": false,
+					"notNull": false
+				},
 				"created_at": {
 					"name": "created_at",
 					"type": "timestamp",
@@ -298,6 +324,21 @@
 					"columns": [
 						{
 							"expression": "course_id",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				},
+				"idx_course_weeks_content_generation_status": {
+					"name": "idx_course_weeks_content_generation_status",
+					"columns": [
+						{
+							"expression": "content_generation_status",
 							"isExpression": false,
 							"asc": true,
 							"nulls": "last"
@@ -860,7 +901,27 @@
 					"with": {}
 				}
 			},
-			"foreignKeys": {},
+			"foreignKeys": {
+				"generation_configs_material_id_fkey": {
+					"name": "generation_configs_material_id_fkey",
+					"tableFrom": "generation_configs",
+					"tableTo": "course_materials",
+					"columnsFrom": ["material_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "no action"
+				},
+				"generation_configs_user_id_fkey": {
+					"name": "generation_configs_user_id_fkey",
+					"tableFrom": "generation_configs",
+					"tableTo": "users",
+					"schemaTo": "auth",
+					"columnsFrom": ["user_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "no action"
+				}
+			},
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {},
 			"policies": {},

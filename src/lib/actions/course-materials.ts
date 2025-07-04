@@ -1,7 +1,13 @@
 "use server";
 
 import { db } from "@/db";
-import { courseMaterials, courseWeeks, courses, documentChunks } from "@/db/schema";
+import {
+	courseMaterials,
+	courseWeeks,
+	courses,
+	documentChunks,
+	generationConfigs,
+} from "@/db/schema";
 import { getServerClient } from "@/lib/supabase/server";
 import { removeCourseMaterials } from "@/lib/supabase/storage";
 import { cancelTriggerRun, getTriggerRunStatus } from "@/lib/trigger/job-management";
@@ -64,6 +70,7 @@ export async function addCourseMaterial(material: {
 	revalidatePath(`/dashboard/course-materials/${material.courseId}`);
 }
 
+// TODO: make delete course material async ie immediately update the UI and offload the deletion to a background job
 export async function deleteCourseMaterial(materialId: string, filePath?: string | null) {
 	const supabase = await getServerClient();
 
@@ -158,7 +165,19 @@ export async function deleteCourseMaterial(materialId: string, filePath?: string
 
 		// Step 3: Execute deletion in transaction
 		const deletionResult = await db.transaction(async (tx) => {
-			// Delete document chunks first (explicit delete for logging)
+			// Delete generation configs first (explicit delete for logging)
+			const [configCountResult] = await tx
+				.select({ count: count() })
+				.from(generationConfigs)
+				.where(eq(generationConfigs.materialId, materialId));
+
+			const configCount = configCountResult.count;
+
+			if (configCount > 0) {
+				await tx.delete(generationConfigs).where(eq(generationConfigs.materialId, materialId));
+			}
+
+			// Delete document chunks (explicit delete for logging)
 			if (chunkCount > 0) {
 				await tx.delete(documentChunks).where(eq(documentChunks.materialId, materialId));
 			}
@@ -177,7 +196,7 @@ export async function deleteCourseMaterial(materialId: string, filePath?: string
 				throw new Error("Failed to delete course material from database.");
 			}
 
-			return deletedMaterial;
+			return { ...deletedMaterial, configsDeleted: configCount };
 		});
 
 		// Step 4: Clean up storage files (after successful DB deletion)
@@ -208,6 +227,7 @@ export async function deleteCourseMaterial(materialId: string, filePath?: string
 			materialId,
 			courseId: deletionResult.courseId,
 			chunksDeleted: chunkCount,
+			configsDeleted: deletionResult.configsDeleted,
 			filesDeleted: allFilePaths.length,
 			storageErrors: storageErrors.length > 0 ? storageErrors : undefined,
 			jobCancelled: jobCancellationResult?.success || false,

@@ -29,11 +29,7 @@ import { Separator } from "@/components/ui/separator";
 import type { courses } from "@/db/schema";
 import { getCourseWeeks } from "@/lib/actions/courses";
 import { COURSE_MATERIALS_BUCKET } from "@/lib/constants/storage";
-import {
-	type CompleteUploadResponse,
-	completeUpload,
-	presignUpload,
-} from "@/lib/services/course-material-service";
+import { completeUpload, presignUpload } from "@/lib/services/course-material-service";
 import { createClient } from "@/lib/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 
@@ -160,6 +156,12 @@ export function CourseMaterialUploadWizard({
 			return;
 		}
 
+		// Client-side batch size validation
+		if (files.length > 50) {
+			toast.error("Maximum 50 files allowed per batch. Please reduce the number of files.");
+			return;
+		}
+
 		const selectedWeekData = courseWeeks.find(
 			(week) => week.courseId === selectedCourseId && week.weekNumber === selectedWeek
 		);
@@ -173,47 +175,83 @@ export function CourseMaterialUploadWizard({
 		const uploadedMaterialIds: string[] = [];
 
 		try {
+			const failedUploads: Array<{ fileName: string; error: string }> = [];
+
 			for (const file of files) {
-				// Step 1: presign
-				const presignRes = await presignUpload({
-					courseId: selectedCourseId,
-					weekId: selectedWeekData.id,
-					fileName: file.name,
-					mimeType: file.type,
-					generationConfig,
-				});
+				try {
+					// Step 1: presign
+					const presignRes = await presignUpload({
+						courseId: selectedCourseId,
+						weekId: selectedWeekData.id,
+						fileName: file.name,
+						mimeType: file.type,
+						fileSize: file.size,
+						generationConfig,
+					});
 
-				// Step 2: upload via signed URL
-				const { error: uploadErr } = await supabase.storage
-					.from(COURSE_MATERIALS_BUCKET)
-					.uploadToSignedUrl(presignRes.filePath, presignRes.signedUrl, file);
+					// Step 2: upload via signed URL
+					const { error: uploadErr } = await supabase.storage
+						.from(COURSE_MATERIALS_BUCKET)
+						.uploadToSignedUrl(presignRes.filePath, presignRes.token, file);
 
-				if (uploadErr) {
-					toast.error(`Upload failed for ${file.name}: ${uploadErr.message}`);
-					continue;
+					if (uploadErr) {
+						failedUploads.push({
+							fileName: file.name,
+							error: uploadErr.message,
+						});
+						continue;
+					}
+
+					uploadedMaterialIds.push(presignRes.materialId);
+				} catch (fileErr) {
+					// Handle individual file errors (e.g., validation failures)
+					const errorMessage = fileErr instanceof Error ? fileErr.message : "Unknown error";
+					failedUploads.push({
+						fileName: file.name,
+						error: errorMessage,
+					});
 				}
+			}
 
-				uploadedMaterialIds.push(presignRes.materialId);
+			// Report failed uploads
+			if (failedUploads.length > 0) {
+				const failedFileNames = failedUploads.map((f) => f.fileName).join(", ");
+				toast.error(`Failed to upload: ${failedFileNames}`);
+
+				// Log detailed errors for debugging
+				console.error("Upload failures:", failedUploads);
 			}
 
 			if (uploadedMaterialIds.length === 0) {
-				toast.error("No files uploaded successfully");
+				toast.error(
+					"No files uploaded successfully. Please check file requirements and try again."
+				);
 				return;
 			}
 
 			// Step 3: notify backend to start processing
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-			const _uploadResult: CompleteUploadResponse = await completeUpload(uploadedMaterialIds);
+			try {
+				await completeUpload(uploadedMaterialIds);
 
-			toast.success(
-				`Uploaded ${uploadedMaterialIds.length} file(s). Processing will continue in background.`
-			);
+				const successMessage =
+					uploadedMaterialIds.length === files.length
+						? `Successfully uploaded ${uploadedMaterialIds.length} file(s). Processing will continue in background.`
+						: `Uploaded ${uploadedMaterialIds.length} of ${files.length} file(s). Processing will continue in background.`;
 
-			handleClose();
-			onUploadSuccess();
+				toast.success(successMessage);
+				handleClose();
+				onUploadSuccess();
+			} catch (processErr) {
+				// Handle processing initiation errors
+				const errorMessage = processErr instanceof Error ? processErr.message : "Unknown error";
+				toast.error(`Files uploaded but processing failed to start: ${errorMessage}`);
+				console.error("Processing initiation error:", processErr);
+			}
 		} catch (err) {
-			toast.error("Upload failed. Please try again.");
-			console.error(err);
+			// Handle unexpected errors
+			const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";
+			toast.error(`Upload failed: ${errorMessage}`);
+			console.error("Unexpected upload error:", err);
 		}
 	};
 
@@ -303,7 +341,6 @@ export function CourseMaterialUploadWizard({
 							selectedWeek={selectedWeek}
 							onWeekChange={handleWeekChange}
 							isLoading={isLoadingWeeks}
-							showBadges={true}
 							courseLabel="Course"
 							weekLabel="Week"
 							required={true}

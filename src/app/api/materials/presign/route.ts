@@ -2,20 +2,46 @@
 
 import { db } from "@/db";
 import { courseMaterials } from "@/db/schema";
-import { getContentTypeFromFilename, getContentTypeFromMime } from "@/lib/constants/file-upload";
+import {
+	FILE_UPLOAD_LIMITS,
+	getContentTypeFromFilename,
+	getContentTypeFromMime,
+} from "@/lib/constants/file-upload";
 import { getServerClient } from "@/lib/supabase/server";
 import { createSignedUploadUrlForCourseMaterial } from "@/lib/supabase/storage";
 import { eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
+// Server-side validation schema
+const GenerationConfigSchema = z.object({
+	goldenNotesCount: z.number().min(1).max(20),
+	flashcardsCount: z.number().min(1).max(50),
+	summaryLength: z.number().min(50).max(1000),
+	examExercisesCount: z.number().min(1).max(20),
+	mcqExercisesCount: z.number().min(1).max(50),
+	difficulty: z.enum(["beginner", "intermediate", "advanced"]),
+	focus: z.enum(["conceptual", "practical", "mixed"]),
+});
+
 const BodySchema = z.object({
-	courseId: z.string(),
-	weekId: z.string().optional(),
-	fileName: z.string(),
-	mimeType: z.string(),
+	courseId: z.string().uuid("Invalid course ID"),
+	weekId: z.string().uuid("Invalid week ID").optional(),
+	fileName: z
+		.string()
+		.min(1, "File name is required")
+		.max(255, "File name too long")
+		.refine((name) => name.toLowerCase().endsWith(".pdf"), "Only PDF files are supported"),
+	mimeType: z.string().refine((mime) => mime === "application/pdf", "Only PDF files are supported"),
+	fileSize: z
+		.number()
+		.min(1, "File cannot be empty")
+		.max(
+			FILE_UPLOAD_LIMITS.MAX_FILE_SIZE,
+			`File size exceeds ${FILE_UPLOAD_LIMITS.MAX_FILE_SIZE / 1024 / 1024}MB limit`
+		),
 	contentType: z.string().optional(),
-	generationConfig: z.any().optional(),
+	generationConfig: GenerationConfigSchema.optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -69,13 +95,19 @@ export async function POST(req: NextRequest) {
 		}
 
 		// Create signed upload URL (15-min TTL)
-		const { success, signedUrl, error } = await createSignedUploadUrlForCourseMaterial(filePath);
+		const { success, signedUrl, token, error } =
+			await createSignedUploadUrlForCourseMaterial(filePath);
 
 		if (!success || !signedUrl) {
 			return NextResponse.json({ error: error || "Failed to create signed URL" }, { status: 500 });
 		}
 
-		return NextResponse.json({ signedUrl, materialId: material.id, filePath });
+		return NextResponse.json({
+			signedUrl,
+			token,
+			materialId: material.id,
+			filePath,
+		});
 	} catch (err) {
 		return NextResponse.json(
 			{ error: err instanceof Error ? err.message : "Unknown error" },

@@ -1,0 +1,2 @@
+ALTER TABLE "generation_configs" ADD CONSTRAINT "generation_configs_material_id_fkey" FOREIGN KEY ("material_id") REFERENCES "public"."course_materials"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "generation_configs" ADD CONSTRAINT "generation_configs_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE cascade ON UPDATE no action;

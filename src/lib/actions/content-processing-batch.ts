@@ -1,6 +1,17 @@
 /**
  * Batch Content Generation Actions
  * Efficient batch processing using Trigger.dev batchTrigger API
+ *
+ * @deprecated This function is largely superseded by the new frontend-first upload flow:
+ * - Frontend uploads files directly to Supabase storage via presigned URLs
+ * - /api/materials/presign handles file validation and database record creation
+ * - /api/materials/complete initiates background processing
+ *
+ * This function is kept for:
+ * - Legacy compatibility
+ * - Admin/bulk operations
+ * - API-based uploads
+ * - Scenarios requiring comprehensive server-side file handling
  */
 
 "use server";
@@ -32,6 +43,12 @@ interface BatchUploadResult {
 
 /**
  * Process multiple materials in a single efficient batch operation
+ *
+ * @deprecated This function is largely superseded by the new frontend-first upload flow.
+ * The new flow provides better UX with immediate feedback and uses presigned URLs for direct uploads.
+ *
+ * However, this function contains valuable validation logic that should be preserved
+ * for specific use cases like admin operations or API-based uploads.
  */
 export async function uploadAndProcessMaterialsBatch(
 	materials: MaterialUploadData[]

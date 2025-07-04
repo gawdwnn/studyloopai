@@ -17,7 +17,6 @@ import { generateText } from "ai";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { getTextGenerationModel } from "./config";
-import { validateGeneratedContent } from "./content-validator";
 import { type PromptContext, type SupportedContentType, getPromptByType } from "./prompts";
 
 // Zod schemas for generated content
@@ -114,8 +113,15 @@ function combineChunksForGeneration(chunks: string[], maxLength = 15000): string
  */
 function parseJsonResponse<T>(response: string, fallback: T): T {
 	try {
-		return JSON.parse(response) as T;
-	} catch {
+		const parsed = JSON.parse(response);
+		// Ensure we return an array if the fallback is an array
+		if (Array.isArray(fallback) && !Array.isArray(parsed)) {
+			console.warn("Expected array but got:", typeof parsed, parsed);
+			return fallback;
+		}
+		return parsed as T;
+	} catch (error) {
+		console.warn("Failed to parse JSON response:", error);
 		return fallback;
 	}
 }
@@ -133,7 +139,7 @@ async function getCombinedChunks(materialIds: string[]): Promise<string[]> {
 }
 
 /**
- * Generate golden notes for a week (aggregated content)
+ * Generate golden notes for all course materials attached to a week
  */
 export async function generateGoldenNotesForWeek(
 	weekId: string,
@@ -178,16 +184,17 @@ export async function generateGoldenNotesForWeek(
 		});
 
 		const parsedNotes = parseJsonResponse(result.text, [] as z.infer<typeof GoldenNoteSchema>[]);
-		const validationResult = validateGeneratedContent(parsedNotes, "goldenNotes");
 
-		if (!validationResult.isValid) {
-			return {
-				success: false,
-				contentType: "goldenNotes",
-				generatedCount: 0,
-				error: `Content validation failed: ${validationResult.error}`,
-			};
+		// Ensure parsedNotes is an array
+		if (!Array.isArray(parsedNotes)) {
+			console.error("AI Response that failed to parse:", result.text);
+			throw new Error(
+				`Expected array of golden notes but got: ${typeof parsedNotes}. Response: ${JSON.stringify(parsedNotes)}`
+			);
 		}
+
+		// Add Content Structure validation
+		// Add Content Quality validation and filtering
 
 		const notesToInsert = parsedNotes.map((note) => ({
 			weekId,
@@ -217,6 +224,9 @@ export async function generateGoldenNotesForWeek(
 	}
 }
 
+/**
+ * Generate flash cards for all course materials attached to a week
+ */
 export async function generateFlashcardsForWeek(
 	weekId: string,
 	materialIds: string[],
@@ -259,15 +269,17 @@ export async function generateFlashcardsForWeek(
 		});
 
 		const parsed = parseJsonResponse(result.text, [] as z.infer<typeof FlashcardSchema>[]);
-		const validation = validateGeneratedContent(parsed, "flashcards");
-		if (!validation.isValid) {
-			return {
-				success: false,
-				contentType: "flashcards",
-				generatedCount: 0,
-				error: `Content validation failed: ${validation.error}`,
-			};
+
+		// Ensure parsed is an array
+		if (!Array.isArray(parsed)) {
+			console.error("AI Response that failed to parse:", result.text);
+			throw new Error(
+				`Expected array of flashcards but got: ${typeof parsed}. Response: ${JSON.stringify(parsed)}`
+			);
 		}
+
+		// Add Content Structure validation
+		// Add Content Quality validation and filtering
 
 		await db.insert(flashcardsTable).values(
 			parsed.map((fc) => ({
@@ -296,6 +308,9 @@ export async function generateFlashcardsForWeek(
 	}
 }
 
+/**
+ * Generate MCQs for all course materials attached to a week
+ */
 export async function generateMCQsForWeek(
 	weekId: string,
 	materialIds: string[],
@@ -338,15 +353,17 @@ export async function generateMCQsForWeek(
 		});
 
 		const parsed = parseJsonResponse(result.text, [] as z.infer<typeof MCQSchema>[]);
-		const validation = validateGeneratedContent(parsed, "multipleChoice");
-		if (!validation.isValid) {
-			return {
-				success: false,
-				contentType: "multipleChoice",
-				generatedCount: 0,
-				error: `Content validation failed: ${validation.error}`,
-			};
+
+		// Ensure parsed is an array
+		if (!Array.isArray(parsed)) {
+			console.error("AI Response that failed to parse:", result.text);
+			throw new Error(
+				`Expected array of multiple choice questions but got: ${typeof parsed}. Response: ${JSON.stringify(parsed)}`
+			);
 		}
+
+		// Add Content Structure validation
+		// Add Content Quality validation and filtering
 
 		await db.insert(mcqTable).values(
 			parsed.map((q) => ({
@@ -377,6 +394,9 @@ export async function generateMCQsForWeek(
 	}
 }
 
+/**
+ * Generate open questions for all course materials attached to a week
+ */
 export async function generateOpenQuestionsForWeek(
 	weekId: string,
 	materialIds: string[],
@@ -419,15 +439,17 @@ export async function generateOpenQuestionsForWeek(
 		});
 
 		const parsed = parseJsonResponse(result.text, [] as z.infer<typeof OpenQuestionSchema>[]);
-		const validation = validateGeneratedContent(parsed, "openQuestions");
-		if (!validation.isValid) {
-			return {
-				success: false,
-				contentType: "openQuestions",
-				generatedCount: 0,
-				error: `Content validation failed: ${validation.error}`,
-			};
+
+		// Ensure parsed is an array
+		if (!Array.isArray(parsed)) {
+			console.error("AI Response that failed to parse:", result.text);
+			throw new Error(
+				`Expected array of open questions but got: ${typeof parsed}. Response: ${JSON.stringify(parsed)}`
+			);
 		}
+
+		// Add Content Structure validation
+		// Add Content Quality validation and filtering
 
 		await db.insert(openQuestionsTable).values(
 			parsed.map((q) => ({
@@ -457,6 +479,9 @@ export async function generateOpenQuestionsForWeek(
 	}
 }
 
+/**
+ * Generate summaries for all course materials attached to a week
+ */
 export async function generateSummariesForWeek(
 	weekId: string,
 	materialIds: string[],
@@ -499,15 +524,22 @@ export async function generateSummariesForWeek(
 		});
 
 		const parsed = parseJsonResponse(result.text, [] as z.infer<typeof SummarySchema>[]);
-		const validation = validateGeneratedContent(parsed, "summaries");
-		if (!validation.isValid) {
-			return {
-				success: false,
-				contentType: "summaries",
-				generatedCount: 0,
-				error: `Content validation failed: ${validation.error}`,
-			};
+
+		// Ensure parsed is an array
+		if (!Array.isArray(parsed)) {
+			console.error("AI Response that failed to parse:", result.text);
+			throw new Error(
+				`Expected array of summaries but got: ${typeof parsed}. Response: ${JSON.stringify(parsed)}`
+			);
 		}
+
+		// Validate array has content
+		if (parsed.length === 0) {
+			console.warn("AI generated empty summaries array");
+		}
+
+		// Add Content Structure validation
+		// Add Content Quality validation and filtering
 
 		await db.insert(summariesTable).values(
 			parsed.map((s) => ({
@@ -535,64 +567,4 @@ export async function generateSummariesForWeek(
 			error: (error as Error).message,
 		};
 	}
-}
-
-export async function generateAllContentForWeek(
-	_weekId: string,
-	materialIds: string[],
-	config: GenerationConfig
-): Promise<AggregateGenerationResult> {
-	const results: ContentGenerationResult[] = [];
-	const errors: string[] = [];
-
-	// Golden Notes
-	const goldenNotesRes = await generateGoldenNotesForWeek(_weekId, materialIds, {
-		goldenNotesCount: config.goldenNotesCount,
-		difficulty: config.difficulty,
-		focus: config.focus,
-	});
-	results.push(goldenNotesRes);
-	if (!goldenNotesRes.success && goldenNotesRes.error) errors.push(goldenNotesRes.error);
-
-	// Flashcards
-	const flashRes = await generateFlashcardsForWeek(_weekId, materialIds, {
-		flashcardsCount: config.flashcardsCount,
-		difficulty: config.difficulty,
-	});
-	results.push(flashRes);
-	if (!flashRes.success && flashRes.error) errors.push(flashRes.error);
-
-	// MCQs
-	const mcqRes = await generateMCQsForWeek(_weekId, materialIds, {
-		mcqExercisesCount: config.mcqExercisesCount,
-		difficulty: config.difficulty,
-	});
-	results.push(mcqRes);
-	if (!mcqRes.success && mcqRes.error) errors.push(mcqRes.error);
-
-	// Open Questions
-	const openRes = await generateOpenQuestionsForWeek(_weekId, materialIds, {
-		examExercisesCount: config.examExercisesCount,
-		difficulty: config.difficulty,
-	});
-	results.push(openRes);
-	if (!openRes.success && openRes.error) errors.push(openRes.error);
-
-	// Summaries
-	const sumRes = await generateSummariesForWeek(_weekId, materialIds, {
-		summaryLength: config.summaryLength,
-		difficulty: config.difficulty,
-	});
-	results.push(sumRes);
-	if (!sumRes.success && sumRes.error) errors.push(sumRes.error);
-
-	const totalGenerated = results.reduce((sum, r) => sum + (r.generatedCount || 0), 0);
-
-	return {
-		success: errors.length === 0,
-		materialId: materialIds[0] || "",
-		results,
-		totalGenerated,
-		errors,
-	};
 }

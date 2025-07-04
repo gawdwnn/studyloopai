@@ -1,6 +1,7 @@
 /** Payload returned by the /api/materials/presign endpoint */
 export interface PresignUploadResponse {
 	signedUrl: string;
+	token: string;
 	materialId: string;
 	filePath: string;
 }
@@ -10,6 +11,7 @@ export async function presignUpload(body: Record<string, unknown>): Promise<Pres
 	const res = await fetch("/api/materials/presign", {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
+		credentials: "include",
 		body: JSON.stringify(body),
 	});
 
@@ -30,6 +32,7 @@ export async function completeUpload(materialIds: string[]): Promise<CompleteUpl
 	const res = await fetch("/api/materials/complete", {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
+		credentials: "include",
 		body: JSON.stringify({ materialIds }),
 	});
 

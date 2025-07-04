@@ -1,11 +1,11 @@
 import { db } from "@/db";
 import { courseMaterials, documentChunks } from "@/db/schema";
+import { generateEmbeddings } from "@/lib/ai/embeddings";
 import { CONTENT_TYPES } from "@/lib/constants/file-upload";
 import { PDF_PROCESSING_LIMITS } from "@/lib/constants/pdf-processing";
-import { generateEmbeddings } from "@/lib/embeddings/embedding-service";
 import { parsePDF } from "@/lib/processing/pdf-parser";
 import { downloadCourseMaterial, removeCourseMaterial } from "@/lib/supabase/storage";
-import { logger, schemaTask, tasks } from "@trigger.dev/sdk";
+import { logger, schemaTask, tags } from "@trigger.dev/sdk";
 import { eq } from "drizzle-orm";
 import type { Document } from "langchain/document";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
@@ -27,6 +27,8 @@ const ProcessAndEmbedIndividualOutput = z.object({
 });
 
 type ProcessAndEmbedIndividualPayloadType = z.infer<typeof ProcessAndEmbedIndividualPayload>;
+
+// Helper function for updating processing metadata - imported from shared service
 
 export const processAndEmbedIndividualMaterial = schemaTask({
 	id: "process-and-embed-individual-material",
@@ -51,33 +53,35 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 		});
 
 		// Update material status to indicate processing has started
-		await db
-			.update(courseMaterials)
-			.set({
-				processingMetadata: {
-					processingStatus: "starting",
-					startedAt: new Date().toISOString(),
-				},
-			})
-			.where(eq(courseMaterials.id, payload.materialId));
+		const { updateMaterialProcessingMetadata } = await import(
+			"@/lib/services/processing-metadata-service"
+		);
+		await updateMaterialProcessingMetadata(payload.materialId, {
+			processingStatus: "processing",
+		});
 	},
-	run: async (payload: ProcessAndEmbedIndividualPayloadType, { ctx }) => {
+	run: async (payload: ProcessAndEmbedIndividualPayloadType) => {
 		const { materialId, filePath, contentType } = payload;
 
-		// @ts-expect-error - setTags available at runtime
-		ctx.run.setTags({ materialId: payload.materialId, phase: "embedding" });
+		// Tag this run for enhanced observability
+		await tags.add([`materialId:${payload.materialId}`, "phase:embedding"]);
+
+		const { updateMaterialProcessingMetadata } = await import(
+			"@/lib/services/processing-metadata-service"
+		);
 
 		try {
 			// 1. Update status to 'processing'
+			await updateMaterialProcessingMetadata(materialId, {
+				processingStatus: "processing",
+				extractedText: false,
+				chunkingCompleted: false,
+				embeddingCompleted: false,
+			});
+
 			await db
 				.update(courseMaterials)
 				.set({
-					processingMetadata: {
-						processingStatus: "processing",
-						extractedText: false,
-						chunkingCompleted: false,
-						embeddingCompleted: false,
-					},
 					embeddingStatus: "processing",
 					processingStartedAt: new Date(),
 				})
@@ -132,16 +136,17 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 			}
 
 			// 4. Update material with extracted text status and metadata
+			await updateMaterialProcessingMetadata(materialId, {
+				processingStatus: "processing",
+				extractedText: true,
+				chunkingCompleted: false,
+				embeddingCompleted: false,
+			});
+
 			await db
 				.update(courseMaterials)
 				.set({
 					contentMetadata: contentMetadata,
-					processingMetadata: {
-						processingStatus: "processing",
-						extractedText: true,
-						chunkingCompleted: false,
-						embeddingCompleted: false,
-					},
 				})
 				.where(eq(courseMaterials.id, materialId));
 
@@ -153,17 +158,12 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 			const chunks = await splitter.createDocuments([extractedText]);
 
 			// 6. Update chunking completion
-			await db
-				.update(courseMaterials)
-				.set({
-					processingMetadata: {
-						processingStatus: "processing",
-						extractedText: true,
-						chunkingCompleted: true,
-						embeddingCompleted: false,
-					},
-				})
-				.where(eq(courseMaterials.id, materialId));
+			await updateMaterialProcessingMetadata(materialId, {
+				processingStatus: "processing",
+				extractedText: true,
+				chunkingCompleted: true,
+				embeddingCompleted: false,
+			});
 
 			// 7. Generate embeddings
 			const result = await generateEmbeddings(chunks.map((c: Document) => c.pageContent));
@@ -184,6 +184,13 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 			// 9. Update final status to 'completed'
 			const completedAt = new Date();
 
+			await updateMaterialProcessingMetadata(materialId, {
+				processingStatus: "completed",
+				extractedText: true,
+				chunkingCompleted: true,
+				embeddingCompleted: true,
+			});
+
 			await db
 				.update(courseMaterials)
 				.set({
@@ -191,12 +198,6 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 					totalChunks: chunks.length,
 					embeddedChunks: chunks.length,
 					processingCompletedAt: completedAt,
-					processingMetadata: {
-						processingStatus: "completed",
-						extractedText: true,
-						chunkingCompleted: true,
-						embeddingCompleted: true,
-					},
 				})
 				.where(eq(courseMaterials.id, materialId));
 
@@ -210,13 +211,14 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
 
+			await updateMaterialProcessingMetadata(materialId, {
+				processingStatus: "failed",
+				error: errorMessage,
+			});
+
 			await db
 				.update(courseMaterials)
 				.set({
-					processingMetadata: {
-						processingStatus: "failed",
-						error: errorMessage,
-					},
 					embeddingStatus: "failed",
 					processingCompletedAt: new Date(),
 				})
@@ -239,11 +241,6 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 			chunksCreated: output.chunksCreated,
 			textLength: output.textLength,
 		});
-		// TODO: Send success notification/webhook
-		// Trigger AI content generation task
-		await tasks.trigger("generate-ai-content", {
-			materialId: payload.materialId,
-		});
 	},
 	cleanup: async ({
 		payload,
@@ -253,7 +250,6 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 		logger.info("🧹 Material processing task cleanup complete", {
 			materialId: payload.materialId,
 		});
-		// TODO: Clean up temporary files if any
 	},
 	onFailure: async ({
 		payload,
@@ -271,21 +267,21 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 		});
 
 		// Update final failure status in database
+		const { updateMaterialProcessingMetadata } = await import(
+			"@/lib/services/processing-metadata-service"
+		);
+		await updateMaterialProcessingMetadata(payload.materialId, {
+			processingStatus: "failed",
+			error: errorMessage,
+		});
+
 		await db
 			.update(courseMaterials)
 			.set({
-				processingMetadata: {
-					processingStatus: "failed",
-					error: errorMessage,
-					failedAt: new Date().toISOString(),
-				},
 				embeddingStatus: "failed",
 				processingCompletedAt: new Date(),
 			})
 			.where(eq(courseMaterials.id, payload.materialId));
-
-		// TODO: Send failure notification/webhook
-		// TODO: Add to retry queue or alert admins
 	},
 	// @ts-expect-error - onCancel supported by SDK at runtime
 	onCancel: async ({ payload }) => {

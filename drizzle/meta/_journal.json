@@ -1,41 +1,55 @@
 {
-  "version": "7",
-  "dialect": "postgresql",
-  "entries": [
-    {
-      "idx": 0,
-      "version": "7",
-      "when": 1750891058826,
-      "tag": "0000_stormy_black_bolt",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1750891058827,
-      "tag": "0001_apply_rls_policies",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1750946330771,
-      "tag": "0002_pretty_anthem",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1751210380008,
-      "tag": "0003_tranquil_valeria_richards",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1751476676596,
-      "tag": "0004_icy_quasar",
-      "breakpoints": true
-    }
-  ]
+	"version": "7",
+	"dialect": "postgresql",
+	"entries": [
+		{
+			"idx": 0,
+			"version": "7",
+			"when": 1750891058826,
+			"tag": "0000_stormy_black_bolt",
+			"breakpoints": true
+		},
+		{
+			"idx": 1,
+			"version": "7",
+			"when": 1750891058827,
+			"tag": "0001_apply_rls_policies",
+			"breakpoints": true
+		},
+		{
+			"idx": 2,
+			"version": "7",
+			"when": 1750946330771,
+			"tag": "0002_pretty_anthem",
+			"breakpoints": true
+		},
+		{
+			"idx": 3,
+			"version": "7",
+			"when": 1751210380008,
+			"tag": "0003_tranquil_valeria_richards",
+			"breakpoints": true
+		},
+		{
+			"idx": 4,
+			"version": "7",
+			"when": 1751476676596,
+			"tag": "0004_icy_quasar",
+			"breakpoints": true
+		},
+		{
+			"idx": 5,
+			"version": "7",
+			"when": 1751504700606,
+			"tag": "0005_tiresome_warbound",
+			"breakpoints": true
+		},
+		{
+			"idx": 6,
+			"version": "7",
+			"when": 1751561814339,
+			"tag": "0006_pretty_mad_thinker",
+			"breakpoints": true
+		}
+	]
 }

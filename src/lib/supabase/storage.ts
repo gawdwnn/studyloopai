@@ -401,7 +401,12 @@ export async function removeCourseMaterials(filePaths: string[]): Promise<Storag
 export async function createSignedUploadUrl(
 	bucket: string,
 	filePath: string
-): Promise<{ success: boolean; signedUrl?: string; error?: string }> {
+): Promise<{
+	success: boolean;
+	signedUrl?: string;
+	token?: string;
+	error?: string;
+}> {
 	try {
 		const supabase = getAdminClient();
 		const { data, error } = await supabase.storage.from(bucket).createSignedUploadUrl(filePath);
@@ -410,7 +415,9 @@ export async function createSignedUploadUrl(
 			return { success: false, error: error.message };
 		}
 
-		return { success: true, signedUrl: data.signedUrl };
+		// `createSignedUploadUrl` response contains `signedUrl` and `token`.
+		const token = (data as { token?: string }).token;
+		return { success: true, signedUrl: data.signedUrl, token };
 	} catch (err) {
 		return {
 			success: false,

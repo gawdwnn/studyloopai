@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { courseMaterials } from "@/db/schema";
-import { logger, schemaTask } from "@trigger.dev/sdk";
+import { logger, schemaTask, tags } from "@trigger.dev/sdk";
 import { inArray } from "drizzle-orm";
 import { z } from "zod";
 import { generateAiContent } from "./generate-ai-content";
@@ -19,11 +19,21 @@ const IngestBatchPayload = z.object({
 
 type IngestBatchPayloadType = z.infer<typeof IngestBatchPayload>;
 
+// Type for the task's return value
+type EmbeddingTaskOutput = {
+	success: boolean;
+	materialId: string;
+	chunksCreated?: number;
+	textLength?: number;
+	contentType?: string;
+};
+
+// Type for batch run results from batchTriggerAndWait
 type EmbeddingRun = {
 	ok: boolean;
-	payload: {
-		materialId: string;
-	};
+	id: string;
+	output?: EmbeddingTaskOutput;
+	error?: string;
 };
 
 export const ingestCourseMaterials = schemaTask({
@@ -36,9 +46,9 @@ export const ingestCourseMaterials = schemaTask({
 	},
 	// Allow up to 30 minutes to safely ingest & embed large batches
 	maxDuration: 1800,
-	run: async (payload: IngestBatchPayloadType, { ctx }) => {
-		// @ts-expect-error
-		ctx.run.setTags({ userId: payload.userId, phase: "ingest" });
+	run: async (payload: IngestBatchPayloadType) => {
+		// Add contextual tags for observability
+		await tags.add([`userId:${payload.userId}`, "phase:ingest"]);
 
 		const { userId, materials } = payload;
 
@@ -61,11 +71,12 @@ export const ingestCourseMaterials = schemaTask({
 			{}
 		);
 
-		const embeddingRuns = embeddingResult.runs as unknown as EmbeddingRun[];
+		// Type the runs properly - batchTriggerAndWait returns runs with this structure
+		const embeddingRuns = embeddingResult.runs as EmbeddingRun[];
 
 		for (const run of embeddingRuns) {
 			if (!run.ok) {
-				throw new Error(`Embedding failed for material ${run.payload.materialId}`);
+				throw new Error(`Embedding failed for run ${run.id}: ${run.error}`);
 			}
 		}
 
@@ -74,25 +85,44 @@ export const ingestCourseMaterials = schemaTask({
 			completedCount: embeddingResult.runs.length,
 		});
 
-		// Fetch weekIds for the successfully processed materials
-		const materialIds = embeddingRuns.map((r) => r.payload.materialId);
+		// Extract material IDs from successful runs
+		const materialIds = embeddingRuns
+			.filter(
+				(r): r is EmbeddingRun & { output: EmbeddingTaskOutput } => r.ok && r.output !== undefined
+			)
+			.map((r) => r.output.materialId);
 
+		// Get the weekId - all materials in a batch should belong to the same week
 		const rows = await db
 			.select({ weekId: courseMaterials.weekId })
 			.from(courseMaterials)
 			.where(inArray(courseMaterials.id, materialIds));
 
-		// Deduplicate non-null weekIds
+		// Validate that all materials belong to the same week
 		const weekIds = Array.from(new Set(rows.map((r) => r.weekId).filter(Boolean))) as string[];
 
 		if (weekIds.length === 0) {
 			throw new Error("No weekId associated with processed materials");
 		}
 
-		// Fan-out generation once per week
-		const generationItems = weekIds.map((weekId) => ({ payload: { weekId } }));
+		if (weekIds.length > 1) {
+			throw new Error(
+				`Materials belong to multiple weeks: ${weekIds.join(", ")}. Expected single week.`
+			);
+		}
 
-		await generateAiContent.batchTrigger(generationItems);
+		const weekId = weekIds[0];
+
+		logger.info("🧩 All embeddings complete, triggering AI generation", {
+			userId,
+			materialIds,
+			rows,
+			weekIds,
+			weekId,
+		});
+
+		// Trigger AI content generation for the single week
+		await generateAiContent.trigger({ weekId });
 
 		return {
 			success: true,
