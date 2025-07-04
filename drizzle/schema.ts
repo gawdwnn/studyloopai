@@ -1,5 +1,6 @@
 import {
 	boolean,
+	foreignKey,
 	index,
 	integer,
 	jsonb,
@@ -28,44 +29,55 @@ export const subscriptionStatus = pgEnum("subscription_status", [
 ]);
 export const userRole = pgEnum("user_role", ["student", "instructor", "admin"]);
 
-// Processing metadata type for course materials
+// Processing metadata type for course materials - DOCUMENT PROCESSING ONLY
 export type ProcessingMetadata = {
 	processingStatus?: "pending" | "processing" | "completed" | "failed";
-
-	// Content generation tracking
-	flashcards?: {
-		total: number;
-		completed: number;
-		generatedAt?: string;
-	};
-	multipleChoice?: {
-		total: number;
-		completed: number;
-		generatedAt?: string;
-	};
-	openQuestions?: {
-		total: number;
-		completed: number;
-		generatedAt?: string;
-	};
-	summaries?: {
-		total: number;
-		completed: number;
-		generatedAt?: string;
-	};
-
-	// Processing details
 	error?: string;
 	processingTimeMs?: number;
 	extractedText?: boolean;
 	chunkingCompleted?: boolean;
 	embeddingCompleted?: boolean;
 
-	// Future content type metadata
+	// Future content type processing metadata
 	videoDurationMs?: number; // For videos
 	audioTranscribed?: boolean; // For audio
 	thumbnailGenerated?: boolean; // For videos/images
 	contentExtracted?: boolean; // For weblinks
+};
+
+// Week-level content generation metadata type - AI CONTENT GENERATION TRACKING
+export type WeekContentGenerationMetadata = {
+	// Batch trigger information
+	batchInfo?: {
+		goldenNotes: { batchId: string; status?: string };
+		flashcards: { batchId: string; status?: string };
+		mcqs: { batchId: string; status?: string };
+		openQuestions: { batchId: string; status?: string };
+		summaries: { batchId: string; status?: string };
+	};
+
+	// Content generation results
+	totalMaterialsProcessed?: number;
+	generationResults?: {
+		totalGenerated: number;
+		contentCounts: {
+			goldenNotes: number;
+			flashcards: number;
+			mcqs: number;
+			openQuestions: number;
+			summaries: number;
+		};
+		generatedAt: string;
+	};
+
+	// Timing information
+	startedAt?: string;
+	completedAt?: string;
+	durationMs?: number;
+
+	// Error handling
+	errors?: string[];
+	partialSuccess?: boolean;
 };
 
 // Content metadata type for different content types
@@ -158,11 +170,24 @@ export const courseWeeks = pgTable(
 		startDate: timestamp("start_date"),
 		endDate: timestamp("end_date"),
 		isActive: boolean("is_active").default(true),
+
+		// Content generation tracking
+		contentGenerationStatus: varchar("content_generation_status", { length: 50 }).default(
+			"pending"
+		),
+		contentGenerationMetadata: jsonb("content_generation_metadata").default({}),
+		contentGenerationTriggeredAt: timestamp("content_generation_triggered_at"),
+		contentGenerationCompletedAt: timestamp("content_generation_completed_at"),
+
 		createdAt: timestamp("created_at").defaultNow().notNull(),
 		updatedAt: timestamp("updated_at").defaultNow().notNull(),
 	},
 	(table) => [
 		index("idx_course_weeks_course_id").using("btree", table.courseId),
+		index("idx_course_weeks_content_generation_status").using(
+			"btree",
+			table.contentGenerationStatus
+		),
 		unique("course_weeks_course_id_week_number_unique").on(table.courseId, table.weekNumber),
 	]
 );
@@ -212,6 +237,243 @@ export const documentChunks = pgTable(
 			"btree",
 			table.materialId.asc().nullsLast().op("uuid_ops")
 		),
+	]
+);
+
+// Flashcards table - AI generated study cards
+export const flashcards = pgTable(
+	"flashcards",
+	{
+		id: uuid().defaultRandom().primaryKey().notNull(),
+		materialId: uuid("material_id"),
+		question: text().notNull(),
+		answer: text().notNull(),
+		difficulty: varchar({ length: 20 }).default("intermediate"),
+		metadata: jsonb().default({}),
+		createdAt: timestamp("created_at").defaultNow().notNull(),
+		updatedAt: timestamp("updated_at").defaultNow().notNull(),
+		weekId: uuid("week_id"),
+	},
+	(table) => [
+		index("idx_flashcards_material_id").using("btree", table.materialId),
+		index("idx_flashcards_difficulty").using("btree", table.difficulty),
+		index("idx_flashcards_week_id").using("btree", table.weekId),
+		foreignKey({
+			columns: [table.materialId],
+			foreignColumns: [courseMaterials.id],
+			name: "flashcards_material_id_fkey",
+		}).onDelete("cascade"),
+	]
+);
+
+// Multiple choice questions table - AI generated MCQs
+export const multipleChoiceQuestions = pgTable(
+	"multiple_choice_questions",
+	{
+		id: uuid().defaultRandom().primaryKey().notNull(),
+		materialId: uuid("material_id"),
+		question: text().notNull(),
+		options: jsonb().notNull(), // Array of strings ['A', 'B', 'C', 'D']
+		correctAnswer: varchar("correct_answer", { length: 5 }).notNull(),
+		explanation: text(),
+		difficulty: varchar({ length: 20 }).default("intermediate"),
+		metadata: jsonb().default({}),
+		createdAt: timestamp("created_at").defaultNow().notNull(),
+		updatedAt: timestamp("updated_at").defaultNow().notNull(),
+		weekId: uuid("week_id"),
+	},
+	(table) => [
+		index("idx_mcq_material_id").using("btree", table.materialId),
+		index("idx_mcq_difficulty").using("btree", table.difficulty),
+		index("idx_mcq_week_id").using("btree", table.weekId),
+		foreignKey({
+			columns: [table.materialId],
+			foreignColumns: [courseMaterials.id],
+			name: "multiple_choice_questions_material_id_fkey",
+		}).onDelete("cascade"),
+	]
+);
+
+// Open questions table - AI generated essay/discussion questions
+export const openQuestions = pgTable(
+	"open_questions",
+	{
+		id: uuid().defaultRandom().primaryKey().notNull(),
+		materialId: uuid("material_id"),
+		question: text().notNull(),
+		sampleAnswer: text("sample_answer"),
+		gradingRubric: jsonb("grading_rubric"),
+		difficulty: varchar({ length: 20 }).default("intermediate"),
+		metadata: jsonb().default({}),
+		createdAt: timestamp("created_at").defaultNow().notNull(),
+		updatedAt: timestamp("updated_at").defaultNow().notNull(),
+		weekId: uuid("week_id"),
+	},
+	(table) => [
+		index("idx_open_questions_material_id").using("btree", table.materialId),
+		index("idx_open_questions_difficulty").using("btree", table.difficulty),
+		index("idx_open_questions_week_id").using("btree", table.weekId),
+		foreignKey({
+			columns: [table.materialId],
+			foreignColumns: [courseMaterials.id],
+			name: "open_questions_material_id_fkey",
+		}).onDelete("cascade"),
+	]
+);
+
+// Summaries table - AI generated content summaries
+export const summaries = pgTable(
+	"summaries",
+	{
+		id: uuid().defaultRandom().primaryKey().notNull(),
+		materialId: uuid("material_id"),
+		title: varchar({ length: 255 }),
+		content: text().notNull(),
+		summaryType: varchar("summary_type", { length: 50 }).default("general"), // 'general', 'executive', 'detailed'
+		wordCount: integer("word_count"),
+		metadata: jsonb().default({}),
+		createdAt: timestamp("created_at").defaultNow().notNull(),
+		updatedAt: timestamp("updated_at").defaultNow().notNull(),
+		weekId: uuid("week_id"),
+	},
+	(table) => [
+		index("idx_summaries_material_id").using("btree", table.materialId),
+		index("idx_summaries_type").using("btree", table.summaryType),
+		index("idx_summaries_week_id").using("btree", table.weekId),
+		foreignKey({
+			columns: [table.materialId],
+			foreignColumns: [courseMaterials.id],
+			name: "summaries_material_id_fkey",
+		}).onDelete("cascade"),
+	]
+);
+
+// Golden notes table - AI generated key concepts and important points
+export const goldenNotes = pgTable(
+	"golden_notes",
+	{
+		id: uuid().defaultRandom().primaryKey().notNull(),
+		materialId: uuid("material_id"),
+		title: varchar({ length: 255 }).notNull(),
+		content: text().notNull(),
+		priority: integer().default(1),
+		category: varchar({ length: 100 }),
+		metadata: jsonb().default({}),
+		createdAt: timestamp("created_at").defaultNow().notNull(),
+		updatedAt: timestamp("updated_at").defaultNow().notNull(),
+		weekId: uuid("week_id"),
+	},
+	(table) => [
+		index("idx_golden_notes_material_id").using("btree", table.materialId),
+		index("idx_golden_notes_priority").using("btree", table.priority),
+		index("idx_golden_notes_category").using("btree", table.category),
+		index("idx_golden_notes_week_id").using("btree", table.weekId),
+		foreignKey({
+			columns: [table.materialId],
+			foreignColumns: [courseMaterials.id],
+			name: "golden_notes_material_id_fkey",
+		}).onDelete("cascade"),
+	]
+);
+
+// Own notes table - User-created notes and annotations
+export const ownNotes = pgTable(
+	"own_notes",
+	{
+		id: uuid().defaultRandom().primaryKey().notNull(),
+		userId: uuid("user_id").notNull(),
+		materialId: uuid("material_id"), // Optional - can be linked to specific material
+		courseId: uuid("course_id"), // Optional - can be linked to course
+		title: varchar({ length: 255 }).notNull(),
+		content: text().notNull(),
+		noteType: varchar("note_type", { length: 50 }).default("general"), // 'general', 'annotation', 'summary', 'question'
+		tags: jsonb().default([]), // Array of user-defined tags
+		isPrivate: boolean("is_private").default(true), // User can make notes shareable
+		color: varchar({ length: 20 }).default("#ffffff"), // Note color for organization
+		position: jsonb(), // For annotations linked to specific content positions
+		metadata: jsonb().default({}),
+		createdAt: timestamp("created_at").defaultNow().notNull(),
+		updatedAt: timestamp("updated_at").defaultNow().notNull(),
+	},
+	(table) => [
+		index("idx_own_notes_user_id").using("btree", table.userId),
+		index("idx_own_notes_material_id").using("btree", table.materialId),
+		index("idx_own_notes_course_id").using("btree", table.courseId),
+		index("idx_own_notes_note_type").using("btree", table.noteType),
+		index("idx_own_notes_created_at").using("btree", table.createdAt),
+	]
+);
+
+// Generation configurations table - Critical for adaptive learning
+export const generationConfigs = pgTable(
+	"generation_configs",
+	{
+		id: uuid().defaultRandom().primaryKey().notNull(),
+		materialId: uuid("material_id").notNull(),
+		userId: uuid("user_id").notNull(),
+		configSource: varchar("config_source", { length: 50 }).notNull(), // 'user_preference', 'adaptive_algorithm', etc.
+
+		// Core generation settings
+		goldenNotesCount: integer("golden_notes_count").notNull(),
+		flashcardsCount: integer("flashcards_count").notNull(),
+		summaryLength: integer("summary_length").notNull(),
+		examExercisesCount: integer("exam_exercises_count").notNull(),
+		mcqExercisesCount: integer("mcq_exercises_count").notNull(),
+		difficulty: varchar({ length: 20 }).notNull(),
+		focus: varchar({ length: 20 }).notNull(),
+
+		// Adaptive learning metadata
+		adaptationReason: text("adaptation_reason"),
+		userPerformanceLevel: varchar("user_performance_level", { length: 20 }),
+		learningGaps: jsonb("learning_gaps").default([]),
+
+		// Tracking
+		isActive: boolean("is_active").default(true),
+		appliedAt: timestamp("applied_at").defaultNow().notNull(),
+		createdAt: timestamp("created_at").defaultNow().notNull(),
+	},
+	(table) => [
+		index("idx_generation_configs_material_id").using("btree", table.materialId),
+		index("idx_generation_configs_user_id").using("btree", table.userId),
+		index("idx_generation_configs_source").using("btree", table.configSource),
+		index("idx_generation_configs_difficulty").using("btree", table.difficulty),
+		index("idx_generation_configs_performance").using("btree", table.userPerformanceLevel),
+		index("idx_generation_configs_active").using("btree", table.isActive),
+		foreignKey({
+			columns: [table.materialId],
+			foreignColumns: [courseMaterials.id],
+			name: "generation_configs_material_id_fkey",
+		}).onDelete("cascade"),
+		foreignKey({
+			columns: [table.userId],
+			foreignColumns: [usersInAuth.id],
+			name: "generation_configs_user_id_fkey",
+		}).onDelete("cascade"),
+	]
+);
+
+// Add exams table
+
+// User progress tracking table
+export const userProgress = pgTable(
+	"user_progress",
+	{
+		id: uuid().defaultRandom().primaryKey().notNull(),
+		userId: uuid("user_id").notNull(),
+		contentType: varchar("content_type", { length: 50 }).notNull(), // 'flashcard', 'mcq', 'open_question'
+		contentId: uuid("content_id").notNull(), // references flashcards/mcqs/open_questions
+		status: varchar({ length: 20 }).default("not_started"), // 'not_started', 'in_progress', 'completed'
+		score: integer(), // Score out of 100
+		attempts: integer().default(0),
+		lastAttemptAt: timestamp("last_attempt_at"),
+		createdAt: timestamp("created_at").defaultNow().notNull(),
+		updatedAt: timestamp("updated_at").defaultNow().notNull(),
+	},
+	(table) => [
+		unique("user_progress_unique").on(table.userId, table.contentType, table.contentId),
+		index("idx_user_progress_user_id").using("btree", table.userId),
+		index("idx_user_progress_content").using("btree", table.contentType, table.contentId),
+		index("idx_user_progress_status").using("btree", table.status),
 	]
 );
 

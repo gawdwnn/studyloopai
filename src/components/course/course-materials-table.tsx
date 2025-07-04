@@ -1,6 +1,7 @@
 "use client";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { GeneratedContentBadges } from "@/components/course/generated-content-badges";
 import { MaterialStatusIndicator } from "@/components/course/material-status-indicator";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,14 +13,18 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import type { ProcessingMetadata, courseMaterials, courseWeeks, courses } from "@/db/schema";
+import type { courseMaterials, courseWeeks, courses } from "@/db/schema";
 import { CONTENT_TYPES, CONTENT_TYPE_LABELS } from "@/lib/constants/file-upload";
 import { AudioLines, File, FileText, Image, Link, Search, TrashIcon, Video } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 type CourseMaterialWithRelations = typeof courseMaterials.$inferSelect & {
 	course?: Pick<typeof courses.$inferSelect, "name"> | null;
-	courseWeek?: Pick<typeof courseWeeks.$inferSelect, "weekNumber"> | null;
+	courseWeek?: Pick<
+		typeof courseWeeks.$inferSelect,
+		"weekNumber" | "contentGenerationMetadata"
+	> | null;
+	publicAccessToken?: string | null;
 };
 
 interface CourseMaterialsTableProps {
@@ -27,6 +32,7 @@ interface CourseMaterialsTableProps {
 	isLoading: boolean;
 	onDeleteMaterial: (materialId: string, materialName: string) => void;
 	isDeleting: boolean;
+	deletingMaterials?: Set<string>;
 }
 
 export function CourseMaterialsTable({
@@ -34,6 +40,7 @@ export function CourseMaterialsTable({
 	isLoading,
 	onDeleteMaterial,
 	isDeleting,
+	deletingMaterials = new Set(),
 }: CourseMaterialsTableProps) {
 	const [searchTerm, setSearchTerm] = useState("");
 
@@ -55,23 +62,24 @@ export function CourseMaterialsTable({
 		}
 	};
 
-	// Helper function to get processing metadata with fallback
-	const getProcessingData = (material: CourseMaterialWithRelations) => {
-		const metadata = material.processingMetadata as ProcessingMetadata | null;
-		return {
-			flashcards: metadata?.flashcards || { total: 0, completed: 0 },
-			multipleChoice: metadata?.multipleChoice || { total: 0, completed: 0 },
-			openQuestions: metadata?.openQuestions || { total: 0, completed: 0 },
-			summaries: metadata?.summaries || { total: 0, completed: 0 },
-		};
-	};
-
 	// Filter materials based on search term
 	const filteredMaterials = courseMaterials.filter(
 		(material) =>
 			(material.fileName || material.title).toLowerCase().includes(searchTerm.toLowerCase()) ||
 			material.course?.name?.toLowerCase().includes(searchTerm.toLowerCase())
 	);
+
+	// Sort materials by week number, then by name
+	const sortedMaterials = useMemo(() => {
+		return filteredMaterials.sort((a, b) => {
+			const weekA = a.courseWeek?.weekNumber || 0;
+			const weekB = b.courseWeek?.weekNumber || 0;
+			if (weekA !== weekB) {
+				return weekA - weekB;
+			}
+			return (a.fileName || a.title).localeCompare(b.fileName || b.title);
+		});
+	}, [filteredMaterials]);
 
 	if (isLoading) {
 		return (
@@ -102,123 +110,104 @@ export function CourseMaterialsTable({
 					<Table className="w-full caption-bottom text-sm">
 						<TableHeader>
 							<TableRow className="bg-muted/50">
-								<TableHead className="w-16 whitespace-nowrap">Week</TableHead>
+								<TableHead className="w-20 whitespace-nowrap">Week</TableHead>
+								<TableHead className="min-w-[150px] whitespace-nowrap">Course Name</TableHead>
 								<TableHead className="min-w-[200px] whitespace-nowrap">Material Name</TableHead>
-								<TableHead className="w-40 whitespace-nowrap">Status</TableHead>
-								<TableHead className="text-center w-32 whitespace-nowrap">Notes</TableHead>
-								<TableHead className="text-center w-32 whitespace-nowrap">Flashcards</TableHead>
-								<TableHead className="text-center w-32 whitespace-nowrap">MCQ Exercises</TableHead>
-								<TableHead className="text-center w-32 whitespace-nowrap">Open Questions</TableHead>
+								<TableHead className="w-40 whitespace-nowrap">Processing Status</TableHead>
+								<TableHead className="w-48 whitespace-nowrap">Generated Content</TableHead>
 								<TableHead className="w-16 whitespace-nowrap" />
 							</TableRow>
 						</TableHeader>
 						<TableBody>
-							{filteredMaterials.length > 0 ? (
-								filteredMaterials.map((material) => {
-									const processingData = getProcessingData(material);
-
+							{sortedMaterials.length > 0 ? (
+								sortedMaterials.map((material) => {
+									const isBeingDeleted = deletingMaterials.has(material.id);
 									return (
-										<TableRow key={material.id}>
+										<TableRow
+											key={material.id}
+											className={`transition-all duration-300 ${
+												isBeingDeleted
+													? "opacity-50 bg-destructive/5 animate-pulse"
+													: "hover:bg-muted/50"
+											}`}
+										>
 											<TableCell className="font-medium text-center whitespace-nowrap">
-												{material.courseWeek?.weekNumber || "N/A"}
+												<span className="text-sm font-medium">
+													{material.courseWeek?.weekNumber
+														? `Week ${material.courseWeek.weekNumber}`
+														: "Unassigned"}
+												</span>
 											</TableCell>
-											<TableCell className="font-medium whitespace-nowrap">
+											<TableCell className="font-medium">
+												<span className="text-sm font-medium">
+													{material.course?.name || "Unknown Course"}
+												</span>
+											</TableCell>
+											<TableCell className="font-medium">
 												<div className="flex items-center gap-2">
 													{getContentTypeIcon(material.contentType || "pdf")}
 													<div>
 														<div>{material.fileName || material.title}</div>
-														{material.course && (
-															<div className="text-xs text-muted-foreground">
-																{material.course.name} •{" "}
-																{CONTENT_TYPE_LABELS[
-																	material.contentType as keyof typeof CONTENT_TYPE_LABELS
-																] || "PDF Document"}
-															</div>
-														)}
+														<div className="text-xs text-muted-foreground">
+															{CONTENT_TYPE_LABELS[
+																material.contentType as keyof typeof CONTENT_TYPE_LABELS
+															] || "PDF Document"}
+														</div>
 													</div>
 												</div>
 											</TableCell>
+
 											<TableCell>
 												<MaterialStatusIndicator
 													uploadStatus={material.uploadStatus || "pending"}
 													embeddingStatus={material.embeddingStatus || "pending"}
 													totalChunks={material.totalChunks || 0}
 													embeddedChunks={material.embeddedChunks || 0}
+													runId={material.runId || undefined}
+													publicToken={material.publicAccessToken || undefined}
 												/>
 											</TableCell>
-											<TableCell className="text-center whitespace-nowrap">
-												<div className="space-y-1">
-													<div className="text-sm font-medium">
-														{processingData.summaries.total}
-													</div>
-													<div className="text-xs text-muted-foreground">
-														{processingData.summaries.completed}
-													</div>
-												</div>
-											</TableCell>
-											<TableCell className="text-center whitespace-nowrap">
-												<div className="space-y-1">
-													<div className="text-sm font-medium">
-														{processingData.flashcards.total}
-													</div>
-													<div className="text-xs text-muted-foreground">
-														{processingData.flashcards.completed}
-													</div>
-												</div>
-											</TableCell>
-											<TableCell className="text-center whitespace-nowrap">
-												<div className="space-y-1">
-													<div className="text-sm font-medium">
-														{processingData.multipleChoice.total}
-													</div>
-													<div className="text-xs text-muted-foreground">
-														{processingData.multipleChoice.completed}
-													</div>
-												</div>
-											</TableCell>
-											<TableCell className="text-center whitespace-nowrap">
-												<div className="space-y-1">
-													<div className="text-sm font-medium">
-														{processingData.openQuestions.total}
-													</div>
-													<div className="text-xs text-muted-foreground">
-														{processingData.openQuestions.completed}
-													</div>
-												</div>
+
+											<TableCell>
+												<GeneratedContentBadges material={material} />
 											</TableCell>
 
 											<TableCell className="text-center whitespace-nowrap">
-												<ConfirmDialog
-													trigger={
-														<Button
-															variant="ghost"
-															size="icon"
-															disabled={isDeleting}
-															className="h-8 w-8 text-muted-foreground hover:text-destructive disabled:opacity-50"
-														>
-															<TrashIcon
-																className={`h-4 w-4 ${isDeleting ? "animate-pulse" : ""}`}
-															/>
-														</Button>
-													}
-													title="Delete Course Material"
-													description={`Are you sure you want to delete "${material.fileName || material.title}"? This action cannot be undone and will also remove all learning features.`}
-													confirmText="Delete"
-													cancelText="Cancel"
-													variant="destructive"
-													onConfirm={() =>
-														onDeleteMaterial(material.id, material.fileName || material.title)
-													}
-													isLoading={isDeleting}
-													disabled={isDeleting}
-												/>
+												{isBeingDeleted ? (
+													<div className="flex items-center justify-center h-8 w-8">
+														<div className="h-4 w-4 border-2 border-destructive border-t-transparent rounded-full animate-spin" />
+													</div>
+												) : (
+													<ConfirmDialog
+														trigger={
+															<Button
+																variant="ghost"
+																size="icon"
+																disabled={isDeleting || isBeingDeleted}
+																className="h-8 w-8 text-muted-foreground hover:text-destructive disabled:opacity-50"
+															>
+																<TrashIcon className="h-4 w-4" />
+															</Button>
+														}
+														title="Delete Course Material"
+														description={`Are you sure you want to delete "${material.fileName || material.title}"? This action cannot be undone and will also remove all learning features.`}
+														confirmText="Delete"
+														cancelText="Cancel"
+														variant="destructive"
+														onConfirm={() =>
+															onDeleteMaterial(material.id, material.fileName || material.title)
+														}
+														isLoading={isDeleting}
+														disabled={isDeleting || isBeingDeleted}
+													/>
+												)}
 											</TableCell>
 										</TableRow>
 									);
 								})
 							) : (
 								<TableRow>
-									<TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+									<TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
 										{searchTerm
 											? "No materials found matching your search."
 											: "No materials uploaded yet."}

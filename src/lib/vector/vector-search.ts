@@ -1,7 +1,7 @@
 import { and, cosineDistance, desc, eq, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { courseMaterials, documentChunks } from "../../db/schema";
-import { generateEmbeddings } from "../embeddings/embedding-service";
+import { generateEmbeddings } from "../ai/embeddings";
 
 interface SearchOptions {
 	limit?: number; // Default: 10

@@ -2,8 +2,8 @@
 
 import { deleteCourseMaterial } from "@/lib/actions/course-materials";
 import { getAllUserMaterials, getUserCourses } from "@/lib/actions/courses";
-import { useQuery } from "@tanstack/react-query";
-import { useTransition } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { CourseMaterialUploadWizard } from "@/components/course/course-material-upload-wizard";
@@ -13,6 +13,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 
 export default function CourseMaterialsPage() {
 	const [isPending, startTransition] = useTransition();
+	const [deletingMaterials, setDeletingMaterials] = useState<Set<string>>(new Set());
+	const queryClient = useQueryClient();
 
 	const { data: courses = [] } = useQuery({
 		queryKey: ["user-courses"],
@@ -35,17 +37,43 @@ export default function CourseMaterialsPage() {
 	};
 
 	const handleDeleteMaterial = async (materialId: string, materialName: string) => {
+		// Optimistic update: immediately mark as deleting and remove from UI
+		setDeletingMaterials((prev) => new Set(prev).add(materialId));
+
+		// Optimistically update the query cache to remove the item immediately
+		queryClient.setQueryData(["all-user-materials"], (oldData: typeof courseMaterials) => {
+			return oldData?.filter((material) => material.id !== materialId) || [];
+		});
+
+		// Show immediate feedback
+		toast.info(`Deleting "${materialName}"...`, {
+			duration: 2000,
+		});
+
 		startTransition(async () => {
 			try {
 				await deleteCourseMaterial(materialId);
-				toast.success(`"${materialName}" has been deleted successfully.`);
-				refetchMaterials();
+
+				// Success: show user-friendly message
+				toast.success(`"${materialName}" deleted successfully`, {
+					duration: 3000,
+				});
 			} catch (error) {
+				// Error: revert optimistic update
+				queryClient.invalidateQueries({ queryKey: ["all-user-materials"] });
+
 				toast.error(
 					error instanceof Error
 						? error.message
 						: "Failed to delete course material. Please try again."
 				);
+			} finally {
+				// Always remove from deleting state
+				setDeletingMaterials((prev) => {
+					const newSet = new Set(prev);
+					newSet.delete(materialId);
+					return newSet;
+				});
 			}
 		});
 	};
@@ -91,6 +119,7 @@ export default function CourseMaterialsPage() {
 					isLoading={isLoading}
 					onDeleteMaterial={handleDeleteMaterial}
 					isDeleting={isPending}
+					deletingMaterials={deletingMaterials}
 				/>
 			</div>
 		</>

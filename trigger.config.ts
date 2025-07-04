@@ -1,8 +1,7 @@
-import type { TriggerConfig } from "@trigger.dev/sdk/v3";
+import type { TriggerConfig } from "@trigger.dev/sdk";
 
 export const config: TriggerConfig = {
-	// biome-ignore lint/style/noNonNullAssertion: <explanation>
-	project: process.env.TRIGGER_PROJECT_ID!,
+	project: "proj_nmhmphfupxlqbetvlsgr",
 	logLevel: "info",
 	maxDuration: 600,
 	retries: {

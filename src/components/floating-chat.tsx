@@ -61,8 +61,6 @@ export function FloatingChat() {
 		e.preventDefault();
 		const input = inputRef.current;
 		if (input?.value.trim()) {
-			// TODO: Handle message submission
-			console.log("Message:", input.value);
 			input.value = "";
 		}
 	}, []);

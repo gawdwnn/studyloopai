@@ -31,7 +31,7 @@ export function DashboardLayoutClient({
 							</div>
 						</div>
 					</header>
-					<div className="p-6 w-full min-w-0">{children}</div>
+					<div className="p-4 md:p-6 w-full min-w-0">{children}</div>
 					<div className="fixed right-4 top-4 z-50">
 						<CommandPaletteTrigger />
 					</div>

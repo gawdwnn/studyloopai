@@ -27,8 +27,10 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import type { courses } from "@/db/schema";
-import { uploadAndProcessMaterialsBatch } from "@/lib/actions/content-processing-batch";
 import { getCourseWeeks } from "@/lib/actions/courses";
+import { COURSE_MATERIALS_BUCKET } from "@/lib/constants/storage";
+import { completeUpload, presignUpload } from "@/lib/services/course-material-service";
+import { createClient } from "@/lib/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 
 interface CourseMaterialUploadWizardProps {
@@ -154,6 +156,12 @@ export function CourseMaterialUploadWizard({
 			return;
 		}
 
+		// Client-side batch size validation
+		if (files.length > 50) {
+			toast.error("Maximum 50 files allowed per batch. Please reduce the number of files.");
+			return;
+		}
+
 		const selectedWeekData = courseWeeks.find(
 			(week) => week.courseId === selectedCourseId && week.weekNumber === selectedWeek
 		);
@@ -163,43 +171,87 @@ export function CourseMaterialUploadWizard({
 			return;
 		}
 
+		const supabase = createClient();
+		const uploadedMaterialIds: string[] = [];
+
 		try {
-			const materialData: MaterialUploadData[] = files.map((file) => ({
-				courseId: selectedCourseId,
-				weekId: selectedWeekData.id,
-				file,
-				generationConfig,
-			}));
+			const failedUploads: Array<{ fileName: string; error: string }> = [];
 
-			const result = await uploadAndProcessMaterialsBatch(materialData);
+			for (const file of files) {
+				try {
+					// Step 1: presign
+					const presignRes = await presignUpload({
+						courseId: selectedCourseId,
+						weekId: selectedWeekData.id,
+						fileName: file.name,
+						mimeType: file.type,
+						fileSize: file.size,
+						generationConfig,
+					});
 
-			if (result.success) {
-				const successCount = result.successCount || 0;
-				const failedCount = result.failedMaterials?.length || 0;
+					// Step 2: upload via signed URL
+					const { error: uploadErr } = await supabase.storage
+						.from(COURSE_MATERIALS_BUCKET)
+						.uploadToSignedUrl(presignRes.filePath, presignRes.token, file);
 
-				toast.success(`Batch upload started! Processing ${successCount} materials.`, {
-					description:
-						failedCount > 0
-							? `${failedCount} file(s) failed to upload.`
-							: "All files are processing in background.",
-					duration: 4000,
-				});
-
-				if (result.failedMaterials?.length) {
-					for (const failure of result.failedMaterials) {
-						toast.error(`Failed to upload ${failure.fileName}: ${failure.error}`);
+					if (uploadErr) {
+						failedUploads.push({
+							fileName: file.name,
+							error: uploadErr.message,
+						});
+						continue;
 					}
+
+					uploadedMaterialIds.push(presignRes.materialId);
+				} catch (fileErr) {
+					// Handle individual file errors (e.g., validation failures)
+					const errorMessage = fileErr instanceof Error ? fileErr.message : "Unknown error";
+					failedUploads.push({
+						fileName: file.name,
+						error: errorMessage,
+					});
 				}
-			} else {
-				toast.error(`Batch upload failed: ${result.error}`);
+			}
+
+			// Report failed uploads
+			if (failedUploads.length > 0) {
+				const failedFileNames = failedUploads.map((f) => f.fileName).join(", ");
+				toast.error(`Failed to upload: ${failedFileNames}`);
+
+				// Log detailed errors for debugging
+				console.error("Upload failures:", failedUploads);
+			}
+
+			if (uploadedMaterialIds.length === 0) {
+				toast.error(
+					"No files uploaded successfully. Please check file requirements and try again."
+				);
 				return;
 			}
 
-			handleClose();
-			onUploadSuccess();
-		} catch (error) {
-			toast.error("Failed to start upload. Please try again.");
-			console.error("Upload initiation error:", error);
+			// Step 3: notify backend to start processing
+			try {
+				await completeUpload(uploadedMaterialIds);
+
+				const successMessage =
+					uploadedMaterialIds.length === files.length
+						? `Successfully uploaded ${uploadedMaterialIds.length} file(s). Processing will continue in background.`
+						: `Uploaded ${uploadedMaterialIds.length} of ${files.length} file(s). Processing will continue in background.`;
+
+				toast.success(successMessage);
+				handleClose();
+				onUploadSuccess();
+			} catch (processErr) {
+				// Handle processing initiation errors
+				const errorMessage = processErr instanceof Error ? processErr.message : "Unknown error";
+				toast.error(`Files uploaded but processing failed to start: ${errorMessage}`);
+				console.error("Processing initiation error:", processErr);
+			}
+		} catch (err) {
+			// Handle unexpected errors
+			const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";
+			toast.error(`Upload failed: ${errorMessage}`);
+			console.error("Unexpected upload error:", err);
 		}
 	};
 
@@ -289,7 +341,6 @@ export function CourseMaterialUploadWizard({
 							selectedWeek={selectedWeek}
 							onWeekChange={handleWeekChange}
 							isLoading={isLoadingWeeks}
-							showBadges={true}
 							courseLabel="Course"
 							weekLabel="Week"
 							required={true}
@@ -336,7 +387,6 @@ export function CourseMaterialUploadWizard({
 						)}
 						<Separator />
 
-						{/* //TODO: generaion config feature end-end */}
 						<GenerationSettings config={generationConfig} onConfigChange={setGenerationConfig} />
 					</div>
 				)}

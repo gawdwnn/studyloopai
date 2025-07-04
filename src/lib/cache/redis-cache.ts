@@ -39,15 +39,32 @@ export class EmbeddingCache {
 			const cachedValues = await this.cache.mget(...keys);
 
 			cachedValues.forEach((value, index) => {
-				if (value !== null) {
-					try {
-						const embedding = JSON.parse(value as string);
-						results.set(textHashes[index], embedding);
-					} catch (parseError) {
-						console.error(
-							`Failed to parse cached embedding for hash ${textHashes[index]}:`,
-							parseError
+				if (value === null) return;
+
+				try {
+					let embedding: number[];
+
+					if (typeof value === "string") {
+						embedding = JSON.parse(value) as number[];
+					} else if (typeof value === "object" && Array.isArray(value)) {
+						// Upstash may return parsed JSON when stored via REST API. Use as-is.
+						embedding = value as unknown as number[];
+					} else {
+						throw new SyntaxError(
+							`Unexpected cached value type: ${typeof value} for hash ${textHashes[index]}`
 						);
+					}
+
+					results.set(textHashes[index], embedding);
+				} catch (parseError) {
+					console.error(
+						`Failed to parse cached embedding for hash ${textHashes[index]}:`,
+						parseError
+					);
+
+					// Remove corrupted cache entry to avoid repeated failures
+					if (this.cache) {
+						this.cache.del(this.getCacheKey(textHashes[index])).catch(() => {});
 					}
 				}
 			});

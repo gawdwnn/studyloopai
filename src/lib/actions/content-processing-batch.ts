@@ -1,6 +1,17 @@
 /**
  * Batch Content Generation Actions
  * Efficient batch processing using Trigger.dev batchTrigger API
+ *
+ * @deprecated This function is largely superseded by the new frontend-first upload flow:
+ * - Frontend uploads files directly to Supabase storage via presigned URLs
+ * - /api/materials/presign handles file validation and database record creation
+ * - /api/materials/complete initiates background processing
+ *
+ * This function is kept for:
+ * - Legacy compatibility
+ * - Admin/bulk operations
+ * - API-based uploads
+ * - Scenarios requiring comprehensive server-side file handling
  */
 
 "use server";
@@ -32,6 +43,12 @@ interface BatchUploadResult {
 
 /**
  * Process multiple materials in a single efficient batch operation
+ *
+ * @deprecated This function is largely superseded by the new frontend-first upload flow.
+ * The new flow provides better UX with immediate feedback and uses presigned URLs for direct uploads.
+ *
+ * However, this function contains valuable validation logic that should be preserved
+ * for specific use cases like admin operations or API-based uploads.
  */
 export async function uploadAndProcessMaterialsBatch(
 	materials: MaterialUploadData[]
@@ -118,11 +135,21 @@ export async function uploadAndProcessMaterialsBatch(
 						mimeType: materialData.file.type,
 						contentType,
 						uploadStatus: "pending",
-						processingMetadata: { processingStatus: "pending" },
+						processingMetadata: {
+							processingStatus: "pending",
+						},
 						processingStartedAt: new Date(),
 						uploadedBy: user.id,
 					})
 					.returning();
+
+				// Save user generation config
+				if (materialData.generationConfig) {
+					const { saveMaterialGenerationConfig } = await import(
+						"@/lib/services/generation-config-service"
+					);
+					await saveMaterialGenerationConfig(material.id, user.id, materialData.generationConfig);
+				}
 
 				// Upload file to storage
 				const uploadResult = await uploadCourseMaterial(
@@ -189,40 +216,33 @@ export async function uploadAndProcessMaterialsBatch(
 			};
 		}
 
-		// Phase 2: Trigger batch processing using tasks.batchTrigger
-		const batchPayloads = successfulMaterials.map((material) => ({
-			payload: {
+		// Phase 2: Trigger orchestrator task to handle embedding & AI generation
+		const ingestHandle = await tasks.trigger("ingest-course-materials", {
+			userId: user.id,
+			materials: successfulMaterials.map((material) => ({
 				materialId: material.materialId,
 				filePath: material.filePath,
-				contentType: CONTENT_TYPES.PDF, // Default for now, can be enhanced
-			},
-		}));
+				contentType: CONTENT_TYPES.PDF, // TODO: derive real type
+			})),
+		});
 
-		const batchHandle = await tasks.batchTrigger(
-			"process-and-embed-individual-material",
-			batchPayloads
-		);
-
-		// Update all successful materials with batch run ID
-		if (successfulMaterials.length > 0) {
-			// Update each material individually with batch ID
-			for (const material of successfulMaterials) {
-				await db
-					.update(courseMaterials)
-					.set({
-						runId: batchHandle.batchId,
-						processingMetadata: {
-							processingStatus: "processing",
-							batchId: batchHandle.batchId,
-						},
-					})
-					.where(eq(courseMaterials.id, material.materialId));
-			}
+		// Optionally link each material to the orchestrator run for observability
+		for (const material of successfulMaterials) {
+			await db
+				.update(courseMaterials)
+				.set({
+					runId: ingestHandle.id,
+					processingMetadata: {
+						processingStatus: "processing",
+						batchId: ingestHandle.id,
+					},
+				})
+				.where(eq(courseMaterials.id, material.materialId));
 		}
 
 		return {
 			success: true,
-			batchId: batchHandle.batchId,
+			batchId: ingestHandle.id, // Rename meaningfully on caller
 			successCount: successfulMaterials.length,
 			failedMaterials: failedMaterials.length > 0 ? failedMaterials : undefined,
 		};

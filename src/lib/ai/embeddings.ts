@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { EmbeddingCache } from "@/lib/cache/redis-cache";
-import { openai } from "@ai-sdk/openai";
 import { embed } from "ai";
+import { getEmbeddingModel } from "./config";
 
 interface EmbeddingOptions {
 	batchSize?: number;
@@ -15,7 +15,6 @@ interface EmbeddingResult {
 	error?: string;
 }
 
-const MODEL = "text-embedding-3-small";
 const embeddingCache = new EmbeddingCache();
 
 /**
@@ -43,9 +42,6 @@ export async function generateEmbeddings(
 		const newEmbeddingsMap = new Map<string, number[]>();
 
 		if (uncachedTexts.length > 0) {
-			console.log(
-				`Cache miss for ${uncachedTexts.length} of ${texts.length} embeddings. Generating new ones.`
-			);
 			const batches = createBatches(
 				uncachedTexts.map((t) => t.text),
 				batchSize
@@ -108,7 +104,7 @@ async function processBatch(
 			const embeddings: number[][] = [];
 			for (const text of texts) {
 				const result = await embed({
-					model: openai.embedding(MODEL),
+					model: getEmbeddingModel(),
 					value: text,
 				});
 				embeddings.push(result.embedding);

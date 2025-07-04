@@ -169,6 +169,7 @@ export function AppSidebar() {
 											<Collapsible open={isOpen} onOpenChange={() => toggleItem(route.href)}>
 												<CollapsibleTrigger asChild>
 													<SidebarMenuButton
+														asChild
 														className={cn(
 															"w-full",
 															isActive && "bg-sidebar-accent text-sidebar-accent-foreground"
@@ -187,6 +188,12 @@ export function AppSidebar() {
 																<span className="group-data-[collapsible=icon]:hidden">
 																	{route.label}
 																</span>
+																<ChevronDown
+																	className={cn(
+																		"ml-auto h-4 w-4 shrink-0 transition-transform duration-200 group-data-[collapsible=icon]:hidden",
+																		isOpen && "rotate-180"
+																	)}
+																/>
 															</button>
 														) : (
 															<Link
@@ -198,14 +205,14 @@ export function AppSidebar() {
 																<span className="group-data-[collapsible=icon]:hidden">
 																	{route.label}
 																</span>
+																<ChevronDown
+																	className={cn(
+																		"ml-auto h-4 w-4 shrink-0 transition-transform duration-200 group-data-[collapsible=icon]:hidden",
+																		isOpen && "rotate-180"
+																	)}
+																/>
 															</Link>
 														)}
-														<ChevronDown
-															className={cn(
-																"ml-auto h-4 w-4 shrink-0 transition-transform duration-200 group-data-[collapsible=icon]:hidden",
-																isOpen && "rotate-180"
-															)}
-														/>
 													</SidebarMenuButton>
 												</CollapsibleTrigger>
 												<CollapsibleContent>
@@ -269,6 +276,7 @@ export function AppSidebar() {
 								return (
 									<SidebarMenuItem key={route.href}>
 										<SidebarMenuButton
+											asChild
 											className={cn(
 												"w-full",
 												isActive && "bg-sidebar-accent text-sidebar-accent-foreground"

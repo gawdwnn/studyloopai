@@ -4,15 +4,18 @@ import {
 	PDF_PROCESSING_LIMITS,
 	PDF_VALIDATION,
 } from "@/lib/constants/pdf-processing";
+import type { TextItem } from "pdfjs-dist/types/src/display/api";
 import { extractText } from "unpdf";
 
 // Lazy load PDF.js only when needed to avoid DOM issues
-let pdfjsLib: any = null;
+type PDFJS = typeof import("pdfjs-dist");
 
-async function loadPDFJS() {
+let pdfjsLib: PDFJS | null = null;
+
+async function loadPDFJS(): Promise<PDFJS> {
 	if (!pdfjsLib) {
-		// Use legacy build for Node.js compatibility
-		pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
+		// Use legacy build for Node.js compatibility on Node.js
+		pdfjsLib = (await import("pdfjs-dist/legacy/build/pdf.mjs")) as unknown as PDFJS;
 		// Disable worker in Node.js environment
 		if (typeof window === "undefined") {
 			pdfjsLib.GlobalWorkerOptions.workerSrc = "";
@@ -22,7 +25,7 @@ async function loadPDFJS() {
 }
 
 /**
- * PDF Parser for StudyLoop AI
+ * PDF Parser
  * Uses unpdf for serverless-compatible PDF text extraction
  */
 
@@ -58,10 +61,7 @@ async function extractWithPDFJS(buffer: Buffer): Promise<PDFParseResult> {
 		for (let i = 1; i <= totalPages; i++) {
 			const page = await pdf.getPage(i);
 			const textContent = await page.getTextContent();
-			const pageText = textContent.items
-				.filter((item: any) => item.str) // Filter out non-text items
-				.map((item: any) => item.str)
-				.join(" ");
+			const pageText = (textContent.items as TextItem[]).map((item) => item.str).join(" ");
 			fullText += `${pageText} `;
 		}
 
@@ -223,7 +223,10 @@ function cleanPDFText(text: string): string {
 /**
  * Validate PDF file before processing
  */
-export function validatePDFBuffer(buffer: Buffer): { isValid: boolean; error?: string } {
+export function validatePDFBuffer(buffer: Buffer): {
+	isValid: boolean;
+	error?: string;
+} {
 	if (!buffer || buffer.length < PDF_PROCESSING_LIMITS.MIN_FILE_SIZE) {
 		return { isValid: false, error: PDF_ERROR_MESSAGES.FILE_TOO_SMALL };
 	}

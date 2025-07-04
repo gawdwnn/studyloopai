@@ -1,6 +1,5 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import {
 	Select,
@@ -19,7 +18,6 @@ interface CourseWeekSelectorProps {
 	selectedWeek: number | null;
 	onWeekChange: (week: number) => void;
 	isLoading?: boolean;
-	showBadges?: boolean;
 	courseLabel?: string;
 	weekLabel?: string;
 	coursePlaceholder?: string;
@@ -35,7 +33,6 @@ export function CourseWeekSelector({
 	selectedWeek,
 	onWeekChange,
 	isLoading = false,
-	showBadges = false,
 	courseLabel = "Select Course",
 	weekLabel = "Select Week",
 	coursePlaceholder = "Select a course...",
@@ -63,16 +60,7 @@ export function CourseWeekSelector({
 					<SelectContent>
 						{courses.map((course) => (
 							<SelectItem key={course.id} value={course.id}>
-								{showBadges ? (
-									<div className="flex items-center justify-between w-full">
-										<span className="truncate">{course.name}</span>
-										<Badge variant="secondary" className="ml-2 shrink-0">
-											{courseWeeks.filter((w) => w.courseId === course.id).length}w
-										</Badge>
-									</div>
-								) : (
-									<span className="truncate">{course.name}</span>
-								)}
+								<span className="truncate">{course.name}</span>
 							</SelectItem>
 						))}
 					</SelectContent>

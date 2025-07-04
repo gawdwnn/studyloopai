@@ -5,19 +5,28 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import type { courses } from "@/db/schema";
-import { deleteCourse, updateCourse } from "@/lib/actions/courses";
+import { updateCourse } from "@/lib/actions/courses";
 import { addWeeks, format } from "date-fns";
 import { Edit2, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
+import { toast } from "sonner";
 
 type Course = typeof courses.$inferSelect;
 
 interface CourseCardProps {
 	course: Course;
+	onDeleteCourse?: (courseId: string, courseName: string) => void;
+	isDeleting?: boolean;
+	isBeingDeleted?: boolean;
 }
 
-export function CourseCard({ course }: CourseCardProps) {
+export function CourseCard({
+	course,
+	onDeleteCourse,
+	isDeleting = false,
+	isBeingDeleted = false,
+}: CourseCardProps) {
 	const [isEditing, setIsEditing] = useState(false);
 	const [title, setTitle] = useState(course.name);
 	const [isHovered, setIsHovered] = useState(false);
@@ -39,14 +48,12 @@ export function CourseCard({ course }: CourseCardProps) {
 	}, [isEditing]);
 
 	const handleConfirmDelete = async () => {
-		startTransition(async () => {
-			try {
-				await deleteCourse(course.id);
-			} catch (error) {
-				console.error("Failed to delete course:", error);
-				alert("Failed to delete course. Please try again.");
-			}
-		});
+		if (onDeleteCourse) {
+			onDeleteCourse(course.id, course.name);
+		} else {
+			// Fallback for backwards compatibility
+			toast.error("Delete function not provided");
+		}
 	};
 
 	const handleSave = async () => {
@@ -81,11 +88,17 @@ export function CourseCard({ course }: CourseCardProps) {
 	return (
 		<Link href={`/dashboard/courses/${course.id}`} className="inline-block">
 			<div
-				className="relative w-80 h-48"
+				className={`relative w-80 h-48 transition-all duration-300 ${
+					isBeingDeleted ? "opacity-50 scale-95" : ""
+				}`}
 				onMouseEnter={() => setIsHovered(true)}
 				onMouseLeave={() => setIsHovered(false)}
 			>
-				<Card className="w-full h-full border-0 shadow-lg overflow-hidden hover:shadow-md transition-shadow">
+				<Card
+					className={`w-full h-full border-0 shadow-lg overflow-hidden hover:shadow-md transition-shadow ${
+						isBeingDeleted ? "bg-destructive/5 border-destructive/20" : ""
+					}`}
+				>
 					<div
 						className="absolute top-0 right-0 w-6 h-6 bg-muted-foreground/20"
 						style={{
@@ -132,14 +145,19 @@ export function CourseCard({ course }: CourseCardProps) {
 					</CardContent>
 				</Card>
 
-				{/* Edit/Delete buttons */}
-				{isHovered && !isEditing && (
+				{/* Edit/Delete buttons or deletion indicator */}
+				{isBeingDeleted ? (
+					<div className="absolute top-2 right-6 flex items-center gap-2 bg-background/80 backdrop-blur-sm rounded-md p-2 z-10">
+						<div className="h-4 w-4 border-2 border-destructive border-t-transparent rounded-full animate-spin" />
+						<span className="text-sm text-destructive font-medium">Deleting...</span>
+					</div>
+				) : isHovered && !isEditing ? (
 					<div className="absolute top-2 right-6 flex gap-1 bg-background/80 backdrop-blur-sm rounded-md p-1 z-10">
 						<Button
 							variant="ghost"
 							size="sm"
 							onClick={handleEdit}
-							disabled={isPending}
+							disabled={isPending || isDeleting || isBeingDeleted}
 							className="h-8 w-8 p-0 hover:bg-muted"
 						>
 							<Edit2 className="h-4 w-4" />
@@ -149,21 +167,22 @@ export function CourseCard({ course }: CourseCardProps) {
 								<Button
 									variant="ghost"
 									size="sm"
-									disabled={isPending}
+									disabled={isPending || isDeleting || isBeingDeleted}
 									className="h-8 w-8 p-0 hover:bg-destructive/20 hover:text-destructive"
 								>
 									<Trash2 className="h-4 w-4" />
 								</Button>
 							}
 							title="Delete Course"
-							description={`Are you sure you want to delete "${course.name}"? This action cannot be undone and will permanently remove the course and all its materials.`}
+							description={`Are you sure you want to delete "${course.name}"? This action cannot be undone and will permanently remove the course and all its materials and learning features.`}
 							confirmText="Delete Course"
 							variant="destructive"
 							onConfirm={handleConfirmDelete}
-							isLoading={isPending}
+							isLoading={isPending || isDeleting}
+							disabled={isPending || isDeleting || isBeingDeleted}
 						/>
 					</div>
-				)}
+				) : null}
 			</div>
 		</Link>
 	);

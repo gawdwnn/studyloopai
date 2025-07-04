@@ -1,0 +1,5 @@
+ALTER TABLE "flashcards" ADD CONSTRAINT "flashcards_material_id_fkey" FOREIGN KEY ("material_id") REFERENCES "public"."course_materials"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "golden_notes" ADD CONSTRAINT "golden_notes_material_id_fkey" FOREIGN KEY ("material_id") REFERENCES "public"."course_materials"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "multiple_choice_questions" ADD CONSTRAINT "multiple_choice_questions_material_id_fkey" FOREIGN KEY ("material_id") REFERENCES "public"."course_materials"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "open_questions" ADD CONSTRAINT "open_questions_material_id_fkey" FOREIGN KEY ("material_id") REFERENCES "public"."course_materials"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "summaries" ADD CONSTRAINT "summaries_material_id_fkey" FOREIGN KEY ("material_id") REFERENCES "public"."course_materials"("id") ON DELETE cascade ON UPDATE no action;
