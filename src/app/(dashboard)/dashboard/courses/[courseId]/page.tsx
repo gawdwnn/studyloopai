@@ -8,13 +8,15 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 interface CourseOverviewPageProps {
-	params: {
+	params: Promise<{
 		courseId: string;
-	};
+	}>;
 }
 
 export default async function CourseOverviewPage({ params }: CourseOverviewPageProps) {
-	if (!params.courseId) {
+	const { courseId } = await params;
+
+	if (!courseId) {
 		notFound();
 	}
 
