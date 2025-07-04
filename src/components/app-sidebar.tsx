@@ -174,6 +174,7 @@ export function AppSidebar() {
 															"w-full",
 															isActive && "bg-sidebar-accent text-sidebar-accent-foreground"
 														)}
+														tooltip={route.label}
 													>
 														{route.onClick ? (
 															<button
@@ -248,6 +249,7 @@ export function AppSidebar() {
 													"w-full",
 													isActive && "bg-sidebar-accent text-sidebar-accent-foreground"
 												)}
+												tooltip={route.label}
 											>
 												<Link href={route.href} onClick={closeMobileSidebar}>
 													<route.icon className="h-4 w-4" />
@@ -281,6 +283,7 @@ export function AppSidebar() {
 												"w-full",
 												isActive && "bg-sidebar-accent text-sidebar-accent-foreground"
 											)}
+											tooltip={route.label}
 										>
 											{route.label === "Sign Out" ? (
 												<button
