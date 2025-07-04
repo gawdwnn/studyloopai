@@ -59,6 +59,12 @@ const SummarySchema = z.object({
 	summaryType: z.string(),
 });
 
+// Array schemas for validation
+const GoldenNotesArraySchema = z.array(GoldenNoteSchema);
+const FlashcardsArraySchema = z.array(FlashcardSchema);
+const MCQsArraySchema = z.array(MCQSchema);
+const OpenQuestionsArraySchema = z.array(OpenQuestionSchema);
+
 // Content generation result interface
 export interface ContentGenerationResult {
 	success: boolean;
@@ -109,19 +115,47 @@ function combineChunksForGeneration(chunks: string[], maxLength = 15000): string
 }
 
 /**
- * Parse JSON response with error handling
+ * Parse JSON response with Zod validation for arrays
  */
-function parseJsonResponse<T>(response: string, fallback: T): T {
+function parseJsonArrayResponse<T>(
+	response: string,
+	schema: z.ZodArray<z.ZodTypeAny>,
+	fallback: T[]
+): T[] {
 	try {
 		const parsed = JSON.parse(response);
-		// Ensure we return an array if the fallback is an array
-		if (Array.isArray(fallback) && !Array.isArray(parsed)) {
-			console.warn("Expected array but got:", typeof parsed, parsed);
-			return fallback;
+		const result = schema.safeParse(parsed);
+
+		if (result.success) {
+			return result.data;
 		}
-		return parsed as T;
+		console.warn("Array validation failed:", result.error.errors);
+		return fallback;
 	} catch (error) {
-		console.warn("Failed to parse JSON response:", error);
+		console.warn("Failed to parse JSON array response:", error);
+		return fallback;
+	}
+}
+
+/**
+ * Parse JSON response with Zod validation for single objects
+ */
+function parseJsonObjectResponse<T>(
+	response: string,
+	schema: z.ZodObject<z.ZodRawShape>,
+	fallback: T
+): T {
+	try {
+		const parsed = JSON.parse(response);
+		const result = schema.safeParse(parsed);
+
+		if (result.success) {
+			return result.data as T;
+		}
+		console.warn("Object validation failed:", result.error.errors);
+		return fallback;
+	} catch (error) {
+		console.warn("Failed to parse JSON object response:", error);
 		return fallback;
 	}
 }
@@ -183,15 +217,11 @@ export async function generateGoldenNotesForWeek(
 			temperature: 0.7,
 		});
 
-		const parsedNotes = parseJsonResponse(result.text, [] as z.infer<typeof GoldenNoteSchema>[]);
-
-		// Ensure parsedNotes is an array
-		if (!Array.isArray(parsedNotes)) {
-			console.error("AI Response that failed to parse:", result.text);
-			throw new Error(
-				`Expected array of golden notes but got: ${typeof parsedNotes}. Response: ${JSON.stringify(parsedNotes)}`
-			);
-		}
+		const parsedNotes = parseJsonArrayResponse(
+			result.text,
+			GoldenNotesArraySchema,
+			[] as z.infer<typeof GoldenNoteSchema>[]
+		);
 
 		// Add Content Structure validation
 		// Add Content Quality validation and filtering
@@ -268,15 +298,11 @@ export async function generateFlashcardsForWeek(
 			temperature: 0.7,
 		});
 
-		const parsed = parseJsonResponse(result.text, [] as z.infer<typeof FlashcardSchema>[]);
-
-		// Ensure parsed is an array
-		if (!Array.isArray(parsed)) {
-			console.error("AI Response that failed to parse:", result.text);
-			throw new Error(
-				`Expected array of flashcards but got: ${typeof parsed}. Response: ${JSON.stringify(parsed)}`
-			);
-		}
+		const parsed = parseJsonArrayResponse(
+			result.text,
+			FlashcardsArraySchema,
+			[] as z.infer<typeof FlashcardSchema>[]
+		);
 
 		// Add Content Structure validation
 		// Add Content Quality validation and filtering
@@ -352,15 +378,11 @@ export async function generateMCQsForWeek(
 			temperature: 0.7,
 		});
 
-		const parsed = parseJsonResponse(result.text, [] as z.infer<typeof MCQSchema>[]);
-
-		// Ensure parsed is an array
-		if (!Array.isArray(parsed)) {
-			console.error("AI Response that failed to parse:", result.text);
-			throw new Error(
-				`Expected array of multiple choice questions but got: ${typeof parsed}. Response: ${JSON.stringify(parsed)}`
-			);
-		}
+		const parsed = parseJsonArrayResponse(
+			result.text,
+			MCQsArraySchema,
+			[] as z.infer<typeof MCQSchema>[]
+		);
 
 		// Add Content Structure validation
 		// Add Content Quality validation and filtering
@@ -438,15 +460,11 @@ export async function generateOpenQuestionsForWeek(
 			temperature: 0.7,
 		});
 
-		const parsed = parseJsonResponse(result.text, [] as z.infer<typeof OpenQuestionSchema>[]);
-
-		// Ensure parsed is an array
-		if (!Array.isArray(parsed)) {
-			console.error("AI Response that failed to parse:", result.text);
-			throw new Error(
-				`Expected array of open questions but got: ${typeof parsed}. Response: ${JSON.stringify(parsed)}`
-			);
-		}
+		const parsed = parseJsonArrayResponse(
+			result.text,
+			OpenQuestionsArraySchema,
+			[] as z.infer<typeof OpenQuestionSchema>[]
+		);
 
 		// Add Content Structure validation
 		// Add Content Quality validation and filtering
@@ -523,40 +541,34 @@ export async function generateSummariesForWeek(
 			temperature: 0.7,
 		});
 
-		const parsed = parseJsonResponse(result.text, [] as z.infer<typeof SummarySchema>[]);
+		const parsed = parseJsonObjectResponse(
+			result.text,
+			SummarySchema,
+			{} as z.infer<typeof SummarySchema>
+		);
 
-		// Ensure parsed is an array
-		if (!Array.isArray(parsed)) {
-			console.error("AI Response that failed to parse:", result.text);
-			throw new Error(
-				`Expected array of summaries but got: ${typeof parsed}. Response: ${JSON.stringify(parsed)}`
-			);
-		}
-
-		// Validate array has content
-		if (parsed.length === 0) {
-			console.warn("AI generated empty summaries array");
+		// Validate object has content
+		if (!parsed || Object.keys(parsed).length === 0) {
+			console.warn("AI generated empty summary object");
 		}
 
 		// Add Content Structure validation
 		// Add Content Quality validation and filtering
 
-		await db.insert(summariesTable).values(
-			parsed.map((s) => ({
-				weekId,
-				materialId: null,
-				title: s.title,
-				content: s.content,
-				summaryType: s.summaryType,
-				wordCount: s.wordCount,
-				metadata: {},
-			}))
-		);
+		await db.insert(summariesTable).values({
+			weekId,
+			materialId: null,
+			title: parsed.title,
+			content: parsed.content,
+			summaryType: parsed.summaryType,
+			wordCount: parsed.wordCount,
+			metadata: {},
+		});
 
 		return {
 			success: true,
 			contentType: "summaries",
-			generatedCount: parsed.length,
+			generatedCount: 1,
 		};
 	} catch (error) {
 		console.error("Summaries generation for week failed:", error);
