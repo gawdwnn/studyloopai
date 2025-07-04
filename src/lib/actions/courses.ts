@@ -78,26 +78,6 @@ export async function getCourseById(courseId: string) {
 	);
 }
 
-export async function getCourseMaterials(courseId: string) {
-	return await withErrorHandling(
-		async () => {
-			const materials = await db.query.courseMaterials.findMany({
-				where: eq(courseMaterials.courseId, courseId),
-				with: {
-					courseWeek: {
-						columns: {
-							weekNumber: true,
-						},
-					},
-				},
-				orderBy: desc(courseMaterials.createdAt),
-			});
-			return materials;
-		},
-		"getCourseMaterials",
-		[] // fallback empty array
-	);
-}
 
 export async function getAllUserMaterials() {
 	return await withErrorHandling(
@@ -107,6 +87,7 @@ export async function getAllUserMaterials() {
 					courseWeek: {
 						columns: {
 							weekNumber: true,
+							contentGenerationMetadata: true,
 						},
 					},
 					course: {

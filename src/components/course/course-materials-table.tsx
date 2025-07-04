@@ -1,8 +1,8 @@
 "use client";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { GeneratedContentBadges } from "@/components/course/generated-content-badges";
 import { MaterialStatusIndicator } from "@/components/course/material-status-indicator";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -14,7 +14,6 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import type {
-	WeekContentGenerationMetadata,
 	courseMaterials,
 	courseWeeks,
 	courses,
@@ -27,7 +26,7 @@ type CourseMaterialWithRelations = typeof courseMaterials.$inferSelect & {
 	course?: Pick<typeof courses.$inferSelect, "name"> | null;
 	courseWeek?: Pick<
 		typeof courseWeeks.$inferSelect,
-		"weekNumber" | "contentGenerationStatus" | "contentGenerationMetadata"
+		"weekNumber" | "contentGenerationMetadata"
 	> | null;
 	publicAccessToken?: string | null;
 };
@@ -65,35 +64,6 @@ export function CourseMaterialsTable({
 		}
 	};
 
-	// Helper function to get content generation data from week-level metadata
-	const getContentGenerationData = (material: CourseMaterialWithRelations) => {
-		const weekMetadata = material.courseWeek
-			?.contentGenerationMetadata as WeekContentGenerationMetadata | null;
-		const contentCounts = weekMetadata?.generationResults?.contentCounts;
-
-		return {
-			flashcards: {
-				count: contentCounts?.flashcards || 0,
-				success: (contentCounts?.flashcards || 0) > 0,
-			},
-			multipleChoice: {
-				count: contentCounts?.mcqs || 0,
-				success: (contentCounts?.mcqs || 0) > 0,
-			},
-			openQuestions: {
-				count: contentCounts?.openQuestions || 0,
-				success: (contentCounts?.openQuestions || 0) > 0,
-			},
-			summaries: {
-				count: contentCounts?.summaries || 0,
-				success: (contentCounts?.summaries || 0) > 0,
-			},
-			goldenNotes: {
-				count: contentCounts?.goldenNotes || 0,
-				success: (contentCounts?.goldenNotes || 0) > 0,
-			},
-		};
-	};
 
 	// Filter materials based on search term
 	const filteredMaterials = courseMaterials.filter(
@@ -193,51 +163,7 @@ export function CourseMaterialsTable({
 										</TableCell>
 
 										<TableCell>
-											{(() => {
-												const processingData = getContentGenerationData(material);
-												const totalGenerated = Object.values(processingData).reduce(
-													(sum, item) => sum + (item.count || 0),
-													0
-												);
-
-												if (totalGenerated === 0) {
-													return (
-														<Badge variant="secondary" className="text-xs">
-															No content generated
-														</Badge>
-													);
-												}
-
-												return (
-													<div className="flex flex-wrap gap-1">
-														{processingData.goldenNotes.count > 0 && (
-															<Badge variant="default" className="text-xs">
-																📝 {processingData.goldenNotes.count}
-															</Badge>
-														)}
-														{processingData.flashcards.count > 0 && (
-															<Badge variant="default" className="text-xs">
-																🃏 {processingData.flashcards.count}
-															</Badge>
-														)}
-														{processingData.multipleChoice.count > 0 && (
-															<Badge variant="default" className="text-xs">
-																❓ {processingData.multipleChoice.count}
-															</Badge>
-														)}
-														{processingData.openQuestions.count > 0 && (
-															<Badge variant="default" className="text-xs">
-																💭 {processingData.openQuestions.count}
-															</Badge>
-														)}
-														{processingData.summaries.count > 0 && (
-															<Badge variant="default" className="text-xs">
-																📄 {processingData.summaries.count}
-															</Badge>
-														)}
-													</div>
-												);
-											})()}
+											<GeneratedContentBadges material={material} />
 										</TableCell>
 
 										<TableCell className="text-center whitespace-nowrap">
