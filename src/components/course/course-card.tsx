@@ -10,7 +10,6 @@ import { addWeeks, format } from "date-fns";
 import { Edit2, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { toast } from "sonner";
 
 type Course = typeof courses.$inferSelect;
 
@@ -50,9 +49,6 @@ export function CourseCard({
 	const handleConfirmDelete = async () => {
 		if (onDeleteCourse) {
 			onDeleteCourse(course.id, course.name);
-		} else {
-			// Fallback for backwards compatibility
-			toast.error("Delete function not provided");
 		}
 	};
 
@@ -86,16 +82,16 @@ export function CourseCard({
 	};
 
 	return (
-		<Link href={`/dashboard/courses/${course.id}`} className="inline-block">
+		<Link href={`/dashboard/courses/${course.id}`} className="block h-full">
 			<div
-				className={`relative w-80 h-48 transition-all duration-300 ${
+				className={`relative h-full transition-all duration-300 ${
 					isBeingDeleted ? "opacity-50 scale-95" : ""
 				}`}
 				onMouseEnter={() => setIsHovered(true)}
 				onMouseLeave={() => setIsHovered(false)}
 			>
 				<Card
-					className={`w-full h-full border-0 shadow-lg overflow-hidden hover:shadow-md transition-shadow ${
+					className={`w-full h-full border-0 shadow-lg overflow-hidden hover:shadow-md transition-shadow flex flex-col ${
 						isBeingDeleted ? "bg-destructive/5 border-destructive/20" : ""
 					}`}
 				>
@@ -113,7 +109,7 @@ export function CourseCard({
 					/>
 
 					<CardHeader className="pb-2">
-						<CardTitle className="text-lg leading-6">
+						<CardTitle className="text-lg leading-6 h-12 flex items-center">
 							{isEditing ? (
 								<input
 									ref={inputRef}
@@ -131,7 +127,7 @@ export function CourseCard({
 						</CardTitle>
 					</CardHeader>
 
-					<CardContent className="pt-0 h-full flex flex-col justify-end">
+					<CardContent className="pt-0 flex-1 flex flex-col justify-end">
 						<div className="flex items-center justify-between">
 							<div className="flex-1 mr-4">
 								<Progress value={30} className="h-2" />

@@ -2,6 +2,7 @@
 
 import { CourseCard } from "@/components/course/course-card";
 import { CreateCourseDialog } from "@/components/course/create-course-dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 import { deleteCourse, getUserCourses } from "@/lib/actions/courses";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useTransition } from "react";
@@ -60,18 +61,22 @@ export default function DashboardPage() {
 	if (isLoading) {
 		return (
 			<div className="space-y-6">
-				<div className="flex justify-between items-start">
+				<div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
 					<div>
-						<h1 className="text-3xl font-bold tracking-tight">Welcome back Smart, 👋</h1>
+						<h1 className="text-2xl font-bold tracking-tight md:text-3xl">
+							Welcome back Smart, 👋
+						</h1>
 						<p className="text-muted-foreground">
 							Here's an overview of your courses and progress.
 						</p>
 					</div>
-					<CreateCourseDialog />
+					<div className="w-full md:w-auto">
+						<CreateCourseDialog />
+					</div>
 				</div>
 				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-					{["course-1", "course-2", "course-3", "course-4"].map((skeletonId) => (
-						<div key={skeletonId} className="w-80 h-48 bg-muted animate-pulse rounded-lg" />
+					{[...Array(4)].map(() => (
+						<Skeleton key={crypto.randomUUID()} className="w-full h-48 rounded-lg" />
 					))}
 				</div>
 			</div>
@@ -79,14 +84,16 @@ export default function DashboardPage() {
 	}
 
 	return (
-		<div className="space-y-6">
-			<div className="flex justify-between items-start">
+		<div className="space-y-12">
+			<div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
 				<div>
 					{/* //TODO: Add user name*/}
-					<h1 className="text-3xl font-bold tracking-tight">Welcome back Smart, 👋</h1>
+					<h1 className="text-2xl font-bold tracking-tight md:text-3xl">Welcome back Smart, 👋</h1>
 					<p className="text-muted-foreground">Here's an overview of your courses and progress.</p>
 				</div>
-				<CreateCourseDialog />
+				<div className="w-full md:w-auto">
+					<CreateCourseDialog />
+				</div>
 			</div>
 
 			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -102,13 +109,14 @@ export default function DashboardPage() {
 					courses.map((course) => {
 						const isBeingDeleted = deletingCourses.has(course.id);
 						return (
-							<CourseCard
-								key={course.id}
-								course={course}
-								onDeleteCourse={handleDeleteCourse}
-								isDeleting={isPending}
-								isBeingDeleted={isBeingDeleted}
-							/>
+							<div key={course.id} className="h-48">
+								<CourseCard
+									course={course}
+									onDeleteCourse={handleDeleteCourse}
+									isDeleting={isPending}
+									isBeingDeleted={isBeingDeleted}
+								/>
+							</div>
 						);
 					})
 				)}

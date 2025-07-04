@@ -81,22 +81,24 @@ export default function CourseMaterialsPage() {
 	const hasNoCourses = !isLoading && courses.length === 0;
 
 	return (
-		<>
-			<div className="space-y-6">
-				<div className="flex justify-between items-start">
-					<div>
-						<h1 className="text-3xl font-bold tracking-tight">Course Materials</h1>
-						<p className="text-muted-foreground">
-							Manage your uploaded course materials and generated content.
-						</p>
-					</div>
+		<div className="space-y-6">
+			<div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+				<div>
+					<h1 className="text-2xl font-bold tracking-tight md:text-3xl">Course Materials</h1>
+					<p className="text-muted-foreground">
+						Manage your uploaded course materials and generated content.
+					</p>
+				</div>
 
+				<div className="w-full md:w-auto">
 					<TooltipProvider>
 						<Tooltip>
 							<TooltipTrigger asChild>
 								<div>
 									{hasNoCourses ? (
-										<Button disabled>Upload Course Materials</Button>
+										<Button className="w-full" disabled>
+											Upload Course Materials
+										</Button>
 									) : (
 										<CourseMaterialUploadWizard
 											courses={courses}
@@ -113,15 +115,14 @@ export default function CourseMaterialsPage() {
 						</Tooltip>
 					</TooltipProvider>
 				</div>
-
-				<CourseMaterialsTable
-					courseMaterials={courseMaterials}
-					isLoading={isLoading}
-					onDeleteMaterial={handleDeleteMaterial}
-					isDeleting={isPending}
-					deletingMaterials={deletingMaterials}
-				/>
 			</div>
-		</>
+			<CourseMaterialsTable
+				courseMaterials={courseMaterials}
+				isLoading={isLoading}
+				onDeleteMaterial={handleDeleteMaterial}
+				isDeleting={isPending}
+				deletingMaterials={deletingMaterials}
+			/>
+		</div>
 	);
 }
