@@ -50,7 +50,7 @@ export type WeekContentGenerationMetadata = {
 	// Batch trigger information
 	batchInfo?: {
 		goldenNotes: { batchId: string; status?: string };
-		flashcards: { batchId: string; status?: string };
+		cuecards: { batchId: string; status?: string };
 		mcqs: { batchId: string; status?: string };
 		openQuestions: { batchId: string; status?: string };
 		summaries: { batchId: string; status?: string };
@@ -62,7 +62,7 @@ export type WeekContentGenerationMetadata = {
 		totalGenerated: number;
 		contentCounts: {
 			goldenNotes: number;
-			flashcards: number;
+			cuecards: number;
 			mcqs: number;
 			openQuestions: number;
 			summaries: number;
@@ -240,28 +240,34 @@ export const documentChunks = pgTable(
 	]
 );
 
-// Flashcards table - AI generated study cards
-export const flashcards = pgTable(
-	"flashcards",
+// Cuecards table - AI generated study cards
+export const cuecards = pgTable(
+	"cuecards",
 	{
 		id: uuid().defaultRandom().primaryKey().notNull(),
-		materialId: uuid("material_id"),
+		courseId: uuid("course_id").notNull(),
+		weekId: uuid("week_id").notNull(),
 		question: text().notNull(),
 		answer: text().notNull(),
 		difficulty: varchar({ length: 20 }).default("intermediate"),
 		metadata: jsonb().default({}),
 		createdAt: timestamp("created_at").defaultNow().notNull(),
 		updatedAt: timestamp("updated_at").defaultNow().notNull(),
-		weekId: uuid("week_id"),
 	},
 	(table) => [
-		index("idx_flashcards_material_id").using("btree", table.materialId),
-		index("idx_flashcards_difficulty").using("btree", table.difficulty),
-		index("idx_flashcards_week_id").using("btree", table.weekId),
+		index("idx_cuecards_course_id").using("btree", table.courseId),
+		index("idx_cuecards_week_id").using("btree", table.weekId),
+		index("idx_cuecards_difficulty").using("btree", table.difficulty),
+		index("idx_cuecards_course_week").using("btree", table.courseId, table.weekId),
 		foreignKey({
-			columns: [table.materialId],
-			foreignColumns: [courseMaterials.id],
-			name: "flashcards_material_id_fkey",
+			columns: [table.courseId],
+			foreignColumns: [courses.id],
+			name: "cuecards_course_id_fkey",
+		}).onDelete("cascade"),
+		foreignKey({
+			columns: [table.weekId],
+			foreignColumns: [courseWeeks.id],
+			name: "cuecards_week_id_fkey",
 		}).onDelete("cascade"),
 	]
 );
@@ -271,7 +277,8 @@ export const multipleChoiceQuestions = pgTable(
 	"multiple_choice_questions",
 	{
 		id: uuid().defaultRandom().primaryKey().notNull(),
-		materialId: uuid("material_id"),
+		courseId: uuid("course_id").notNull(),
+		weekId: uuid("week_id").notNull(),
 		question: text().notNull(),
 		options: jsonb().notNull(), // Array of strings ['A', 'B', 'C', 'D']
 		correctAnswer: varchar("correct_answer", { length: 5 }).notNull(),
@@ -280,16 +287,21 @@ export const multipleChoiceQuestions = pgTable(
 		metadata: jsonb().default({}),
 		createdAt: timestamp("created_at").defaultNow().notNull(),
 		updatedAt: timestamp("updated_at").defaultNow().notNull(),
-		weekId: uuid("week_id"),
 	},
 	(table) => [
-		index("idx_mcq_material_id").using("btree", table.materialId),
-		index("idx_mcq_difficulty").using("btree", table.difficulty),
+		index("idx_mcq_course_id").using("btree", table.courseId),
 		index("idx_mcq_week_id").using("btree", table.weekId),
+		index("idx_mcq_difficulty").using("btree", table.difficulty),
+		index("idx_mcq_course_week").using("btree", table.courseId, table.weekId),
 		foreignKey({
-			columns: [table.materialId],
-			foreignColumns: [courseMaterials.id],
-			name: "multiple_choice_questions_material_id_fkey",
+			columns: [table.courseId],
+			foreignColumns: [courses.id],
+			name: "multiple_choice_questions_course_id_fkey",
+		}).onDelete("cascade"),
+		foreignKey({
+			columns: [table.weekId],
+			foreignColumns: [courseWeeks.id],
+			name: "multiple_choice_questions_week_id_fkey",
 		}).onDelete("cascade"),
 	]
 );
@@ -299,7 +311,8 @@ export const openQuestions = pgTable(
 	"open_questions",
 	{
 		id: uuid().defaultRandom().primaryKey().notNull(),
-		materialId: uuid("material_id"),
+		courseId: uuid("course_id").notNull(),
+		weekId: uuid("week_id").notNull(),
 		question: text().notNull(),
 		sampleAnswer: text("sample_answer"),
 		gradingRubric: jsonb("grading_rubric"),
@@ -307,16 +320,21 @@ export const openQuestions = pgTable(
 		metadata: jsonb().default({}),
 		createdAt: timestamp("created_at").defaultNow().notNull(),
 		updatedAt: timestamp("updated_at").defaultNow().notNull(),
-		weekId: uuid("week_id"),
 	},
 	(table) => [
-		index("idx_open_questions_material_id").using("btree", table.materialId),
-		index("idx_open_questions_difficulty").using("btree", table.difficulty),
+		index("idx_open_questions_course_id").using("btree", table.courseId),
 		index("idx_open_questions_week_id").using("btree", table.weekId),
+		index("idx_open_questions_difficulty").using("btree", table.difficulty),
+		index("idx_open_questions_course_week").using("btree", table.courseId, table.weekId),
 		foreignKey({
-			columns: [table.materialId],
-			foreignColumns: [courseMaterials.id],
-			name: "open_questions_material_id_fkey",
+			columns: [table.courseId],
+			foreignColumns: [courses.id],
+			name: "open_questions_course_id_fkey",
+		}).onDelete("cascade"),
+		foreignKey({
+			columns: [table.weekId],
+			foreignColumns: [courseWeeks.id],
+			name: "open_questions_week_id_fkey",
 		}).onDelete("cascade"),
 	]
 );
@@ -326,7 +344,8 @@ export const summaries = pgTable(
 	"summaries",
 	{
 		id: uuid().defaultRandom().primaryKey().notNull(),
-		materialId: uuid("material_id"),
+		courseId: uuid("course_id").notNull(),
+		weekId: uuid("week_id").notNull(),
 		title: varchar({ length: 255 }),
 		content: text().notNull(),
 		summaryType: varchar("summary_type", { length: 50 }).default("general"), // 'general', 'executive', 'detailed'
@@ -334,16 +353,21 @@ export const summaries = pgTable(
 		metadata: jsonb().default({}),
 		createdAt: timestamp("created_at").defaultNow().notNull(),
 		updatedAt: timestamp("updated_at").defaultNow().notNull(),
-		weekId: uuid("week_id"),
 	},
 	(table) => [
-		index("idx_summaries_material_id").using("btree", table.materialId),
-		index("idx_summaries_type").using("btree", table.summaryType),
+		index("idx_summaries_course_id").using("btree", table.courseId),
 		index("idx_summaries_week_id").using("btree", table.weekId),
+		index("idx_summaries_type").using("btree", table.summaryType),
+		index("idx_summaries_course_week").using("btree", table.courseId, table.weekId),
 		foreignKey({
-			columns: [table.materialId],
-			foreignColumns: [courseMaterials.id],
-			name: "summaries_material_id_fkey",
+			columns: [table.courseId],
+			foreignColumns: [courses.id],
+			name: "summaries_course_id_fkey",
+		}).onDelete("cascade"),
+		foreignKey({
+			columns: [table.weekId],
+			foreignColumns: [courseWeeks.id],
+			name: "summaries_week_id_fkey",
 		}).onDelete("cascade"),
 	]
 );
@@ -353,7 +377,8 @@ export const goldenNotes = pgTable(
 	"golden_notes",
 	{
 		id: uuid().defaultRandom().primaryKey().notNull(),
-		materialId: uuid("material_id"),
+		courseId: uuid("course_id").notNull(),
+		weekId: uuid("week_id").notNull(),
 		title: varchar({ length: 255 }).notNull(),
 		content: text().notNull(),
 		priority: integer().default(1),
@@ -361,17 +386,22 @@ export const goldenNotes = pgTable(
 		metadata: jsonb().default({}),
 		createdAt: timestamp("created_at").defaultNow().notNull(),
 		updatedAt: timestamp("updated_at").defaultNow().notNull(),
-		weekId: uuid("week_id"),
 	},
 	(table) => [
-		index("idx_golden_notes_material_id").using("btree", table.materialId),
+		index("idx_golden_notes_course_id").using("btree", table.courseId),
+		index("idx_golden_notes_week_id").using("btree", table.weekId),
 		index("idx_golden_notes_priority").using("btree", table.priority),
 		index("idx_golden_notes_category").using("btree", table.category),
-		index("idx_golden_notes_week_id").using("btree", table.weekId),
+		index("idx_golden_notes_course_week").using("btree", table.courseId, table.weekId),
 		foreignKey({
-			columns: [table.materialId],
-			foreignColumns: [courseMaterials.id],
-			name: "golden_notes_material_id_fkey",
+			columns: [table.courseId],
+			foreignColumns: [courses.id],
+			name: "golden_notes_course_id_fkey",
+		}).onDelete("cascade"),
+		foreignKey({
+			columns: [table.weekId],
+			foreignColumns: [courseWeeks.id],
+			name: "golden_notes_week_id_fkey",
 		}).onDelete("cascade"),
 	]
 );
@@ -415,7 +445,7 @@ export const generationConfigs = pgTable(
 
 		// Core generation settings
 		goldenNotesCount: integer("golden_notes_count").notNull(),
-		flashcardsCount: integer("flashcards_count").notNull(),
+		cuecardsCount: integer("cuecards_count").notNull(),
 		summaryLength: integer("summary_length").notNull(),
 		examExercisesCount: integer("exam_exercises_count").notNull(),
 		mcqExercisesCount: integer("mcq_exercises_count").notNull(),
@@ -452,7 +482,7 @@ export const generationConfigs = pgTable(
 	]
 );
 
-// Add exams table
+// Add exams esque table called revisions
 
 // User progress tracking table
 export const userProgress = pgTable(
@@ -460,8 +490,8 @@ export const userProgress = pgTable(
 	{
 		id: uuid().defaultRandom().primaryKey().notNull(),
 		userId: uuid("user_id").notNull(),
-		contentType: varchar("content_type", { length: 50 }).notNull(), // 'flashcard', 'mcq', 'open_question'
-		contentId: uuid("content_id").notNull(), // references flashcards/mcqs/open_questions
+		contentType: varchar("content_type", { length: 50 }).notNull(), // 'cuecard', 'mcq', 'open_question'
+		contentId: uuid("content_id").notNull(), // references cuecards/mcqs/open_questions
 		status: varchar({ length: 20 }).default("not_started"), // 'not_started', 'in_progress', 'completed'
 		score: integer(), // Score out of 100
 		attempts: integer().default(0),

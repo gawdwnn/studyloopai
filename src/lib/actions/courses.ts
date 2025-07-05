@@ -2,13 +2,16 @@
 
 import { db } from "@/db";
 import { courseMaterials, courseWeeks, courses } from "@/db/schema";
-import { deleteAiContentForMaterials } from "@/lib/services/ai-content-deletion-service";
+import {
+	deleteAiContentForCourse,
+	deleteMaterialSpecificData,
+} from "@/lib/services/ai-content-deletion-service";
 import { cancelMultipleJobs, extractRunIds } from "@/lib/services/job-cancellation-service";
 import { cleanupStorageFiles, extractFilePaths } from "@/lib/services/storage-cleanup-service";
 import { getServerClient } from "@/lib/supabase/server";
 import { withErrorHandling } from "@/lib/utils/error-handling";
 import { type CourseCreationData, CourseCreationSchema } from "@/lib/validations/courses";
-import { asc, count, desc, eq } from "drizzle-orm";
+import { asc, desc, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 export async function createCourse(formData: CourseCreationData) {
@@ -167,11 +170,6 @@ export async function deleteCourse(courseId: string) {
 		throw new Error("You must be logged in to delete a course.");
 	}
 
-	// Validate courseId format
-	if (!courseId || typeof courseId !== "string" || courseId.trim() === "") {
-		throw new Error("Invalid course ID provided.");
-	}
-
 	let course: { id: string; name: string; userId: string } | undefined;
 	let materialsData: Array<{
 		id: string;
@@ -213,26 +211,25 @@ export async function deleteCourse(courseId: string) {
 		const deletionResult = await db.transaction(async (tx) => {
 			const materialIds = materialsData.map((m) => m.id);
 
-			// Delete AI content and get counts
-			const aiContentResult = await deleteAiContentForMaterials(tx, materialIds);
+			// Delete AI content for entire course (most efficient)
+			const aiContentResult = await deleteAiContentForCourse(tx, courseId);
 
-			// Get course weeks count
-			const [weeksCountResult] = await tx
-				.select({ count: count() })
-				.from(courseWeeks)
-				.where(eq(courseWeeks.courseId, courseId));
+			// Delete material-specific data (configs and chunks)
+			const materialResult = await deleteMaterialSpecificData(tx, materialIds);
 
-			const weeksCount = weeksCountResult.count;
-
-			// Delete course materials
-			if (materialIds.length > 0) {
-				await tx.delete(courseMaterials).where(eq(courseMaterials.courseId, courseId));
-			}
-
-			// Delete course weeks
-			if (weeksCount > 0) {
-				await tx.delete(courseWeeks).where(eq(courseWeeks.courseId, courseId));
-			}
+			// Delete course materials and weeks, get actual counts
+			const [materialsResult, weeksResult] = await Promise.all([
+				materialIds.length > 0
+					? tx
+							.delete(courseMaterials)
+							.where(eq(courseMaterials.courseId, courseId))
+							.returning({ id: courseMaterials.id })
+					: Promise.resolve([]),
+				tx
+					.delete(courseWeeks)
+					.where(eq(courseWeeks.courseId, courseId))
+					.returning({ id: courseWeeks.id }),
+			]);
 
 			// Delete the main course record
 			const [deletedCourse] = await tx.delete(courses).where(eq(courses.id, courseId)).returning({
@@ -246,11 +243,11 @@ export async function deleteCourse(courseId: string) {
 
 			return {
 				...deletedCourse,
-				materialsDeleted: materialIds.length,
-				configsDeleted: aiContentResult.configsDeleted,
+				materialsDeleted: materialsResult.length,
+				configsDeleted: materialResult.configsDeleted,
 				aiContentDeleted: aiContentResult.aiContentDeleted,
-				chunksDeleted: aiContentResult.chunksDeleted,
-				weeksDeleted: weeksCount,
+				chunksDeleted: materialResult.chunksDeleted,
+				weeksDeleted: weeksResult.length,
 			};
 		});
 

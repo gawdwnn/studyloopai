@@ -13,7 +13,7 @@ import {
 import { eq } from "drizzle-orm";
 
 export type ContentType =
-	| "flashcards"
+	| "cuecards"
 	| "multipleChoice"
 	| "openQuestions"
 	| "summaries"
@@ -78,7 +78,7 @@ export async function updateWeekContentGenerationMetadata(
 				totalGenerated: 0,
 				contentCounts: {
 					goldenNotes: 0,
-					flashcards: 0,
+					cuecards: 0,
 					mcqs: 0,
 					openQuestions: 0,
 					summaries: 0,
@@ -92,7 +92,7 @@ export async function updateWeekContentGenerationMetadata(
 			ContentType,
 			keyof typeof currentMetadata.generationResults.contentCounts
 		> = {
-			flashcards: "flashcards",
+			cuecards: "cuecards",
 			multipleChoice: "mcqs",
 			openQuestions: "openQuestions",
 			summaries: "summaries",

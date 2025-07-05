@@ -57,6 +57,13 @@
 			"when": 1751603714331,
 			"tag": "0007_little_meteorite",
 			"breakpoints": true
+		},
+		{
+			"idx": 8,
+			"version": "7",
+			"when": 1751742704767,
+			"tag": "0008_mysterious_lord_hawal",
+			"breakpoints": true
 		}
 	]
 }

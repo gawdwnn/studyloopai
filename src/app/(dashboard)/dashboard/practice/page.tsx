@@ -2,7 +2,7 @@ import { AppTabNav } from "@/components/app-tab-nav";
 
 export default function PracticePage() {
 	const tabs = [
-		{ label: "Flashcards", href: "/practice/flashcards" },
+		{ label: "Cuecards", href: "/practice/cuecards" },
 		{ label: "Quizzes", href: "/practice/quizzes" },
 		{ label: "Exam Simulator", href: "/practice/exam" },
 	];

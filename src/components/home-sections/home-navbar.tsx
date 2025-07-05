@@ -90,18 +90,18 @@ export function HomeNavbar() {
 										</p>
 									</NavigationMenuLink>
 									<NavigationMenuLink
-										href="/dashboard/adaptive-learning/flashcards"
+										href="/dashboard/adaptive-learning/cuecards"
 										className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground group"
 									>
 										<div className="flex items-center gap-2">
 											<div className="w-8 h-8 bg-green-500/10 rounded-lg flex items-center justify-center">
 												<Brain className="w-4 h-4 text-green-600" />
 											</div>
-											<div className="text-sm font-medium leading-none">Smart Flashcards</div>
+											<div className="text-sm font-medium leading-none">Smart Cuecards</div>
 											<ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
 										</div>
 										<p className="line-clamp-2 text-sm leading-snug text-muted-foreground mt-2">
-											AI-generated flashcards for efficient memorization
+											AI-generated cuecards for efficient memorization
 										</p>
 									</NavigationMenuLink>
 									<NavigationMenuLink
@@ -223,7 +223,7 @@ export function HomeNavbar() {
 										</Link>
 
 										<Link
-											href="/dashboard/adaptive-learning/flashcards"
+											href="/dashboard/adaptive-learning/cuecards"
 											className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-accent transition-colors"
 											onClick={() => setIsMobileMenuOpen(false)}
 										>
@@ -231,7 +231,7 @@ export function HomeNavbar() {
 												<Brain className="w-5 h-5 text-green-600" />
 											</div>
 											<div className="flex-1">
-												<div className="font-medium">Smart Flashcards</div>
+												<div className="font-medium">Smart Cuecards</div>
 												<div className="text-sm text-muted-foreground">AI-generated cards</div>
 											</div>
 											<ArrowRight className="w-4 h-4 text-muted-foreground" />

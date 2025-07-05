@@ -8,7 +8,7 @@ export function FeaturesSection() {
 			icon: Brain,
 			title: "AI-Generated Study Materials",
 			description:
-				"Upload your course materials and get instant, intelligent summaries and flashcards tailored to your learning objectives",
+				"Upload your course materials and get instant, intelligent summaries and cuecards tailored to your learning objectives",
 			color: "text-blue-600",
 			bgColor: "bg-blue-500/10",
 		},
@@ -17,7 +17,7 @@ export function FeaturesSection() {
 			icon: Target,
 			title: "Adaptive Learning System",
 			description:
-				"Smart quizzes and flashcards that adjust difficulty based on your performance and focus on areas that need improvement",
+				"Smart quizzes and cuecards that adjust difficulty based on your performance and focus on areas that need improvement",
 			color: "text-green-600",
 			bgColor: "bg-green-500/10",
 		},

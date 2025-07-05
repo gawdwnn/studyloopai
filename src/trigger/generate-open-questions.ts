@@ -70,7 +70,7 @@ export const generateOpenQuestions = schemaTask({
 			const materialIds = materials.map((m) => m.id);
 
 			// Generate open questions for the week
-			const result = await generateOpenQuestionsForWeek(weekId, materialIds, {
+			const result = await generateOpenQuestionsForWeek(courseId, weekId, materialIds, {
 				examExercisesCount: adaptiveConfig.examExercisesCount,
 				difficulty: adaptiveConfig.difficulty,
 			});

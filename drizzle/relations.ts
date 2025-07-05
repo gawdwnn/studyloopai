@@ -3,8 +3,8 @@ import {
 	courseMaterials,
 	courseWeeks,
 	courses,
+	cuecards,
 	documentChunks,
-	flashcards,
 	generationConfigs,
 	goldenNotes,
 	multipleChoiceQuestions,
@@ -30,11 +30,6 @@ export const courseMaterialsRelations = relations(courseMaterials, ({ one, many 
 		references: [courseWeeks.id],
 	}),
 	documentChunks: many(documentChunks),
-	flashcards: many(flashcards),
-	multipleChoiceQuestions: many(multipleChoiceQuestions),
-	openQuestions: many(openQuestions),
-	summaries: many(summaries),
-	goldenNotes: many(goldenNotes),
 	ownNotes: many(ownNotes),
 	generationConfigs: many(generationConfigs),
 }));
@@ -46,6 +41,11 @@ export const coursesRelations = relations(courses, ({ one, many }) => ({
 		fields: [courses.userId],
 		references: [users.userId],
 	}),
+	cuecards: many(cuecards),
+	multipleChoiceQuestions: many(multipleChoiceQuestions),
+	openQuestions: many(openQuestions),
+	summaries: many(summaries),
+	goldenNotes: many(goldenNotes),
 }));
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -63,7 +63,7 @@ export const courseWeeksRelations = relations(courseWeeks, ({ one, many }) => ({
 		fields: [courseWeeks.courseId],
 		references: [courses.id],
 	}),
-	flashcards: many(flashcards),
+	cuecards: many(cuecards),
 	multipleChoiceQuestions: many(multipleChoiceQuestions),
 	openQuestions: many(openQuestions),
 	summaries: many(summaries),
@@ -84,23 +84,23 @@ export const userPlansRelations = relations(userPlans, ({ one }) => ({
 	}),
 }));
 
-// Flashcards relations
-export const flashcardsRelations = relations(flashcards, ({ one }) => ({
-	courseMaterial: one(courseMaterials, {
-		fields: [flashcards.materialId],
-		references: [courseMaterials.id],
+// Cuecards relations
+export const cuecardsRelations = relations(cuecards, ({ one }) => ({
+	course: one(courses, {
+		fields: [cuecards.courseId],
+		references: [courses.id],
 	}),
 	courseWeek: one(courseWeeks, {
-		fields: [flashcards.weekId],
+		fields: [cuecards.weekId],
 		references: [courseWeeks.id],
 	}),
 }));
 
 // Multiple choice questions relations
 export const multipleChoiceQuestionsRelations = relations(multipleChoiceQuestions, ({ one }) => ({
-	courseMaterial: one(courseMaterials, {
-		fields: [multipleChoiceQuestions.materialId],
-		references: [courseMaterials.id],
+	course: one(courses, {
+		fields: [multipleChoiceQuestions.courseId],
+		references: [courses.id],
 	}),
 	courseWeek: one(courseWeeks, {
 		fields: [multipleChoiceQuestions.weekId],
@@ -110,9 +110,9 @@ export const multipleChoiceQuestionsRelations = relations(multipleChoiceQuestion
 
 // Open questions relations
 export const openQuestionsRelations = relations(openQuestions, ({ one }) => ({
-	courseMaterial: one(courseMaterials, {
-		fields: [openQuestions.materialId],
-		references: [courseMaterials.id],
+	course: one(courses, {
+		fields: [openQuestions.courseId],
+		references: [courses.id],
 	}),
 	courseWeek: one(courseWeeks, {
 		fields: [openQuestions.weekId],
@@ -122,9 +122,9 @@ export const openQuestionsRelations = relations(openQuestions, ({ one }) => ({
 
 // Summaries relations
 export const summariesRelations = relations(summaries, ({ one }) => ({
-	courseMaterial: one(courseMaterials, {
-		fields: [summaries.materialId],
-		references: [courseMaterials.id],
+	course: one(courses, {
+		fields: [summaries.courseId],
+		references: [courses.id],
 	}),
 	courseWeek: one(courseWeeks, {
 		fields: [summaries.weekId],
@@ -134,9 +134,9 @@ export const summariesRelations = relations(summaries, ({ one }) => ({
 
 // Golden notes relations
 export const goldenNotesRelations = relations(goldenNotes, ({ one }) => ({
-	courseMaterial: one(courseMaterials, {
-		fields: [goldenNotes.materialId],
-		references: [courseMaterials.id],
+	course: one(courses, {
+		fields: [goldenNotes.courseId],
+		references: [courses.id],
 	}),
 	courseWeek: one(courseWeeks, {
 		fields: [goldenNotes.weekId],

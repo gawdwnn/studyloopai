@@ -80,10 +80,10 @@ export function HomeFooter() {
 								</li>
 								<li>
 									<Link
-										href="/dashboard/adaptive-learning/flashcards"
+										href="/dashboard/adaptive-learning/cuecards"
 										className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2 group"
 									>
-										Smart Flashcards
+										Smart Cuecards
 										<ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
 									</Link>
 								</li>

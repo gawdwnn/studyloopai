@@ -18,7 +18,7 @@
 
 import type { MaterialUploadData } from "@/components/course/course-material-upload-wizard";
 import { db } from "@/db";
-import { type ProcessingMetadata, courseMaterials } from "@/db/schema";
+import { courseMaterials } from "@/db/schema";
 import {
 	CONTENT_TYPES,
 	FILE_UPLOAD_LIMITS,
@@ -252,65 +252,6 @@ export async function uploadAndProcessMaterialsBatch(
 		return {
 			success: false,
 			error: errorMessage,
-		};
-	}
-}
-
-/**
- * Get batch processing status
- */
-export async function getBatchProcessingStatus(batchId: string): Promise<{
-	success: boolean;
-	status?: string;
-	completedCount?: number;
-	totalCount?: number;
-	error?: string;
-}> {
-	try {
-		// Query materials with this batch ID
-		const materials = await db.query.courseMaterials.findMany({
-			where: eq(courseMaterials.runId, batchId),
-			columns: {
-				id: true,
-				processingMetadata: true,
-				embeddingStatus: true,
-			},
-		});
-
-		if (materials.length === 0) {
-			return { success: false, error: "Batch not found" };
-		}
-
-		const totalCount = materials.length;
-		const completedCount = materials.filter((m) => {
-			const metadata = m.processingMetadata as ProcessingMetadata;
-			return metadata?.processingStatus === "completed" || m.embeddingStatus === "completed";
-		}).length;
-
-		const allCompleted = completedCount === totalCount;
-		const hasFailures = materials.some((m) => {
-			const metadata = m.processingMetadata as ProcessingMetadata;
-			return metadata?.processingStatus === "failed" || m.embeddingStatus === "failed";
-		});
-
-		let status = "processing";
-		if (allCompleted) {
-			status = "completed";
-		} else if (hasFailures) {
-			status = "partial_failure";
-		}
-
-		return {
-			success: true,
-			status,
-			completedCount,
-			totalCount,
-		};
-	} catch (error) {
-		console.error("Failed to get batch status:", error);
-		return {
-			success: false,
-			error: error instanceof Error ? error.message : "Failed to get batch status",
 		};
 	}
 }

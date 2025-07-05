@@ -8,7 +8,7 @@ export { processAndEmbedIndividualMaterial } from "./process-and-embed-individua
 
 // Export individual content generation tasks
 export { generateGoldenNotes } from "./generate-golden-notes";
-export { generateFlashcards } from "./generate-flashcards";
+export { generateCuecards } from "./generate-cuecards";
 export { generateMCQs } from "./generate-mcqs";
 export { generateOpenQuestions } from "./generate-open-questions";
 export { generateSummaries } from "./generate-summaries";

@@ -11,7 +11,7 @@ export function ReviewsSection() {
 			avatar: "👩‍💻",
 			rating: 5,
 			content:
-				"StudyLoop completely transformed how I study. The AI-generated flashcards helped me ace my algorithms exam with 40% less study time.",
+				"StudyLoop completely transformed how I study. The AI-generated cuecards helped me ace my algorithms exam with 40% less study time.",
 			improvement: "+40% grade improvement",
 		},
 		{

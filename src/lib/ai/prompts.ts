@@ -68,9 +68,9 @@ Output as a JSON array with this structure:
 	},
 };
 
-// Flashcards Generation
-export const flashcardsPrompt: ContentGenerationPrompt = {
-	systemPrompt: `You are an expert in creating effective flashcards for active recall and spaced repetition learning. Your flashcards should test understanding, not just memorization, and follow proven educational principles.
+// Cuecards Generation
+export const cuecardsPrompt: ContentGenerationPrompt = {
+	systemPrompt: `You are an expert in creating effective cuecards for active recall and spaced repetition learning. Your cuecards should test understanding, not just memorization, and follow proven educational principles.
 
 Guidelines:
 - Create clear, specific questions that test understanding
@@ -81,14 +81,14 @@ Guidelines:
 - Focus on testable knowledge and key concepts`,
 
 	userPrompt: ({ content, difficulty, count }) => `
-Create ${count} flashcards from the following educational content. Focus on key concepts, definitions, and important facts that students should remember.
+Create ${count} cuecards from the following educational content. Focus on key concepts, definitions, and important facts that students should remember.
 
 Content to analyze:
 ${content}
 
 Requirements:
 - Difficulty level: ${difficulty}
-- Generate exactly ${count} flashcards
+- Generate exactly ${count} cuecards
 - Questions should be clear and specific
 - Answers should be complete but concise
 - Vary question types (what, how, why, when, etc.)
@@ -288,8 +288,8 @@ export function getPromptByType(contentType: string): ContentGenerationPrompt | 
 	switch (contentType) {
 		case "goldenNotes":
 			return goldenNotesPrompt;
-		case "flashcards":
-			return flashcardsPrompt;
+		case "cuecards":
+			return cuecardsPrompt;
 		case "multipleChoice":
 			return multipleChoicePrompt;
 		case "openQuestions":
@@ -304,7 +304,7 @@ export function getPromptByType(contentType: string): ContentGenerationPrompt | 
 // Content type validation
 export const SUPPORTED_CONTENT_TYPES = [
 	"goldenNotes",
-	"flashcards",
+	"cuecards",
 	"multipleChoice",
 	"openQuestions",
 	"summaries",

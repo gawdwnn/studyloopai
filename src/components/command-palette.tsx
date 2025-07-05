@@ -64,9 +64,9 @@ const learningItems = [
 		href: "/dashboard/adaptive-learning/quizzes",
 	},
 	{
-		label: "Flashcards",
+		label: "Cuecards",
 		icon: BookOpen,
-		href: "/dashboard/adaptive-learning/flashcards",
+		href: "/dashboard/adaptive-learning/cuecards",
 	},
 	{
 		label: "Multiple Choice",

@@ -64,7 +64,7 @@ export function FinalCTASection() {
 							className="text-lg px-8 py-6 border-primary-foreground text-primary-foreground bg-transparent hover:bg-white hover:text-primary hover:shadow-xl transition-all duration-300 hover:scale-105"
 							asChild
 						>
-							<Link href="/flashcards">Try Demo First</Link>
+							<Link href="/cuecards">Try Demo First</Link>
 						</Button>
 					</div>
 
