@@ -78,8 +78,8 @@ const routes: RouteItem[] = [
 				icon: FileQuestion,
 			},
 			{
-				label: "Flashcards",
-				href: "/dashboard/adaptive-learning/flashcards",
+				label: "Cuecards",
+				href: "/dashboard/adaptive-learning/cuecards",
 				icon: BookOpenCheck,
 			},
 			{

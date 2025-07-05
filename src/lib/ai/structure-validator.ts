@@ -26,7 +26,7 @@ const GoldenNoteSchema = z.object({
 	category: z.string().optional(),
 });
 
-const FlashcardSchema = z.object({
+const CuecardSchema = z.object({
 	question: z
 		.string()
 		.min(10, "Question must be at least 10 characters")
@@ -67,7 +67,7 @@ const SummarySchema = z.object({
 
 // Array schemas
 const GoldenNotesSchema = z.array(GoldenNoteSchema).min(1, "At least one golden note is required");
-const FlashcardsSchema = z.array(FlashcardSchema).min(1, "At least one flashcard is required");
+const CuecardsSchema = z.array(CuecardSchema).min(1, "At least one cuecard is required");
 const MCQsSchema = z.array(MCQSchema).min(1, "At least one MCQ is required");
 const OpenQuestionsSchema = z
 	.array(OpenQuestionSchema)
@@ -75,7 +75,7 @@ const OpenQuestionsSchema = z
 
 // Export types
 export type GeneratedGoldenNote = z.infer<typeof GoldenNoteSchema>;
-export type GeneratedFlashcard = z.infer<typeof FlashcardSchema>;
+export type GeneratedCuecard = z.infer<typeof CuecardSchema>;
 export type GeneratedMCQ = z.infer<typeof MCQSchema>;
 export type GeneratedOpenQuestion = z.infer<typeof OpenQuestionSchema>;
 export type GeneratedSummary = z.infer<typeof SummarySchema>;
@@ -112,10 +112,10 @@ function validateGoldenNotes(content: unknown): ValidationResult {
 }
 
 /**
- * Validate flashcards content using Zod
+ * Validate cuecards content using Zod
  */
-function validateFlashcards(content: unknown): ValidationResult {
-	const result = FlashcardsSchema.safeParse(content);
+function validateCuecards(content: unknown): ValidationResult {
+	const result = CuecardsSchema.safeParse(content);
 
 	if (!result.success) {
 		return {
@@ -128,13 +128,13 @@ function validateFlashcards(content: unknown): ValidationResult {
 	const warnings: string[] = [];
 	result.data.forEach((card, index) => {
 		if (card.question.length < 20) {
-			warnings.push(`Flashcard ${index + 1} question could be more detailed`);
+			warnings.push(`Cuecard ${index + 1} question could be more detailed`);
 		}
 		if (card.answer.length < 10) {
-			warnings.push(`Flashcard ${index + 1} answer could be more comprehensive`);
+			warnings.push(`Cuecard ${index + 1} answer could be more comprehensive`);
 		}
 		if (card.question.length > 300) {
-			warnings.push(`Flashcard ${index + 1} question might be too long for effective memorization`);
+			warnings.push(`Cuecard ${index + 1} question might be too long for effective memorization`);
 		}
 	});
 
@@ -268,8 +268,8 @@ export function validateGeneratedContent(
 		switch (contentType) {
 			case "goldenNotes":
 				return validateGoldenNotes(content);
-			case "flashcards":
-				return validateFlashcards(content);
+			case "cuecards":
+				return validateCuecards(content);
 			case "multipleChoice":
 				return validateMultipleChoice(content);
 			case "openQuestions":
@@ -320,8 +320,8 @@ export function calculateContentQuality(
 			if (avgLength > 500) score += 5;
 		}
 
-		if (contentType === "flashcards" && Array.isArray(validation.data)) {
-			const cards = validation.data as GeneratedFlashcard[];
+		if (contentType === "cuecards" && Array.isArray(validation.data)) {
+			const cards = validation.data as GeneratedCuecard[];
 			const avgQuestionLength =
 				cards.reduce((sum, card) => sum + card.question.length, 0) / cards.length;
 

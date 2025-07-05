@@ -40,7 +40,7 @@ interface CourseMaterialUploadWizardProps {
 
 export interface GenerationConfig {
 	goldenNotesCount: number;
-	flashcardsCount: number;
+	cuecardsCount: number;
 	summaryLength: number;
 	examExercisesCount: number;
 	mcqExercisesCount: number;
@@ -82,7 +82,7 @@ const STEPS = [
 
 const DEFAULT_GENERATION_CONFIG: GenerationConfig = {
 	goldenNotesCount: 5,
-	flashcardsCount: 10,
+	cuecardsCount: 10,
 	summaryLength: 300,
 	examExercisesCount: 5,
 	mcqExercisesCount: 10,

@@ -150,9 +150,9 @@ export function GenerationSettings({ config, onConfigChange }: GenerationSetting
 									description="Key concepts and important points"
 								/>
 								<CounterControl
-									label="Flashcards"
-									value={config.flashcardsCount}
-									onChange={(value) => updateConfig({ flashcardsCount: value })}
+									label="Cuecards"
+									value={config.cuecardsCount}
+									onChange={(value) => updateConfig({ cuecardsCount: value })}
 									min={5}
 									max={100}
 									description="Question-answer pairs for memorization"
@@ -326,8 +326,8 @@ export function GenerationSettings({ config, onConfigChange }: GenerationSetting
 							<p className="text-xs text-muted-foreground">Golden Notes</p>
 						</div>
 						<div>
-							<p className="text-2xl font-bold text-primary">{config.flashcardsCount}</p>
-							<p className="text-xs text-muted-foreground">Flashcards</p>
+							<p className="text-2xl font-bold text-primary">{config.cuecardsCount}</p>
+							<p className="text-xs text-muted-foreground">Cuecards</p>
 						</div>
 						<div>
 							<p className="text-2xl font-bold text-primary">

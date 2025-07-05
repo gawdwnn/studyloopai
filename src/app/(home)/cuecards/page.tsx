@@ -4,22 +4,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ArrowRight, BookOpen, Brain, Zap } from "lucide-react";
 import Link from "next/link";
 
-export default function FlashcardsDemo() {
+export default function CuecardsDemo() {
 	return (
 		<div className="container mx-auto px-4 py-12 max-w-6xl">
 			{/* Header */}
 			<div className="text-center mb-12">
 				<Badge variant="secondary" className="mb-4">
-					🧠 AI-Generated Flashcards
+					🧠 AI-Generated Cuecards
 				</Badge>
-				<h1 className="text-4xl font-bold mb-4">Master Any Topic with Smart Flashcards</h1>
+				<h1 className="text-4xl font-bold mb-4">Master Any Topic with Smart Cuecards</h1>
 				<p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-					Upload your study materials and let our AI create personalized flashcards that adapt to
-					your learning pace and style.
+					Upload your study materials and let our AI create personalized cuecards that adapt to your
+					learning pace and style.
 				</p>
 			</div>
 
-			{/* Demo Flashcard */}
+			{/* Demo Cuecard */}
 			<div className="max-w-md mx-auto mb-12">
 				<div className="relative">
 					<Card className="h-64 cursor-pointer transition-transform hover:scale-105">
@@ -47,7 +47,7 @@ export default function FlashcardsDemo() {
 						</div>
 						<CardTitle>AI-Powered Generation</CardTitle>
 						<CardDescription>
-							Upload your notes, PDFs, or textbooks and get instant, intelligent flashcards
+							Upload your notes, PDFs, or textbooks and get instant, intelligent cuecards
 						</CardDescription>
 					</CardHeader>
 				</Card>
@@ -71,7 +71,7 @@ export default function FlashcardsDemo() {
 						</div>
 						<CardTitle>Multiple Formats</CardTitle>
 						<CardDescription>
-							Support for text, images, equations, and complex diagrams in your flashcards
+							Support for text, images, equations, and complex diagrams in your cuecards
 						</CardDescription>
 					</CardHeader>
 				</Card>
@@ -96,7 +96,7 @@ export default function FlashcardsDemo() {
 						</div>
 						<h3 className="font-semibold mb-2">AI Processing</h3>
 						<p className="text-sm text-muted-foreground">
-							Our AI analyzes and creates relevant flashcards
+							Our AI analyzes and creates relevant cuecards
 						</p>
 					</div>
 					<div className="text-center">
@@ -105,7 +105,7 @@ export default function FlashcardsDemo() {
 						</div>
 						<h3 className="font-semibold mb-2">Start Learning</h3>
 						<p className="text-sm text-muted-foreground">
-							Begin studying with personalized flashcards
+							Begin studying with personalized cuecards
 						</p>
 					</div>
 					<div className="text-center">
@@ -122,10 +122,10 @@ export default function FlashcardsDemo() {
 
 			{/* CTA */}
 			<div className="text-center bg-gradient-to-br from-primary/5 to-accent/5 rounded-2xl p-8">
-				<h2 className="text-2xl font-bold mb-4">Ready to Create Your First Flashcards?</h2>
+				<h2 className="text-2xl font-bold mb-4">Ready to Create Your First Cuecards?</h2>
 				<p className="text-muted-foreground mb-6 max-w-2xl mx-auto">
 					Join thousands of students who have improved their retention by 40% with our AI-powered
-					flashcards.
+					cuecards.
 				</p>
 				<div className="flex flex-col sm:flex-row gap-4 justify-center">
 					<Button size="lg" asChild>

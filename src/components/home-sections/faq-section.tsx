@@ -13,7 +13,7 @@ export function FAQSection() {
 			id: "how-ai-works",
 			question: "How does StudyLoop's AI work?",
 			answer:
-				"Our AI analyzes your study materials and learning patterns to create personalized content. It uses advanced natural language processing to generate summaries, flashcards, and quizzes that match your learning style and pace. The more you use it, the better it becomes at helping you learn effectively.",
+				"Our AI analyzes your study materials and learning patterns to create personalized content. It uses advanced natural language processing to generate summaries, cuecards, and quizzes that match your learning style and pace. The more you use it, the better it becomes at helping you learn effectively.",
 		},
 		{
 			id: "privacy-security",

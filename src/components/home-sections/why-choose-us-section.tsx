@@ -7,7 +7,7 @@ export function WhyChooseUsSection() {
 		{
 			id: "save-time",
 			title: "Save Hours of Study Time",
-			description: "AI-generated content means no more manual flashcard creation",
+			description: "AI-generated content means no more manual cuecard creation",
 			stat: "10+ hours saved weekly",
 		},
 		{

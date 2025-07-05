@@ -32,7 +32,7 @@ export function HeroSection() {
 							className="text-lg px-8 py-6 hover:shadow-lg transition-all duration-300 hover:scale-105 border-primary hover:bg-primary hover:text-primary-foreground"
 							asChild
 						>
-							<Link href="/flashcards">Try Demo</Link>
+							<Link href="/cuecards">Try Demo</Link>
 						</Button>
 					</div>
 					<p className="text-sm text-muted-foreground mt-4">

@@ -11,7 +11,7 @@ const GenerateMCQsPayload = z.object({
 const GenerateMCQsOutput = z.object({
 	success: z.boolean(),
 	weekId: z.string(),
-	contentType: z.literal("mcqs"),
+	contentType: z.literal("multipleChoice"),
 	generatedCount: z.number(),
 	error: z.string().optional(),
 });
@@ -31,7 +31,7 @@ export const generateMCQs = schemaTask({
 		const { weekId } = payload;
 
 		// Tag this run for enhanced observability
-		await tags.add([`weekId:${payload.weekId}`, "contentType:mcqs"]);
+		await tags.add([`weekId:${payload.weekId}`, "contentType:multipleChoice"]);
 
 		try {
 			// Fetch all materials belonging to this week
@@ -70,7 +70,7 @@ export const generateMCQs = schemaTask({
 			const materialIds = materials.map((m) => m.id);
 
 			// Generate MCQs for the week
-			const result = await generateMCQsForWeek(weekId, materialIds, {
+			const result = await generateMCQsForWeek(courseId, weekId, materialIds, {
 				mcqExercisesCount: adaptiveConfig.mcqExercisesCount,
 				difficulty: adaptiveConfig.difficulty,
 			});
@@ -82,7 +82,7 @@ export const generateMCQs = schemaTask({
 			return {
 				success: true,
 				weekId,
-				contentType: "mcqs" as const,
+				contentType: "multipleChoice" as const,
 				generatedCount: result.generatedCount || 0,
 			};
 		} catch (error) {

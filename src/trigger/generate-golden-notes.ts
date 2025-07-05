@@ -70,7 +70,7 @@ export const generateGoldenNotes = schemaTask({
 			const materialIds = materials.map((m) => m.id);
 
 			// Generate golden notes for the week
-			const result = await generateGoldenNotesForWeek(weekId, materialIds, {
+			const result = await generateGoldenNotesForWeek(courseId, weekId, materialIds, {
 				goldenNotesCount: adaptiveConfig.goldenNotesCount,
 				difficulty: adaptiveConfig.difficulty,
 				focus: adaptiveConfig.focus,

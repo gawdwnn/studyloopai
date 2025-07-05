@@ -16,7 +16,7 @@ import { z } from "zod";
 // Server-side validation schema
 const GenerationConfigSchema = z.object({
 	goldenNotesCount: z.number().min(1).max(20),
-	flashcardsCount: z.number().min(1).max(50),
+	cuecardsCount: z.number().min(1).max(50),
 	summaryLength: z.number().min(50).max(1000),
 	examExercisesCount: z.number().min(1).max(20),
 	mcqExercisesCount: z.number().min(1).max(50),

@@ -3,7 +3,7 @@ import { type WeekContentGenerationMetadata, courseMaterials, courseWeeks } from
 import { logger, schemaTask, tags } from "@trigger.dev/sdk";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { generateFlashcards } from "./generate-flashcards";
+import { generateCuecards } from "./generate-cuecards";
 import { generateGoldenNotes } from "./generate-golden-notes";
 import { generateMCQs } from "./generate-mcqs";
 import { generateOpenQuestions } from "./generate-open-questions";
@@ -90,10 +90,10 @@ export const generateAiContent = schemaTask({
 			const contentGenerationTasks = [{ payload: { weekId } }];
 
 			// Fire and forget - individual tasks will update their own status
-			const [goldenNotesRun, flashcardsRun, mcqsRun, openQuestionsRun, summariesRun] =
+			const [goldenNotesRun, cuecardsRun, mcqsRun, openQuestionsRun, summariesRun] =
 				await Promise.all([
 					generateGoldenNotes.batchTrigger(contentGenerationTasks),
-					generateFlashcards.batchTrigger(contentGenerationTasks),
+					generateCuecards.batchTrigger(contentGenerationTasks),
 					generateMCQs.batchTrigger(contentGenerationTasks),
 					generateOpenQuestions.batchTrigger(contentGenerationTasks),
 					generateSummaries.batchTrigger(contentGenerationTasks),
@@ -103,8 +103,8 @@ export const generateAiContent = schemaTask({
 				goldenNotes: {
 					batchId: goldenNotesRun.batchId,
 				},
-				flashcards: {
-					batchId: flashcardsRun.batchId,
+				cuecards: {
+					batchId: cuecardsRun.batchId,
 				},
 				mcqs: {
 					batchId: mcqsRun.batchId,
@@ -130,10 +130,10 @@ export const generateAiContent = schemaTask({
 					batchId: contentBatchInfo.goldenNotes.batchId,
 				},
 				{
-					contentType: "flashcards",
+					contentType: "cuecards",
 					success: true,
 					generatedCount: 0,
-					batchId: contentBatchInfo.flashcards.batchId,
+					batchId: contentBatchInfo.cuecards.batchId,
 				},
 				{
 					contentType: "mcqs",
@@ -169,8 +169,8 @@ export const generateAiContent = schemaTask({
 						batchId: contentBatchInfo.goldenNotes.batchId,
 						status: "triggered",
 					},
-					flashcards: {
-						batchId: contentBatchInfo.flashcards.batchId,
+					cuecards: {
+						batchId: contentBatchInfo.cuecards.batchId,
 						status: "triggered",
 					},
 					mcqs: {

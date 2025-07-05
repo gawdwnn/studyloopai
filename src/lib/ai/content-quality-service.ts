@@ -16,7 +16,7 @@ export interface QualityValidationResult<T = Record<string, unknown>> {
  */
 export async function validateAndFilterContent<T extends Record<string, unknown>>(
 	content: T[],
-	contentType: "goldenNotes" | "flashcards" | "mcqs" | "openQuestions" | "summaries",
+	contentType: "goldenNotes" | "cuecards" | "mcqs" | "openQuestions" | "summaries",
 	config: { difficulty?: string; subject?: string } = {}
 ): Promise<QualityValidationResult<T>> {
 	if (content.length === 0) {
@@ -84,7 +84,7 @@ function formatContentForValidation(item: Record<string, unknown>, contentType: 
 		case "goldenNotes": {
 			return `Title: ${String(item.title)}\nContent: ${String(item.content)}`;
 		}
-		case "flashcards": {
+		case "cuecards": {
 			return `Question: ${String(item.question)}\nAnswer: ${String(item.answer)}`;
 		}
 		case "mcqs": {

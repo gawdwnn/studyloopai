@@ -4,34 +4,34 @@ import { logger, schemaTask, tags } from "@trigger.dev/sdk";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
-const GenerateFlashcardsPayload = z.object({
+const GenerateCuecardsPayload = z.object({
 	weekId: z.string().min(1, "Week ID is required"),
 });
 
-const GenerateFlashcardsOutput = z.object({
+const GenerateCuecardsOutput = z.object({
 	success: z.boolean(),
 	weekId: z.string(),
-	contentType: z.literal("flashcards"),
+	contentType: z.literal("cuecards"),
 	generatedCount: z.number(),
 	error: z.string().optional(),
 });
 
-type GenerateFlashcardsPayloadType = z.infer<typeof GenerateFlashcardsPayload>;
+type GenerateCuecardsPayloadType = z.infer<typeof GenerateCuecardsPayload>;
 
-export const generateFlashcards = schemaTask({
-	id: "generate-flashcards",
-	schema: GenerateFlashcardsPayload,
+export const generateCuecards = schemaTask({
+	id: "generate-cuecards",
+	schema: GenerateCuecardsPayload,
 	maxDuration: 300, // 5 minutes for individual content type
-	onStart: async ({ payload }: { payload: GenerateFlashcardsPayloadType }) => {
-		logger.info("🃏 Flashcards generation task started", {
+	onStart: async ({ payload }: { payload: GenerateCuecardsPayloadType }) => {
+		logger.info("🃏 Cuecards generation task started", {
 			weekId: payload.weekId,
 		});
 	},
-	run: async (payload: GenerateFlashcardsPayloadType, { ctx: _ctx }) => {
+	run: async (payload: GenerateCuecardsPayloadType, { ctx: _ctx }) => {
 		const { weekId } = payload;
 
 		// Tag this run for enhanced observability
-		await tags.add([`weekId:${payload.weekId}`, "contentType:flashcards"]);
+		await tags.add([`weekId:${payload.weekId}`, "contentType:cuecards"]);
 
 		try {
 			// Fetch all materials belonging to this week
@@ -59,43 +59,43 @@ export const generateFlashcards = schemaTask({
 			// Get the effective configuration with adaptive features
 			const adaptiveConfig = await getEffectiveGenerationConfig(userId, materials[0].id, courseId);
 
-			logger.info("🃏 Using adaptive configuration for flashcards", {
+			logger.info("🃏 Using adaptive configuration for cuecards", {
 				weekId,
 				config: adaptiveConfig,
 			});
 
 			// Import the specific generator
-			const { generateFlashcardsForWeek } = await import("@/lib/ai/content-generators");
+			const { generateCuecardsForWeek } = await import("@/lib/ai/content-generators");
 
 			const materialIds = materials.map((m) => m.id);
 
-			// Generate flashcards for the week
-			const result = await generateFlashcardsForWeek(weekId, materialIds, {
-				flashcardsCount: adaptiveConfig.flashcardsCount,
+			// Generate cuecards for the week
+			const result = await generateCuecardsForWeek(courseId, weekId, materialIds, {
+				cuecardsCount: adaptiveConfig.cuecardsCount,
 				difficulty: adaptiveConfig.difficulty,
 			});
 
 			if (!result.success) {
-				throw new Error(result.error || "Flashcards generation failed");
+				throw new Error(result.error || "Cuecards generation failed");
 			}
 
 			return {
 				success: true,
 				weekId,
-				contentType: "flashcards" as const,
+				contentType: "cuecards" as const,
 				generatedCount: result.generatedCount || 0,
 			};
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
-			logger.error("❌ Flashcards generation failed", {
+			logger.error("❌ Cuecards generation failed", {
 				weekId,
 				error: errorMessage,
 			});
 			throw error;
 		}
 	},
-	cleanup: async ({ payload }: { payload: GenerateFlashcardsPayloadType }) => {
-		logger.info("🧹 Flashcards generation task cleanup complete", {
+	cleanup: async ({ payload }: { payload: GenerateCuecardsPayloadType }) => {
+		logger.info("🧹 Cuecards generation task cleanup complete", {
 			weekId: payload.weekId,
 		});
 	},
@@ -103,10 +103,10 @@ export const generateFlashcards = schemaTask({
 		payload,
 		output,
 	}: {
-		payload: GenerateFlashcardsPayloadType;
-		output: z.infer<typeof GenerateFlashcardsOutput>;
+		payload: GenerateCuecardsPayloadType;
+		output: z.infer<typeof GenerateCuecardsOutput>;
 	}) => {
-		logger.info("✅ Flashcards generation completed successfully", {
+		logger.info("✅ Cuecards generation completed successfully", {
 			weekId: payload.weekId,
 			generatedCount: output.generatedCount,
 		});
@@ -117,7 +117,7 @@ export const generateFlashcards = schemaTask({
 		);
 		await updateWeekContentGenerationMetadata(
 			payload.weekId,
-			"flashcards",
+			"cuecards",
 			output.generatedCount,
 			logger
 		);
@@ -126,11 +126,11 @@ export const generateFlashcards = schemaTask({
 		payload,
 		error,
 	}: {
-		payload: GenerateFlashcardsPayloadType;
+		payload: GenerateCuecardsPayloadType;
 		error: unknown;
 	}) => {
 		const errorMessage = error instanceof Error ? error.message : String(error);
-		logger.error("❌ Flashcards generation failed permanently", {
+		logger.error("❌ Cuecards generation failed permanently", {
 			weekId: payload.weekId,
 			error: errorMessage,
 		});

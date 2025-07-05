@@ -53,11 +53,11 @@ Return your assessment in this exact JSON format:
 }`,
 	},
 
-	flashcards: {
+	cuecards: {
 		system:
-			"You are an educational content quality assessor. Evaluate flashcards for learning effectiveness.",
+			"You are an educational content quality assessor. Evaluate cuecards for learning effectiveness.",
 		template: (content: string, subject?: string) => `
-Evaluate this flashcard${subject ? ` for ${subject}` : ""}:
+Evaluate this cuecard${subject ? ` for ${subject}` : ""}:
 
 ${content}
 

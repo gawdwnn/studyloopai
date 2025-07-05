@@ -22,9 +22,9 @@ function getContentGenerationData(material: CourseMaterialWithRelations) {
 	const contentCounts = weekMetadata?.generationResults?.contentCounts;
 
 	return {
-		flashcards: {
-			count: contentCounts?.flashcards || 0,
-			success: (contentCounts?.flashcards || 0) > 0,
+		cuecards: {
+			count: contentCounts?.cuecards || 0,
+			success: (contentCounts?.cuecards || 0) > 0,
 		},
 		multipleChoice: {
 			count: contentCounts?.mcqs || 0,
@@ -90,8 +90,8 @@ export function GeneratedContentBadges({ material }: GeneratedContentBadgesProps
 			{processingData.goldenNotes.count > 0 && (
 				<ContentBadge count={processingData.goldenNotes.count} emoji="📝" label="Study Notes" />
 			)}
-			{processingData.flashcards.count > 0 && (
-				<ContentBadge count={processingData.flashcards.count} emoji="🃏" label="Flashcards" />
+			{processingData.cuecards.count > 0 && (
+				<ContentBadge count={processingData.cuecards.count} emoji="🃏" label="Cuecards" />
 			)}
 			{processingData.multipleChoice.count > 0 && (
 				<ContentBadge

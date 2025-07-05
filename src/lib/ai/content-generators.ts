@@ -5,8 +5,8 @@
 
 import { db } from "@/db";
 import {
+	cuecards as cuecardsTable,
 	documentChunks,
-	flashcards as flashcardsTable,
 	goldenNotes,
 	multipleChoiceQuestions as mcqTable,
 	openQuestions as openQuestionsTable,
@@ -27,7 +27,7 @@ const GoldenNoteSchema = z.object({
 	category: z.string().optional(),
 });
 
-const FlashcardSchema = z.object({
+const CuecardSchema = z.object({
 	question: z.string(),
 	answer: z.string(),
 	difficulty: z.string(),
@@ -61,7 +61,7 @@ const SummarySchema = z.object({
 
 // Array schemas for validation
 const GoldenNotesArraySchema = z.array(GoldenNoteSchema);
-const FlashcardsArraySchema = z.array(FlashcardSchema);
+const CuecardsArraySchema = z.array(CuecardSchema);
 const MCQsArraySchema = z.array(MCQSchema);
 const OpenQuestionsArraySchema = z.array(OpenQuestionSchema);
 
@@ -176,6 +176,7 @@ async function getCombinedChunks(materialIds: string[]): Promise<string[]> {
  * Generate golden notes for all course materials attached to a week
  */
 export async function generateGoldenNotesForWeek(
+	courseId: string,
 	weekId: string,
 	materialIds: string[],
 	config: Pick<GenerationConfig, "goldenNotesCount" | "difficulty" | "focus">
@@ -227,8 +228,8 @@ export async function generateGoldenNotesForWeek(
 		// Add Content Quality validation and filtering
 
 		const notesToInsert = parsedNotes.map((note) => ({
+			courseId,
 			weekId,
-			materialId: null,
 			title: note.title,
 			content: note.content,
 			priority: note.priority || 1,
@@ -255,39 +256,40 @@ export async function generateGoldenNotesForWeek(
 }
 
 /**
- * Generate flash cards for all course materials attached to a week
+ * Generate cuecards for all course materials attached to a week
  */
-export async function generateFlashcardsForWeek(
+export async function generateCuecardsForWeek(
+	courseId: string,
 	weekId: string,
 	materialIds: string[],
-	config: Pick<GenerationConfig, "flashcardsCount" | "difficulty">
+	config: Pick<GenerationConfig, "cuecardsCount" | "difficulty">
 ): Promise<ContentGenerationResult> {
 	try {
 		const chunks = await getCombinedChunks(materialIds);
 		if (chunks.length === 0) {
 			return {
 				success: false,
-				contentType: "flashcards",
+				contentType: "cuecards",
 				generatedCount: 0,
 				error: "No content chunks found for week",
 			};
 		}
 
 		const content = combineChunksForGeneration(chunks);
-		const prompt = getPromptByType("flashcards");
+		const prompt = getPromptByType("cuecards");
 		if (!prompt) {
 			return {
 				success: false,
-				contentType: "flashcards",
+				contentType: "cuecards",
 				generatedCount: 0,
-				error: "Prompt not found for flashcards",
+				error: "Prompt not found for cuecards",
 			};
 		}
 
 		const context: PromptContext = {
 			content,
 			difficulty: config.difficulty,
-			count: config.flashcardsCount,
+			count: config.cuecardsCount,
 		};
 
 		const result = await generateText({
@@ -300,17 +302,17 @@ export async function generateFlashcardsForWeek(
 
 		const parsed = parseJsonArrayResponse(
 			result.text,
-			FlashcardsArraySchema,
-			[] as z.infer<typeof FlashcardSchema>[]
+			CuecardsArraySchema,
+			[] as z.infer<typeof CuecardSchema>[]
 		);
 
 		// Add Content Structure validation
 		// Add Content Quality validation and filtering
 
-		await db.insert(flashcardsTable).values(
+		await db.insert(cuecardsTable).values(
 			parsed.map((fc) => ({
+				courseId,
 				weekId,
-				materialId: null,
 				question: fc.question,
 				answer: fc.answer,
 				difficulty: fc.difficulty,
@@ -320,14 +322,14 @@ export async function generateFlashcardsForWeek(
 
 		return {
 			success: true,
-			contentType: "flashcards",
+			contentType: "cuecards",
 			generatedCount: parsed.length,
 		};
 	} catch (error) {
-		console.error("Flashcards generation for week failed:", error);
+		console.error("Cuecards generation for week failed:", error);
 		return {
 			success: false,
-			contentType: "flashcards",
+			contentType: "cuecards",
 			generatedCount: 0,
 			error: (error as Error).message,
 		};
@@ -338,6 +340,7 @@ export async function generateFlashcardsForWeek(
  * Generate MCQs for all course materials attached to a week
  */
 export async function generateMCQsForWeek(
+	courseId: string,
 	weekId: string,
 	materialIds: string[],
 	config: Pick<GenerationConfig, "mcqExercisesCount" | "difficulty">
@@ -389,8 +392,8 @@ export async function generateMCQsForWeek(
 
 		await db.insert(mcqTable).values(
 			parsed.map((q) => ({
+				courseId,
 				weekId,
-				materialId: null,
 				question: q.question,
 				options: q.options,
 				correctAnswer: q.correctAnswer,
@@ -420,6 +423,7 @@ export async function generateMCQsForWeek(
  * Generate open questions for all course materials attached to a week
  */
 export async function generateOpenQuestionsForWeek(
+	courseId: string,
 	weekId: string,
 	materialIds: string[],
 	config: Pick<GenerationConfig, "examExercisesCount" | "difficulty">
@@ -471,8 +475,8 @@ export async function generateOpenQuestionsForWeek(
 
 		await db.insert(openQuestionsTable).values(
 			parsed.map((q) => ({
+				courseId,
 				weekId,
-				materialId: null,
 				question: q.question,
 				sampleAnswer: q.sampleAnswer,
 				gradingRubric: q.gradingRubric,
@@ -501,6 +505,7 @@ export async function generateOpenQuestionsForWeek(
  * Generate summaries for all course materials attached to a week
  */
 export async function generateSummariesForWeek(
+	courseId: string,
 	weekId: string,
 	materialIds: string[],
 	config: Pick<GenerationConfig, "summaryLength" | "difficulty">
@@ -556,8 +561,8 @@ export async function generateSummariesForWeek(
 		// Add Content Quality validation and filtering
 
 		await db.insert(summariesTable).values({
+			courseId,
 			weekId,
-			materialId: null,
 			title: parsed.title,
 			content: parsed.content,
 			summaryType: parsed.summaryType,

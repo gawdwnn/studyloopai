@@ -12,7 +12,7 @@ import { z } from "zod";
 // Base generation configuration schema
 export const GenerationConfigSchema = z.object({
 	goldenNotesCount: z.number().min(1).max(20).default(5),
-	flashcardsCount: z.number().min(1).max(50).default(10),
+	cuecardsCount: z.number().min(1).max(50).default(10),
 	summaryLength: z.number().min(100).max(2000).default(300),
 	examExercisesCount: z.number().min(1).max(20).default(3),
 	mcqExercisesCount: z.number().min(1).max(30).default(5),
@@ -121,7 +121,7 @@ export async function getActiveGenerationConfig(
 
 		return GenerationConfigSchema.parse({
 			goldenNotesCount: config[0].goldenNotesCount,
-			flashcardsCount: config[0].flashcardsCount,
+			cuecardsCount: config[0].cuecardsCount,
 			summaryLength: config[0].summaryLength,
 			examExercisesCount: config[0].examExercisesCount,
 			mcqExercisesCount: config[0].mcqExercisesCount,
@@ -230,7 +230,7 @@ export async function generateAdaptiveConfig(
 	// Adapt based on performance level
 	if (adaptiveFactors.userPerformanceLevel === "struggling") {
 		adaptedConfig.difficulty = "beginner";
-		adaptedConfig.flashcardsCount = Math.min(adaptedConfig.flashcardsCount + 5, 20); // More practice
+		adaptedConfig.cuecardsCount = Math.min(adaptedConfig.cuecardsCount + 5, 20); // More practice
 		adaptedConfig.goldenNotesCount = Math.min(adaptedConfig.goldenNotesCount + 2, 10); // More key concepts
 		adaptedConfig.focus = "conceptual"; // Focus on understanding
 		adaptationReason = "Increased practice materials for struggling performance";
@@ -242,9 +242,9 @@ export async function generateAdaptiveConfig(
 	}
 
 	// Adapt based on learning gaps
-	if (adaptiveFactors.learningGaps.includes("flashcard")) {
-		adaptedConfig.flashcardsCount = Math.min(adaptedConfig.flashcardsCount + 10, 30);
-		adaptationReason += " | Increased flashcards to address learning gap";
+	if (adaptiveFactors.learningGaps.includes("cuecard")) {
+		adaptedConfig.cuecardsCount = Math.min(adaptedConfig.cuecardsCount + 10, 30);
+		adaptationReason += " | Increased cuecards to address learning gap";
 	}
 	if (adaptiveFactors.learningGaps.includes("mcq")) {
 		adaptedConfig.mcqExercisesCount = Math.min(adaptedConfig.mcqExercisesCount + 5, 20);
@@ -385,7 +385,7 @@ export async function saveMaterialGenerationConfig(
 			userId,
 			configSource: ConfigurationSource.MATERIAL_OVERRIDE,
 			goldenNotesCount: config.goldenNotesCount,
-			flashcardsCount: config.flashcardsCount,
+			cuecardsCount: config.cuecardsCount,
 			summaryLength: config.summaryLength,
 			examExercisesCount: config.examExercisesCount,
 			mcqExercisesCount: config.mcqExercisesCount,
@@ -422,7 +422,7 @@ export async function saveAdaptiveGenerationConfig(
 			userId,
 			configSource: ConfigurationSource.ADAPTIVE_ALGORITHM,
 			goldenNotesCount: config.goldenNotesCount,
-			flashcardsCount: config.flashcardsCount,
+			cuecardsCount: config.cuecardsCount,
 			summaryLength: config.summaryLength,
 			examExercisesCount: config.examExercisesCount,
 			mcqExercisesCount: config.mcqExercisesCount,

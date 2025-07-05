@@ -70,7 +70,7 @@ export const generateSummaries = schemaTask({
 			const materialIds = materials.map((m) => m.id);
 
 			// Generate summaries for the week
-			const result = await generateSummariesForWeek(weekId, materialIds, {
+			const result = await generateSummariesForWeek(courseId, weekId, materialIds, {
 				summaryLength: adaptiveConfig.summaryLength,
 				difficulty: adaptiveConfig.difficulty,
 			});
