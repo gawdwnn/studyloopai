@@ -1,7 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { toast } from "sonner";
+import { useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -10,15 +9,8 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { getUserCoursesForNotes } from "@/lib/actions/notes";
+import { useUserCourses } from "@/hooks/use-notes";
 import { BookOpen, ChevronDown } from "lucide-react";
-
-interface Course {
-	id: string;
-	name: string;
-	description: string | null;
-	createdAt: Date;
-}
 
 interface CourseSelectorButtonProps {
 	onCourseSelect: (courseId: string) => void;
@@ -29,33 +21,13 @@ export function CourseSelectorButton({
 	onCourseSelect,
 	selectedCourseId,
 }: CourseSelectorButtonProps) {
-	const [courses, setCourses] = useState<Course[]>([]);
-	const [isLoading, setIsLoading] = useState(true);
-	const [error, setError] = useState<string | null>(null);
-
-	const fetchCourses = useCallback(async () => {
-		try {
-			setIsLoading(true);
-			setError(null);
-			const userCourses = await getUserCoursesForNotes();
-			setCourses(userCourses);
-
-			// Auto-select first course if none selected
-			if (!selectedCourseId && userCourses.length > 0) {
-				onCourseSelect(userCourses[0].id);
-			}
-		} catch (err) {
-			console.error("Failed to fetch courses:", err);
-			setError("Failed to load courses");
-			toast.error("Failed to load your courses");
-		} finally {
-			setIsLoading(false);
-		}
-	}, [selectedCourseId, onCourseSelect]);
+	const { data: courses = [], isLoading, error } = useUserCourses();
 
 	useEffect(() => {
-		fetchCourses();
-	}, [fetchCourses]);
+		if (!selectedCourseId && courses.length > 0) {
+			onCourseSelect(courses[0].id);
+		}
+	}, [selectedCourseId, courses, onCourseSelect]);
 
 	const selectedCourse = courses.find((course) => course.id === selectedCourseId);
 

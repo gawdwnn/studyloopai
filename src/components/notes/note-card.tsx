@@ -8,28 +8,23 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { useDeleteGoldenNote, useUpdateGoldenNote } from "@/hooks/use-notes";
 import { Check, Copy, MessageSquare, Pencil, Trash2, X } from "lucide-react";
 
 interface NoteCardProps {
-	id?: string;
+	noteId?: string;
 	title: string;
 	content: string;
 	withActions?: boolean;
-	onEdit?: (id: string, data: { title?: string; content?: string }) => void;
-	onDelete?: (id: string) => void;
 }
 
-export function NoteCard({
-	id,
-	title,
-	content: initialContent,
-	withActions,
-	onEdit,
-	onDelete,
-}: NoteCardProps) {
+export function NoteCard({ noteId, title, content: initialContent, withActions }: NoteCardProps) {
 	const [isEditing, setIsEditing] = useState(false);
 	const [content, setContent] = useState(initialContent);
 	const [editedTitle, setEditedTitle] = useState(title);
+
+	const updateNoteMutation = useUpdateGoldenNote();
+	const deleteNoteMutation = useDeleteGoldenNote();
 
 	const handleCopy = () => {
 		navigator.clipboard.writeText(content);
@@ -37,10 +32,10 @@ export function NoteCard({
 	};
 
 	const handleDelete = () => {
-		if (id && onDelete) {
-			onDelete(id);
+		if (noteId) {
+			deleteNoteMutation.mutate(noteId);
 		} else {
-			toast.success("Note deleted.");
+			toast.error("Cannot delete note: Missing note ID");
 		}
 	};
 
@@ -49,16 +44,17 @@ export function NoteCard({
 	};
 
 	const handleSave = () => {
-		if (id && onEdit) {
+		if (noteId) {
 			const changes: { title?: string; content?: string } = {};
 			if (editedTitle !== title) changes.title = editedTitle;
 			if (content !== initialContent) changes.content = content;
 
 			if (Object.keys(changes).length > 0) {
-				onEdit(id, changes);
+				updateNoteMutation.mutate({ id: noteId, ...changes });
 			}
 		} else {
-			toast.success("Note saved successfully!");
+			toast.error("Cannot save note: Missing note ID");
+			return;
 		}
 		setIsEditing(false);
 	};
@@ -73,8 +69,10 @@ export function NoteCard({
 		toast.success("Note chat started.");
 	};
 
+	const isLoading = updateNoteMutation.isPending || deleteNoteMutation.isPending;
+
 	return (
-		<Card className="group relative h-full ">
+		<Card className="group relative h-full">
 			<CardHeader>
 				<div className="flex items-start justify-between">
 					{isEditing ? (
@@ -83,16 +81,29 @@ export function NoteCard({
 							onChange={(e) => setEditedTitle(e.target.value)}
 							className="text-lg font-semibold"
 							placeholder="Note title"
+							disabled={isLoading}
 						/>
 					) : (
 						<CardTitle className="text-lg">{title}</CardTitle>
 					)}
 					{withActions && !isEditing && (
 						<div className="absolute right-2 top-2 flex items-center space-x-1 opacity-0 transition-opacity group-hover:opacity-100">
-							<Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCopy}>
+							<Button
+								variant="ghost"
+								size="icon"
+								className="h-8 w-8"
+								onClick={handleCopy}
+								disabled={isLoading}
+							>
 								<Copy className="h-4 w-4" />
 							</Button>
-							<Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleEdit}>
+							<Button
+								variant="ghost"
+								size="icon"
+								className="h-8 w-8"
+								onClick={handleEdit}
+								disabled={isLoading}
+							>
 								<Pencil className="h-4 w-4" />
 							</Button>
 							<ConfirmDialog
@@ -105,23 +116,42 @@ export function NoteCard({
 									<Button
 										variant="ghost"
 										size="icon"
-										className="h-8 w-8 text-destructive hover:text-destructive"
+										className="h-8 w-8"
+										disabled={isLoading}
 									>
 										<Trash2 className="h-4 w-4" />
 									</Button>
 								}
 							/>
-							<Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleChatNote}>
+							<Button
+								variant="ghost"
+								size="icon"
+								className="h-8 w-8"
+								onClick={handleChatNote}
+								disabled={isLoading}
+							>
 								<MessageSquare className="h-4 w-4" />
 							</Button>
 						</div>
 					)}
 					{isEditing && (
 						<div className="flex items-center space-x-1">
-							<Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleSave}>
+							<Button
+								variant="ghost"
+								size="icon"
+								className="h-8 w-8"
+								onClick={handleSave}
+								disabled={isLoading}
+							>
 								<Check className="h-4 w-4 text-green-500" />
 							</Button>
-							<Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCancel}>
+							<Button
+								variant="ghost"
+								size="icon"
+								className="h-8 w-8"
+								onClick={handleCancel}
+								disabled={isLoading}
+							>
 								<X className="h-4 w-4 text-red-500" />
 							</Button>
 						</div>
@@ -135,6 +165,7 @@ export function NoteCard({
 						onChange={(e) => setContent(e.target.value)}
 						className="min-h-[120px] resize-none"
 						autoFocus
+						disabled={isLoading}
 					/>
 				) : (
 					<p className="text-muted-foreground">{content}</p>
