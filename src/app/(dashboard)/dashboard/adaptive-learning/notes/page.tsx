@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 
 import { CourseSelectorButton } from "@/components/notes/course-selector-button";
+import { MarkdownRenderer } from "@/components/notes/markdown-renderer";
 import { NoteCard } from "@/components/notes/note-card";
 import { NotesSkeletonLoader } from "@/components/notes/notes-skeleton-loader";
 import { NotesToolbar } from "@/components/notes/notes-toolbar";
+import { UserNotesEditor } from "@/components/notes/user-notes-editor";
 import { WeekCarousel } from "@/components/notes/week-carousel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -114,6 +116,7 @@ export default function NotesPage() {
 														title={note.title}
 														content={note.content}
 														withActions={true}
+														withMarkdown={true}
 													/>
 												))}
 											</div>
@@ -147,9 +150,7 @@ export default function NotesPage() {
 															</div>
 														</CardHeader>
 														<CardContent>
-															<p className="text-muted-foreground whitespace-pre-wrap">
-																{summary.content}
-															</p>
+															<MarkdownRenderer content={summary.content} />
 														</CardContent>
 													</Card>
 												))}
@@ -163,10 +164,8 @@ export default function NotesPage() {
 										)}
 									</TabsContent>
 
-									<TabsContent value="own-notes">
-										<div className="flex h-40 items-center justify-center rounded-md border border-dashed">
-											<p className="text-muted-foreground">Your own notes will be shown here.</p>
-										</div>
+									<TabsContent value="own-notes" className="pt-6">
+										<UserNotesEditor courseId={selectedCourseId} weekId={selectedWeekId} />
 									</TabsContent>
 								</Tabs>
 							)}

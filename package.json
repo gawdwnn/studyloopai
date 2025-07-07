@@ -60,6 +60,8 @@
 		"@tanstack/react-query-devtools": "^5.80.7",
 		"@trigger.dev/react-hooks": "4.0.0-v4-beta.1",
 		"@trigger.dev/sdk": "4.0.0-v4-beta.1",
+		"@uiw/react-markdown-preview": "^5.1.4",
+		"@uiw/react-md-editor": "^4.0.7",
 		"@upstash/ratelimit": "^2.0.5",
 		"@upstash/redis": "^1.35.0",
 		"add": "^2.0.6",
