@@ -271,6 +271,10 @@ function CreateNoteForm({ onSave, onCancel, isLoading }: CreateNoteFormProps) {
 		}
 	};
 
+	const handleContentChange = (newContent: string) => {
+		setContent(newContent);
+	};
+
 	return (
 		<div className="space-y-4">
 			<Input
@@ -282,7 +286,7 @@ function CreateNoteForm({ onSave, onCancel, isLoading }: CreateNoteFormProps) {
 			<div className="h-80 overflow-hidden">
 				<MarkdownEditor
 					content={content}
-					onSave={setContent}
+					onSave={handleContentChange}
 					placeholder="Start writing your note..."
 					autoSave={false}
 				/>

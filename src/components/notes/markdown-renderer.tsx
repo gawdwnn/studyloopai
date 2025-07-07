@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import MDEditor from "@uiw/react-md-editor";
+import rehypeSanitize from "rehype-sanitize";
 
 interface MarkdownRendererProps {
 	content: string;
@@ -17,6 +18,7 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
 					backgroundColor: "transparent",
 					color: "inherit",
 				}}
+				rehypePlugins={[rehypeSanitize]}
 			/>
 		</div>
 	);

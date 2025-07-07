@@ -2,7 +2,9 @@
 
 import { cn } from "@/lib/utils";
 import MDEditor from "@uiw/react-md-editor";
+import { useTheme } from "next-themes";
 import { useCallback, useEffect, useState } from "react";
+import rehypeSanitize from "rehype-sanitize";
 import { useDebounceCallback } from "usehooks-ts";
 
 interface MarkdownEditorProps {
@@ -26,12 +28,25 @@ export function MarkdownEditor({
 }: MarkdownEditorProps) {
 	const [value, setValue] = useState(initialContent);
 	const [lastSavedContent, setLastSavedContent] = useState(initialContent);
+	const { resolvedTheme } = useTheme();
+
+	// Determine color mode for MDEditor
+	const colorMode = resolvedTheme === "dark" ? "dark" : "light";
 
 	// Update local state when content prop changes
 	useEffect(() => {
 		setValue(initialContent);
 		setLastSavedContent(initialContent);
 	}, [initialContent]);
+
+	// Clean up body overflow styles when component unmounts
+	useEffect(() => {
+		return () => {
+			// Reset body styles that MDEditor might have modified
+			document.body.style.overflow = "";
+			document.documentElement.style.overflow = "";
+		};
+	}, []);
 
 	// Debounced auto-save function
 	const debouncedSave = useDebounceCallback(
@@ -55,9 +70,12 @@ export function MarkdownEditor({
 
 			if (autoSave && !readonly) {
 				debouncedSave(content);
+			} else if (!readonly) {
+				// For non-auto-save mode, call onSave immediately for real-time updates
+				onSave(content);
 			}
 		},
-		[autoSave, readonly, debouncedSave]
+		[autoSave, readonly, debouncedSave, onSave]
 	);
 
 	// Manual save function
@@ -77,6 +95,7 @@ export function MarkdownEditor({
 						backgroundColor: "transparent",
 						color: "inherit",
 					}}
+					rehypePlugins={[rehypeSanitize]}
 				/>
 			</div>
 		);
@@ -87,7 +106,7 @@ export function MarkdownEditor({
 			<MDEditor
 				value={value}
 				onChange={handleChange}
-				data-color-mode="light"
+				data-color-mode={colorMode}
 				visibleDragbar={false}
 				textareaProps={{
 					placeholder,
@@ -99,6 +118,9 @@ export function MarkdownEditor({
 				}}
 				preview="edit"
 				height={400}
+				previewOptions={{
+					rehypePlugins: [rehypeSanitize],
+				}}
 			/>
 			{!autoSave && (
 				<div className="mt-2 flex justify-end">
