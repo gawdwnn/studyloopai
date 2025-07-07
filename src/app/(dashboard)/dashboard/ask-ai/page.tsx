@@ -1,4 +1,5 @@
 export default function AskAIPage() {
+	// Chat interface should use 'Screenfull' component to make it full screen
 	return (
 		<div className="space-y-6">
 			<div>

@@ -27,11 +27,12 @@ import {
 	Calendar,
 	ChevronDown,
 	FileQuestion,
-	GraduationCap,
+	FileText,
 	HelpCircle,
 	Home,
 	LogOut,
 	MessageSquare,
+	PenTool,
 	Settings,
 	User,
 } from "lucide-react";
@@ -73,39 +74,44 @@ const routes: RouteItem[] = [
 		href: "/dashboard/adaptive-learning",
 		subItems: [
 			{
+				label: "Notes",
+				href: "/dashboard/adaptive-learning/notes",
+				icon: FileText,
+			},
+			{
 				label: "Quizzes",
 				href: "/dashboard/adaptive-learning/quizzes",
 				icon: FileQuestion,
 			},
 			{
-				label: "Cuecards",
+				label: "Cue Cards",
 				href: "/dashboard/adaptive-learning/cuecards",
 				icon: BookOpenCheck,
 			},
 			{
-				label: "Multiple Choice",
+				label: "MCQs",
 				href: "/dashboard/adaptive-learning/multiple-choice",
 				icon: HelpCircle,
 			},
 			{
-				label: "Open Questions",
+				label: "Open Ended Questions",
 				href: "/dashboard/adaptive-learning/open-questions",
-				icon: GraduationCap,
+				icon: PenTool,
 			},
 		],
 	},
 	{
-		label: "Feedback",
-		icon: MessageSquare,
-		href: "/dashboard/feedback",
+		label: "Ask AI",
+		icon: BrainCog,
+		href: "/dashboard/ask-ai",
 	},
 ];
 
 const bottomRoutes: RouteItem[] = [
 	{
-		label: "Ask AI",
-		icon: BrainCog,
-		href: "/dashboard/ask-ai",
+		label: "Feedback",
+		icon: MessageSquare,
+		href: "/dashboard/feedback",
 	},
 	{
 		label: "Settings",
