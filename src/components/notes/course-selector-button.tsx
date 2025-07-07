@@ -9,6 +9,7 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useUserCourses } from "@/hooks/use-notes";
 import { BookOpen, ChevronDown } from "lucide-react";
 
@@ -32,13 +33,7 @@ export function CourseSelectorButton({
 	const selectedCourse = courses.find((course) => course.id === selectedCourseId);
 
 	if (isLoading) {
-		return (
-			<Button variant="outline" disabled>
-				<BookOpen className="h-4 w-4 mr-2" />
-				Loading...
-				<ChevronDown className="h-4 w-4 ml-2" />
-			</Button>
-		);
+		return <Skeleton className="h-10 w-[200px]" />;
 	}
 
 	if (error || courses.length === 0) {
