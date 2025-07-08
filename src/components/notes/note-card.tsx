@@ -16,6 +16,7 @@ interface NoteCardProps {
 	noteId?: string;
 	title: string;
 	content: string;
+	version?: number;
 	withActions?: boolean;
 	withMarkdown?: boolean;
 }
@@ -24,6 +25,7 @@ export function NoteCard({
 	noteId,
 	title,
 	content: initialContent,
+	version = 1,
 	withActions,
 	withMarkdown = false,
 }: NoteCardProps) {
@@ -58,7 +60,7 @@ export function NoteCard({
 			if (content !== initialContent) changes.content = content;
 
 			if (Object.keys(changes).length > 0) {
-				updateNoteMutation.mutate({ id: noteId, ...changes });
+				updateNoteMutation.mutate({ id: noteId, version, ...changes });
 			}
 		} else {
 			toast.error("Cannot save note: Missing note ID");

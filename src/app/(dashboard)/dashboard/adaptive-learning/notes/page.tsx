@@ -115,6 +115,7 @@ export default function NotesPage() {
 														noteId={note.id}
 														title={note.title}
 														content={note.content}
+														version={note.version}
 														withActions={true}
 														withMarkdown={true}
 													/>

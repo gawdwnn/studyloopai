@@ -145,7 +145,6 @@ export function exportToJSON(data: ExportData) {
 			totalSummaries: data.summaries.length,
 		},
 		goldenNotes: data.goldenNotes.map((note) => ({
-			id: note.id,
 			title: note.title,
 			content: note.content,
 			priority: note.priority,
@@ -154,7 +153,6 @@ export function exportToJSON(data: ExportData) {
 			updatedAt: note.updatedAt.toISOString(),
 		})),
 		summaries: data.summaries.map((summary) => ({
-			id: summary.id,
 			title: summary.title,
 			content: summary.content,
 			summaryType: summary.summaryType,

@@ -67,7 +67,7 @@ export async function getUserCourses() {
 			return userCourses;
 		},
 		"getUserCourses",
-		[] // fallback empty array
+		[]
 	);
 }
 
@@ -80,7 +80,7 @@ export async function getCourseById(courseId: string) {
 			return course;
 		},
 		"getCourseById",
-		null // fallback null
+		null
 	);
 }
 
@@ -106,7 +106,7 @@ export async function getAllUserMaterials() {
 			return materials;
 		},
 		"getAllUserMaterials",
-		[] // fallback empty array
+		[]
 	);
 }
 
@@ -120,7 +120,7 @@ export async function getCourseWeeks(courseId: string) {
 			return weeks;
 		},
 		"getCourseWeeks",
-		[] // fallback empty array
+		[]
 	);
 }
 
@@ -211,7 +211,7 @@ export async function deleteCourse(courseId: string) {
 		const deletionResult = await db.transaction(async (tx) => {
 			const materialIds = materialsData.map((m) => m.id);
 
-			// Delete AI content for entire course (most efficient)
+			// Delete AI content for entire course (includes own notes)
 			const aiContentResult = await deleteAiContentForCourse(tx, courseId);
 
 			// Delete material-specific data (configs and chunks)
@@ -247,6 +247,7 @@ export async function deleteCourse(courseId: string) {
 				configsDeleted: materialResult.configsDeleted,
 				aiContentDeleted: aiContentResult.aiContentDeleted,
 				chunksDeleted: materialResult.chunksDeleted,
+				ownNotesDeleted: aiContentResult.ownNotesDeleted,
 				weeksDeleted: weeksResult.length,
 			};
 		});
@@ -268,6 +269,7 @@ export async function deleteCourse(courseId: string) {
 			configsDeleted: deletionResult.configsDeleted,
 			aiContentDeleted: deletionResult.aiContentDeleted,
 			chunksDeleted: deletionResult.chunksDeleted,
+			ownNotesDeleted: deletionResult.ownNotesDeleted,
 			weeksDeleted: deletionResult.weeksDeleted,
 			filesDeleted: storageResult.filesDeleted,
 			jobsCancelled: jobCancellationResult.jobsCancelled,

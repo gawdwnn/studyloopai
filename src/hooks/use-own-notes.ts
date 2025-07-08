@@ -12,19 +12,34 @@ import {
 	updateOwnNote,
 } from "@/lib/actions/own-notes";
 
+// Types
+export interface OwnNote {
+	id: string;
+	userId: string;
+	weekId: string;
+	courseId: string;
+	title: string;
+	content: string;
+	noteType: string;
+	tags: string[];
+	isPrivate: boolean;
+	color: string;
+	metadata: Record<string, unknown>;
+	version: number;
+	createdAt: Date;
+	updatedAt: Date;
+}
+
 // Query Keys
 const ownNotesKeys = {
 	all: ["ownNotes"] as const,
-	byCourse: (courseId: string) => [...ownNotesKeys.all, courseId] as const,
-	byMaterial: (materialId: string) => [...ownNotesKeys.all, "material", materialId] as const,
 	filtered: (filters: Record<string, unknown>) =>
 		[...ownNotesKeys.all, "filtered", filters] as const,
 };
 
-// Hook for fetching own notes with filtering
-export function useOwnNotes(options?: {
-	materialId?: string;
-	courseId?: string;
+export function useOwnNotes(options: {
+	weekId: string;
+	courseId: string;
 	noteType?: string;
 	searchQuery?: string;
 	tags?: string[];
@@ -34,26 +49,22 @@ export function useOwnNotes(options?: {
 		queryFn: () => getOwnNotes(options),
 		staleTime: 2 * 60 * 1000, // 2 minutes
 		gcTime: 5 * 60 * 1000, // 5 minutes
-		select: (result) => result.data || [],
+		select: (result) => result || [],
 	});
 }
 
-// Hook for creating own notes
 export function useCreateOwnNote() {
 	const queryClient = useQueryClient();
 
 	return useMutation({
 		mutationFn: (data: CreateOwnNoteInput) => createOwnNote(data),
 		onSuccess: (result) => {
-			if (result.success) {
+			if (result) {
 				toast.success("Note created successfully!");
 
-				// Invalidate and refetch own notes
 				queryClient.invalidateQueries({
 					queryKey: ownNotesKeys.all,
 				});
-			} else {
-				toast.error(result.error || "Failed to create note");
 			}
 		},
 		onError: (error) => {
@@ -63,22 +74,18 @@ export function useCreateOwnNote() {
 	});
 }
 
-// Hook for updating own notes
 export function useUpdateOwnNote() {
 	const queryClient = useQueryClient();
 
 	return useMutation({
 		mutationFn: (data: UpdateOwnNoteInput) => updateOwnNote(data),
 		onSuccess: (result) => {
-			if (result.success) {
+			if (result) {
 				toast.success("Note updated successfully!");
 
-				// Invalidate and refetch own notes
 				queryClient.invalidateQueries({
 					queryKey: ownNotesKeys.all,
 				});
-			} else {
-				toast.error(result.error || "Failed to update note");
 			}
 		},
 		onError: (error) => {
@@ -88,22 +95,18 @@ export function useUpdateOwnNote() {
 	});
 }
 
-// Hook for deleting own notes
 export function useDeleteOwnNote() {
 	const queryClient = useQueryClient();
 
 	return useMutation({
 		mutationFn: (noteId: string) => deleteOwnNote(noteId),
 		onSuccess: (result) => {
-			if (result.success) {
+			if (result) {
 				toast.success("Note deleted successfully!");
 
-				// Invalidate and refetch own notes
 				queryClient.invalidateQueries({
 					queryKey: ownNotesKeys.all,
 				});
-			} else {
-				toast.error(result.error || "Failed to delete note");
 			}
 		},
 		onError: (error) => {
@@ -113,5 +116,4 @@ export function useDeleteOwnNote() {
 	});
 }
 
-// Export types for use in components
 export type { CreateOwnNoteInput, UpdateOwnNoteInput };

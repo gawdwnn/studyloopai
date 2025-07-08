@@ -135,6 +135,7 @@ export async function deleteCourseMaterial(materialId: string, filePath?: string
 				configsDeleted: aiContentResult.configsDeleted,
 				aiContentDeleted: aiContentResult.aiContentDeleted,
 				chunksDeleted: aiContentResult.chunksDeleted,
+				ownNotesDeleted: aiContentResult.ownNotesDeleted,
 			};
 		});
 
@@ -153,6 +154,7 @@ export async function deleteCourseMaterial(materialId: string, filePath?: string
 			chunksDeleted: deletionResult.chunksDeleted,
 			configsDeleted: deletionResult.configsDeleted,
 			aiContentDeleted: deletionResult.aiContentDeleted,
+			ownNotesDeleted: deletionResult.ownNotesDeleted || 0,
 			filesDeleted: storageResult.filesDeleted,
 			storageErrors: storageResult.hasErrors ? storageResult.storageErrors : undefined,
 			jobCancelled: jobCancellationResult?.success || false,

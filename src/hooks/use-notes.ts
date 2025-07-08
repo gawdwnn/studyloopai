@@ -3,11 +3,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { getUserCourses } from "@/lib/actions/courses";
 import {
 	type UpdateGoldenNoteInput,
 	deleteGoldenNote,
 	getNotesData,
-	getUserCoursesForNotes,
 	updateGoldenNote,
 } from "@/lib/actions/notes";
 import { formatErrorForToast } from "@/lib/utils/error-handling";
@@ -19,6 +19,7 @@ interface GoldenNote {
 	content: string;
 	priority: number | null;
 	category: string | null;
+	version: number;
 	createdAt: Date;
 	updatedAt: Date;
 	weekId: string;
@@ -52,10 +53,26 @@ interface Course {
 	createdAt: Date;
 }
 
+interface OwnNote {
+	id: string;
+	title: string;
+	content: string;
+	noteType: string;
+	tags: unknown;
+	isPrivate: boolean;
+	color: string;
+	createdAt: Date;
+	updatedAt: Date;
+	userId: string;
+	weekId: string;
+	courseId: string;
+}
+
 interface NotesData {
 	goldenNotes: GoldenNote[];
 	summaries: Summary[];
 	weeks: Week[];
+	ownNotes: OwnNote[];
 }
 
 // Query Keys
@@ -67,18 +84,16 @@ const notesKeys = {
 		[...notesKeys.byCourse(courseId), weekId] as const,
 };
 
-// Custom hook for fetching user courses
 export function useUserCourses() {
 	return useQuery({
 		queryKey: notesKeys.courses,
-		queryFn: () => getUserCoursesForNotes(),
-		staleTime: 10 * 60 * 1000, // 10 minutes (courses change less frequently)
+		queryFn: () => getUserCourses(),
+		staleTime: 10 * 60 * 1000, // 10 minutes
 		gcTime: 15 * 60 * 1000, // 15 minutes
 	});
 }
 
-// Custom hook for fetching notes data
-export function useNotesData(courseId: string, weekId?: string) {
+export function useNotesData(courseId: string, weekId: string) {
 	return useQuery({
 		queryKey: notesKeys.byCourseAndWeek(courseId, weekId),
 		queryFn: () => getNotesData(courseId, weekId),
@@ -88,23 +103,25 @@ export function useNotesData(courseId: string, weekId?: string) {
 	});
 }
 
-// Custom hook for updating golden notes
 export function useUpdateGoldenNote() {
 	const queryClient = useQueryClient();
 
 	return useMutation({
-		mutationFn: ({ id, ...data }: { id: string } & Partial<UpdateGoldenNoteInput>) =>
-			updateGoldenNote({ id, ...data }),
+		mutationFn: ({
+			id,
+			version,
+			...data
+		}: { id: string; version: number } & Partial<Omit<UpdateGoldenNoteInput, "id" | "version">>) =>
+			updateGoldenNote({ id, version, ...data }),
 		onSuccess: (result, _variables) => {
 			if (result.success) {
 				toast.success("Note updated successfully!");
 
-				// Invalidate and refetch notes data
 				queryClient.invalidateQueries({
 					queryKey: notesKeys.all,
 				});
 			} else {
-				toast.error(result.error || "Failed to save note");
+				toast.error("Failed to save note");
 			}
 		},
 		onError: (error) => {
@@ -114,7 +131,6 @@ export function useUpdateGoldenNote() {
 	});
 }
 
-// Custom hook for deleting golden notes
 export function useDeleteGoldenNote() {
 	const queryClient = useQueryClient();
 
@@ -124,12 +140,11 @@ export function useDeleteGoldenNote() {
 			if (result.success) {
 				toast.success("Note deleted successfully!");
 
-				// Invalidate and refetch notes data
 				queryClient.invalidateQueries({
 					queryKey: notesKeys.all,
 				});
 			} else {
-				toast.error(result.error || "Failed to delete note");
+				toast.error("Failed to delete note");
 			}
 		},
 		onError: (error) => {
@@ -139,5 +154,4 @@ export function useDeleteGoldenNote() {
 	});
 }
 
-// Export types for use in components
 export type { GoldenNote, Summary, Week, Course, NotesData };

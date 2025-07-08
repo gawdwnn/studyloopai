@@ -7,6 +7,7 @@ import {
 	goldenNotes,
 	multipleChoiceQuestions,
 	openQuestions,
+	ownNotes,
 	summaries,
 } from "@/db/schema";
 import { type ExtractTablesWithRelations, and, eq, inArray } from "drizzle-orm";
@@ -32,6 +33,7 @@ export interface ContentDeletionResult {
 	configsDeleted: number;
 	aiContentDeleted: AiContentDeletionCounts;
 	chunksDeleted: number;
+	ownNotesDeleted?: number;
 }
 
 /**
@@ -40,25 +42,31 @@ export interface ContentDeletionResult {
 export async function deleteAiContentForCourse(
 	tx: DbTransaction,
 	courseId: string
-): Promise<{ aiContentDeleted: AiContentDeletionCounts }> {
-	// Delete AI content and get actual counts from affected rows
-	const [cuecardsResult, mcqsResult, openQuestionsResult, summariesResult, goldenNotesResult] =
-		await Promise.all([
-			tx.delete(cuecards).where(eq(cuecards.courseId, courseId)).returning({ id: cuecards.id }),
-			tx
-				.delete(multipleChoiceQuestions)
-				.where(eq(multipleChoiceQuestions.courseId, courseId))
-				.returning({ id: multipleChoiceQuestions.id }),
-			tx
-				.delete(openQuestions)
-				.where(eq(openQuestions.courseId, courseId))
-				.returning({ id: openQuestions.id }),
-			tx.delete(summaries).where(eq(summaries.courseId, courseId)).returning({ id: summaries.id }),
-			tx
-				.delete(goldenNotes)
-				.where(eq(goldenNotes.courseId, courseId))
-				.returning({ id: goldenNotes.id }),
-		]);
+): Promise<{ aiContentDeleted: AiContentDeletionCounts; ownNotesDeleted: number }> {
+	const [
+		cuecardsResult,
+		mcqsResult,
+		openQuestionsResult,
+		summariesResult,
+		goldenNotesResult,
+		ownNotesResult,
+	] = await Promise.all([
+		tx.delete(cuecards).where(eq(cuecards.courseId, courseId)).returning({ id: cuecards.id }),
+		tx
+			.delete(multipleChoiceQuestions)
+			.where(eq(multipleChoiceQuestions.courseId, courseId))
+			.returning({ id: multipleChoiceQuestions.id }),
+		tx
+			.delete(openQuestions)
+			.where(eq(openQuestions.courseId, courseId))
+			.returning({ id: openQuestions.id }),
+		tx.delete(summaries).where(eq(summaries.courseId, courseId)).returning({ id: summaries.id }),
+		tx
+			.delete(goldenNotes)
+			.where(eq(goldenNotes.courseId, courseId))
+			.returning({ id: goldenNotes.id }),
+		tx.delete(ownNotes).where(eq(ownNotes.courseId, courseId)).returning({ id: ownNotes.id }),
+	]);
 
 	const aiContentCounts = {
 		cuecards: cuecardsResult.length,
@@ -75,6 +83,7 @@ export async function deleteAiContentForCourse(
 
 	return {
 		aiContentDeleted: aiContentCounts,
+		ownNotesDeleted: ownNotesResult.length,
 	};
 }
 
@@ -85,36 +94,46 @@ export async function deleteAiContentForCourseWeek(
 	tx: DbTransaction,
 	courseId: string,
 	weekId: string
-): Promise<{ aiContentDeleted: AiContentDeletionCounts }> {
-	// Delete AI content and get actual counts from affected rows
-	const [cuecardsResult, mcqsResult, openQuestionsResult, summariesResult, goldenNotesResult] =
-		await Promise.all([
-			tx
-				.delete(cuecards)
-				.where(and(eq(cuecards.courseId, courseId), eq(cuecards.weekId, weekId)))
-				.returning({ id: cuecards.id }),
-			tx
-				.delete(multipleChoiceQuestions)
-				.where(
-					and(
-						eq(multipleChoiceQuestions.courseId, courseId),
-						eq(multipleChoiceQuestions.weekId, weekId)
-					)
+): Promise<{ aiContentDeleted: AiContentDeletionCounts; ownNotesDeleted: number }> {
+	// Delete AI content and own notes, get actual counts from affected rows
+	const [
+		cuecardsResult,
+		mcqsResult,
+		openQuestionsResult,
+		summariesResult,
+		goldenNotesResult,
+		ownNotesResult,
+	] = await Promise.all([
+		tx
+			.delete(cuecards)
+			.where(and(eq(cuecards.courseId, courseId), eq(cuecards.weekId, weekId)))
+			.returning({ id: cuecards.id }),
+		tx
+			.delete(multipleChoiceQuestions)
+			.where(
+				and(
+					eq(multipleChoiceQuestions.courseId, courseId),
+					eq(multipleChoiceQuestions.weekId, weekId)
 				)
-				.returning({ id: multipleChoiceQuestions.id }),
-			tx
-				.delete(openQuestions)
-				.where(and(eq(openQuestions.courseId, courseId), eq(openQuestions.weekId, weekId)))
-				.returning({ id: openQuestions.id }),
-			tx
-				.delete(summaries)
-				.where(and(eq(summaries.courseId, courseId), eq(summaries.weekId, weekId)))
-				.returning({ id: summaries.id }),
-			tx
-				.delete(goldenNotes)
-				.where(and(eq(goldenNotes.courseId, courseId), eq(goldenNotes.weekId, weekId)))
-				.returning({ id: goldenNotes.id }),
-		]);
+			)
+			.returning({ id: multipleChoiceQuestions.id }),
+		tx
+			.delete(openQuestions)
+			.where(and(eq(openQuestions.courseId, courseId), eq(openQuestions.weekId, weekId)))
+			.returning({ id: openQuestions.id }),
+		tx
+			.delete(summaries)
+			.where(and(eq(summaries.courseId, courseId), eq(summaries.weekId, weekId)))
+			.returning({ id: summaries.id }),
+		tx
+			.delete(goldenNotes)
+			.where(and(eq(goldenNotes.courseId, courseId), eq(goldenNotes.weekId, weekId)))
+			.returning({ id: goldenNotes.id }),
+		tx
+			.delete(ownNotes)
+			.where(and(eq(ownNotes.courseId, courseId), eq(ownNotes.weekId, weekId)))
+			.returning({ id: ownNotes.id }),
+	]);
 
 	const aiContentCounts = {
 		cuecards: cuecardsResult.length,
@@ -131,6 +150,7 @@ export async function deleteAiContentForCourseWeek(
 
 	return {
 		aiContentDeleted: aiContentCounts,
+		ownNotesDeleted: ownNotesResult.length,
 	};
 }
 
@@ -198,12 +218,13 @@ export async function deleteAiContentForMaterial(
 				total: 0,
 			},
 			chunksDeleted: 0,
+			ownNotesDeleted: 0,
 		};
 	}
 
 	const { courseId, weekId } = material[0];
 
-	// Delete AI content for this specific week (if weekId exists)
+	// Delete AI content for this specific week (if weekId exists) - this includes own notes
 	const aiContentResult = weekId
 		? await deleteAiContentForCourseWeek(tx, courseId, weekId)
 		: {
@@ -215,6 +236,7 @@ export async function deleteAiContentForMaterial(
 					goldenNotes: 0,
 					total: 0,
 				},
+				ownNotesDeleted: 0,
 			};
 
 	// Delete material-specific data (configs and chunks)
@@ -224,5 +246,6 @@ export async function deleteAiContentForMaterial(
 		configsDeleted: materialResult.configsDeleted,
 		aiContentDeleted: aiContentResult.aiContentDeleted,
 		chunksDeleted: materialResult.chunksDeleted,
+		ownNotesDeleted: aiContentResult.ownNotesDeleted,
 	};
 }

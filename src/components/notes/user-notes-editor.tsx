@@ -25,6 +25,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 
 import {
+	type OwnNote,
 	useCreateOwnNote,
 	useDeleteOwnNote,
 	useOwnNotes,
@@ -35,10 +36,10 @@ import { MarkdownRenderer } from "./markdown-renderer";
 
 interface UserNotesEditorProps {
 	courseId: string;
-	weekId?: string;
+	weekId: string;
 }
 
-export function UserNotesEditor({ courseId }: UserNotesEditorProps) {
+export function UserNotesEditor({ courseId, weekId }: UserNotesEditorProps) {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [selectedNoteType, setSelectedNoteType] = useState<string>("all");
 	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -46,11 +47,12 @@ export function UserNotesEditor({ courseId }: UserNotesEditorProps) {
 
 	// Fetch notes with filters
 	const {
-		data: notes = [],
+		data: notes = [] as OwnNote[],
 		isLoading,
 		error,
 	} = useOwnNotes({
 		courseId,
+		weekId,
 		searchQuery: searchQuery || undefined,
 		noteType: selectedNoteType === "all" ? undefined : selectedNoteType,
 	});
@@ -62,6 +64,7 @@ export function UserNotesEditor({ courseId }: UserNotesEditorProps) {
 	const handleCreateNote = (content: string, title: string) => {
 		createNoteMutation.mutate({
 			courseId,
+			weekId,
 			title: title || "Untitled Note",
 			content,
 			noteType: "general",
@@ -73,9 +76,13 @@ export function UserNotesEditor({ courseId }: UserNotesEditorProps) {
 	};
 
 	const handleUpdateNote = (noteId: string, content: string) => {
+		const note = notes.find((n) => n.id === noteId);
+		if (!note) return;
+
 		updateNoteMutation.mutate({
 			id: noteId,
 			content,
+			version: note.version,
 		});
 	};
 
@@ -241,6 +248,10 @@ export function UserNotesEditor({ courseId }: UserNotesEditorProps) {
 										}}
 										placeholder="Edit your note..."
 										autoSave={false}
+										height={400}
+										enableFullscreen={true}
+										enableDraftSave={true}
+										draftKey={`edit-note-${note.id}`}
 									/>
 								) : (
 									<MarkdownRenderer content={note.content} />
@@ -283,12 +294,16 @@ function CreateNoteForm({ onSave, onCancel, isLoading }: CreateNoteFormProps) {
 				onChange={(e) => setTitle(e.target.value)}
 				className="text-lg font-semibold"
 			/>
-			<div className="h-80 overflow-hidden">
+			<div className="min-h-96 overflow-hidden">
 				<MarkdownEditor
 					content={content}
 					onSave={handleContentChange}
 					placeholder="Start writing your note..."
 					autoSave={false}
+					height={500}
+					enableFullscreen={true}
+					enableDraftSave={true}
+					draftKey="new-note-draft"
 				/>
 			</div>
 			<div className="flex justify-end gap-2">
