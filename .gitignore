@@ -50,4 +50,4 @@ next-env.d.ts
 /CLAUDE.md
 
 # TODO: ignore all *mcp.json files
-mcp.json
+.mcp.json

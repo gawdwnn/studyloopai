@@ -150,13 +150,13 @@ export const ownNotesRelations = relations(ownNotes, ({ one }) => ({
 		fields: [ownNotes.userId],
 		references: [users.userId],
 	}),
-	courseMaterial: one(courseMaterials, {
-		fields: [ownNotes.materialId],
-		references: [courseMaterials.id],
-	}),
 	course: one(courses, {
 		fields: [ownNotes.courseId],
 		references: [courses.id],
+	}),
+	week: one(courseWeeks, {
+		fields: [ownNotes.weekId],
+		references: [courseWeeks.id],
 	}),
 }));
 
