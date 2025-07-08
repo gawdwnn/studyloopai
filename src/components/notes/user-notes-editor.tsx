@@ -298,7 +298,6 @@ export function UserNotesEditor({ courseId, weekId }: UserNotesEditorProps) {
 				notes={notes}
 				currentPage={pagination.page}
 				totalPages={pagination.totalPages}
-				notesPerPage={pagination.limit}
 				onPageChange={setCurrentPage}
 				onEdit={handleOpenEdit}
 				onDelete={handleDeleteNote}

@@ -13,7 +13,6 @@ interface OwnNotesListProps {
 	notes: OwnNote[];
 	currentPage: number;
 	totalPages: number;
-	notesPerPage: number;
 	onPageChange: (page: number) => void;
 	onEdit: (note: OwnNote) => void;
 	onDelete: (noteId: string) => void;
@@ -26,7 +25,6 @@ export function OwnNotesList({
 	notes,
 	currentPage,
 	totalPages,
-	notesPerPage,
 	onPageChange,
 	onEdit,
 	onDelete,
@@ -34,8 +32,6 @@ export function OwnNotesList({
 	isDeleting = false,
 	isUpdating = false,
 }: OwnNotesListProps) {
-	// Notes are already paginated from the server, so we use them directly
-
 	// Truncate content for preview
 	const truncateContent = (content: string, maxLength = 150) => {
 		if (content.length <= maxLength) return content;
@@ -62,13 +58,7 @@ export function OwnNotesList({
 		<div className="space-y-4">
 			<div className="grid gap-4">
 				{notes.map((note) => (
-					<Card
-						key={note.id}
-						className="group hover:shadow-md transition-shadow"
-						role="article"
-						aria-labelledby={`note-title-${note.id}`}
-						aria-describedby={`note-content-${note.id}`}
-					>
+					<Card key={note.id} className="group hover:shadow-md transition-shadow">
 						<CardHeader>
 							<div className="flex items-start justify-between">
 								<div className="flex-1">
