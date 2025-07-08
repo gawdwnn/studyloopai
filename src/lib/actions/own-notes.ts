@@ -7,6 +7,9 @@ import { withErrorHandling } from "@/lib/utils/error-handling";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 
+// Import the NoteType from the hook to keep consistency
+import type { NoteType } from "@/hooks/use-own-notes";
+
 // Validation schemas
 const CreateOwnNoteSchema = z.object({
 	weekId: z.string().uuid(),
@@ -153,17 +156,23 @@ export async function deleteOwnNote(noteId: string) {
 }
 
 /**
- * Get user notes with filtering options
+ * Get user notes with filtering and pagination options
  */
 export async function getOwnNotes(options: {
 	weekId: string;
 	courseId: string;
-	noteType?: string;
+	noteType?: NoteType;
 	searchQuery?: string;
 	tags?: string[];
+	page?: number;
+	limit?: number;
 }) {
 	return await withErrorHandling(
 		async () => {
+			const page = options.page || 1;
+			const limit = options.limit || 20;
+			const offset = (page - 1) * limit;
+
 			const conditions = [
 				eq(ownNotes.courseId, options.courseId),
 				eq(ownNotes.weekId, options.weekId),
@@ -179,26 +188,59 @@ export async function getOwnNotes(options: {
 				conditions.push(searchCondition);
 			}
 
+			// Use PostgreSQL JSONB operators for tag filtering instead of JS
+			if (options.tags && options.tags.length > 0) {
+				// Check if any of the provided tags exist in the note's tags array
+				const tagConditions = options.tags.map(
+					(tag) => sql`${ownNotes.tags} @> ${JSON.stringify([tag])}`
+				);
+				// OR condition for any tag match
+				const tagCondition = sql`(${sql.join(tagConditions, sql` OR `)})`;
+				conditions.push(tagCondition);
+			}
+
+			// Get total count for pagination
+			const [countResult] = await db
+				.select({ count: sql<number>`cast(count(*) as int)` })
+				.from(ownNotes)
+				.where(conditions.length > 1 ? and(...conditions) : conditions[0]);
+
+			const totalCount = countResult?.count || 0;
+			const totalPages = Math.ceil(totalCount / limit);
+
+			// Get paginated notes
 			const notes = await db
 				.select()
 				.from(ownNotes)
 				.where(conditions.length > 1 ? and(...conditions) : conditions[0])
-				.orderBy(desc(ownNotes.updatedAt));
+				.orderBy(desc(ownNotes.updatedAt))
+				.limit(limit)
+				.offset(offset);
 
-			// Filter by tags if provided (done in JS since JSONB queries are complex)
-			let filteredNotes = notes;
-			if (options.tags && options.tags.length > 0) {
-				const searchTags = options.tags; // Type narrowing
-				filteredNotes = notes.filter((note) => {
-					const noteTags = (note.tags as string[]) || [];
-					return searchTags.some((tag) => noteTags.includes(tag));
-				});
-			}
-
-			return filteredNotes;
+			return {
+				notes,
+				pagination: {
+					page,
+					limit,
+					totalCount,
+					totalPages,
+					hasNext: page < totalPages,
+					hasPrev: page > 1,
+				},
+			};
 		},
 		"getOwnNotes",
-		[]
+		{
+			notes: [],
+			pagination: {
+				page: 1,
+				limit: 20,
+				totalCount: 0,
+				totalPages: 0,
+				hasNext: false,
+				hasPrev: false,
+			},
+		}
 	);
 }
 

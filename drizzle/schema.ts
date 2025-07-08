@@ -421,7 +421,6 @@ export const ownNotes = pgTable(
 		tags: jsonb().default([]),
 		isPrivate: boolean("is_private").default(true),
 		color: varchar({ length: 20 }).default("#ffffff"),
-		// position: jsonb(), // TODO: Add when PDF annotation system is implemented
 		metadata: jsonb().default({}),
 		version: integer().default(1).notNull(),
 		createdAt: timestamp("created_at").defaultNow().notNull(),
