@@ -87,11 +87,6 @@ combinations 3. Large JSON Processing - Problem: Tag filtering done in JavaScrip
 
 Client-Side Performance
 
-4. Bundle Size
-
-- Issue: Heavy markdown editor dependencies (MDEditor + jsPDF)
-- Fix: Implement dynamic imports for export functionality
-
 5. Re-render Optimization
 
 - Issue: Notes list re-renders on every search keystroke
