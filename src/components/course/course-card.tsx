@@ -154,7 +154,7 @@ export function CourseCard({
 							size="sm"
 							onClick={handleEdit}
 							disabled={isPending || isDeleting || isBeingDeleted}
-							className="h-8 w-8 p-0 hover:bg-muted"
+							className="h-8 w-8 p-0"
 						>
 							<Edit2 className="h-4 w-4" />
 						</Button>
@@ -164,7 +164,7 @@ export function CourseCard({
 									variant="ghost"
 									size="sm"
 									disabled={isPending || isDeleting || isBeingDeleted}
-									className="h-8 w-8 p-0 hover:bg-destructive/20 hover:text-destructive"
+									className="h-8 w-8 p-0"
 								>
 									<Trash2 className="h-4 w-4" />
 								</Button>

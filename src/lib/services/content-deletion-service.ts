@@ -1,6 +1,7 @@
 import type * as schema from "@/db/schema";
 import {
 	courseMaterials,
+	courseWeeks,
 	cuecards,
 	documentChunks,
 	generationConfigs,
@@ -37,12 +38,21 @@ export interface ContentDeletionResult {
 }
 
 /**
- * Delete all AI content for a course (for course deletion)
+ * Delete all content for a course (for complete course deletion)
+ * Includes AI content, materials, weeks, configs, and chunks
  */
-export async function deleteAiContentForCourse(
+export async function deleteContentForCourse(
 	tx: DbTransaction,
-	courseId: string
-): Promise<{ aiContentDeleted: AiContentDeletionCounts; ownNotesDeleted: number }> {
+	courseId: string,
+	materialIds: string[]
+): Promise<{
+	aiContentDeleted: AiContentDeletionCounts;
+	ownNotesDeleted: number;
+	configsDeleted: number;
+	chunksDeleted: number;
+	materialsDeleted: number;
+	weeksDeleted: number;
+}> {
 	const [
 		cuecardsResult,
 		mcqsResult,
@@ -50,6 +60,10 @@ export async function deleteAiContentForCourse(
 		summariesResult,
 		goldenNotesResult,
 		ownNotesResult,
+		configsResult,
+		chunksResult,
+		materialsResult,
+		weeksResult,
 	] = await Promise.all([
 		tx.delete(cuecards).where(eq(cuecards.courseId, courseId)).returning({ id: cuecards.id }),
 		tx
@@ -66,6 +80,26 @@ export async function deleteAiContentForCourse(
 			.where(eq(goldenNotes.courseId, courseId))
 			.returning({ id: goldenNotes.id }),
 		tx.delete(ownNotes).where(eq(ownNotes.courseId, courseId)).returning({ id: ownNotes.id }),
+		tx
+			.delete(generationConfigs)
+			.where(eq(generationConfigs.courseId, courseId))
+			.returning({ id: generationConfigs.id }),
+		materialIds.length > 0
+			? tx
+					.delete(documentChunks)
+					.where(inArray(documentChunks.materialId, materialIds))
+					.returning({ id: documentChunks.id })
+			: Promise.resolve([]),
+		materialIds.length > 0
+			? tx
+					.delete(courseMaterials)
+					.where(eq(courseMaterials.courseId, courseId))
+					.returning({ id: courseMaterials.id })
+			: Promise.resolve([]),
+		tx
+			.delete(courseWeeks)
+			.where(eq(courseWeeks.courseId, courseId))
+			.returning({ id: courseWeeks.id }),
 	]);
 
 	const aiContentCounts = {
@@ -74,28 +108,42 @@ export async function deleteAiContentForCourse(
 		openQuestions: openQuestionsResult.length,
 		summaries: summariesResult.length,
 		goldenNotes: goldenNotesResult.length,
+		ownNotes: ownNotesResult.length,
 		total: 0,
 	};
 
 	aiContentCounts.total = Object.values(aiContentCounts)
-		.filter((_, index) => index < 5) // Exclude 'total' field
+		.filter((_, index) => index < 6) // Exclude 'total' field
 		.reduce((sum, count) => sum + count, 0);
 
 	return {
 		aiContentDeleted: aiContentCounts,
 		ownNotesDeleted: ownNotesResult.length,
+		configsDeleted: configsResult.length,
+		chunksDeleted: chunksResult.length,
+		materialsDeleted: materialsResult.length,
+		weeksDeleted: weeksResult.length,
 	};
 }
 
 /**
- * Delete AI content for a specific week (for course week material deletion)
+ * Delete all content for a specific Course week
+ * Includes:
+ * - AI content (goldennotes, summaries, own notes, open questions, multiple choice questions, cuecards,
+ * - Generation configs
+ * - Material chunks)
  */
-export async function deleteAiContentForCourseWeek(
+export async function deleteContentForCourseWeek(
 	tx: DbTransaction,
 	courseId: string,
-	weekId: string
-): Promise<{ aiContentDeleted: AiContentDeletionCounts; ownNotesDeleted: number }> {
-	// Delete AI content and own notes, get actual counts from affected rows
+	weekId: string,
+	materialIds?: string[]
+): Promise<{
+	aiContentDeleted: AiContentDeletionCounts;
+	ownNotesDeleted: number;
+	configsDeleted: number;
+	chunksDeleted: number;
+}> {
 	const [
 		cuecardsResult,
 		mcqsResult,
@@ -103,6 +151,8 @@ export async function deleteAiContentForCourseWeek(
 		summariesResult,
 		goldenNotesResult,
 		ownNotesResult,
+		configsResult,
+		chunksResult,
 	] = await Promise.all([
 		tx
 			.delete(cuecards)
@@ -133,6 +183,16 @@ export async function deleteAiContentForCourseWeek(
 			.delete(ownNotes)
 			.where(and(eq(ownNotes.courseId, courseId), eq(ownNotes.weekId, weekId)))
 			.returning({ id: ownNotes.id }),
+		tx
+			.delete(generationConfigs)
+			.where(and(eq(generationConfigs.courseId, courseId), eq(generationConfigs.weekId, weekId)))
+			.returning({ id: generationConfigs.id }),
+		materialIds && materialIds.length > 0
+			? tx
+					.delete(documentChunks)
+					.where(inArray(documentChunks.materialId, materialIds))
+					.returning({ id: documentChunks.id })
+			: Promise.resolve([]),
 	]);
 
 	const aiContentCounts = {
@@ -151,101 +211,7 @@ export async function deleteAiContentForCourseWeek(
 	return {
 		aiContentDeleted: aiContentCounts,
 		ownNotesDeleted: ownNotesResult.length,
-	};
-}
-
-/**
- * Delete material-specific data (configs and chunks) for given material IDs
- */
-export async function deleteMaterialSpecificData(
-	tx: DbTransaction,
-	materialIds: string[]
-): Promise<{
-	configsDeleted: number;
-	chunksDeleted: number;
-}> {
-	if (materialIds.length === 0) {
-		return {
-			configsDeleted: 0,
-			chunksDeleted: 0,
-		};
-	}
-
-	// Delete and get actual counts from affected rows
-	const [configsResult, chunksResult] = await Promise.all([
-		tx
-			.delete(generationConfigs)
-			.where(inArray(generationConfigs.materialId, materialIds))
-			.returning({ id: generationConfigs.id }),
-		tx
-			.delete(documentChunks)
-			.where(inArray(documentChunks.materialId, materialIds))
-			.returning({ id: documentChunks.id }),
-	]);
-
-	return {
 		configsDeleted: configsResult.length,
 		chunksDeleted: chunksResult.length,
-	};
-}
-
-/**
- * Delete AI content for a single material (gets courseId and weekId from materialId)
- */
-export async function deleteAiContentForMaterial(
-	tx: DbTransaction,
-	materialId: string
-): Promise<ContentDeletionResult> {
-	// Get courseId and weekId from the material
-	const material = await tx
-		.select({
-			courseId: courseMaterials.courseId,
-			weekId: courseMaterials.weekId,
-		})
-		.from(courseMaterials)
-		.where(eq(courseMaterials.id, materialId))
-		.limit(1);
-
-	if (!material[0]) {
-		return {
-			configsDeleted: 0,
-			aiContentDeleted: {
-				cuecards: 0,
-				mcqs: 0,
-				openQuestions: 0,
-				summaries: 0,
-				goldenNotes: 0,
-				total: 0,
-			},
-			chunksDeleted: 0,
-			ownNotesDeleted: 0,
-		};
-	}
-
-	const { courseId, weekId } = material[0];
-
-	// Delete AI content for this specific week (if weekId exists) - this includes own notes
-	const aiContentResult = weekId
-		? await deleteAiContentForCourseWeek(tx, courseId, weekId)
-		: {
-				aiContentDeleted: {
-					cuecards: 0,
-					mcqs: 0,
-					openQuestions: 0,
-					summaries: 0,
-					goldenNotes: 0,
-					total: 0,
-				},
-				ownNotesDeleted: 0,
-			};
-
-	// Delete material-specific data (configs and chunks)
-	const materialResult = await deleteMaterialSpecificData(tx, [materialId]);
-
-	return {
-		configsDeleted: materialResult.configsDeleted,
-		aiContentDeleted: aiContentResult.aiContentDeleted,
-		chunksDeleted: materialResult.chunksDeleted,
-		ownNotesDeleted: aiContentResult.ownNotesDeleted,
 	};
 }

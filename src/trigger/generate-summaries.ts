@@ -52,12 +52,12 @@ export const generateSummaries = schemaTask({
 			const { uploadedBy: userId, courseId } = materials[0];
 
 			// Import generation config manager for adaptive configuration
-			const { getEffectiveGenerationConfig } = await import(
-				"@/lib/services/generation-config-service"
+			const { getEffectiveCourseWeekGenerationConfig } = await import(
+				"@/lib/services/adaptive-generation-service"
 			);
 
 			// Get the effective configuration with adaptive features
-			const adaptiveConfig = await getEffectiveGenerationConfig(userId, materials[0].id, courseId);
+			const adaptiveConfig = await getEffectiveCourseWeekGenerationConfig(userId, weekId, courseId);
 
 			logger.info("📄 Using adaptive configuration for summaries", {
 				weekId,

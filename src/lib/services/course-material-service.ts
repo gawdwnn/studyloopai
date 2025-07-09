@@ -1,3 +1,5 @@
+import type { GenerationConfig } from "@/components/course/course-material-upload-wizard";
+
 /** Payload returned by the /api/materials/presign endpoint */
 export interface PresignUploadResponse {
 	signedUrl: string;
@@ -28,12 +30,17 @@ export interface CompleteUploadResponse {
 	publicAccessToken: string;
 }
 
-export async function completeUpload(materialIds: string[]): Promise<CompleteUploadResponse> {
+export async function completeUpload(
+	materialIds: string[],
+	weekId: string,
+	courseId: string,
+	generationConfig?: GenerationConfig
+): Promise<CompleteUploadResponse> {
 	const res = await fetch("/api/materials/complete", {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		credentials: "include",
-		body: JSON.stringify({ materialIds }),
+		body: JSON.stringify({ materialIds, weekId, courseId, generationConfig }),
 	});
 
 	if (!res.ok) {

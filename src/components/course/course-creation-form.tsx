@@ -10,13 +10,6 @@ import {
 	FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { type CourseCreationData, CourseCreationSchema } from "@/lib/validations/courses";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -33,7 +26,6 @@ export function CourseCreationForm({ onSubmit, isPending }: CourseCreationFormPr
 		defaultValues: {
 			name: "",
 			description: "",
-			language: "english",
 			durationWeeks: 12,
 		},
 	});
@@ -67,45 +59,23 @@ export function CourseCreationForm({ onSubmit, isPending }: CourseCreationFormPr
 						</FormItem>
 					)}
 				/>
-				<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-					<FormField
-						control={form.control}
-						name="language"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>Language</FormLabel>
-								<Select onValueChange={field.onChange} defaultValue={field.value}>
-									<FormControl>
-										<SelectTrigger>
-											<SelectValue placeholder="Select a language" />
-										</SelectTrigger>
-									</FormControl>
-									<SelectContent>
-										<SelectItem value="english">English</SelectItem>
-									</SelectContent>
-								</Select>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-					<FormField
-						control={form.control}
-						name="durationWeeks"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>Duration (Weeks)</FormLabel>
-								<FormControl>
-									<Input
-										type="number"
-										{...field}
-										onChange={(e) => field.onChange(Number.parseInt(e.target.value, 10))}
-									/>
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-				</div>
+				<FormField
+					control={form.control}
+					name="durationWeeks"
+					render={({ field }) => (
+						<FormItem>
+							<FormLabel>Duration (Weeks)</FormLabel>
+							<FormControl>
+								<Input
+									type="number"
+									{...field}
+									onChange={(e) => field.onChange(Number.parseInt(e.target.value, 10))}
+								/>
+							</FormControl>
+							<FormMessage />
+						</FormItem>
+					)}
+				/>
 				<LoadingButton type="submit" loading={isPending} className="w-full">
 					Create Course
 				</LoadingButton>

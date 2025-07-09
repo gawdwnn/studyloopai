@@ -71,6 +71,27 @@
 			"when": 1751946679778,
 			"tag": "0009_demonic_martin_li",
 			"breakpoints": true
+		},
+		{
+			"idx": 10,
+			"version": "7",
+			"when": 1752090706043,
+			"tag": "0010_elite_prodigy",
+			"breakpoints": true
+		},
+		{
+			"idx": 11,
+			"version": "7",
+			"when": 1752149339000,
+			"tag": "0011_fix_flashcards_count_column",
+			"breakpoints": true
+		},
+		{
+			"idx": 12,
+			"version": "7",
+			"when": 1752098276237,
+			"tag": "0012_left_captain_flint",
+			"breakpoints": true
 		}
 	]
 }

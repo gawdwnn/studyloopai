@@ -120,9 +120,9 @@ export function GenerationSettings({ config, onConfigChange }: GenerationSetting
 	return (
 		<div className="space-y-6">
 			<div>
-				<h3 className="text-lg font-semibold mb-2">Content Generation Settings</h3>
+				<h3 className="text-lg font-semibold mb-2">Week-Level Content Generation Settings</h3>
 				<p className="text-sm text-muted-foreground">
-					Configure how AI will generate your study materials
+					Configure how AI will generate study materials for all content in this week
 				</p>
 			</div>
 

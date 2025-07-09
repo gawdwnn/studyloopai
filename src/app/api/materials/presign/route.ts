@@ -13,17 +13,6 @@ import { eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-// Server-side validation schema
-const GenerationConfigSchema = z.object({
-	goldenNotesCount: z.number().min(1).max(20),
-	cuecardsCount: z.number().min(1).max(50),
-	summaryLength: z.number().min(50).max(1000),
-	examExercisesCount: z.number().min(1).max(20),
-	mcqExercisesCount: z.number().min(1).max(50),
-	difficulty: z.enum(["beginner", "intermediate", "advanced"]),
-	focus: z.enum(["conceptual", "practical", "mixed"]),
-});
-
 const BodySchema = z.object({
 	courseId: z.string().uuid("Invalid course ID"),
 	weekId: z.string().uuid("Invalid week ID").optional(),
@@ -41,7 +30,6 @@ const BodySchema = z.object({
 			`File size exceeds ${FILE_UPLOAD_LIMITS.MAX_FILE_SIZE / 1024 / 1024}MB limit`
 		),
 	contentType: z.string().optional(),
-	generationConfig: GenerationConfigSchema.optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -86,13 +74,7 @@ export async function POST(req: NextRequest) {
 		// Update row with filePath
 		await db.update(courseMaterials).set({ filePath }).where(eq(courseMaterials.id, material.id));
 
-		// Save generation config if provided
-		if (body.generationConfig) {
-			const { saveMaterialGenerationConfig } = await import(
-				"@/lib/services/generation-config-service"
-			);
-			await saveMaterialGenerationConfig(material.id, user.id, body.generationConfig);
-		}
+		// Generation config will be saved in completeUpload after successful upload
 
 		// Create signed upload URL (15-min TTL)
 		const { success, signedUrl, token, error } =

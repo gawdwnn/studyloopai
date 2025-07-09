@@ -31,7 +31,6 @@ export const courseMaterialsRelations = relations(courseMaterials, ({ one, many 
 	}),
 	documentChunks: many(documentChunks),
 	ownNotes: many(ownNotes),
-	generationConfigs: many(generationConfigs),
 }));
 
 export const coursesRelations = relations(courses, ({ one, many }) => ({
@@ -46,6 +45,7 @@ export const coursesRelations = relations(courses, ({ one, many }) => ({
 	openQuestions: many(openQuestions),
 	summaries: many(summaries),
 	goldenNotes: many(goldenNotes),
+	generationConfigs: many(generationConfigs),
 }));
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -68,6 +68,7 @@ export const courseWeeksRelations = relations(courseWeeks, ({ one, many }) => ({
 	openQuestions: many(openQuestions),
 	summaries: many(summaries),
 	goldenNotes: many(goldenNotes),
+	generationConfigs: many(generationConfigs),
 }));
 
 export const documentChunksRelations = relations(documentChunks, ({ one }) => ({
@@ -162,9 +163,13 @@ export const ownNotesRelations = relations(ownNotes, ({ one }) => ({
 
 // Generation configs relations
 export const generationConfigsRelations = relations(generationConfigs, ({ one }) => ({
-	courseMaterial: one(courseMaterials, {
-		fields: [generationConfigs.materialId],
-		references: [courseMaterials.id],
+	courseWeek: one(courseWeeks, {
+		fields: [generationConfigs.weekId],
+		references: [courseWeeks.id],
+	}),
+	course: one(courses, {
+		fields: [generationConfigs.courseId],
+		references: [courses.id],
 	}),
 	user: one(users, {
 		fields: [generationConfigs.userId],

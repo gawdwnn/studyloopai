@@ -9,11 +9,25 @@ import { and, eq, inArray } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
+// Generation config validation schema
+const GenerationConfigSchema = z.object({
+	goldenNotesCount: z.number().min(1).max(20),
+	cuecardsCount: z.number().min(1).max(50),
+	summaryLength: z.number().min(50).max(1000),
+	examExercisesCount: z.number().min(1).max(20),
+	mcqExercisesCount: z.number().min(1).max(50),
+	difficulty: z.enum(["beginner", "intermediate", "advanced"]),
+	focus: z.enum(["conceptual", "practical", "mixed"]),
+});
+
 const BodySchema = z.object({
 	materialIds: z
 		.array(z.string().uuid("Invalid material ID"))
 		.min(1, "At least one material ID is required")
 		.max(50, "Maximum 50 materials allowed per batch"),
+	weekId: z.string().uuid("Invalid week ID"),
+	courseId: z.string().uuid("Invalid course ID"),
+	generationConfig: GenerationConfigSchema.optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -47,69 +61,42 @@ export async function POST(req: NextRequest) {
 			);
 		}
 
-		// Ensure all materials have a filePath (upload finished)
+		// Materials are ready for processing (upload is synchronous)
 		const ingestMaterials = materials.filter((m) => m.filePath);
 
 		if (ingestMaterials.length === 0) {
 			return NextResponse.json({ error: "No materials are ready for processing" }, { status: 400 });
 		}
 
-		// Check if some materials are not ready for processing
-		if (ingestMaterials.length < materials.length) {
-			const pendingCount = materials.length - ingestMaterials.length;
-			return NextResponse.json(
-				{
-					error: `${pendingCount} materials are still uploading. Please wait for all uploads to complete.`,
-				},
-				{ status: 400 }
-			);
-		}
-
-		// Validate materials are not already being processed
-		const alreadyProcessing = ingestMaterials.filter(
-			(m) => m.uploadStatus === "processing" || m.embeddingStatus === "processing"
-		);
-
-		if (alreadyProcessing.length > 0) {
-			return NextResponse.json(
-				{ error: "Some materials are already being processed" },
-				{ status: 409 }
-			);
-		}
-
-		// Validate all materials belong to the same course for consistency
-		// This helps prevent accidental cross-course processing
-		const courseIds = new Set(ingestMaterials.map((m) => m.courseId));
-		if (courseIds.size > 1) {
-			return NextResponse.json(
-				{ error: "Materials must belong to the same course" },
-				{ status: 400 }
-			);
-		}
-
-		// Validate all materials belong to the same week for batch processing efficiency
-		const weekIds = new Set(ingestMaterials.map((m) => m.weekId).filter(Boolean));
-		if (weekIds.size > 1) {
-			return NextResponse.json(
-				{ error: "Materials must belong to the same week" },
-				{ status: 400 }
-			);
-		}
-
 		// Update uploadStatus to completed
-		// Add explicit filter for performance optimization
 		await db
 			.update(courseMaterials)
 			.set({ uploadStatus: "completed" })
 			.where(
-				and(
-					inArray(
-						courseMaterials.id,
-						ingestMaterials.map((m) => m.id)
-					),
-					eq(courseMaterials.uploadedBy, user.id)
+				inArray(
+					courseMaterials.id,
+					ingestMaterials.map((m) => m.id)
 				)
 			);
+
+		if (body.generationConfig) {
+			const { saveCourseWeekGenerationConfig } = await import(
+				"@/lib/services/adaptive-generation-service"
+			);
+
+			// Save config for the course week
+			const configSaveResult = await saveCourseWeekGenerationConfig(
+				body.weekId,
+				body.courseId,
+				user.id,
+				body.generationConfig
+			);
+
+			if (!configSaveResult) {
+				console.error(`Failed to save generation config for week ${body.weekId}`);
+				// Continue with processing - config save failure shouldn't block processing
+			}
+		}
 
 		// Trigger ingest task for those materials
 		const ingestHandle = await tasks.trigger<typeof ingestCourseMaterials>(
