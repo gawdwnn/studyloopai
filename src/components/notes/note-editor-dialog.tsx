@@ -89,10 +89,6 @@ export function NoteEditorDialog({
 							onSave={(newContent) => {
 								setContent(newContent);
 							}}
-							placeholder="Start writing your note..."
-							height={500}
-							enableDraftSave={true}
-							draftKey={note ? `edit-note-${note.id}` : "new-note-draft"}
 						/>
 					</div>
 					<div className="flex justify-end gap-2">
