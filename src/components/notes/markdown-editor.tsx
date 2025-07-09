@@ -56,7 +56,6 @@ export function MarkdownEditor({
 	const handleChange = useCallback(
 		(newValue?: string) => {
 			const content = newValue || "";
-
 			// Always update draft content first
 			updateContent(content);
 		},
