@@ -64,6 +64,10 @@ export async function getNotesData(courseId: string, weekId: string) {
 export async function getGoldenNotes(courseId: string, weekId: string) {
 	return await withErrorHandling(
 		async () => {
+			if (!weekId || weekId.trim() === "") {
+				return [];
+			}
+
 			const notes = await db
 				.select({
 					id: goldenNotes.id,
@@ -94,6 +98,10 @@ export async function getGoldenNotes(courseId: string, weekId: string) {
 export async function getSummaries(courseId: string, weekId: string) {
 	return await withErrorHandling(
 		async () => {
+			if (!weekId || weekId.trim() === "") {
+				return [];
+			}
+
 			const summaryData = await db
 				.select({
 					id: summaries.id,
