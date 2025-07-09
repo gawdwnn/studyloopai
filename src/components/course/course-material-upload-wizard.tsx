@@ -18,13 +18,6 @@ import {
 	DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import type { courses } from "@/db/schema";
 import { getCourseWeeks } from "@/lib/actions/courses";
@@ -52,7 +45,6 @@ export interface UploadData {
 	courseId: string;
 	weekId: string;
 	files: File[];
-	outputLanguage: string;
 	generationConfig: GenerationConfig;
 }
 
@@ -102,7 +94,6 @@ export function CourseMaterialUploadWizard({
 	const [selectedCourseId, setSelectedCourseId] = useState<string>("");
 	const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
 	const [files, setFiles] = useState<File[]>([]);
-	const [outputLanguage, setOutputLanguage] = useState<string>("english");
 
 	// Step 2 data
 	const [generationConfig, setGenerationConfig] =
@@ -121,7 +112,6 @@ export function CourseMaterialUploadWizard({
 		setSelectedCourseId("");
 		setSelectedWeek(null);
 		setFiles([]);
-		setOutputLanguage("english");
 		setGenerationConfig(DEFAULT_GENERATION_CONFIG);
 		setIsUploading(false);
 	};
@@ -132,7 +122,7 @@ export function CourseMaterialUploadWizard({
 	};
 
 	const canProceedToStep2 = () => {
-		return selectedCourseId && selectedWeek && files.length > 0 && outputLanguage;
+		return selectedCourseId && selectedWeek && files.length > 0;
 	};
 
 	const handleNextStep = () => {
@@ -189,7 +179,6 @@ export function CourseMaterialUploadWizard({
 						fileName: file.name,
 						mimeType: file.type,
 						fileSize: file.size,
-						generationConfig,
 					});
 
 					// Step 2: upload via signed URL
@@ -220,9 +209,6 @@ export function CourseMaterialUploadWizard({
 			if (failedUploads.length > 0) {
 				const failedFileNames = failedUploads.map((f) => f.fileName).join(", ");
 				toast.error(`Failed to upload: ${failedFileNames}`);
-
-				// Log detailed errors for debugging
-				console.error("Upload failures:", failedUploads);
 			}
 
 			if (uploadedMaterialIds.length === 0) {
@@ -234,7 +220,12 @@ export function CourseMaterialUploadWizard({
 
 			// Step 3: notify backend to start processing
 			try {
-				await completeUpload(uploadedMaterialIds);
+				await completeUpload(
+					uploadedMaterialIds,
+					selectedWeekData.id,
+					selectedCourseId,
+					generationConfig
+				);
 
 				const successMessage =
 					uploadedMaterialIds.length === files.length
@@ -248,13 +239,11 @@ export function CourseMaterialUploadWizard({
 				// Handle processing initiation errors
 				const errorMessage = processErr instanceof Error ? processErr.message : "Unknown error";
 				toast.error(`Files uploaded but processing failed to start: ${errorMessage}`);
-				console.error("Processing initiation error:", processErr);
 			}
 		} catch (err) {
 			// Handle unexpected errors
 			const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";
 			toast.error(`Upload failed: ${errorMessage}`);
-			console.error("Unexpected upload error:", err);
 		} finally {
 			setIsUploading(false);
 		}
@@ -351,21 +340,6 @@ export function CourseMaterialUploadWizard({
 							required={true}
 						/>
 
-						{/* Output Language */}
-						<div className="space-y-2">
-							<Label htmlFor="language-select">Output Language *</Label>
-							<Select value={outputLanguage} onValueChange={setOutputLanguage}>
-								<SelectTrigger id="language-select" className="w-full">
-									<SelectValue placeholder="Select output language..." />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value="english">🇺🇸 English</SelectItem>
-								</SelectContent>
-							</Select>
-						</div>
-
-						<Separator />
-
 						{/* File Upload */}
 						<div className="space-y-2">
 							<Label>Course Materials *</Label>
@@ -387,7 +361,6 @@ export function CourseMaterialUploadWizard({
 								courseWeeks={courseWeeks}
 								weekNumber={selectedWeek}
 								files={files}
-								outputLanguage={outputLanguage}
 							/>
 						)}
 						<Separator />
@@ -400,7 +373,12 @@ export function CourseMaterialUploadWizard({
 				<div className="flex justify-between pt-4 border-t">
 					<div>
 						{currentStep === WIZARD_STEPS.GENERATION_SETTINGS && (
-							<Button variant="outline" onClick={handlePreviousStep} disabled={isUploading} className="gap-2">
+							<Button
+								variant="outline"
+								onClick={handlePreviousStep}
+								disabled={isUploading}
+								className="gap-2"
+							>
 								<ChevronLeft className="h-4 w-4" />
 								Previous
 							</Button>

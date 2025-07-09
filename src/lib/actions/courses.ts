@@ -2,10 +2,7 @@
 
 import { db } from "@/db";
 import { courseMaterials, courseWeeks, courses } from "@/db/schema";
-import {
-	deleteAiContentForCourse,
-	deleteMaterialSpecificData,
-} from "@/lib/services/ai-content-deletion-service";
+import { deleteContentForCourse } from "@/lib/services/content-deletion-service";
 import { cancelMultipleJobs, extractRunIds } from "@/lib/services/job-cancellation-service";
 import { cleanupStorageFiles, extractFilePaths } from "@/lib/services/storage-cleanup-service";
 import { getServerClient } from "@/lib/supabase/server";
@@ -211,25 +208,8 @@ export async function deleteCourse(courseId: string) {
 		const deletionResult = await db.transaction(async (tx) => {
 			const materialIds = materialsData.map((m) => m.id);
 
-			// Delete AI content for entire course (includes own notes)
-			const aiContentResult = await deleteAiContentForCourse(tx, courseId);
-
-			// Delete material-specific data (configs and chunks)
-			const materialResult = await deleteMaterialSpecificData(tx, materialIds);
-
-			// Delete course materials and weeks, get actual counts
-			const [materialsResult, weeksResult] = await Promise.all([
-				materialIds.length > 0
-					? tx
-							.delete(courseMaterials)
-							.where(eq(courseMaterials.courseId, courseId))
-							.returning({ id: courseMaterials.id })
-					: Promise.resolve([]),
-				tx
-					.delete(courseWeeks)
-					.where(eq(courseWeeks.courseId, courseId))
-					.returning({ id: courseWeeks.id }),
-			]);
+			// Delete all content for the course (AI content, materials, weeks, configs, chunks)
+			const contentResult = await deleteContentForCourse(tx, courseId, materialIds);
 
 			// Delete the main course record
 			const [deletedCourse] = await tx.delete(courses).where(eq(courses.id, courseId)).returning({
@@ -243,12 +223,7 @@ export async function deleteCourse(courseId: string) {
 
 			return {
 				...deletedCourse,
-				materialsDeleted: materialsResult.length,
-				configsDeleted: materialResult.configsDeleted,
-				aiContentDeleted: aiContentResult.aiContentDeleted,
-				chunksDeleted: materialResult.chunksDeleted,
-				ownNotesDeleted: aiContentResult.ownNotesDeleted,
-				weeksDeleted: weeksResult.length,
+				...contentResult,
 			};
 		});
 
@@ -269,7 +244,6 @@ export async function deleteCourse(courseId: string) {
 			configsDeleted: deletionResult.configsDeleted,
 			aiContentDeleted: deletionResult.aiContentDeleted,
 			chunksDeleted: deletionResult.chunksDeleted,
-			ownNotesDeleted: deletionResult.ownNotesDeleted,
 			weeksDeleted: deletionResult.weeksDeleted,
 			filesDeleted: storageResult.filesDeleted,
 			jobsCancelled: jobCancellationResult.jobsCancelled,

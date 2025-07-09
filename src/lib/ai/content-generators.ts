@@ -12,7 +12,7 @@ import {
 	openQuestions as openQuestionsTable,
 	summaries as summariesTable,
 } from "@/db/schema";
-import type { GenerationConfig } from "@/lib/services/generation-config-service";
+import type { GenerationConfig } from "@/lib/services/adaptive-generation-service";
 import { generateText } from "ai";
 import { eq } from "drizzle-orm";
 import { z } from "zod";

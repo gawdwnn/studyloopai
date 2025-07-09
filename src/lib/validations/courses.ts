@@ -3,7 +3,6 @@ import { z } from "zod";
 export const CourseCreationSchema = z.object({
 	name: z.string().min(3, "Course name must be at least 3 characters long"),
 	description: z.string().optional(),
-	language: z.string().optional(),
 	durationWeeks: z.number().int().min(1),
 });
 

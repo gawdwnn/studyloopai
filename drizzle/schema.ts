@@ -28,6 +28,14 @@ export const subscriptionStatus = pgEnum("subscription_status", [
 	"paused",
 ]);
 export const userRole = pgEnum("user_role", ["student", "instructor", "admin"]);
+export const configurationSource = pgEnum("configuration_source", [
+	"user_preference",
+	"course_default",
+	"course_week_override",
+	"adaptive_algorithm",
+	"system_default",
+	"institution_default", // Future: institution-level defaults
+]);
 
 // Processing metadata type for course materials - DOCUMENT PROCESSING ONLY
 export type ProcessingMetadata = {
@@ -200,7 +208,7 @@ export const courses = pgTable(
 		userId: uuid("user_id").notNull(),
 		name: varchar({ length: 255 }).notNull(),
 		description: text(),
-		language: varchar({ length: 50 }).default("english"),
+		language: varchar({ length: 50 }),
 		durationWeeks: integer("duration_weeks").default(12),
 		isActive: boolean("is_active").default(true),
 		createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -452,51 +460,125 @@ export const ownNotes = pgTable(
 	]
 );
 
-// Generation configurations table - Critical for adaptive learning
+// Generation configurations table
+// Generation configurations table - Unified scope-based design
 export const generationConfigs = pgTable(
 	"generation_configs",
 	{
 		id: uuid().defaultRandom().primaryKey().notNull(),
-		materialId: uuid("material_id").notNull(),
-		userId: uuid("user_id").notNull(),
-		configSource: varchar("config_source", { length: 50 }).notNull(), // 'user_preference', 'adaptive_algorithm', etc.
 
-		// Core generation settings
-		goldenNotesCount: integer("golden_notes_count").notNull(),
-		cuecardsCount: integer("cuecards_count").notNull(),
-		summaryLength: integer("summary_length").notNull(),
-		examExercisesCount: integer("exam_exercises_count").notNull(),
-		mcqExercisesCount: integer("mcq_exercises_count").notNull(),
-		difficulty: varchar({ length: 20 }).notNull(),
-		focus: varchar({ length: 20 }).notNull(),
+		// Configuration source and scope
+		configSource: configurationSource("config_source").notNull(),
 
-		// Adaptive learning metadata
+		// Flexible scope associations (nullable for different scopes)
+		userId: uuid("user_id"), // For USER_PREFERENCE
+		courseId: uuid("course_id"), // For COURSE_DEFAULT, COURSE_WEEK_OVERRIDE
+		weekId: uuid("week_id"), // For COURSE_WEEK_OVERRIDE
+		institutionId: uuid("institution_id"), // Future: For INSTITUTION_DEFAULT
+
+		// Configuration data stored as JSONB for flexibility
+		configData: jsonb("config_data").notNull(), // Full GenerationConfig object
+
+		// Adaptive learning metadata (only for ADAPTIVE_ALGORITHM)
 		adaptationReason: text("adaptation_reason"),
 		userPerformanceLevel: varchar("user_performance_level", { length: 20 }),
-		learningGaps: jsonb("learning_gaps").default([]),
+		learningGaps: jsonb("learning_gaps"),
+		adaptiveFactors: jsonb("adaptive_factors"), // Full AdaptiveFactors object
 
-		// Tracking
+		// Tracking and lifecycle
 		isActive: boolean("is_active").default(true),
 		appliedAt: timestamp("applied_at").defaultNow().notNull(),
 		createdAt: timestamp("created_at").defaultNow().notNull(),
+		updatedAt: timestamp("updated_at").defaultNow().notNull(),
+
+		// Metadata for auditing and debugging
+		createdBy: uuid("created_by"), // Who created this config
+		metadata: jsonb("metadata"), // Additional context/debugging info
 	},
 	(table) => [
-		index("idx_generation_configs_material_id").using("btree", table.materialId),
-		index("idx_generation_configs_user_id").using("btree", table.userId),
-		index("idx_generation_configs_source").using("btree", table.configSource),
-		index("idx_generation_configs_difficulty").using("btree", table.difficulty),
-		index("idx_generation_configs_performance").using("btree", table.userPerformanceLevel),
-		index("idx_generation_configs_active").using("btree", table.isActive),
-		foreignKey({
-			columns: [table.materialId],
-			foreignColumns: [courseMaterials.id],
-			name: "generation_configs_material_id_fkey",
-		}).onDelete("cascade"),
+		// Composite indexes for efficient queries
+		index("idx_generation_configs_user_scope").using("btree", table.userId, table.configSource),
+		index("idx_generation_configs_course_scope").using("btree", table.courseId, table.configSource),
+		index("idx_generation_configs_week_scope").using("btree", table.weekId, table.configSource),
+		index("idx_generation_configs_source_active").using(
+			"btree",
+			table.configSource,
+			table.isActive
+		),
+		index("idx_generation_configs_applied_at").using("btree", table.appliedAt),
+
+		// Foreign key constraints with proper cascade behavior
 		foreignKey({
 			columns: [table.userId],
 			foreignColumns: [usersInAuth.id],
 			name: "generation_configs_user_id_fkey",
 		}).onDelete("cascade"),
+		foreignKey({
+			columns: [table.courseId],
+			foreignColumns: [courses.id],
+			name: "generation_configs_course_id_fkey",
+		}).onDelete("cascade"),
+		foreignKey({
+			columns: [table.weekId],
+			foreignColumns: [courseWeeks.id],
+			name: "generation_configs_week_id_fkey",
+		}).onDelete("cascade"),
+		foreignKey({
+			columns: [table.createdBy],
+			foreignColumns: [usersInAuth.id],
+			name: "generation_configs_created_by_fkey",
+		}).onDelete("set null"),
+		foreignKey({
+			columns: [table.institutionId],
+			foreignColumns: [institutions.id],
+			name: "generation_configs_institution_id_fkey",
+		}).onDelete("cascade"),
+
+		// Scope validation constraints
+		unique("unique_user_preference").on(table.userId, table.configSource),
+		unique("unique_course_default").on(table.courseId, table.configSource),
+		unique("unique_week_override").on(table.weekId, table.configSource),
+
+		// SQL CHECK constraints for scope validation
+		// Note: These will be added in the migration file as Drizzle doesn't support CHECK constraints yet
+	]
+);
+
+// Future: Institutions table for institutional scaling
+export const institutions = pgTable(
+	"institutions",
+	{
+		id: uuid().defaultRandom().primaryKey().notNull(),
+		name: varchar("name", { length: 255 }).notNull(),
+		slug: varchar("slug", { length: 100 }).notNull().unique(),
+
+		// Institution configuration
+		defaultGenerationConfig: jsonb("default_generation_config"), // Institution-wide defaults
+
+		// Branding and customization
+		logoUrl: varchar("logo_url", { length: 500 }),
+		primaryColor: varchar("primary_color", { length: 7 }), // Hex color
+		customDomain: varchar("custom_domain", { length: 255 }),
+
+		// Billing and limits
+		maxCourses: integer("max_courses").default(100),
+		maxStudentsPerCourse: integer("max_students_per_course").default(1000),
+		maxInstructors: integer("max_instructors").default(50),
+
+		// Status and metadata
+		isActive: boolean("is_active").default(true),
+		createdAt: timestamp("created_at").defaultNow().notNull(),
+		updatedAt: timestamp("updated_at").defaultNow().notNull(),
+
+		// Contact and billing information
+		contactEmail: varchar("contact_email", { length: 255 }),
+		billingEmail: varchar("billing_email", { length: 255 }),
+		metadata: jsonb("metadata"),
+	},
+	(table) => [
+		index("idx_institutions_slug").using("btree", table.slug),
+		index("idx_institutions_active").using("btree", table.isActive),
+		index("idx_institutions_created_at").using("btree", table.createdAt),
 	]
 );
 
@@ -563,9 +645,19 @@ export const users = pgTable(
 		stripeCustomerId: varchar("stripe_customer_id", { length: 255 }),
 		signupStep: integer("signup_step").default(1).notNull(),
 		country: varchar({ length: 100 }),
+
+		// Future: Institution relationship for institutional scaling
+		institutionId: uuid("institution_id"), // References institutions table
 	},
 	(table) => [
 		unique("users_email_unique").on(table.email),
 		unique("users_stripe_customer_id_unique").on(table.stripeCustomerId),
+
+		// Future: Institution foreign key
+		foreignKey({
+			columns: [table.institutionId],
+			foreignColumns: [institutions.id],
+			name: "users_institution_id_fkey",
+		}).onDelete("set null"),
 	]
 );

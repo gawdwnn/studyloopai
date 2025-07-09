@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, Calendar, FileText, Globe } from "lucide-react";
+import { BookOpen, Calendar, FileText } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,12 +12,7 @@ interface UploadSummaryProps {
 	courseWeeks: (typeof courseWeeks.$inferSelect)[];
 	weekNumber: number;
 	files: File[];
-	outputLanguage: string;
 }
-
-const LANGUAGE_LABELS: Record<string, string> = {
-	english: "🇺🇸 English", // supports english for now
-};
 
 const formatFileSize = (bytes: number): string => {
 	if (bytes === 0) return "0 Bytes";
@@ -27,13 +22,7 @@ const formatFileSize = (bytes: number): string => {
 	return `${Number.parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
 };
 
-export function UploadSummary({
-	course,
-	courseWeeks,
-	weekNumber,
-	files,
-	outputLanguage,
-}: UploadSummaryProps) {
+export function UploadSummary({ course, courseWeeks, weekNumber, files }: UploadSummaryProps) {
 	const totalSize = files.reduce((sum, file) => sum + file.size, 0);
 
 	// Find the week data for the selected week
@@ -60,16 +49,6 @@ export function UploadSummary({
 							<div>
 								<p className="text-sm font-medium">{course?.name}</p>
 								<p className="text-xs text-muted-foreground">{weekTitle}</p>
-							</div>
-						</div>
-
-						<div className="flex items-center gap-2">
-							<Globe className="h-4 w-4 text-muted-foreground" />
-							<div>
-								<p className="text-sm font-medium">Output Language</p>
-								<p className="text-xs text-muted-foreground">
-									{LANGUAGE_LABELS[outputLanguage] || outputLanguage}
-								</p>
 							</div>
 						</div>
 					</div>

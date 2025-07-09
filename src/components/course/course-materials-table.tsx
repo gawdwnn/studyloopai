@@ -184,7 +184,7 @@ export function CourseMaterialsTable({
 																variant="ghost"
 																size="icon"
 																disabled={isDeleting || isBeingDeleted}
-																className="h-8 w-8 text-muted-foreground hover:text-destructive disabled:opacity-50"
+																className="h-8 w-8 text-muted-foreground disabled:opacity-50"
 															>
 																<TrashIcon className="h-4 w-4" />
 															</Button>

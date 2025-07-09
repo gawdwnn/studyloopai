@@ -132,7 +132,7 @@ class LRUCache {
 }
 
 const DRAFT_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
-const BATCH_SIZE = 10; // Number of operations to batch together
+// const BATCH_SIZE = 10; // Number of operations to batch together
 const CACHE_SIZE = 50; // Maximum number of drafts to keep in memory
 
 // In-memory cache for frequently accessed drafts
@@ -153,15 +153,15 @@ function generateSessionId(): string {
 			return existingSessionId;
 		}
 	}
-	
+
 	// Generate new session ID if none exists
 	const newSessionId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-	
+
 	// Store it in sessionStorage for persistence across page reloads
 	if (typeof window !== "undefined" && typeof sessionStorage !== "undefined") {
 		sessionStorage.setItem("studyloop-session-id", newSessionId);
 	}
-	
+
 	return newSessionId;
 }
 
@@ -228,7 +228,7 @@ async function loadRecentDrafts(): Promise<void> {
 function createDraft(context: string, initialContent = ""): string {
 	// Use context directly as key for persistence across sessions
 	const draftKey = context;
-	
+
 	// Always ensure draft exists in cache for consistent behavior
 	// This allows both new and existing drafts to work properly
 	if (!cache.get(draftKey)) {
@@ -241,7 +241,7 @@ function createDraft(context: string, initialContent = ""): string {
 
 		// Add to cache immediately for optimistic updates
 		cache.set(draftKey, draft);
-		
+
 		// Add to pending upserts for batch processing
 		pendingUpserts.set(draftKey, draft);
 		scheduleBatchFlush();

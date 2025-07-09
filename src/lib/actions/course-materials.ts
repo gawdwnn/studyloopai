@@ -2,7 +2,7 @@
 
 import { db } from "@/db";
 import { courseMaterials, courseWeeks, courses } from "@/db/schema";
-import { deleteAiContentForMaterial } from "@/lib/services/ai-content-deletion-service";
+import { deleteContentForCourseWeek } from "@/lib/services/content-deletion-service";
 import { cancelSingleJob } from "@/lib/services/job-cancellation-service";
 import { cleanupStorageFiles, extractFilePaths } from "@/lib/services/storage-cleanup-service";
 import { getServerClient } from "@/lib/supabase/server";
@@ -76,11 +76,6 @@ export async function deleteCourseMaterial(materialId: string, filePath?: string
 		throw new Error("You must be logged in to delete course materials.");
 	}
 
-	// Validate materialId format
-	if (!materialId || typeof materialId !== "string" || materialId.trim() === "") {
-		throw new Error("Invalid material ID provided.");
-	}
-
 	let material:
 		| (typeof courseMaterials.$inferSelect & {
 				course: typeof courses.$inferSelect;
@@ -113,8 +108,17 @@ export async function deleteCourseMaterial(materialId: string, filePath?: string
 
 		// Step 3: Execute deletion in transaction
 		const deletionResult = await db.transaction(async (tx) => {
-			// Delete AI content and get counts
-			const aiContentResult = await deleteAiContentForMaterial(tx, materialId);
+			// Ensure material is defined and has required fields
+			if (!material?.weekId) {
+				throw new Error("Material weekId is required for deletion");
+			}
+
+			const aiContentResult = await deleteContentForCourseWeek(
+				tx,
+				material.courseId,
+				material.weekId,
+				[materialId]
+			);
 
 			// Delete the main course material record
 			const [deletedMaterial] = await tx
@@ -161,7 +165,6 @@ export async function deleteCourseMaterial(materialId: string, filePath?: string
 			jobCancellationDetails: jobCancellationResult || undefined,
 		};
 	} catch (error) {
-		// Comprehensive error logging
 		const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
 
 		console.error(`Failed to delete course material ${materialId}:`, {
