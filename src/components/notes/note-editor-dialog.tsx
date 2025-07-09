@@ -90,7 +90,6 @@ export function NoteEditorDialog({
 								setContent(newContent);
 							}}
 							placeholder="Start writing your note..."
-							autoSave={false}
 							height={500}
 							enableDraftSave={true}
 							draftKey={note ? `edit-note-${note.id}` : "new-note-draft"}

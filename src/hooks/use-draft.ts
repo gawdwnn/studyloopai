@@ -1,187 +1,228 @@
 /**
- * React Hook for Draft Management
+ * Optimized React Hook for Draft Management
  *
- * Provides a clean interface for managing drafts with automatic cleanup
+ * Features:
+ * - Async draft operations with the new manager
+ * - Improved performance with reduced re-renders
+ * - Better cleanup and error handling
+ * - Conflict resolution for concurrent edits
  */
 
 import DraftManager from "@/lib/utils/draft-manager";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 interface UseDraftOptions {
-  context: string;
-  initialContent?: string;
-  autoSave?: boolean;
-  autoSaveDelay?: number;
-  onContentChange?: (content: string) => void;
+	context: string;
+	initialContent?: string;
+	autoSave?: boolean;
+	autoSaveDelay?: number;
+	onContentChange?: (content: string) => void;
 }
 
 interface UseDraftReturn {
-  content: string;
-  updateContent: (content: string) => void;
-  clearDraft: () => void;
-  hasDraft: boolean;
-  lastSaved: Date | null;
-  saveStatus: "idle" | "saving" | "saved" | "error";
+	content: string;
+	updateContent: (content: string) => void;
+	clearDraft: () => void;
+	hasDraft: boolean;
+	lastSaved: Date | null;
+	saveStatus: "idle" | "saving" | "saved" | "error";
+	isLoading: boolean;
 }
 
 export function useDraft({
-  context,
-  initialContent = "",
-  autoSave = true,
-  autoSaveDelay = 1000,
-  onContentChange,
+	context,
+	initialContent = "",
+	autoSave = true,
+	autoSaveDelay = 1000,
+	onContentChange,
 }: UseDraftOptions): UseDraftReturn {
-  const draftManager = DraftManager;
-  const [draftKey, setDraftKey] = useState<string | null>(null);
-  const [content, setContent] = useState(initialContent);
-  const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const [saveStatus, setSaveStatus] = useState<
-    "idle" | "saving" | "saved" | "error"
-  >("idle");
-  const [hasDraft, setHasDraft] = useState(false);
+	const [draftKey, setDraftKey] = useState<string | null>(null);
+	const [content, setContent] = useState(initialContent);
+	const [lastSaved, setLastSaved] = useState<Date | null>(null);
+	const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+	const [hasDraft, setHasDraft] = useState(false);
+	const [isLoading, setIsLoading] = useState(false);
 
-  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const isInitializedRef = useRef(false);
+	const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+	const isInitializedRef = useRef(false);
+	const initialContentRef = useRef(initialContent);
+	const lastContentVersionRef = useRef(0);
 
-  // Initialize draft on mount
-  useEffect(() => {
-    if (!isInitializedRef.current) {
-      isInitializedRef.current = true;
-      initialContentRef.current = initialContent;
+	// Initialize draft on mount with async operations
+	useEffect(() => {
+		if (isInitializedRef.current) return;
 
-      // Create a new draft context
-      const newDraftKey = draftManager.createDraft(context, initialContent);
-      setDraftKey(newDraftKey);
+		isInitializedRef.current = true;
+		initialContentRef.current = initialContent;
 
-      // Only load existing draft content if we don't have initial content
-      // This prevents loading stale drafts when editing existing notes
-      if (!initialContent) {
-        const existingContent = draftManager.getDraft(newDraftKey);
-        if (existingContent?.trim()) {
-          setContent(existingContent);
-          setHasDraft(true);
-          onContentChange?.(existingContent);
-        }
-      }
+		const initializeDraft = async () => {
+			try {
+				setIsLoading(true);
 
-      setSaveStatus("saved");
-    }
-  }, [context, initialContent, draftManager, onContentChange]);
+				// Create draft context (synchronous now)
+				const newDraftKey = DraftManager.createDraft(context, initialContent);
+				setDraftKey(newDraftKey);
 
-  // Track initialContent changes separately to avoid clearing user input
-  const initialContentRef = useRef(initialContent);
+				// Always try to load existing draft content from storage
+				// This allows loading drafts across dialog opens for both new and existing notes
+				const existingContent = await DraftManager.getDraft(newDraftKey);
+				if (existingContent?.trim() && existingContent !== initialContent) {
+					setContent(existingContent);
+					setHasDraft(true);
+					onContentChange?.(existingContent);
+				}
 
-  // Update content when initialContent changes (switching between notes)
-  useEffect(() => {
-    if (
-      isInitializedRef.current &&
-      initialContent !== initialContentRef.current
-    ) {
-      // Only update if initialContent actually changed, not user content
-      initialContentRef.current = initialContent;
-      setContent(initialContent);
-      setHasDraft(false);
-      setSaveStatus("saved");
+				setSaveStatus("saved");
+			} catch (error) {
+				console.warn("Failed to initialize draft:", error);
+				setSaveStatus("error");
+			} finally {
+				setIsLoading(false);
+			}
+		};
 
-      // Clear any existing draft when we have real content
-      if (draftKey && initialContent) {
-        draftManager.deleteDraft(draftKey);
-      }
-    }
-  }, [initialContent, draftKey, draftManager]);
+		void initializeDraft();
+	}, [context, initialContent, onContentChange]);
 
-  // Auto-save functionality
-  const saveDraft = useCallback(
-    (contentToSave: string) => {
-      if (!draftKey) return;
+	// Update content when initialContent changes (switching between notes)
+	useEffect(() => {
+		if (!isInitializedRef.current || initialContent === initialContentRef.current) {
+			return;
+		}
 
-      setSaveStatus("saving");
+		// Update refs
+		initialContentRef.current = initialContent;
+		lastContentVersionRef.current++;
 
-      try {
-        draftManager.updateDraft(draftKey, contentToSave);
-        setLastSaved(new Date());
-        setSaveStatus("saved");
-        setHasDraft(contentToSave !== initialContent);
-      } catch (error) {
-        console.warn("Failed to save draft:", error);
-        setSaveStatus("error");
-      }
-    },
-    [draftKey, draftManager, initialContent]
-  );
+		// Update state
+		setContent(initialContent);
+		setHasDraft(false);
+		setSaveStatus("saved");
 
-  const updateContent = useCallback(
-    (newContent: string) => {
-      setContent(newContent);
-      onContentChange?.(newContent);
+		// Clear any existing draft when we have real content
+		if (draftKey && initialContent) {
+			DraftManager.deleteDraft(draftKey);
+		}
+	}, [initialContent, draftKey]);
 
-      if (autoSave) {
-        // Clear existing timeout
-        if (autoSaveTimeoutRef.current) {
-          clearTimeout(autoSaveTimeoutRef.current);
-        }
+	// Optimized auto-save functionality with conflict resolution
+	const saveDraft = useCallback(
+		async (contentToSave: string, version: number) => {
+			if (!draftKey) return;
 
-        // Set new timeout for auto-save
-        autoSaveTimeoutRef.current = setTimeout(() => {
-          saveDraft(newContent);
-        }, autoSaveDelay);
-      }
-    },
-    [autoSave, autoSaveDelay, saveDraft, onContentChange]
-  );
+			// Check if this save is still relevant (no newer content)
+			if (version < lastContentVersionRef.current) {
+				return;
+			}
 
-  const clearDraft = useCallback(() => {
-    if (draftKey) {
-      draftManager.deleteDraft(draftKey);
-      setHasDraft(false);
-      setSaveStatus("idle");
-      setLastSaved(null);
-    }
-  }, [draftKey, draftManager]);
+			setSaveStatus("saving");
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (autoSaveTimeoutRef.current) {
-        clearTimeout(autoSaveTimeoutRef.current);
-      }
+			try {
+				DraftManager.updateDraft(draftKey, contentToSave);
+				setLastSaved(new Date());
+				setSaveStatus("saved");
+				setHasDraft(contentToSave !== initialContent);
+			} catch (error) {
+				console.warn("Failed to save draft:", error);
+				setSaveStatus("error");
+			}
+		},
+		[draftKey, initialContent]
+	);
 
-      // Optionally clear draft on unmount if content is empty
-      if (draftKey && !content.trim()) {
-        draftManager.deleteDraft(draftKey);
-      }
-    };
-  }, [draftKey, content, draftManager]);
+	const updateContent = useCallback(
+		(newContent: string) => {
+			// Increment version for conflict resolution
+			const currentVersion = ++lastContentVersionRef.current;
 
-  return {
-    content,
-    updateContent,
-    clearDraft,
-    hasDraft,
-    lastSaved,
-    saveStatus,
-  };
+			setContent(newContent);
+			onContentChange?.(newContent);
+
+			if (autoSave) {
+				// Clear existing timeout
+				if (autoSaveTimeoutRef.current) {
+					clearTimeout(autoSaveTimeoutRef.current);
+				}
+
+				// Set new timeout for auto-save with version tracking
+				autoSaveTimeoutRef.current = setTimeout(() => {
+					void saveDraft(newContent, currentVersion);
+				}, autoSaveDelay);
+			}
+		},
+		[autoSave, autoSaveDelay, saveDraft, onContentChange]
+	);
+
+	const clearDraft = useCallback(() => {
+		if (draftKey) {
+			DraftManager.deleteDraft(draftKey);
+			setHasDraft(false);
+			setSaveStatus("idle");
+			setLastSaved(null);
+		}
+	}, [draftKey]);
+
+	// Enhanced cleanup on unmount
+	useEffect(() => {
+		return () => {
+			// Clear any pending auto-save
+			if (autoSaveTimeoutRef.current) {
+				clearTimeout(autoSaveTimeoutRef.current);
+			}
+
+			// Force flush any pending operations
+			void DraftManager.flushBatch();
+
+			// Optionally clear draft on unmount if content is empty
+			if (draftKey && !content.trim()) {
+				DraftManager.deleteDraft(draftKey);
+			}
+		};
+	}, [draftKey, content]);
+
+	return {
+		content,
+		updateContent,
+		clearDraft,
+		hasDraft,
+		lastSaved,
+		saveStatus,
+		isLoading,
+	};
 }
 
 /**
- * Utility hook for clearing drafts by context pattern
+ * Enhanced utility hook for draft management operations
  */
 export function useDraftCleanup() {
-  const draftManager = DraftManager;
+	const clearAllSessionDrafts = useCallback(async () => {
+		try {
+			await DraftManager.clearSessionDrafts();
+		} catch (error) {
+			console.warn("Failed to clear session drafts:", error);
+		}
+	}, []);
 
-  const clearDraftsForContext = useCallback(
-    (contextPattern: string) => {
-      draftManager.clearDraftsForContext(contextPattern);
-    },
-    [draftManager]
-  );
+	const getDraftStats = useCallback(async () => {
+		try {
+			return await DraftManager.getStats();
+		} catch (error) {
+			console.warn("Failed to get draft stats:", error);
+			return null;
+		}
+	}, []);
 
-  const clearAllSessionDrafts = useCallback(() => {
-    draftManager.clearSessionDrafts();
-  }, [draftManager]);
+	const flushDrafts = useCallback(async () => {
+		try {
+			await DraftManager.flushBatch();
+		} catch (error) {
+			console.warn("Failed to flush drafts:", error);
+		}
+	}, []);
 
-  return {
-    clearDraftsForContext,
-    clearAllSessionDrafts,
-  };
+	return {
+		clearAllSessionDrafts,
+		getDraftStats,
+		flushDrafts,
+	};
 }

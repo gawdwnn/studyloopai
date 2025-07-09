@@ -4,20 +4,17 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useDraft } from "@/hooks/use-draft";
 import { cn } from "@/lib/utils";
-import MDEditor, { commands } from "@uiw/react-md-editor";
+import MDEditor from "@uiw/react-md-editor";
 import { Clock, Save } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 import rehypeSanitize from "rehype-sanitize";
-import { useDebounceCallback } from "usehooks-ts";
 
 interface MarkdownEditorProps {
 	content: string;
 	onSave: (content: string) => void;
 	placeholder?: string;
 	className?: string;
-	autoSave?: boolean;
-	autoSaveDelay?: number;
 	readonly?: boolean;
 	enableDraftSave?: boolean;
 	draftKey?: string;
@@ -29,14 +26,11 @@ export function MarkdownEditor({
 	onSave,
 	placeholder = "Start writing your notes...",
 	className,
-	autoSave = true,
-	autoSaveDelay = 1000,
 	readonly = false,
 	enableDraftSave = true,
 	draftKey = "markdown-draft",
 	height = 600,
 }: MarkdownEditorProps) {
-	const [lastSavedContent, setLastSavedContent] = useState(initialContent);
 	const { resolvedTheme } = useTheme();
 
 	const {
@@ -45,52 +39,34 @@ export function MarkdownEditor({
 		hasDraft,
 		lastSaved: lastDraftSave,
 		saveStatus: draftSaveStatus,
+		isLoading: isDraftLoading,
 	} = useDraft({
 		context: draftKey,
 		initialContent,
 		autoSave: enableDraftSave,
 		autoSaveDelay: enableDraftSave ? 2000 : 0,
 		onContentChange: (content) => {
-			// Always notify parent component of content changes
-			if (!enableDraftSave || !autoSave) {
-				onSave(content);
-			}
+			// Always notify parent to keep state synchronized
+			onSave(content);
 		},
 	});
 
 	const colorMode = resolvedTheme === "dark" ? "dark" : "light";
 
-	// Update saved content when initial content changes
-	useEffect(() => {
-		setLastSavedContent(initialContent);
-	}, [initialContent]);
-
-	const debouncedSave = useDebounceCallback((content: string) => {
-		onSave(content);
-		setLastSavedContent(content);
-	}, autoSaveDelay);
-
 	const handleChange = useCallback(
 		(newValue?: string) => {
 			const content = newValue || "";
 
+			// Always update draft content first
 			updateContent(content);
-
-			if (autoSave && !readonly && !enableDraftSave) {
-				// Only use debounced save if not using draft system
-				debouncedSave(content);
-			}
 		},
-		[autoSave, readonly, debouncedSave, enableDraftSave, updateContent]
+		[updateContent]
 	);
 
-	// Manual save function
+	// Manual save function - saves current content to parent (actual save)
 	const handleManualSave = useCallback(() => {
-		if (value !== lastSavedContent) {
-			onSave(value);
-			setLastSavedContent(value);
-		}
-	}, [value, lastSavedContent, onSave]);
+		onSave(value);
+	}, [value, onSave]);
 
 	if (readonly) {
 		return (
@@ -120,22 +96,25 @@ export function MarkdownEditor({
 								className="text-xs"
 								aria-live="polite"
 							>
-								{draftSaveStatus === "saving" && "Saving draft..."}
-								{draftSaveStatus === "saved" &&
+								{isDraftLoading && "Loading draft..."}
+								{!isDraftLoading && draftSaveStatus === "saving" && "Saving draft..."}
+								{!isDraftLoading &&
+									draftSaveStatus === "saved" &&
 									lastDraftSave &&
 									`Draft saved ${lastDraftSave.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}
-								{draftSaveStatus === "idle" && hasDraft && "Draft available"}
-								{draftSaveStatus === "error" && "Save failed"}
+								{!isDraftLoading && draftSaveStatus === "idle" && hasDraft && "Draft available"}
+								{!isDraftLoading && draftSaveStatus === "error" && "Save failed"}
 							</Badge>
 						</div>
 					)}
 				</div>
 
 				<div className="flex items-center gap-2">
-					{!autoSave && (
+					{/* Always show manual save button when not in readonly mode */}
+					{!readonly && (
 						<Button size="sm" variant="outline" onClick={handleManualSave}>
 							<Save className="h-3 w-3 mr-1" />
-							Save
+							{enableDraftSave ? "Save Note" : "Save"}
 						</Button>
 					)}
 				</div>
@@ -161,7 +140,6 @@ export function MarkdownEditor({
 				previewOptions={{
 					rehypePlugins: [rehypeSanitize],
 				}}
-				extraCommands={[commands.fullscreen]}
 			/>
 		</div>
 	);
