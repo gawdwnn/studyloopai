@@ -15,7 +15,6 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useDraftCleanup } from "@/hooks/use-draft";
 import {
 	type ConflictError,
 	type CreateOwnNoteInput,
@@ -51,9 +50,6 @@ export function UserNotesEditor({ courseId, weekId }: UserNotesEditorProps) {
 	const [currentPage, setCurrentPage] = useState(1);
 	const notesPerPage = 5;
 
-	// Draft cleanup functionality
-	const { clearDraftsForContext } = useDraftCleanup();
-
 	const {
 		data: notesData,
 		isLoading,
@@ -82,7 +78,6 @@ export function UserNotesEditor({ courseId, weekId }: UserNotesEditorProps) {
 		onSuccess: () => {
 			toast.success("Note created successfully");
 			setIsEditorOpen(false);
-			clearDraftsForContext("new-note-draft");
 		},
 		onError: (error: Error) => {
 			toast.error("Error creating note", { description: error.message });
@@ -90,11 +85,10 @@ export function UserNotesEditor({ courseId, weekId }: UserNotesEditorProps) {
 	});
 
 	const updateNoteMutation = useUpdateOwnNote({
-		onSuccess: (_, variables) => {
+		onSuccess: () => {
 			toast.success("Note updated successfully");
 			setIsEditorOpen(false);
 			setEditingNote(null);
-			clearDraftsForContext(`edit-note-${variables.id}`);
 		},
 		onError: (error: Error) => {
 			try {
@@ -118,10 +112,8 @@ export function UserNotesEditor({ courseId, weekId }: UserNotesEditorProps) {
 	});
 
 	const deleteNoteMutation = useDeleteOwnNote({
-		onSuccess: (_, noteId) => {
+		onSuccess: () => {
 			toast.success("Note deleted successfully");
-			// Clear drafts for the deleted note
-			clearDraftsForContext(`edit-note-${noteId}`);
 		},
 		onError: (error: Error) => {
 			toast.error("Error deleting note", { description: error.message });
@@ -182,8 +174,6 @@ export function UserNotesEditor({ courseId, weekId }: UserNotesEditorProps) {
 			version: conflict.serverVersion, // Overwrite with server version
 		});
 
-		// Clear drafts for this note after conflict resolution
-		clearDraftsForContext(`edit-note-${conflict.noteId}`);
 		setConflict(null);
 	};
 
