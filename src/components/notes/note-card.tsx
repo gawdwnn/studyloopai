@@ -10,15 +10,25 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useDeleteGoldenNote, useUpdateGoldenNote } from "@/hooks/use-notes";
 import { Check, Copy, MessageSquare, Pencil, Trash2, X } from "lucide-react";
+import { MarkdownRenderer } from "./markdown-renderer";
 
 interface NoteCardProps {
 	noteId?: string;
 	title: string;
 	content: string;
+	version?: number;
 	withActions?: boolean;
+	withMarkdown?: boolean;
 }
 
-export function NoteCard({ noteId, title, content: initialContent, withActions }: NoteCardProps) {
+export function NoteCard({
+	noteId,
+	title,
+	content: initialContent,
+	version = 1,
+	withActions,
+	withMarkdown = false,
+}: NoteCardProps) {
 	const [isEditing, setIsEditing] = useState(false);
 	const [content, setContent] = useState(initialContent);
 	const [editedTitle, setEditedTitle] = useState(title);
@@ -50,7 +60,7 @@ export function NoteCard({ noteId, title, content: initialContent, withActions }
 			if (content !== initialContent) changes.content = content;
 
 			if (Object.keys(changes).length > 0) {
-				updateNoteMutation.mutate({ id: noteId, ...changes });
+				updateNoteMutation.mutate({ id: noteId, version, ...changes });
 			}
 		} else {
 			toast.error("Cannot save note: Missing note ID");
@@ -113,12 +123,7 @@ export function NoteCard({ noteId, title, content: initialContent, withActions }
 								confirmText="Delete"
 								variant="destructive"
 								trigger={
-									<Button
-										variant="ghost"
-										size="icon"
-										className="h-8 w-8"
-										disabled={isLoading}
-									>
+									<Button variant="ghost" size="icon" className="h-8 w-8" disabled={isLoading}>
 										<Trash2 className="h-4 w-4" />
 									</Button>
 								}
@@ -167,8 +172,10 @@ export function NoteCard({ noteId, title, content: initialContent, withActions }
 						autoFocus
 						disabled={isLoading}
 					/>
+				) : withMarkdown ? (
+					<MarkdownRenderer content={content} />
 				) : (
-					<p className="text-muted-foreground">{content}</p>
+					<p className="text-muted-foreground whitespace-pre-wrap">{content}</p>
 				)}
 			</CardContent>
 		</Card>

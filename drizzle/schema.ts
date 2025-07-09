@@ -384,6 +384,7 @@ export const goldenNotes = pgTable(
 		priority: integer().default(1),
 		category: varchar({ length: 100 }),
 		metadata: jsonb().default({}),
+		version: integer().default(1).notNull(),
 		createdAt: timestamp("created_at").defaultNow().notNull(),
 		updatedAt: timestamp("updated_at").defaultNow().notNull(),
 	},
@@ -412,25 +413,42 @@ export const ownNotes = pgTable(
 	{
 		id: uuid().defaultRandom().primaryKey().notNull(),
 		userId: uuid("user_id").notNull(),
-		materialId: uuid("material_id"), // Optional - can be linked to specific material
-		courseId: uuid("course_id"), // Optional - can be linked to course
+		weekId: uuid("week_id").notNull(),
+		courseId: uuid("course_id").notNull(),
 		title: varchar({ length: 255 }).notNull(),
 		content: text().notNull(),
-		noteType: varchar("note_type", { length: 50 }).default("general"), // 'general', 'annotation', 'summary', 'question'
-		tags: jsonb().default([]), // Array of user-defined tags
-		isPrivate: boolean("is_private").default(true), // User can make notes shareable
-		color: varchar({ length: 20 }).default("#ffffff"), // Note color for organization
-		position: jsonb(), // For annotations linked to specific content positions
+		noteType: varchar("note_type", { length: 50 }).default("general"),
+		tags: jsonb().default([]),
+		isPrivate: boolean("is_private").default(true),
+		color: varchar({ length: 20 }).default("#ffffff"),
 		metadata: jsonb().default({}),
+		version: integer().default(1).notNull(),
 		createdAt: timestamp("created_at").defaultNow().notNull(),
 		updatedAt: timestamp("updated_at").defaultNow().notNull(),
 	},
 	(table) => [
 		index("idx_own_notes_user_id").using("btree", table.userId),
-		index("idx_own_notes_material_id").using("btree", table.materialId),
+		index("idx_own_notes_week_id").using("btree", table.weekId),
 		index("idx_own_notes_course_id").using("btree", table.courseId),
 		index("idx_own_notes_note_type").using("btree", table.noteType),
 		index("idx_own_notes_created_at").using("btree", table.createdAt),
+		index("idx_own_notes_course_week").using("btree", table.courseId, table.weekId),
+		index("idx_own_notes_user_course").using("btree", table.userId, table.courseId),
+		foreignKey({
+			columns: [table.userId],
+			foreignColumns: [usersInAuth.id],
+			name: "own_notes_user_id_fkey",
+		}).onDelete("cascade"),
+		foreignKey({
+			columns: [table.weekId],
+			foreignColumns: [courseWeeks.id],
+			name: "own_notes_week_id_fkey",
+		}).onDelete("cascade"),
+		foreignKey({
+			columns: [table.courseId],
+			foreignColumns: [courses.id],
+			name: "own_notes_course_id_fkey",
+		}).onDelete("cascade"),
 	]
 );
 

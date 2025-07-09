@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
 	Carousel,
@@ -20,13 +18,11 @@ interface Week {
 interface WeekCarouselProps {
 	weeks: Week[];
 	onWeekSelect: (weekNumber: number) => void;
+	selectedWeek: number;
 }
 
-export function WeekCarousel({ weeks, onWeekSelect }: WeekCarouselProps) {
-	const [selectedWeek, setSelectedWeek] = useState(1);
-
+export function WeekCarousel({ weeks, onWeekSelect, selectedWeek }: WeekCarouselProps) {
 	const handleWeekClick = (weekNumber: number) => {
-		setSelectedWeek(weekNumber);
 		onWeekSelect(weekNumber);
 	};
 

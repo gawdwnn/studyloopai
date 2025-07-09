@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { courseWeeks, courses, goldenNotes, summaries } from "@/db/schema";
+import { courseWeeks, goldenNotes, summaries } from "@/db/schema";
 import { getServerClient } from "@/lib/supabase/server";
 import { withErrorHandling } from "@/lib/utils/error-handling";
 import { and, asc, desc, eq } from "drizzle-orm";
@@ -14,22 +14,56 @@ const UpdateGoldenNoteSchema = z.object({
 	content: z.string().min(1).optional(),
 	category: z.string().max(100).optional(),
 	priority: z.number().min(1).max(5).optional(),
+	version: z.number().int().min(1),
 });
 
 export type UpdateGoldenNoteInput = z.infer<typeof UpdateGoldenNoteSchema>;
 
+type NoteOperationResult<T = unknown> = { success: true; data: T } | { success: false; data: null };
+
+// Conflict resolution types
+export type ConflictResolutionStrategy = "client" | "server" | "merge";
+
+export type ConflictError = {
+	type: "version_conflict";
+	message: string;
+	serverVersion: number;
+	clientVersion: number;
+	serverData?: unknown;
+};
+
+/**
+ * Get notes data for a specific course and week
+ */
+export async function getNotesData(courseId: string, weekId: string) {
+	return await withErrorHandling(
+		async () => {
+			const [goldenNotesData, summariesData, weekData] = await Promise.all([
+				getGoldenNotes(courseId, weekId),
+				getSummaries(courseId, weekId),
+				getCourseWeeks(courseId),
+			]);
+
+			return {
+				goldenNotes: goldenNotesData,
+				summaries: summariesData,
+				weeks: weekData,
+			};
+		},
+		"getNotesData",
+		{
+			goldenNotes: [],
+			summaries: [],
+			weeks: [],
+		}
+	);
+}
 /**
  * Get golden notes for a specific course and week
  */
-export async function getGoldenNotes(courseId: string, weekId?: string) {
+export async function getGoldenNotes(courseId: string, weekId: string) {
 	return await withErrorHandling(
 		async () => {
-			const conditions = [eq(goldenNotes.courseId, courseId)];
-
-			if (weekId) {
-				conditions.push(eq(goldenNotes.weekId, weekId));
-			}
-
 			const notes = await db
 				.select({
 					id: goldenNotes.id,
@@ -37,13 +71,14 @@ export async function getGoldenNotes(courseId: string, weekId?: string) {
 					content: goldenNotes.content,
 					priority: goldenNotes.priority,
 					category: goldenNotes.category,
+					version: goldenNotes.version,
 					createdAt: goldenNotes.createdAt,
 					updatedAt: goldenNotes.updatedAt,
 					weekId: goldenNotes.weekId,
 					courseId: goldenNotes.courseId,
 				})
 				.from(goldenNotes)
-				.where(conditions.length > 1 ? and(...conditions) : conditions[0])
+				.where(and(eq(goldenNotes.courseId, courseId), eq(goldenNotes.weekId, weekId)))
 				.orderBy(desc(goldenNotes.priority), asc(goldenNotes.createdAt));
 
 			return notes;
@@ -56,15 +91,9 @@ export async function getGoldenNotes(courseId: string, weekId?: string) {
 /**
  * Get summaries for a specific course and week
  */
-export async function getSummaries(courseId: string, weekId?: string) {
+export async function getSummaries(courseId: string, weekId: string) {
 	return await withErrorHandling(
 		async () => {
-			const conditions = [eq(summaries.courseId, courseId)];
-
-			if (weekId) {
-				conditions.push(eq(summaries.weekId, weekId));
-			}
-
 			const summaryData = await db
 				.select({
 					id: summaries.id,
@@ -78,7 +107,7 @@ export async function getSummaries(courseId: string, weekId?: string) {
 					courseId: summaries.courseId,
 				})
 				.from(summaries)
-				.where(conditions.length > 1 ? and(...conditions) : conditions[0])
+				.where(and(eq(summaries.courseId, courseId), eq(summaries.weekId, weekId)))
 				.orderBy(desc(summaries.createdAt));
 
 			return summaryData;
@@ -91,7 +120,7 @@ export async function getSummaries(courseId: string, weekId?: string) {
 /**
  * Get course weeks with their materials for notes page
  */
-export async function getCourseWeeksWithMaterials(courseId: string) {
+export async function getCourseWeeks(courseId: string) {
 	return await withErrorHandling(
 		async () => {
 			const weeks = await db.query.courseWeeks.findMany({
@@ -115,159 +144,102 @@ export async function getCourseWeeksWithMaterials(courseId: string) {
 				materialTitle: week.courseMaterials[0]?.title || null,
 			}));
 		},
-		"getCourseWeeksWithMaterials",
+		"getCourseWeeks",
 		[]
 	);
 }
 
 /**
- * Update a golden note
+ * Update a golden note with optimistic locking
  */
-export async function updateGoldenNote(input: UpdateGoldenNoteInput) {
-	try {
-		const supabase = await getServerClient();
-		const {
-			data: { user },
-		} = await supabase.auth.getUser();
+export async function updateGoldenNote(input: UpdateGoldenNoteInput): Promise<NoteOperationResult> {
+	return await withErrorHandling(
+		async (): Promise<NoteOperationResult> => {
+			const supabase = await getServerClient();
+			const {
+				data: { user },
+			} = await supabase.auth.getUser();
 
-		if (!user) {
-			throw new Error("Authentication required");
-		}
+			if (!user) {
+				throw new Error("Authentication required");
+			}
 
-		const validatedInput = UpdateGoldenNoteSchema.parse(input);
-		const { id, ...updateData } = validatedInput;
+			const validatedInput = UpdateGoldenNoteSchema.parse(input);
+			const { id, version, ...updateData } = validatedInput;
 
-		// Verify the note belongs to the user's course
-		const existingNote = await db.query.goldenNotes.findFirst({
-			where: eq(goldenNotes.id, id),
-			with: {
-				course: {
-					columns: {
-						userId: true,
-					},
-				},
-			},
-		});
+			// Check current version before updating
+			const currentNote = await db
+				.select({ version: goldenNotes.version })
+				.from(goldenNotes)
+				.where(eq(goldenNotes.id, id))
+				.limit(1);
 
-		if (!existingNote) {
-			throw new Error("Note not found");
-		}
+			if (currentNote.length === 0) {
+				throw new Error("Note not found or access denied");
+			}
 
-		if (existingNote.course.userId !== user.id) {
-			throw new Error("Access denied");
-		}
+			if (currentNote[0].version !== version) {
+				// Version conflict detected
+				const conflictError: ConflictError = {
+					type: "version_conflict",
+					message: `Version conflict: Expected version ${version}, but current version is ${currentNote[0].version}`,
+					serverVersion: currentNote[0].version,
+					clientVersion: version,
+				};
+				throw new Error(JSON.stringify(conflictError));
+			}
 
-		const updatedNote = await db
-			.update(goldenNotes)
-			.set({
-				...updateData,
-				updatedAt: new Date(),
-			})
-			.where(eq(goldenNotes.id, id))
-			.returning();
+			// Optimistic update with version increment
+			const updatedNote = await db
+				.update(goldenNotes)
+				.set({
+					...updateData,
+					version: version + 1,
+					updatedAt: new Date(),
+				})
+				.where(and(eq(goldenNotes.id, id), eq(goldenNotes.version, version)))
+				.returning();
 
-		return { success: true, data: updatedNote[0] };
-	} catch (error) {
-		console.error("Failed to update golden note:", error);
-		return {
-			success: false,
-			error: error instanceof Error ? error.message : "Unknown error",
-		};
-	}
+			if (updatedNote.length === 0) {
+				throw new Error("Update failed due to concurrent modification");
+			}
+
+			return { success: true, data: updatedNote[0] };
+		},
+		"updateGoldenNote",
+		{ success: false, data: null }
+	);
 }
 
 /**
  * Delete a golden note
  */
-export async function deleteGoldenNote(noteId: string) {
-	try {
-		const supabase = await getServerClient();
-		const {
-			data: { user },
-		} = await supabase.auth.getUser();
-
-		if (!user) {
-			throw new Error("Authentication required");
-		}
-
-		// Verify the note belongs to the user's course
-		const existingNote = await db.query.goldenNotes.findFirst({
-			where: eq(goldenNotes.id, noteId),
-			with: {
-				course: {
-					columns: {
-						userId: true,
-					},
-				},
-			},
-		});
-
-		if (!existingNote) {
-			throw new Error("Note not found");
-		}
-
-		if (existingNote.course.userId !== user.id) {
-			throw new Error("Access denied");
-		}
-
-		await db.delete(goldenNotes).where(eq(goldenNotes.id, noteId));
-
-		return { success: true };
-	} catch (error) {
-		console.error("Failed to delete golden note:", error);
-		return {
-			success: false,
-			error: error instanceof Error ? error.message : "Unknown error",
-		};
-	}
-}
-
-/**
- * Get notes data for a specific course and week
- */
-export async function getNotesData(courseId: string, weekId?: string) {
+export async function deleteGoldenNote(
+	noteId: string
+): Promise<NoteOperationResult<{ id: string }>> {
 	return await withErrorHandling(
-		async () => {
-			const [goldenNotesData, summariesData, weekData] = await Promise.all([
-				getGoldenNotes(courseId, weekId),
-				getSummaries(courseId, weekId),
-				getCourseWeeksWithMaterials(courseId),
-			]);
+		async (): Promise<NoteOperationResult<{ id: string }>> => {
+			const supabase = await getServerClient();
+			const {
+				data: { user },
+			} = await supabase.auth.getUser();
 
-			return {
-				goldenNotes: goldenNotesData,
-				summaries: summariesData,
-				weeks: weekData,
-			};
+			if (!user) {
+				throw new Error("Authentication required");
+			}
+
+			const result = await db
+				.delete(goldenNotes)
+				.where(eq(goldenNotes.id, noteId))
+				.returning({ id: goldenNotes.id });
+
+			if (result.length === 0) {
+				throw new Error("Note not found or access denied");
+			}
+
+			return { success: true, data: result[0] };
 		},
-		"getNotesData",
-		{
-			goldenNotes: [],
-			summaries: [],
-			weeks: [],
-		}
-	);
-}
-
-/**
- * Get user's courses for course selection
- */
-export async function getUserCoursesForNotes() {
-	return await withErrorHandling(
-		async () => {
-			const userCourses = await db.query.courses.findMany({
-				columns: {
-					id: true,
-					name: true,
-					description: true,
-					createdAt: true,
-				},
-				orderBy: desc(courses.createdAt),
-			});
-
-			return userCourses;
-		},
-		"getUserCoursesForNotes",
-		[]
+		"deleteGoldenNote",
+		{ success: false, data: null }
 	);
 }
