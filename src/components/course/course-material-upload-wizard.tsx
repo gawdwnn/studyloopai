@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Settings, Upload } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, Settings, Upload } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -96,6 +96,7 @@ export function CourseMaterialUploadWizard({
 }: CourseMaterialUploadWizardProps) {
 	const [isOpen, setIsOpen] = useState(false);
 	const [currentStep, setCurrentStep] = useState<WizardStep>(WIZARD_STEPS.COURSE_AND_FILES);
+	const [isUploading, setIsUploading] = useState(false);
 
 	// Step 1 data
 	const [selectedCourseId, setSelectedCourseId] = useState<string>("");
@@ -122,6 +123,7 @@ export function CourseMaterialUploadWizard({
 		setFiles([]);
 		setOutputLanguage("english");
 		setGenerationConfig(DEFAULT_GENERATION_CONFIG);
+		setIsUploading(false);
 	};
 
 	const handleClose = () => {
@@ -171,6 +173,7 @@ export function CourseMaterialUploadWizard({
 			return;
 		}
 
+		setIsUploading(true);
 		const supabase = createClient();
 		const uploadedMaterialIds: string[] = [];
 
@@ -252,6 +255,8 @@ export function CourseMaterialUploadWizard({
 			const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";
 			toast.error(`Upload failed: ${errorMessage}`);
 			console.error("Unexpected upload error:", err);
+		} finally {
+			setIsUploading(false);
 		}
 	};
 
@@ -395,7 +400,7 @@ export function CourseMaterialUploadWizard({
 				<div className="flex justify-between pt-4 border-t">
 					<div>
 						{currentStep === WIZARD_STEPS.GENERATION_SETTINGS && (
-							<Button variant="outline" onClick={handlePreviousStep} className="gap-2">
+							<Button variant="outline" onClick={handlePreviousStep} disabled={isUploading} className="gap-2">
 								<ChevronLeft className="h-4 w-4" />
 								Previous
 							</Button>
@@ -403,7 +408,7 @@ export function CourseMaterialUploadWizard({
 					</div>
 
 					<div className="flex gap-2">
-						<Button variant="outline" onClick={handleClose}>
+						<Button variant="outline" onClick={handleClose} disabled={isUploading}>
 							Cancel
 						</Button>
 
@@ -413,8 +418,15 @@ export function CourseMaterialUploadWizard({
 								<ChevronRight className="h-4 w-4" />
 							</Button>
 						) : (
-							<Button onClick={handleGenerate} className="gap-2">
-								Generate Content
+							<Button onClick={handleGenerate} disabled={isUploading} className="gap-2">
+								{isUploading ? (
+									<>
+										<Loader2 className="h-4 w-4 animate-spin" />
+										Processing...
+									</>
+								) : (
+									"Generate Content"
+								)}
 							</Button>
 						)}
 					</div>
