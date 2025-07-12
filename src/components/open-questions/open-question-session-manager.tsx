@@ -2,16 +2,14 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { McqQuizView } from "./mcq-quiz-view";
-import { McqResultsView } from "./mcq-results-view";
-import { McqSessionSetup } from "./mcq-session-setup";
+import { OpenQuestionQuizView } from "./open-question-quiz-view";
+import { OpenQuestionResultsView } from "./open-question-results-view";
+import { OpenQuestionSessionSetup } from "./open-question-session-setup";
 
-interface McqQuestion {
+interface OpenQuestion {
 	id: string;
 	question: string;
-	options: string[];
-	correctAnswer: string;
-	explanation?: string;
+	sampleAnswer: string;
 	difficulty: "easy" | "medium" | "hard";
 	source: string;
 	week: string;
@@ -27,8 +25,7 @@ interface SessionConfig {
 }
 
 interface SessionStats {
-	correctAnswers: number;
-	incorrectAnswers: number;
+	answeredQuestions: number;
 	skippedQuestions: number;
 	totalTime: number;
 	startTime: Date;
@@ -36,26 +33,19 @@ interface SessionStats {
 	questionTimes: number[];
 	userAnswers: Array<{
 		questionId: string;
-		selectedAnswer: string | null;
-		isCorrect: boolean;
+		userAnswer: string | null;
 		timeSpent: number;
 	}>;
 }
 
 // Enhanced sample data with more questions and metadata
-const SAMPLE_QUESTIONS: McqQuestion[] = [
+const SAMPLE_QUESTIONS: OpenQuestion[] = [
 	{
 		id: "1",
-		question: "Why is predictability emphasised as important for agents?",
-		options: [
-			"It helps ensure reliable system behavior",
-			"It guarantees the agent can generate random outputs for entertainment purposes",
-			"It allows the agent to operate without guidelines or constraints",
-			"It eliminates the need for user feedback",
-		],
-		correctAnswer: "It helps ensure reliable system behavior",
-		explanation:
-			"Predictability in agent systems ensures that outputs are consistent and reliable, which is crucial for building trust and maintaining system stability.",
+		question:
+			"Explain why predictability is emphasized as important for agents and provide an example of how unpredictable agent behavior could cause problems.",
+		sampleAnswer:
+			"Predictability in agent systems ensures that outputs are consistent and reliable, which is crucial for building trust and maintaining system stability. For example, if an agent responsible for financial transactions behaves unpredictably, it could make unauthorized trades or miscalculate amounts, leading to significant financial losses and legal complications.",
 		difficulty: "medium",
 		source: "Practical guide to building agents.pdf",
 		week: "Week 2",
@@ -63,77 +53,51 @@ const SAMPLE_QUESTIONS: McqQuestion[] = [
 	{
 		id: "2",
 		question:
-			"What new category of systems has been unlocked by advances in reasoning, multimodality, and tool use in large language models?",
-		options: [
-			"Classical expert systems",
-			"Agents",
-			"Rule-based automation engines for workflow optimization",
-			"Cloud-based multitasking platforms for distributed computation",
-		],
-		correctAnswer: "Agents",
-		explanation:
-			"The combination of reasoning, multimodality, and tool use capabilities in LLMs has enabled the development of autonomous agents that can interact with their environment.",
+			"What new category of systems has been unlocked by advances in reasoning, multimodality, and tool use in large language models? Describe the key characteristics that define this category.",
+		sampleAnswer:
+			"Agents have been unlocked by these advances. These systems are characterized by their ability to reason about problems, process multiple types of input (text, images, audio), and interact with external tools and environments. Unlike traditional AI systems that simply respond to queries, agents can plan, execute multi-step tasks, and adapt their behavior based on feedback from their environment.",
 		difficulty: "easy",
 		source: "Practical guide to building agents.pdf",
 		week: "Week 2",
 	},
 	{
 		id: "3",
-		question: "What is the primary advantage of transformer architecture over RNNs?",
-		options: [
-			"Lower computational complexity",
-			"Parallel processing capabilities",
-			"Smaller model size",
-			"Better memory efficiency",
-		],
-		correctAnswer: "Parallel processing capabilities",
-		explanation:
-			"Transformers can process sequences in parallel rather than sequentially, making training much faster and more efficient than RNNs.",
+		question:
+			"Compare and contrast the transformer architecture with RNNs, focusing on their primary advantages and disadvantages.",
+		sampleAnswer:
+			"Transformers offer parallel processing capabilities, allowing them to process entire sequences simultaneously rather than sequentially like RNNs. This makes training much faster and more efficient. However, transformers have higher memory requirements and computational complexity for very long sequences. RNNs are more memory-efficient for sequential processing but suffer from vanishing gradients and slower training due to their sequential nature.",
 		difficulty: "medium",
 		source: "Neural Networks Fundamentals.pdf",
 		week: "Week 1",
 	},
 	{
 		id: "4",
-		question: "In design thinking, what is the purpose of the empathy phase?",
-		options: [
-			"To generate as many ideas as possible",
-			"To understand user needs and pain points",
-			"To test prototypes with users",
-			"To define the problem statement",
-		],
-		correctAnswer: "To understand user needs and pain points",
-		explanation:
-			"The empathy phase focuses on understanding users' experiences, emotions, and motivations to inform the design process.",
+		question:
+			"In design thinking, what is the purpose of the empathy phase and how does it influence the subsequent phases?",
+		sampleAnswer:
+			"The empathy phase focuses on understanding users' experiences, emotions, and motivations to inform the design process. It involves observing, interviewing, and immersing yourself in the user's environment to gain deep insights into their needs and pain points. This understanding directly influences the Define phase by helping identify the right problems to solve, the Ideate phase by ensuring solutions address real user needs, and the Prototype and Test phases by providing criteria for evaluation.",
 		difficulty: "easy",
 		source: "Using design thinking to solve everyday problem.pdf",
 		week: "Week 3",
 	},
 	{
 		id: "5",
-		question: "What is fine-tuning in the context of machine learning models?",
-		options: [
-			"Training a model from scratch",
-			"Adjusting hyperparameters during training",
-			"Adapting a pre-trained model to a specific task",
-			"Reducing model size for deployment",
-		],
-		correctAnswer: "Adapting a pre-trained model to a specific task",
-		explanation:
-			"Fine-tuning involves taking a pre-trained model and continuing training on task-specific data to specialize it for a particular application.",
+		question:
+			"Explain the concept of fine-tuning in machine learning and discuss when it would be preferable to training a model from scratch.",
+		sampleAnswer:
+			"Fine-tuning involves taking a pre-trained model and continuing training on task-specific data to specialize it for a particular application. It's preferable to training from scratch when you have limited data, computational resources, or time, as the pre-trained model already contains learned representations that can be adapted. Fine-tuning is particularly effective when the new task is related to the original training domain, allowing the model to leverage existing knowledge while adapting to new requirements.",
 		difficulty: "medium",
 		source: "Advanced AI Architectures.pdf",
 		week: "Week 4",
 	},
 ];
 
-export function McqSessionManager() {
+export function OpenQuestionSessionManager() {
 	const [sessionState, setSessionState] = useState<"setup" | "active" | "completed">("setup");
-	const [sessionQuestions, setSessionQuestions] = useState<McqQuestion[]>([]);
+	const [sessionQuestions, setSessionQuestions] = useState<OpenQuestion[]>([]);
 	const [sessionConfig, setSessionConfig] = useState<SessionConfig | null>(null);
 	const [sessionStats, setSessionStats] = useState<SessionStats>({
-		correctAnswers: 0,
-		incorrectAnswers: 0,
+		answeredQuestions: 0,
 		skippedQuestions: 0,
 		totalTime: 0,
 		startTime: new Date(),
@@ -142,7 +106,7 @@ export function McqSessionManager() {
 	});
 
 	// Initialize questions based on session configuration
-	const initializeQuestions = (config: SessionConfig): McqQuestion[] => {
+	const initializeQuestions = (config: SessionConfig): OpenQuestion[] => {
 		let filteredQuestions = [...SAMPLE_QUESTIONS];
 
 		// Filter by weeks if specific weeks selected
@@ -189,35 +153,31 @@ export function McqSessionManager() {
 		setSessionQuestions(questions);
 		setSessionState("active");
 		setSessionStats({
-			correctAnswers: 0,
-			incorrectAnswers: 0,
+			answeredQuestions: 0,
 			skippedQuestions: 0,
 			totalTime: 0,
 			startTime: new Date(),
 			questionTimes: [],
 			userAnswers: [],
 		});
-		toast.success("MCQ session started!");
+		toast.success("Open-ended question session started!");
 	};
 
 	const handleQuestionAnswer = (
 		questionId: string,
-		selectedAnswer: string | null,
-		isCorrect: boolean,
+		userAnswer: string | null,
 		timeSpent: number
 	) => {
 		setSessionStats((prev) => ({
 			...prev,
-			correctAnswers: prev.correctAnswers + (isCorrect ? 1 : 0),
-			incorrectAnswers: prev.incorrectAnswers + (isCorrect ? 0 : 1),
-			skippedQuestions: prev.skippedQuestions + (selectedAnswer === null ? 1 : 0),
+			answeredQuestions: prev.answeredQuestions + (userAnswer ? 1 : 0),
+			skippedQuestions: prev.skippedQuestions + (userAnswer ? 0 : 1),
 			questionTimes: [...prev.questionTimes, timeSpent],
 			userAnswers: [
 				...prev.userAnswers,
 				{
 					questionId,
-					selectedAnswer,
-					isCorrect,
+					userAnswer,
 					timeSpent,
 				},
 			],
@@ -231,7 +191,7 @@ export function McqSessionManager() {
 			endTime: new Date(),
 		}));
 		setSessionState("completed");
-		toast.success("MCQ session completed!");
+		toast.success("Open-ended question session completed!");
 	};
 
 	const handleCloseSession = () => {
@@ -239,8 +199,7 @@ export function McqSessionManager() {
 		setSessionQuestions([]);
 		setSessionConfig(null);
 		setSessionStats({
-			correctAnswers: 0,
-			incorrectAnswers: 0,
+			answeredQuestions: 0,
 			skippedQuestions: 0,
 			totalTime: 0,
 			startTime: new Date(),
@@ -266,12 +225,14 @@ export function McqSessionManager() {
 	};
 
 	if (sessionState === "setup") {
-		return <McqSessionSetup onStartSession={handleStartSession} onClose={handleCloseSession} />;
+		return (
+			<OpenQuestionSessionSetup onStartSession={handleStartSession} onClose={handleCloseSession} />
+		);
 	}
 
 	if (sessionState === "active" && sessionQuestions.length > 0 && sessionConfig) {
 		return (
-			<McqQuizView
+			<OpenQuestionQuizView
 				questions={sessionQuestions}
 				config={sessionConfig}
 				onQuestionAnswer={handleQuestionAnswer}
@@ -283,10 +244,7 @@ export function McqSessionManager() {
 
 	if (sessionState === "completed") {
 		const resultsData = {
-			score:
-				sessionStats.userAnswers.length > 0
-					? Math.round((sessionStats.correctAnswers / sessionStats.userAnswers.length) * 100)
-					: 0,
+			answered: sessionStats.answeredQuestions,
 			skipped: sessionStats.skippedQuestions,
 			totalTime: calculateSessionTime(),
 			timeOnExercise: calculateAvgPerQuestion(),
@@ -296,16 +254,13 @@ export function McqSessionManager() {
 				return {
 					question: q.question,
 					time: userAnswer ? `${Math.round(userAnswer.timeSpent / 1000)}s` : "0s",
-					correct: userAnswer ? userAnswer.isCorrect : false,
-					userAnswer: userAnswer ? userAnswer.selectedAnswer : null,
-					correctAnswer: q.correctAnswer,
-					options: q.options,
-					explanation: q.explanation,
+					userAnswer: userAnswer ? userAnswer.userAnswer : null,
+					sampleAnswer: q.sampleAnswer,
 				};
 			}),
 		};
 
-		return <McqResultsView results={resultsData} onRestart={handleCloseSession} />;
+		return <OpenQuestionResultsView results={resultsData} onRestart={handleCloseSession} />;
 	}
 
 	return null;

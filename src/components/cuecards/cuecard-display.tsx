@@ -2,8 +2,8 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import { X } from "lucide-react";
 import { useState } from "react";
 
@@ -50,9 +50,8 @@ export function CuecardDisplay({
 	};
 
 	return (
-		<div className="bg-background mt-10">
-			<div className="max-w-4xl mx-auto py-8">
-				<Card className="w-full relative">
+		<div className="bg-background mt-10 max-w-4xl mx-auto">
+			<Card className="w-full relative">
 				<Button
 					variant="ghost"
 					size="icon"
@@ -88,11 +87,7 @@ export function CuecardDisplay({
 					{/* User answer input toggle */}
 					{!showAnswer && (
 						<div className="flex items-center justify-center space-x-3">
-							<Switch
-								id="user-input"
-								checked={showUserInput}
-								onCheckedChange={setShowUserInput}
-							/>
+							<Switch id="user-input" checked={showUserInput} onCheckedChange={setShowUserInput} />
 							<label htmlFor="user-input" className="text-sm font-medium">
 								Enter your answer (optional)
 							</label>
@@ -140,14 +135,14 @@ export function CuecardDisplay({
 									<Button
 										onClick={() => handleFeedback("too_easy")}
 										variant="default"
-										className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+										className="flex-1 bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white"
 									>
 										Too easy
 									</Button>
 									<Button
 										onClick={() => handleFeedback("knew_some")}
-										variant="secondary"
-										className="flex-1 bg-yellow-100 hover:bg-yellow-200 text-yellow-800"
+										variant="outline"
+										className="flex-1 bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/20 dark:hover:bg-amber-900/30 text-amber-800 dark:text-amber-200 border-amber-200 dark:border-amber-800"
 									>
 										I knew some of it
 									</Button>
@@ -163,7 +158,7 @@ export function CuecardDisplay({
 						) : (
 							<Button
 								onClick={handleShowAnswer}
-								variant="secondary"
+								// variant="secondary"
 								className="px-8 py-3 text-base font-medium"
 							>
 								Show answer
@@ -175,8 +170,7 @@ export function CuecardDisplay({
 						</div>
 					</div>
 				</CardContent>
-				</Card>
-			</div>
+			</Card>
 		</div>
 	);
 }

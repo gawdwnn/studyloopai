@@ -43,18 +43,21 @@ interface SessionConfig {
 	practiceMode: "practice" | "exam";
 }
 
-type McqSessionSetupProps = {
+type OpenQuestionSessionSetupProps = {
 	onStartSession: (config: SessionConfig) => void;
 	onClose?: () => void;
 };
 
-export function McqSessionSetup({ onStartSession, onClose }: McqSessionSetupProps) {
+export function OpenQuestionSessionSetup({
+	onStartSession,
+	onClose,
+}: OpenQuestionSessionSetupProps) {
 	const [courses, setCourses] = useState<Course[]>([]);
 	const [weeks, setWeeks] = useState<CourseWeek[]>([]);
 	const [selectedCourse, setSelectedCourse] = useState<string>("");
 	const [selectedWeek, setSelectedWeek] = useState<string>("all-weeks");
 	const [difficulty, setDifficulty] = useState<string>("");
-	const [numQuestions, setNumQuestions] = useState<string>("20");
+	const [numQuestions, setNumQuestions] = useState<string>("2");
 	const [focus, setFocus] = useState<string>("tailored-for-me");
 	const [practiceMode, setPracticeMode] = useState<string>("practice");
 	const [loading, setLoading] = useState(true);
@@ -113,13 +116,13 @@ export function McqSessionSetup({ onStartSession, onClose }: McqSessionSetupProp
 				<Button
 					variant="ghost"
 					size="icon"
-					className="absolute top-4 right-4 z-10 bg-gray-100 hover:bg-gray-200 rounded-full"
+					className="absolute top-4 right-4 z-10 bg-muted hover:bg-muted/80 rounded-full"
 					onClick={onClose}
 				>
-					<XIcon className="h-6 w-6 text-gray-600" />
+					<XIcon className="h-6 w-6 text-muted-foreground" />
 				</Button>
 				<CardHeader className="text-center pb-8">
-					<CardTitle className="text-lg">Start a Multiple Choice Session</CardTitle>
+					<CardTitle className="text-lg">Start an Open-Ended Question Session</CardTitle>
 				</CardHeader>
 				<CardContent className="px-8 space-y-6">
 					{loading ? (
@@ -199,11 +202,10 @@ export function McqSessionSetup({ onStartSession, onClose }: McqSessionSetupProp
 												<SelectValue />
 											</SelectTrigger>
 											<SelectContent>
+												<SelectItem value="5">5</SelectItem>
 												<SelectItem value="10">10</SelectItem>
 												<SelectItem value="15">15</SelectItem>
 												<SelectItem value="20">20</SelectItem>
-												<SelectItem value="25">25</SelectItem>
-												<SelectItem value="30">30</SelectItem>
 											</SelectContent>
 										</Select>
 										<p className="text-xs text-muted-foreground">Select the number of questions</p>
@@ -244,7 +246,7 @@ export function McqSessionSetup({ onStartSession, onClose }: McqSessionSetupProp
 													</Label>
 												</div>
 												<p className="text-xs text-muted-foreground ml-6">
-													Show answers immediately
+													Show sample answers immediately
 												</p>
 											</div>
 											<div className="flex flex-col space-y-1">
@@ -255,7 +257,7 @@ export function McqSessionSetup({ onStartSession, onClose }: McqSessionSetupProp
 													</Label>
 												</div>
 												<p className="text-xs text-muted-foreground ml-6">
-													Show answers after session
+													Show sample answers after session
 												</p>
 											</div>
 										</RadioGroup>
@@ -269,6 +271,13 @@ export function McqSessionSetup({ onStartSession, onClose }: McqSessionSetupProp
 					<p className="text-sm text-muted-foreground">
 						Your session will contain {numQuestions} questions
 					</p>
+					<div className="bg-accent/50 border border-accent rounded-lg p-4 max-w-2xl text-center">
+						<p className="text-sm text-accent-foreground">
+							<strong>AI Evaluation:</strong> Your answers will be assessed by AI based on factual
+							correctness, logical structure, depth of insight, and supporting evidence. This helps
+							provide comprehensive feedback on your understanding and reasoning skills.
+						</p>
+					</div>
 					<Button
 						size="lg"
 						onClick={handleStartSession}

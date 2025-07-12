@@ -30,7 +30,13 @@ export function CuecardResultsView({ results, onNewSession }: CuecardResultsView
 				particleCount: 100,
 				spread: 70,
 				origin: { y: 0.6 },
-				colors: ["#22c55e", "#84cc16", "#f59e0b", "#ef4444", "#8b5cf6"],
+				colors: [
+					"hsl(var(--chart-1))",
+					"hsl(var(--chart-2))",
+					"hsl(var(--chart-3))",
+					"hsl(var(--chart-4))",
+					"hsl(var(--chart-5))",
+				],
 			});
 		}, 500);
 
@@ -39,9 +45,9 @@ export function CuecardResultsView({ results, onNewSession }: CuecardResultsView
 
 	// Prepare chart data
 	const chartData = [
-		{ name: "Too easy", value: results.tooEasy, color: "#22c55e" },
-		{ name: "I knew some of it", value: results.showAnswer, color: "#84cc16" },
-		{ name: "I answered incorrectly", value: results.incorrect, color: "#ef4444" },
+		{ name: "Too easy", value: results.tooEasy, color: "hsl(var(--chart-1))" },
+		{ name: "I knew some of it", value: results.showAnswer, color: "hsl(var(--chart-2))" },
+		{ name: "I answered incorrectly", value: results.incorrect, color: "hsl(var(--chart-3))" },
 	];
 
 	const totalResponses = results.tooEasy + results.showAnswer + results.incorrect;
@@ -114,7 +120,10 @@ export function CuecardResultsView({ results, onNewSession }: CuecardResultsView
 						{/* Statistics Breakdown */}
 						<div className="space-y-6">
 							<div className="flex items-center gap-4">
-								<div className="w-4 h-4 rounded-full bg-green-500" />
+								<div
+									className="w-4 h-4 rounded-full"
+									style={{ backgroundColor: "hsl(var(--chart-1))" }}
+								/>
 								<div className="flex flex-col">
 									<span className="text-2xl font-bold text-foreground">{results.tooEasy}</span>
 									<span className="text-sm text-muted-foreground">Too easy</span>
@@ -122,7 +131,10 @@ export function CuecardResultsView({ results, onNewSession }: CuecardResultsView
 							</div>
 
 							<div className="flex items-center gap-4">
-								<div className="w-4 h-4 rounded-full bg-lime-500" />
+								<div
+									className="w-4 h-4 rounded-full"
+									style={{ backgroundColor: "hsl(var(--chart-2))" }}
+								/>
 								<div className="flex flex-col">
 									<span className="text-2xl font-bold text-foreground">{results.showAnswer}</span>
 									<span className="text-sm text-muted-foreground">I knew some of it</span>
@@ -130,7 +142,10 @@ export function CuecardResultsView({ results, onNewSession }: CuecardResultsView
 							</div>
 
 							<div className="flex items-center gap-4">
-								<div className="w-4 h-4 rounded-full bg-red-500" />
+								<div
+									className="w-4 h-4 rounded-full"
+									style={{ backgroundColor: "hsl(var(--chart-3))" }}
+								/>
 								<div className="flex flex-col">
 									<span className="text-2xl font-bold text-foreground">{results.incorrect}</span>
 									<span className="text-sm text-muted-foreground">I answered incorrectly</span>

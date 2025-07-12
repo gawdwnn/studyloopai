@@ -30,12 +30,23 @@ interface SessionConfig {
 type McqQuizViewProps = {
 	questions: McqQuestion[];
 	config: SessionConfig;
-	onQuestionAnswer: (questionId: string, selectedAnswer: string | null, isCorrect: boolean, timeSpent: number) => void;
+	onQuestionAnswer: (
+		questionId: string,
+		selectedAnswer: string | null,
+		isCorrect: boolean,
+		timeSpent: number
+	) => void;
 	onEndSession: (totalTime: number) => void;
 	onClose: () => void;
 };
 
-export function McqQuizView({ questions, config, onQuestionAnswer, onEndSession, onClose }: McqQuizViewProps) {
+export function McqQuizView({
+	questions,
+	config,
+	onQuestionAnswer,
+	onEndSession,
+	onClose,
+}: McqQuizViewProps) {
 	const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 	const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
 	const [isAnswered, setIsAnswered] = useState(false);
@@ -99,7 +110,7 @@ export function McqQuizView({ questions, config, onQuestionAnswer, onEndSession,
 		if (config.practiceMode === "exam" && !isAnswered) {
 			return "default";
 		}
-		
+
 		if (!isAnswered) {
 			return "default";
 		}
