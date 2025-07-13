@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import type { McqSessionConfig } from "@/lib/types/learning-session";
 import { cn } from "@/lib/utils";
 import { CheckCircle2, XCircle, XIcon } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -18,24 +19,10 @@ interface McqQuestion {
 	week: string;
 }
 
-interface SessionConfig {
-	weeks: string[];
-	materials: string[];
-	difficulty: string;
-	numQuestions: number;
-	focus: string;
-	practiceMode: "practice" | "exam";
-}
-
 type McqQuizViewProps = {
 	questions: McqQuestion[];
-	config: SessionConfig;
-	onQuestionAnswer: (
-		questionId: string,
-		selectedAnswer: string | null,
-		isCorrect: boolean,
-		timeSpent: number
-	) => void;
+	config: McqSessionConfig;
+	onQuestionAnswer: (questionId: string, selectedAnswer: string | null, timeSpent: number) => void;
 	onEndSession: (totalTime: number) => void;
 	onClose: () => void;
 };
@@ -83,8 +70,7 @@ export function McqQuizView({
 		// Record answer immediately in practice mode
 		if (config.practiceMode === "practice") {
 			const timeSpent = Date.now() - questionStartTime;
-			const isCorrect = answer === currentQuestion.correctAnswer;
-			onQuestionAnswer(currentQuestion.id, answer, isCorrect, timeSpent);
+			onQuestionAnswer(currentQuestion.id, answer, timeSpent);
 		}
 	};
 
@@ -92,8 +78,7 @@ export function McqQuizView({
 		// Record answer for exam mode or if not already recorded
 		if (config.practiceMode === "exam" || !selectedAnswer) {
 			const timeSpent = Date.now() - questionStartTime;
-			const isCorrect = selectedAnswer === currentQuestion.correctAnswer;
-			onQuestionAnswer(currentQuestion.id, selectedAnswer, isCorrect, timeSpent);
+			onQuestionAnswer(currentQuestion.id, selectedAnswer, timeSpent);
 		}
 
 		if (currentQuestionIndex < questions.length - 1) {

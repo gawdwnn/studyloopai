@@ -1,0 +1,168 @@
+// Sample MCQ data for development and testing
+// In production, this would be replaced with data from the database
+
+import type { McqQuestion } from "@/lib/types/learning-session";
+
+export const SAMPLE_MCQ_QUESTIONS: McqQuestion[] = [
+	{
+		id: "1",
+		question: "Why is predictability emphasised as important for agents?",
+		options: [
+			"It helps ensure reliable system behavior",
+			"It guarantees the agent can generate random outputs for entertainment purposes",
+			"It allows the agent to operate without guidelines or constraints",
+			"It eliminates the need for user feedback",
+		],
+		correctAnswer: "It helps ensure reliable system behavior",
+		explanation:
+			"Predictability in agent systems ensures that outputs are consistent and reliable, which is crucial for building trust and maintaining system stability.",
+		difficulty: "medium",
+		source: "Practical guide to building agents.pdf",
+		week: "Week 2",
+	},
+	{
+		id: "2",
+		question:
+			"What new category of systems has been unlocked by advances in reasoning, multimodality, and tool use in large language models?",
+		options: [
+			"Classical expert systems",
+			"Agents",
+			"Rule-based automation engines for workflow optimization",
+			"Cloud-based multitasking platforms for distributed computation",
+		],
+		correctAnswer: "Agents",
+		explanation:
+			"The combination of reasoning, multimodality, and tool use capabilities in LLMs has enabled the development of autonomous agents that can interact with their environment.",
+		difficulty: "easy",
+		source: "Practical guide to building agents.pdf",
+		week: "Week 2",
+	},
+	{
+		id: "3",
+		question: "What is the primary advantage of transformer architecture over RNNs?",
+		options: [
+			"Lower computational complexity",
+			"Parallel processing capabilities",
+			"Smaller model size",
+			"Better memory efficiency",
+		],
+		correctAnswer: "Parallel processing capabilities",
+		explanation:
+			"Transformers can process sequences in parallel rather than sequentially, making training much faster and more efficient than RNNs.",
+		difficulty: "medium",
+		source: "Neural Networks Fundamentals.pdf",
+		week: "Week 1",
+	},
+	{
+		id: "4",
+		question: "In design thinking, what is the purpose of the empathy phase?",
+		options: [
+			"To generate as many ideas as possible",
+			"To understand user needs and pain points",
+			"To test prototypes with users",
+			"To define the problem statement",
+		],
+		correctAnswer: "To understand user needs and pain points",
+		explanation:
+			"The empathy phase focuses on understanding users' experiences, emotions, and motivations to inform the design process.",
+		difficulty: "easy",
+		source: "Using design thinking to solve everyday problem.pdf",
+		week: "Week 3",
+	},
+	{
+		id: "5",
+		question: "What is fine-tuning in the context of machine learning models?",
+		options: [
+			"Training a model from scratch",
+			"Adjusting hyperparameters during training",
+			"Adapting a pre-trained model to a specific task",
+			"Reducing model size for deployment",
+		],
+		correctAnswer: "Adapting a pre-trained model to a specific task",
+		explanation:
+			"Fine-tuning involves taking a pre-trained model and continuing training on task-specific data to specialize it for a particular application.",
+		difficulty: "medium",
+		source: "Advanced AI Architectures.pdf",
+		week: "Week 4",
+	},
+	{
+		id: "6",
+		question: "What is the attention mechanism in neural networks?",
+		options: [
+			"A method to reduce overfitting",
+			"A technique to focus on relevant parts of input data",
+			"A way to compress model parameters",
+			"An optimization algorithm",
+		],
+		correctAnswer: "A technique to focus on relevant parts of input data",
+		explanation:
+			"Attention mechanisms allow neural networks to selectively focus on different parts of the input when making predictions, improving performance on tasks requiring contextual understanding.",
+		difficulty: "medium",
+		source: "Neural Networks Fundamentals.pdf",
+		week: "Week 1",
+	},
+	{
+		id: "7",
+		question: "What is backpropagation in neural networks?",
+		options: [
+			"A forward pass through the network",
+			"An algorithm for calculating gradients and updating weights",
+			"A technique for data preprocessing",
+			"A method for network architecture design",
+		],
+		correctAnswer: "An algorithm for calculating gradients and updating weights",
+		explanation:
+			"Backpropagation is the algorithm used to train neural networks by calculating gradients of the loss function and propagating them backward through the network to update weights.",
+		difficulty: "hard",
+		source: "Neural Networks Fundamentals.pdf",
+		week: "Week 1",
+	},
+	{
+		id: "8",
+		question: "In the context of LLMs, what are embeddings?",
+		options: [
+			"Code snippets embedded in text",
+			"Dense vector representations of words or tokens",
+			"Hardware components in neural processors",
+			"Mathematical functions for optimization",
+		],
+		correctAnswer: "Dense vector representations of words or tokens",
+		explanation:
+			"Embeddings are dense vector representations that capture semantic meaning and relationships between words, phrases, or other data in a continuous vector space.",
+		difficulty: "easy",
+		source: "Practical guide to building LLMs.pdf",
+		week: "Week 2",
+	},
+	{
+		id: "9",
+		question: "What is the main purpose of gradient descent?",
+		options: [
+			"To increase model complexity",
+			"To minimize the loss function",
+			"To add regularization",
+			"To normalize input data",
+		],
+		correctAnswer: "To minimize the loss function",
+		explanation:
+			"Gradient descent is an optimization algorithm that iteratively adjusts model parameters in the direction that minimizes the loss function.",
+		difficulty: "medium",
+		source: "Neural Networks Fundamentals.pdf",
+		week: "Week 1",
+	},
+	{
+		id: "10",
+		question: "What is tokenization in natural language processing?",
+		options: [
+			"Converting text to numerical tokens",
+			"Encrypting sensitive text data",
+			"Breaking text into smaller units for processing",
+			"Removing stopwords from text",
+		],
+		correctAnswer: "Breaking text into smaller units for processing",
+		explanation:
+			"Tokenization is the process of converting text into smaller units (tokens) such as words, subwords, or characters that can be processed by machine learning models.",
+		difficulty: "easy",
+		source: "Practical guide to building LLMs.pdf",
+		week: "Week 2",
+	},
+];

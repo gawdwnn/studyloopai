@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
+import type { OpenQuestionSessionConfig } from "@/lib/types/learning-session";
 import { XIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -16,18 +17,9 @@ interface OpenQuestion {
 	week: string;
 }
 
-interface SessionConfig {
-	weeks: string[];
-	materials: string[];
-	difficulty: string;
-	numQuestions: number;
-	focus: string;
-	practiceMode: "practice" | "exam";
-}
-
 type OpenQuestionQuizViewProps = {
 	questions: OpenQuestion[];
-	config: SessionConfig;
+	config: OpenQuestionSessionConfig;
 	onQuestionAnswer: (questionId: string, userAnswer: string | null, timeSpent: number) => void;
 	onEndSession: (totalTime: number) => void;
 	onClose: () => void;
@@ -67,7 +59,7 @@ export function OpenQuestionQuizView({
 	// Reset question start time when moving to next question
 	useEffect(() => {
 		setQuestionStartTime(Date.now());
-	}, [currentQuestionIndex]);
+	}, []);
 
 	const handleSubmitAnswer = () => {
 		if (userAnswer.trim()) {
