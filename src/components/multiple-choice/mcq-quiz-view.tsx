@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import type { McqSessionConfig } from "@/lib/types/learning-session";
+import type { McqConfig } from "@/lib/stores/mcq-session/types";
 import { cn } from "@/lib/utils";
 import { CheckCircle2, XCircle, XIcon } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -21,7 +21,7 @@ interface McqQuestion {
 
 type McqQuizViewProps = {
 	questions: McqQuestion[];
-	config: McqSessionConfig;
+	config: McqConfig;
 	onQuestionAnswer: (questionId: string, selectedAnswer: string | null, timeSpent: number) => void;
 	onEndSession: (totalTime: number) => void;
 	onClose: () => void;

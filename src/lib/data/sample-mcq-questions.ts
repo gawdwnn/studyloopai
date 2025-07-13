@@ -1,7 +1,7 @@
 // Sample MCQ data for development and testing
 // In production, this would be replaced with data from the database
 
-import type { McqQuestion } from "@/lib/types/learning-session";
+import type { McqQuestion } from "@/lib/stores/mcq-session/types";
 
 export const SAMPLE_MCQ_QUESTIONS: McqQuestion[] = [
 	{
@@ -19,6 +19,11 @@ export const SAMPLE_MCQ_QUESTIONS: McqQuestion[] = [
 		difficulty: "medium",
 		source: "Practical guide to building agents.pdf",
 		week: "Week 2",
+		topic: "Agent Systems",
+		timesSeen: 0,
+		timesCorrect: 0,
+		timesIncorrect: 0,
+		averageResponseTime: 0,
 	},
 	{
 		id: "2",
@@ -36,6 +41,11 @@ export const SAMPLE_MCQ_QUESTIONS: McqQuestion[] = [
 		difficulty: "easy",
 		source: "Practical guide to building agents.pdf",
 		week: "Week 2",
+		topic: "Agent Systems",
+		timesSeen: 0,
+		timesCorrect: 0,
+		timesIncorrect: 0,
+		averageResponseTime: 0,
 	},
 	{
 		id: "3",
@@ -52,6 +62,11 @@ export const SAMPLE_MCQ_QUESTIONS: McqQuestion[] = [
 		difficulty: "medium",
 		source: "Neural Networks Fundamentals.pdf",
 		week: "Week 1",
+		topic: "Neural Networks",
+		timesSeen: 0,
+		timesCorrect: 0,
+		timesIncorrect: 0,
+		averageResponseTime: 0,
 	},
 	{
 		id: "4",
@@ -68,6 +83,11 @@ export const SAMPLE_MCQ_QUESTIONS: McqQuestion[] = [
 		difficulty: "easy",
 		source: "Using design thinking to solve everyday problem.pdf",
 		week: "Week 3",
+		topic: "Design Thinking",
+		timesSeen: 0,
+		timesCorrect: 0,
+		timesIncorrect: 0,
+		averageResponseTime: 0,
 	},
 	{
 		id: "5",
@@ -84,6 +104,11 @@ export const SAMPLE_MCQ_QUESTIONS: McqQuestion[] = [
 		difficulty: "medium",
 		source: "Advanced AI Architectures.pdf",
 		week: "Week 4",
+		topic: "Machine Learning",
+		timesSeen: 0,
+		timesCorrect: 0,
+		timesIncorrect: 0,
+		averageResponseTime: 0,
 	},
 	{
 		id: "6",
@@ -100,6 +125,11 @@ export const SAMPLE_MCQ_QUESTIONS: McqQuestion[] = [
 		difficulty: "medium",
 		source: "Neural Networks Fundamentals.pdf",
 		week: "Week 1",
+		topic: "Neural Networks",
+		timesSeen: 0,
+		timesCorrect: 0,
+		timesIncorrect: 0,
+		averageResponseTime: 0,
 	},
 	{
 		id: "7",
@@ -116,6 +146,11 @@ export const SAMPLE_MCQ_QUESTIONS: McqQuestion[] = [
 		difficulty: "hard",
 		source: "Neural Networks Fundamentals.pdf",
 		week: "Week 1",
+		topic: "Neural Networks",
+		timesSeen: 0,
+		timesCorrect: 0,
+		timesIncorrect: 0,
+		averageResponseTime: 0,
 	},
 	{
 		id: "8",
@@ -132,6 +167,11 @@ export const SAMPLE_MCQ_QUESTIONS: McqQuestion[] = [
 		difficulty: "easy",
 		source: "Practical guide to building LLMs.pdf",
 		week: "Week 2",
+		topic: "Large Language Models",
+		timesSeen: 0,
+		timesCorrect: 0,
+		timesIncorrect: 0,
+		averageResponseTime: 0,
 	},
 	{
 		id: "9",
@@ -148,6 +188,11 @@ export const SAMPLE_MCQ_QUESTIONS: McqQuestion[] = [
 		difficulty: "medium",
 		source: "Neural Networks Fundamentals.pdf",
 		week: "Week 1",
+		topic: "Neural Networks",
+		timesSeen: 0,
+		timesCorrect: 0,
+		timesIncorrect: 0,
+		averageResponseTime: 0,
 	},
 	{
 		id: "10",
@@ -164,5 +209,10 @@ export const SAMPLE_MCQ_QUESTIONS: McqQuestion[] = [
 		difficulty: "easy",
 		source: "Practical guide to building LLMs.pdf",
 		week: "Week 2",
+		topic: "Large Language Models",
+		timesSeen: 0,
+		timesCorrect: 0,
+		timesIncorrect: 0,
+		averageResponseTime: 0,
 	},
 ];

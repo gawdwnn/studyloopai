@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
-import type { OpenQuestionSessionConfig } from "@/lib/types/learning-session";
+import type { OpenQuestionConfig } from "@/lib/stores/open-question-session/types";
 import { XIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -19,7 +19,7 @@ interface OpenQuestion {
 
 type OpenQuestionQuizViewProps = {
 	questions: OpenQuestion[];
-	config: OpenQuestionSessionConfig;
+	config: OpenQuestionConfig;
 	onQuestionAnswer: (questionId: string, userAnswer: string | null, timeSpent: number) => void;
 	onEndSession: (totalTime: number) => void;
 	onClose: () => void;

@@ -83,7 +83,6 @@ export default function NotesPage() {
     (selectedCourseId &&
       (isLoadingNotes || (selectedWeekId && isLoadingWeekNotes)));
 
-  // Enhanced empty state for when no courses exist
   if (!isLoading && courses.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)] text-center">

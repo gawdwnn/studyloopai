@@ -1,7 +1,7 @@
 // Sample Open Questions data for development and testing
 // In production, this would be replaced with data from the database
 
-import type { OpenQuestion } from "@/lib/types/learning-session";
+import type { OpenQuestion } from "@/lib/stores/open-question-session/types";
 
 export const SAMPLE_OPEN_QUESTIONS: OpenQuestion[] = [
 	{
@@ -13,6 +13,12 @@ export const SAMPLE_OPEN_QUESTIONS: OpenQuestion[] = [
 		difficulty: "medium",
 		source: "Practical guide to building agents.pdf",
 		week: "Week 2",
+		topic: "Agent Systems",
+		timesSeen: 0,
+		timesAnswered: 0,
+		averageScore: 0,
+		averageWordCount: 0,
+		averageResponseTime: 0,
 	},
 	{
 		id: "2",
@@ -23,6 +29,12 @@ export const SAMPLE_OPEN_QUESTIONS: OpenQuestion[] = [
 		difficulty: "easy",
 		source: "Practical guide to building agents.pdf",
 		week: "Week 2",
+		topic: "Agent Systems",
+		timesSeen: 0,
+		timesAnswered: 0,
+		averageScore: 0,
+		averageWordCount: 0,
+		averageResponseTime: 0,
 	},
 	{
 		id: "3",
@@ -33,6 +45,12 @@ export const SAMPLE_OPEN_QUESTIONS: OpenQuestion[] = [
 		difficulty: "medium",
 		source: "Neural Networks Fundamentals.pdf",
 		week: "Week 1",
+		topic: "General",
+		timesSeen: 0,
+		timesAnswered: 0,
+		averageScore: 0,
+		averageWordCount: 0,
+		averageResponseTime: 0,
 	},
 	{
 		id: "4",
@@ -43,6 +61,12 @@ export const SAMPLE_OPEN_QUESTIONS: OpenQuestion[] = [
 		difficulty: "easy",
 		source: "Using design thinking to solve everyday problem.pdf",
 		week: "Week 3",
+		topic: "Design Thinking",
+		timesSeen: 0,
+		timesAnswered: 0,
+		averageScore: 0,
+		averageWordCount: 0,
+		averageResponseTime: 0,
 	},
 	{
 		id: "5",
@@ -53,6 +77,12 @@ export const SAMPLE_OPEN_QUESTIONS: OpenQuestion[] = [
 		difficulty: "medium",
 		source: "Advanced AI Architectures.pdf",
 		week: "Week 4",
+		topic: "General",
+		timesSeen: 0,
+		timesAnswered: 0,
+		averageScore: 0,
+		averageWordCount: 0,
+		averageResponseTime: 0,
 	},
 	{
 		id: "6",
@@ -63,6 +93,12 @@ export const SAMPLE_OPEN_QUESTIONS: OpenQuestion[] = [
 		difficulty: "hard",
 		source: "Neural Networks Fundamentals.pdf",
 		week: "Week 1",
+		topic: "General",
+		timesSeen: 0,
+		timesAnswered: 0,
+		averageScore: 0,
+		averageWordCount: 0,
+		averageResponseTime: 0,
 	},
 	{
 		id: "7",
@@ -73,6 +109,12 @@ export const SAMPLE_OPEN_QUESTIONS: OpenQuestion[] = [
 		difficulty: "hard",
 		source: "Neural Networks Fundamentals.pdf",
 		week: "Week 1",
+		topic: "General",
+		timesSeen: 0,
+		timesAnswered: 0,
+		averageScore: 0,
+		averageWordCount: 0,
+		averageResponseTime: 0,
 	},
 	{
 		id: "8",
@@ -83,6 +125,12 @@ export const SAMPLE_OPEN_QUESTIONS: OpenQuestion[] = [
 		difficulty: "easy",
 		source: "Practical guide to building LLMs.pdf",
 		week: "Week 2",
+		topic: "General",
+		timesSeen: 0,
+		timesAnswered: 0,
+		averageScore: 0,
+		averageWordCount: 0,
+		averageResponseTime: 0,
 	},
 	{
 		id: "9",
@@ -93,6 +141,12 @@ export const SAMPLE_OPEN_QUESTIONS: OpenQuestion[] = [
 		difficulty: "medium",
 		source: "Neural Networks Fundamentals.pdf",
 		week: "Week 1",
+		topic: "General",
+		timesSeen: 0,
+		timesAnswered: 0,
+		averageScore: 0,
+		averageWordCount: 0,
+		averageResponseTime: 0,
 	},
 	{
 		id: "10",
@@ -103,5 +157,11 @@ export const SAMPLE_OPEN_QUESTIONS: OpenQuestion[] = [
 		difficulty: "easy",
 		source: "Practical guide to building LLMs.pdf",
 		week: "Week 2",
+		topic: "General",
+		timesSeen: 0,
+		timesAnswered: 0,
+		averageScore: 0,
+		averageWordCount: 0,
+		averageResponseTime: 0,
 	},
 ];
