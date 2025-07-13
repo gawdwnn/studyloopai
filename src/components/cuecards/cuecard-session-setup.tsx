@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCourseWeeks } from "@/hooks/use-course-week";
+import { useQueryState } from "@/hooks/use-query-state";
 import type {
   CuecardConfig,
   CuecardMode,
@@ -32,7 +33,7 @@ import type {
   PracticeMode,
 } from "@/lib/stores/cuecard-session/types";
 import { X } from "lucide-react";
-import { useState } from "react";
+import { useEffect } from "react";
 
 type Course = {
   id: string;
@@ -51,19 +52,34 @@ export function CuecardSessionSetup({
   onStartSession,
   onClose,
 }: CuecardSessionSetupProps) {
-  const [selectedCourse, setSelectedCourse] = useState<string>(
-    courses.length > 0 ? courses[0].id : ""
-  );
+  const { searchParams, setQueryState } = useQueryState();
+
+  // Initialize state from URL or defaults
+  const selectedCourse =
+    searchParams.get("courseId") || (courses.length > 0 ? courses[0].id : "");
+  const selectedWeek = searchParams.get("week") || "all-weeks";
+  const selectedMode = (searchParams.get("mode") as CuecardMode) || "both";
+  const cardCount = searchParams.get("count") || "20";
+  const difficulty =
+    (searchParams.get("difficulty") as DifficultyLevel) || "mixed";
+  const focus = (searchParams.get("focus") as FocusType) || "tailored-for-me";
+  const practiceMode =
+    (searchParams.get("practiceMode") as PracticeMode) || "practice";
 
   const { data: weeks = [], isLoading: loadingWeeks } =
     useCourseWeeks(selectedCourse);
 
-  const [selectedWeek, setSelectedWeek] = useState<string>("all-weeks");
-  const [selectedMode, setSelectedMode] = useState<CuecardMode>("both");
-  const [cardCount, setCardCount] = useState<string>("20");
-  const [difficulty, setDifficulty] = useState<DifficultyLevel | "">("");
-  const [focus, setFocus] = useState<FocusType>("tailored-for-me");
-  const [practiceMode, setPracticeMode] = useState<PracticeMode>("practice");
+  // When selectedCourse changes, if the selectedWeek is not in the new list of weeks, reset it.
+  useEffect(() => {
+    if (
+      !loadingWeeks &&
+      weeks.length > 0 &&
+      selectedWeek !== "all-weeks" &&
+      !weeks.some((w) => w.id === selectedWeek)
+    ) {
+      setQueryState({ week: "all-weeks" });
+    }
+  }, [weeks, selectedWeek, loadingWeeks, setQueryState]);
 
   const handleStartSession = () => {
     if (!selectedCourse) {
@@ -73,7 +89,7 @@ export function CuecardSessionSetup({
     const config: CuecardConfig = {
       courseId: selectedCourse,
       weeks: selectedWeek === "all-weeks" ? [] : [selectedWeek],
-      difficulty: difficulty || "mixed",
+      difficulty: difficulty,
       focus: focus,
       practiceMode: practiceMode,
       cardCount: Number.parseInt(cardCount),
@@ -121,7 +137,10 @@ export function CuecardSessionSetup({
             <Label htmlFor="course-select" className="text-sm font-medium">
               Select Course
             </Label>
-            <Select value={selectedCourse} onValueChange={setSelectedCourse}>
+            <Select
+              value={selectedCourse}
+              onValueChange={(value) => setQueryState({ courseId: value })}
+            >
               <SelectTrigger className="h-12 w-full">
                 <SelectValue placeholder="Choose a course" />
               </SelectTrigger>
@@ -142,7 +161,7 @@ export function CuecardSessionSetup({
             </Label>
             <Select
               value={selectedWeek}
-              onValueChange={setSelectedWeek}
+              onValueChange={(value) => setQueryState({ week: value })}
               disabled={loadingWeeks}
             >
               <SelectTrigger className="h-12 w-full">
@@ -174,8 +193,8 @@ export function CuecardSessionSetup({
                   <div className="space-y-2">
                     <Select
                       value={difficulty}
-                      onValueChange={(v) =>
-                        setDifficulty(v as DifficultyLevel | "")
+                      onValueChange={(value) =>
+                        setQueryState({ difficulty: value })
                       }
                     >
                       <SelectTrigger className="h-12 w-full">
@@ -192,7 +211,10 @@ export function CuecardSessionSetup({
 
                   {/* Number of Cards */}
                   <div className="space-y-2">
-                    <Select value={cardCount} onValueChange={setCardCount}>
+                    <Select
+                      value={cardCount}
+                      onValueChange={(value) => setQueryState({ count: value })}
+                    >
                       <SelectTrigger className="h-12 w-full">
                         <SelectValue />
                       </SelectTrigger>
@@ -212,7 +234,7 @@ export function CuecardSessionSetup({
                   <div className="space-y-2">
                     <Select
                       value={focus}
-                      onValueChange={(v) => setFocus(v as FocusType)}
+                      onValueChange={(value) => setQueryState({ focus: value })}
                     >
                       <SelectTrigger className="h-12 w-full">
                         <SelectValue />
@@ -245,81 +267,74 @@ export function CuecardSessionSetup({
                   <div className="space-y-2">
                     <Select
                       value={selectedMode}
-                      onValueChange={(v) => setSelectedMode(v as CuecardMode)}
+                      onValueChange={(value) => setQueryState({ mode: value })}
                     >
                       <SelectTrigger className="h-12 w-full">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="keywords">Keywords only</SelectItem>
-                        <SelectItem value="definitions">
-                          Definitions only
-                        </SelectItem>
-                        <SelectItem value="both">
-                          Both keywords and definitions
+                        <SelectItem value="both">Both</SelectItem>
+                        <SelectItem value="term-first">Term First</SelectItem>
+                        <SelectItem value="definition-first">
+                          Definition First
                         </SelectItem>
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-muted-foreground">
-                      Select card mode
+                      Choose which side of the card to see first.
                     </p>
                   </div>
 
-                  {/* Practice/Exam Mode */}
-                  <div className="space-y-4">
-                    <RadioGroup
-                      value={practiceMode}
-                      onValueChange={(v) => setPracticeMode(v as PracticeMode)}
-                      className="flex gap-8"
-                    >
-                      <div className="flex flex-col space-y-1">
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="practice" id="practice" />
-                          <Label htmlFor="practice" className="font-medium">
-                            Practice Mode
-                          </Label>
-                        </div>
-                        <p className="text-xs text-muted-foreground ml-6">
-                          Get immediate feedback on cards.
-                        </p>
-                      </div>
-                      <div className="flex flex-col space-y-1">
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="exam" id="exam" />
-                          <Label htmlFor="exam" className="font-medium">
-                            Exam Mode
-                          </Label>
-                        </div>
-                        <p className="text-xs text-muted-foreground ml-6">
-                          Review all answers at the end.
-                        </p>
-                      </div>
-                    </RadioGroup>
-                  </div>
+                  {/* Practice Mode Selection */}
+                  <RadioGroup
+                    value={practiceMode}
+                    onValueChange={(value) =>
+                      setQueryState({ practiceMode: value })
+                    }
+                    className="grid grid-cols-2 gap-4"
+                  >
+                    <div>
+                      <RadioGroupItem
+                        value="practice"
+                        id="practice"
+                        className="peer sr-only"
+                      />
+                      <Label
+                        htmlFor="practice"
+                        className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                      >
+                        Practice
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Get instant feedback.
+                      </p>
+                    </div>
+                    <div>
+                      <RadioGroupItem
+                        value="exam"
+                        id="exam"
+                        className="peer sr-only"
+                      />
+                      <Label
+                        htmlFor="exam"
+                        className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                      >
+                        Exam
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        See results at the end.
+                      </p>
+                    </div>
+                  </RadioGroup>
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
           </div>
         </CardContent>
-        <CardFooter className="flex flex-col items-center space-y-4 pt-6">
-          <p className="text-sm text-muted-foreground">
-            Your session will contain {cardCount} unique cue cards
-          </p>
-          <div className="bg-accent/50 border border-accent rounded-lg p-4 max-w-2xl text-center">
-            <p className="text-sm text-accent-foreground">
-              <strong>Spaced Repetition:</strong> Cue cards use spaced
-              repetition, prioritizing cards you get wrong to focus on areas
-              you're struggling with, rather than those you've mastered. This
-              helps maximize your learning efficiency.
-            </p>
-          </div>
-          <Button
-            size="lg"
-            onClick={handleStartSession}
-            className="bg-primary text-primary-foreground hover:bg-primary/90 px-8"
-            disabled={!selectedCourse}
-          >
-            Start
+
+        <CardFooter className="px-8 pb-8">
+          <Button className="w-full h-12" onClick={handleStartSession}>
+            Start Session
           </Button>
         </CardFooter>
       </Card>

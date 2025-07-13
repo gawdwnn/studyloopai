@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCourseWeeks } from "@/hooks/use-course-week";
+import { useQueryState } from "@/hooks/use-query-state";
 import type {
   DifficultyLevel,
   FocusType,
@@ -31,7 +32,7 @@ import type {
   PracticeMode,
 } from "@/lib/stores/open-question-session/types";
 import { XIcon } from "lucide-react";
-import { useState } from "react";
+import { useEffect } from "react";
 
 type Course = {
   id: string;
@@ -50,17 +51,33 @@ export function OpenQuestionSessionSetup({
   onStartSession,
   onClose,
 }: OpenQuestionSessionSetupProps) {
-  const [selectedCourse, setSelectedCourse] = useState<string>(
-    courses.length > 0 ? courses[0].id : ""
-  );
+  const { searchParams, setQueryState } = useQueryState();
+
+  // Initialize state from URL or defaults
+  const selectedCourse =
+    searchParams.get("courseId") || (courses.length > 0 ? courses[0].id : "");
+  const selectedWeek = searchParams.get("week") || "all-weeks";
+  const numQuestions = searchParams.get("count") || "5";
+  const difficulty =
+    (searchParams.get("difficulty") as DifficultyLevel) || "mixed";
+  const focus = (searchParams.get("focus") as FocusType) || "tailored-for-me";
+  const practiceMode =
+    (searchParams.get("practiceMode") as PracticeMode) || "practice";
+
   const { data: weeks = [], isLoading: loadingWeeks } =
     useCourseWeeks(selectedCourse);
 
-  const [selectedWeek, setSelectedWeek] = useState<string>("all-weeks");
-  const [difficulty, setDifficulty] = useState<DifficultyLevel | "">("");
-  const [numQuestions, setNumQuestions] = useState<string>("5");
-  const [focus, setFocus] = useState<FocusType>("tailored-for-me");
-  const [practiceMode, setPracticeMode] = useState<PracticeMode>("practice");
+  // When selectedCourse changes, if the selectedWeek is not in the new list of weeks, reset it.
+  useEffect(() => {
+    if (
+      !loadingWeeks &&
+      weeks.length > 0 &&
+      selectedWeek !== "all-weeks" &&
+      !weeks.some((w) => w.id === selectedWeek)
+    ) {
+      setQueryState({ week: "all-weeks" });
+    }
+  }, [weeks, selectedWeek, loadingWeeks, setQueryState]);
 
   const handleStartSession = () => {
     if (!selectedCourse) {
@@ -70,7 +87,7 @@ export function OpenQuestionSessionSetup({
     const config: OpenQuestionConfig = {
       courseId: selectedCourse,
       weeks: selectedWeek === "all-weeks" ? [] : [selectedWeek],
-      difficulty: difficulty || "mixed",
+      difficulty: difficulty,
       focus,
       practiceMode,
       numQuestions: Number.parseInt(numQuestions),
@@ -111,7 +128,7 @@ export function OpenQuestionSessionSetup({
                 </Label>
                 <Select
                   value={selectedCourse}
-                  onValueChange={setSelectedCourse}
+                  onValueChange={(value) => setQueryState({ courseId: value })}
                 >
                   <SelectTrigger className="h-12 w-full">
                     <SelectValue placeholder="Choose a course" />
@@ -133,7 +150,7 @@ export function OpenQuestionSessionSetup({
                 </Label>
                 <Select
                   value={selectedWeek}
-                  onValueChange={setSelectedWeek}
+                  onValueChange={(value) => setQueryState({ week: value })}
                   disabled={loadingWeeks}
                 >
                   <SelectTrigger className="h-12 w-full">
@@ -171,8 +188,8 @@ export function OpenQuestionSessionSetup({
                   <div className="space-y-2">
                     <Select
                       value={difficulty}
-                      onValueChange={(v) =>
-                        setDifficulty(v as DifficultyLevel | "")
+                      onValueChange={(value) =>
+                        setQueryState({ difficulty: value })
                       }
                     >
                       <SelectTrigger className="h-12 w-full">
@@ -191,7 +208,7 @@ export function OpenQuestionSessionSetup({
                   <div className="space-y-2">
                     <Select
                       value={numQuestions}
-                      onValueChange={setNumQuestions}
+                      onValueChange={(value) => setQueryState({ count: value })}
                     >
                       <SelectTrigger className="h-12 w-full">
                         <SelectValue />
@@ -212,7 +229,7 @@ export function OpenQuestionSessionSetup({
                   <div className="space-y-2">
                     <Select
                       value={focus}
-                      onValueChange={(v) => setFocus(v as FocusType)}
+                      onValueChange={(value) => setQueryState({ focus: value })}
                     >
                       <SelectTrigger className="h-12 w-full">
                         <SelectValue />
@@ -245,29 +262,41 @@ export function OpenQuestionSessionSetup({
                   <div className="space-y-4">
                     <RadioGroup
                       value={practiceMode}
-                      onValueChange={(v) => setPracticeMode(v as PracticeMode)}
-                      className="flex gap-8"
+                      onValueChange={(value) =>
+                        setQueryState({ practiceMode: value })
+                      }
+                      className="grid grid-cols-2 gap-4"
                     >
-                      <div className="flex flex-col space-y-1">
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="practice" id="practice" />
-                          <Label htmlFor="practice" className="font-medium">
-                            Practice Mode
-                          </Label>
-                        </div>
-                        <p className="text-xs text-muted-foreground ml-6">
-                          Show sample answers immediately
+                      <div>
+                        <RadioGroupItem
+                          value="practice"
+                          id="practice"
+                          className="peer sr-only"
+                        />
+                        <Label
+                          htmlFor="practice"
+                          className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                        >
+                          Practice
+                        </Label>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Get feedback as you go.
                         </p>
                       </div>
-                      <div className="flex flex-col space-y-1">
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="exam" id="exam" />
-                          <Label htmlFor="exam" className="font-medium">
-                            Exam Mode
-                          </Label>
-                        </div>
-                        <p className="text-xs text-muted-foreground ml-6">
-                          Show sample answers after session
+                      <div>
+                        <RadioGroupItem
+                          value="exam"
+                          id="exam"
+                          className="peer sr-only"
+                        />
+                        <Label
+                          htmlFor="exam"
+                          className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                        >
+                          Exam
+                        </Label>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          See results at the end.
                         </p>
                       </div>
                     </RadioGroup>
@@ -277,25 +306,13 @@ export function OpenQuestionSessionSetup({
             </Accordion>
           </div>
         </CardContent>
-        <CardFooter className="flex flex-col items-center space-y-4 pt-6">
-          <p className="text-sm text-muted-foreground">
-            Your session will contain {numQuestions} questions
-          </p>
-          <div className="bg-accent/50 border border-accent rounded-lg p-4 max-w-2xl text-center">
-            <p className="text-sm text-accent-foreground">
-              <strong>AI Evaluation:</strong> Your answers will be assessed by
-              AI based on factual correctness, logical structure, depth of
-              insight, and supporting evidence. This helps provide comprehensive
-              feedback on your understanding and reasoning skills.
-            </p>
-          </div>
+        <CardFooter className="px-8 pb-8">
           <Button
-            size="lg"
+            className="w-full h-12"
             onClick={handleStartSession}
-            className="bg-primary text-primary-foreground hover:bg-primary/90 px-8"
-            disabled={!selectedCourse}
+            disabled={courses.length === 0}
           >
-            Start
+            Start Session
           </Button>
         </CardFooter>
       </Card>

@@ -1,8 +1,7 @@
 "use client";
 
 import { AlertCircle, FilePlus2 } from "lucide-react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
 import { CourseSelectorButton } from "@/components/notes/course-selector-button";
 import { MarkdownRenderer } from "@/components/notes/markdown-renderer";
@@ -16,14 +15,12 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUserCourses } from "@/hooks/use-courses";
 import { type GoldenNote, type Summary, useNotesData } from "@/hooks/use-notes";
+import { useQueryState } from "@/hooks/use-query-state";
 import { handleApiError, shouldShowRetry } from "@/lib/utils/error-handling";
 import Link from "next/link";
 
 export default function NotesPage() {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-
+  const { searchParams, setQueryState } = useQueryState();
   const { data: courses = [], isLoading: isLoadingCourses } = useUserCourses();
 
   const selectedCourseId = useMemo(
@@ -39,21 +36,12 @@ export default function NotesPage() {
     [searchParams]
   );
 
-  const updateQueryParam = useCallback(
-    (key: string, value: string | number) => {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set(key, String(value));
-      router.push(`${pathname}?${params.toString()}`);
-    },
-    [pathname, router, searchParams]
-  );
-
   // Auto-select first course if none is selected
   useEffect(() => {
     if (!selectedCourseId && courses.length > 0) {
-      updateQueryParam("courseId", courses[0].id);
+      setQueryState({ courseId: courses[0].id });
     }
-  }, [courses, selectedCourseId, updateQueryParam]);
+  }, [courses, selectedCourseId, setQueryState]);
 
   // Initially fetch with empty weekId to get all weeks
   const {
@@ -119,14 +107,14 @@ export default function NotesPage() {
       {/* Toolbar with course selector and actions */}
       <div className="flex items-center justify-between">
         <CourseSelectorButton
-          onCourseSelect={(id) => updateQueryParam("courseId", id)}
+          onCourseSelect={(id) => setQueryState({ courseId: id, week: 1 })}
           selectedCourseId={selectedCourseId}
         />
 
         {selectedCourseId && (
           <NotesToolbar
             activeTab={activeTab}
-            onTabChange={(tab) => updateQueryParam("tab", tab)}
+            onTabChange={(tab) => setQueryState({ tab })}
             goldenNotes={goldenNotes}
             summaries={summaries}
             courseName={selectedCourse?.name}
@@ -153,7 +141,7 @@ export default function NotesPage() {
               weekNumber: w.weekNumber,
               title: w.materialTitle,
             }))}
-            onWeekSelect={(week) => updateQueryParam("week", week)}
+            onWeekSelect={(week) => setQueryState({ week })}
             selectedWeek={selectedWeek}
           />
 
@@ -192,7 +180,7 @@ export default function NotesPage() {
               ) : (
                 <Tabs
                   value={activeTab}
-                  onValueChange={(tab) => updateQueryParam("tab", tab)}
+                  onValueChange={(tab) => setQueryState({ tab })}
                   className="w-full"
                 >
                   <TabsList>
