@@ -26,7 +26,6 @@ import {
 	BrainCog,
 	Calendar,
 	ChevronDown,
-	FileQuestion,
 	FileText,
 	HelpCircle,
 	Home,
@@ -69,19 +68,24 @@ const routes: RouteItem[] = [
 		href: "/dashboard/course-materials",
 	},
 	{
+		label: "Notes",
+		href: "/dashboard/adaptive-learning/notes",
+		icon: FileText,
+	},
+	{
 		label: "Adaptive Learning",
 		icon: Brain,
 		href: "/dashboard/adaptive-learning",
 		subItems: [
 			{
-				label: "Notes",
-				href: "/dashboard/adaptive-learning/notes",
-				icon: FileText,
+				label: "Multiple Choice",
+				href: "/dashboard/adaptive-learning/multiple-choice",
+				icon: HelpCircle,
 			},
 			{
-				label: "Quizzes",
-				href: "/dashboard/adaptive-learning/quizzes",
-				icon: FileQuestion,
+				label: "Open Questions",
+				href: "/dashboard/adaptive-learning/open-questions",
+				icon: PenTool,
 			},
 			{
 				label: "Cue Cards",
@@ -89,16 +93,16 @@ const routes: RouteItem[] = [
 				icon: BookOpenCheck,
 			},
 			{
-				label: "MCQs",
-				href: "/dashboard/adaptive-learning/multiple-choice",
-				icon: HelpCircle,
-			},
-			{
-				label: "Open Ended Questions",
-				href: "/dashboard/adaptive-learning/open-questions",
-				icon: PenTool,
+				label: "Gap Assessment",
+				href: "/dashboard/adaptive-learning/gap-assessment",
+				icon: BookOpenCheck,
 			},
 		],
+	},
+	{
+		label: "Feedback",
+		icon: MessageSquare,
+		href: "/dashboard/feedback",
 	},
 	{
 		label: "Ask AI",
@@ -108,11 +112,6 @@ const routes: RouteItem[] = [
 ];
 
 const bottomRoutes: RouteItem[] = [
-	{
-		label: "Feedback",
-		icon: MessageSquare,
-		href: "/dashboard/feedback",
-	},
 	{
 		label: "Settings",
 		icon: Settings,
