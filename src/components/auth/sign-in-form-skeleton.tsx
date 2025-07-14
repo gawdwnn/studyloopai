@@ -17,7 +17,6 @@ export function SignInFormSkeleton() {
           <Skeleton className="h-[1px] w-full" />
         </div>
         <div className="relative flex justify-center text-xs uppercase">
-          {/* This empty span with background is to cover the skeleton line */}
           <span className="bg-background px-2 text-transparent">
             Or continue with email
           </span>

@@ -538,9 +538,6 @@ export const generationConfigs = pgTable(
 		unique("unique_user_preference").on(table.userId, table.configSource),
 		unique("unique_course_default").on(table.courseId, table.configSource),
 		unique("unique_week_override").on(table.weekId, table.configSource),
-
-		// SQL CHECK constraints for scope validation
-		// Note: These will be added in the migration file as Drizzle doesn't support CHECK constraints yet
 	]
 );
 
@@ -643,21 +640,14 @@ export const users = pgTable(
 		createdAt: timestamp("created_at").defaultNow().notNull(),
 		updatedAt: timestamp("updated_at").defaultNow().notNull(),
 		stripeCustomerId: varchar("stripe_customer_id", { length: 255 }),
-		// signupStep removed - auth flow simplified to magic link + OAuth only
 		country: varchar({ length: 100 }),
-
-		// Post-auth onboarding tracking (optional)
 		onboardingCompleted: boolean("onboarding_completed").default(false).notNull(),
 		onboardingSkipped: boolean("onboarding_skipped").default(false).notNull(),
-
-		// Future: Institution relationship for institutional scaling
-		institutionId: uuid("institution_id"), // References institutions table
+		institutionId: uuid("institution_id"),
 	},
 	(table) => [
 		unique("users_email_unique").on(table.email),
 		unique("users_stripe_customer_id_unique").on(table.stripeCustomerId),
-
-		// Future: Institution foreign key
 		foreignKey({
 			columns: [table.institutionId],
 			foreignColumns: [institutions.id],
