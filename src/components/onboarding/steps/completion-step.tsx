@@ -83,7 +83,7 @@ export function CompletionStep() {
 					className="space-y-2"
 				>
 					<h2 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-						Welcome to StudyLoop!
+						Welcome to StudyLoopAI!
 					</h2>
 					<p className="text-lg text-muted-foreground max-w-md mx-auto">
 						{hasProfile && `Welcome ${profileData.firstName}! `}
@@ -146,7 +146,7 @@ export function CompletionStep() {
 				<h3 className="text-sm font-medium text-center text-muted-foreground">What's Next?</h3>
 
 				<div className="grid grid-cols-1 gap-3">
-					{nextSteps.map((step, index) => (
+					{nextSteps.map((step) => (
 						<motion.div key={step.title} variants={itemVariants} whileHover={{ scale: 1.01 }}>
 							<Card className="hover:shadow-sm transition-shadow">
 								<CardContent className="p-4">

@@ -1,333 +1,194 @@
 "use client";
 
 import type { PlanId } from "@/lib/plans/types";
+import { useRouter } from "next/navigation";
+import { useCallback } from "react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 export interface OnboardingState {
-	// Flow control
-	isVisible: boolean;
-	currentStep: number;
-	totalSteps: number;
-	isSkippingAll: boolean;
+  // Flow control
+  isVisible: boolean;
+  currentStep: number;
+  totalSteps: number;
 
-	// Step completion tracking
-	completedSteps: Set<number>;
-	skippedSteps: Set<number>;
+  // Step completion tracking
+  completedSteps: Set<number>;
 
-	// User data collection
-	profileData: {
-		firstName?: string;
-		lastName?: string;
-		country?: string;
-		institution?: string;
-		studyGoals?: string[];
-		academicLevel?: string;
-	};
+  // User data collection
+  profileData: {
+    firstName?: string;
+    lastName?: string;
+    studyGoals?: string[];
+  };
 
-	preferences: {
-		notifications?: boolean;
-		emailUpdates?: boolean;
-		theme?: "light" | "dark" | "system";
-		studyReminders?: boolean;
-	};
-
-	planSelection: {
-		selectedPlan?: PlanId;
-		isSkipped: boolean;
-	};
-
-	// Progress tracking
-	startedAt?: string;
-	lastActiveStep?: number;
-	timeSpentPerStep: Record<number, number>;
+  planSelection: {
+    selectedPlan?: PlanId;
+  };
 }
 
 export interface OnboardingActions {
-	// Flow control
-	showOnboarding: () => void;
-	hideOnboarding: () => void;
-	nextStep: () => void;
-	previousStep: () => void;
-	goToStep: (step: number) => void;
-	skipCurrentStep: () => void;
-	skipAllRemaining: () => void;
-	restartOnboarding: () => void;
-	completeOnboarding: () => void;
-
-	// Data updates
-	updateProfileData: (data: Partial<OnboardingState["profileData"]>) => void;
-	updatePreferences: (prefs: Partial<OnboardingState["preferences"]>) => void;
-	selectPlan: (planId: PlanId) => void;
-	skipPlanSelection: () => void;
-
-	// Progress tracking
-	markStepCompleted: (step: number) => void;
-	markStepSkipped: (step: number) => void;
-	trackTimeOnStep: (step: number, timeMs: number) => void;
-
-	// Persistence
-	saveProgress: () => void;
-	clearOnboardingData: () => void;
+  showOnboarding: () => void;
+  hideOnboarding: () => void;
+  goToNextStep: () => void;
+  goToPreviousStep: () => void;
+  goToStep: (step: number) => void;
+  completeOnboarding: () => void;
+  updateProfileData: (data: Partial<OnboardingState["profileData"]>) => void;
+  getStepInfo: (step: number) => { title: string; slug: string };
+  markStepCompleted: (step: number) => void;
+  restartOnboarding: () => void;
 }
 
 export type OnboardingStore = OnboardingState & OnboardingActions;
 
-// Onboarding step definitions
 export const ONBOARDING_STEPS = {
-	WELCOME: 1,
-	PROFILE: 2,
-	STUDY_GOALS: 3,
-	PREFERENCES: 4,
-	PLAN_SELECTION: 5,
-	COMPLETION: 6,
+  WELCOME_PROFILE: 1,
+  PERSONALIZATION: 2,
+  COMPLETION: 3,
 } as const;
 
 export const TOTAL_STEPS = Object.keys(ONBOARDING_STEPS).length;
 
-// Study goals options
-export const STUDY_GOALS = [
-	{ id: "exam_prep", label: "Exam Preparation", icon: "📝" },
-	{ id: "skill_building", label: "Skill Building", icon: "🎯" },
-	{ id: "career_advancement", label: "Career Advancement", icon: "🚀" },
-	{ id: "academic_research", label: "Academic Research", icon: "🔬" },
-	{ id: "personal_interest", label: "Personal Interest", icon: "💡" },
-	{ id: "certification", label: "Professional Certification", icon: "🏆" },
-] as const;
+export const STEP_SLUGS: Record<number, string> = {
+  [ONBOARDING_STEPS.WELCOME_PROFILE]: "welcome-profile",
+  [ONBOARDING_STEPS.PERSONALIZATION]: "personalization",
+  [ONBOARDING_STEPS.COMPLETION]: "completion",
+};
 
-// Academic level options
-export const ACADEMIC_LEVELS = [
-	{ id: "high_school", label: "High School" },
-	{ id: "undergraduate", label: "Undergraduate" },
-	{ id: "graduate", label: "Graduate" },
-	{ id: "postgraduate", label: "Postgraduate" },
-	{ id: "professional", label: "Professional" },
-	{ id: "other", label: "Other" },
+export const STUDY_GOALS = [
+  { id: "exam_prep", label: "Exam Preparation", icon: "📝" },
+  { id: "skill_building", label: "Skill Building", icon: "🎯" },
+  { id: "career_advancement", label: "Career Advancement", icon: "🚀" },
+  { id: "academic_research", label: "Academic Research", icon: "🔬" },
+  { id: "personal_interest", label: "Personal Interest", icon: "💡" },
+  { id: "certification", label: "Professional Certification", icon: "🏆" },
 ] as const;
 
 const initialState: OnboardingState = {
-	isVisible: false,
-	currentStep: ONBOARDING_STEPS.WELCOME,
-	totalSteps: TOTAL_STEPS,
-	isSkippingAll: false,
-	completedSteps: new Set(),
-	skippedSteps: new Set(),
-	profileData: {},
-	preferences: {
-		notifications: true,
-		emailUpdates: false,
-		theme: "system",
-		studyReminders: true,
-	},
-	planSelection: {
-		isSkipped: false,
-	},
-	timeSpentPerStep: {},
+  isVisible: false,
+  currentStep: ONBOARDING_STEPS.WELCOME_PROFILE,
+  totalSteps: TOTAL_STEPS,
+  completedSteps: new Set(),
+  profileData: {},
+  planSelection: {
+    selectedPlan: "free",
+  },
 };
 
 export const useOnboardingStore = create<OnboardingStore>()(
-	persist(
-		(set, get) => ({
-			...initialState,
+  persist(
+    (set, get) => ({
+      ...initialState,
 
-			// Flow control
-			showOnboarding: () => {
-				const now = new Date().toISOString();
-				set((state) => ({
-					isVisible: true,
-					startedAt: state.startedAt || now,
-					lastActiveStep: state.currentStep,
-				}));
-			},
+      showOnboarding: () => set({ isVisible: true, currentStep: 1 }),
+      hideOnboarding: () => set({ isVisible: false }),
 
-			hideOnboarding: () => {
-				set({ isVisible: false });
-			},
+      goToNextStep: () => {
+        const { currentStep, goToStep } = get();
+        if (currentStep < TOTAL_STEPS) {
+          goToStep(currentStep + 1);
+        }
+      },
 
-			nextStep: () => {
-				set((state) => {
-					const nextStep = Math.min(state.currentStep + 1, state.totalSteps);
-					return {
-						currentStep: nextStep,
-						lastActiveStep: nextStep,
-					};
-				});
-			},
+      goToPreviousStep: () => {
+        const { currentStep, goToStep } = get();
+        if (currentStep > 1) {
+          goToStep(currentStep - 1);
+        }
+      },
 
-			previousStep: () => {
-				set((state) => ({
-					currentStep: Math.max(state.currentStep - 1, 1),
-				}));
-			},
+      goToStep: (step) => set({ currentStep: step }),
 
-			goToStep: (step: number) => {
-				set((state) => ({
-					currentStep: Math.max(1, Math.min(step, state.totalSteps)),
-					lastActiveStep: step,
-				}));
-			},
+      completeOnboarding: () => {
+        set({ isVisible: false, currentStep: TOTAL_STEPS });
+      },
 
-			skipCurrentStep: () => {
-				const { currentStep, markStepSkipped, nextStep } = get();
-				markStepSkipped(currentStep);
-				nextStep();
-			},
+      updateProfileData: (data) =>
+        set((state) => ({
+          profileData: { ...state.profileData, ...data },
+        })),
 
-			skipAllRemaining: () => {
-				set((state) => {
-					const remainingSteps = new Set(state.skippedSteps);
-					for (let i = state.currentStep; i <= state.totalSteps; i++) {
-						remainingSteps.add(i);
-					}
-					return {
-						isSkippingAll: true,
-						skippedSteps: remainingSteps,
-						currentStep: state.totalSteps, // Go to completion
-					};
-				});
-			},
+      getStepInfo: (step) => {
+        const stepInfo: Record<number, { title: string; slug: string }> = {
+          [ONBOARDING_STEPS.WELCOME_PROFILE]: {
+            title: "Welcome & Profile",
+            slug: "welcome-profile",
+          },
+          [ONBOARDING_STEPS.PERSONALIZATION]: {
+            title: "Personalization",
+            slug: "personalization",
+          },
+          [ONBOARDING_STEPS.COMPLETION]: {
+            title: "Completion",
+            slug: "completion",
+          },
+        };
+        return (
+          stepInfo[step] || { title: "Unknown Step", slug: "welcome-profile" }
+        );
+      },
 
-			restartOnboarding: () => {
-				set({
-					...initialState,
-					isVisible: true,
-					startedAt: new Date().toISOString(),
-				});
-			},
+      markStepCompleted: (step) => {
+        set((state) => ({
+          completedSteps: new Set(state.completedSteps).add(step),
+        }));
+      },
 
-			completeOnboarding: () => {
-				set((state) => ({
-					isVisible: false,
-					completedSteps: new Set([...state.completedSteps, state.currentStep]),
-				}));
-			},
-
-			// Data updates
-			updateProfileData: (data) => {
-				set((state) => ({
-					profileData: { ...state.profileData, ...data },
-				}));
-			},
-
-			updatePreferences: (prefs) => {
-				set((state) => ({
-					preferences: { ...state.preferences, ...prefs },
-				}));
-			},
-
-			selectPlan: (planId) => {
-				set((state) => ({
-					planSelection: {
-						...state.planSelection,
-						selectedPlan: planId,
-						isSkipped: false,
-					},
-				}));
-			},
-
-			skipPlanSelection: () => {
-				set((state) => ({
-					planSelection: {
-						...state.planSelection,
-						isSkipped: true,
-					},
-				}));
-			},
-
-			// Progress tracking
-			markStepCompleted: (step) => {
-				set((state) => ({
-					completedSteps: new Set([...state.completedSteps, step]),
-				}));
-			},
-
-			markStepSkipped: (step) => {
-				set((state) => ({
-					skippedSteps: new Set([...state.skippedSteps, step]),
-				}));
-			},
-
-			trackTimeOnStep: (step, timeMs) => {
-				set((state) => ({
-					timeSpentPerStep: {
-						...state.timeSpentPerStep,
-						[step]: (state.timeSpentPerStep[step] || 0) + timeMs,
-					},
-				}));
-			},
-
-			// Persistence
-			saveProgress: () => {
-				// Auto-saved via zustand persist middleware
-			},
-
-			clearOnboardingData: () => {
-				set(initialState);
-			},
-		}),
-		{
-			name: "studyloop-onboarding",
-			// Only persist essential data, not UI state
-			partialize: (state) => ({
-				completedSteps: Array.from(state.completedSteps),
-				skippedSteps: Array.from(state.skippedSteps),
-				profileData: state.profileData,
-				preferences: state.preferences,
-				planSelection: state.planSelection,
-				startedAt: state.startedAt,
-				lastActiveStep: state.lastActiveStep,
-				timeSpentPerStep: state.timeSpentPerStep,
-			}),
-			// Rehydrate sets back to arrays
-			onRehydrateStorage: () => (state) => {
-				if (state) {
-					state.completedSteps = new Set(state.completedSteps as unknown as number[]);
-					state.skippedSteps = new Set(state.skippedSteps as unknown as number[]);
-				}
-			},
-		}
-	)
+      restartOnboarding: () => {
+        set({ ...initialState, isVisible: true });
+      },
+    }),
+    {
+      name: "onboarding-store",
+      storage: {
+        getItem: (name) => {
+          const str = localStorage.getItem(name);
+          if (!str) return null;
+          const { state, version } = JSON.parse(str);
+          return {
+            state: {
+              ...state,
+              completedSteps: new Set(state.completedSteps),
+            },
+            version,
+          };
+        },
+        setItem: (name, newValue) => {
+          const str = JSON.stringify({
+            state: {
+              ...newValue.state,
+              completedSteps: Array.from(newValue.state.completedSteps),
+            },
+            version: newValue.version,
+          });
+          localStorage.setItem(name, str);
+        },
+        removeItem: (name) => localStorage.removeItem(name),
+      },
+    }
+  )
 );
 
-// Helper hooks for specific onboarding logic
-export const useOnboardingProgress = () => {
-	const { completedSteps, skippedSteps, totalSteps, currentStep } = useOnboardingStore();
+export const useOnboardingNavigation = () => {
+  const router = useRouter();
+  const { goToStep, currentStep, totalSteps } = useOnboardingStore();
 
-	const completedCount = completedSteps.size;
-	const skippedCount = skippedSteps.size;
-	const progressPercentage = ((completedCount + skippedCount) / totalSteps) * 100;
-	const isStepCompleted = (step: number) => completedSteps.has(step);
-	const isStepSkipped = (step: number) => skippedSteps.has(step);
+  const navigateToStep = useCallback(
+    (step: number) => {
+      if (step > 0 && step <= totalSteps) {
+        goToStep(step);
+        router.push(`/onboarding/${STEP_SLUGS[step]}`);
+      }
+    },
+    [goToStep, router, totalSteps]
+  );
 
-	return {
-		completedCount,
-		skippedCount,
-		progressPercentage,
-		currentStep,
-		totalSteps,
-		isStepCompleted,
-		isStepSkipped,
-	};
+  return { navigateToStep, currentStep };
 };
 
-export const useOnboardingTrigger = () => {
-	const store = useOnboardingStore();
-
-	// Logic to determine if onboarding should be shown
-	const shouldShowOnboarding = () => {
-		const { completedSteps, skippedSteps, isSkippingAll } = store;
-
-		// Don't show if user skipped all or completed all steps
-		if (isSkippingAll || completedSteps.size + skippedSteps.size >= TOTAL_STEPS) {
-			return false;
-		}
-
-		// Show for new users or users who haven't completed onboarding
-		return completedSteps.size < 3; // Show until at least 3 steps are done
-	};
-
-	return {
-		shouldShowOnboarding,
-		triggerOnboarding: store.showOnboarding,
-	};
+export const useOnboardingProgress = () => {
+  return useOnboardingStore(
+    (state) => (state.currentStep / state.totalSteps) * 100
+  );
 };
