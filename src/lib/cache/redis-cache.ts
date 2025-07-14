@@ -1,9 +1,7 @@
 import { Redis } from "@upstash/redis";
 
 const CACHE_TTL_EMBEDDINGS = 7 * 24 * 60 * 60; // 7 days
-const CACHE_TTL_USER_AUTH = 15 * 60; // 15 minutes
 const CACHE_PREFIX_EMBEDDINGS = "embeddings:";
-const CACHE_PREFIX_USER_AUTH = "user_auth:";
 
 const createRedisClient = () => {
 	if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
@@ -94,73 +92,3 @@ export class EmbeddingCache {
 	}
 }
 
-export interface UserAuthData {
-	signup_step: number;
-	cached_at: number;
-}
-
-export class UserAuthCache {
-	private cache = redisInstance;
-
-	private getCacheKey(userId: string): string {
-		return `${CACHE_PREFIX_USER_AUTH}${userId}`;
-	}
-
-	async getUserAuthData(userId: string): Promise<UserAuthData | null> {
-		if (!this.cache) {
-			return null;
-		}
-
-		try {
-			const cachedValue = await this.cache.get(this.getCacheKey(userId));
-			if (!cachedValue) {
-				return null;
-			}
-
-			// Handle both string and object responses from Redis
-			let data: UserAuthData;
-			if (typeof cachedValue === "string") {
-				data = JSON.parse(cachedValue) as UserAuthData;
-			} else if (typeof cachedValue === "object" && cachedValue !== null) {
-				data = cachedValue as UserAuthData;
-			} else {
-				console.warn(`Unexpected cached value type for ${userId}:`, typeof cachedValue);
-				return null;
-			}
-
-			return data;
-		} catch (error) {
-			console.error(`Failed to get cached user auth data for ${userId}:`, error);
-			return null;
-		}
-	}
-
-	async setUserAuthData(userId: string, signupStep: number): Promise<void> {
-		if (!this.cache) {
-			return;
-		}
-
-		try {
-			const data: UserAuthData = {
-				signup_step: signupStep,
-				cached_at: Date.now(),
-			};
-
-			await this.cache.setex(this.getCacheKey(userId), CACHE_TTL_USER_AUTH, JSON.stringify(data));
-		} catch (error) {
-			console.error(`Failed to cache user auth data for ${userId}:`, error);
-		}
-	}
-
-	async invalidateUserAuthData(userId: string): Promise<void> {
-		if (!this.cache) {
-			return;
-		}
-
-		try {
-			await this.cache.del(this.getCacheKey(userId));
-		} catch (error) {
-			console.error(`Failed to invalidate user auth cache for ${userId}:`, error);
-		}
-	}
-}

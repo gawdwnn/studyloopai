@@ -5,8 +5,11 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { CommandPalette } from "@/components/command-palette";
 import { CommandPaletteTrigger } from "@/components/command-palette-trigger";
 import { FloatingChat } from "@/components/floating-chat";
+import { OnboardingModal } from "@/components/onboarding/onboarding-modal";
 import { SidebarStateManager } from "@/components/sidebar-state-manager";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { useOnboardingTrigger } from "@/lib/stores/onboarding-store";
+import { useEffect } from "react";
 
 interface DashboardLayoutClientProps {
 	children: React.ReactNode;
@@ -17,6 +20,20 @@ export function DashboardLayoutClient({
 	children,
 	defaultSidebarOpen,
 }: DashboardLayoutClientProps) {
+	const { shouldShowOnboarding, triggerOnboarding } = useOnboardingTrigger();
+
+	// Check if onboarding should be shown for new users
+	useEffect(() => {
+		if (shouldShowOnboarding()) {
+			// Small delay to let the dashboard load first
+			const timer = setTimeout(() => {
+				triggerOnboarding();
+			}, 1000);
+
+			return () => clearTimeout(timer);
+		}
+	}, [shouldShowOnboarding, triggerOnboarding]);
+
 	return (
 		<SidebarProvider defaultOpen={defaultSidebarOpen}>
 			<SidebarStateManager />
@@ -39,6 +56,7 @@ export function DashboardLayoutClient({
 			</div>
 			<CommandPalette />
 			<FloatingChat />
+			<OnboardingModal />
 			<SidebarStateManager />
 		</SidebarProvider>
 	);

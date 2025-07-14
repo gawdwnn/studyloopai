@@ -1,7 +1,5 @@
 "use server";
 
-import { UserAuthCache } from "@/lib/cache/redis-cache";
-import { SIGNUP_STEPS } from "@/lib/constants/auth";
 import { PLANS } from "@/lib/plans/config";
 import type { PlanId } from "@/lib/plans/types";
 import { FEATURE_IDS } from "@/lib/plans/types";
@@ -35,8 +33,7 @@ export async function createUserPlan(planId: PlanId, userId?: string) {
 		currentPeriodEnd.setFullYear(currentPeriodEnd.getFullYear() + 1);
 	}
 
-	// Use a transaction-like approach with proper error handling
-	// First, check if user already has an active plan to prevent duplicates
+	// Check if user already has an active plan
 	const { data: existingPlan } = await supabase
 		.from("user_plans")
 		.select("id")
@@ -45,65 +42,21 @@ export async function createUserPlan(planId: PlanId, userId?: string) {
 		.single();
 
 	if (existingPlan) {
-		// User already has an active plan, just update signup step
-		const { error: updateUserError } = await supabase
-			.from("users")
-			.update({ signup_step: SIGNUP_STEPS.COMPLETE, updated_at: new Date().toISOString() })
-			.eq("user_id", effectiveUserId);
-
-		if (updateUserError) {
-			throw new Error(`Failed to update user signup step: ${updateUserError.message}`);
-		}
-
-		// Update cache with new signup step
-		const authCache = new UserAuthCache();
-		await authCache.setUserAuthData(effectiveUserId, SIGNUP_STEPS.COMPLETE);
-
+		// User already has an active plan - no action needed
 		return;
 	}
 
-	// Create the user plan with correct column names
+	// Create the user plan
 	const { error: planError } = await supabase.from("user_plans").insert({
 		user_id: effectiveUserId,
 		plan_id: planId,
 		current_period_end: currentPeriodEnd?.toISOString() || null,
 		is_active: true,
-		// started_at, created_at, updated_at will use database defaults
 	});
 
 	if (planError) {
 		throw new Error(`Failed to create user plan: ${planError.message}`);
 	}
-
-	// Update user's signup step to complete
-	const { error: updateUserError } = await supabase
-		.from("users")
-		.update({ signup_step: SIGNUP_STEPS.COMPLETE, updated_at: new Date().toISOString() })
-		.eq("user_id", effectiveUserId);
-
-	if (updateUserError) {
-		// Critical: Plan was created but signup step update failed
-		// Attempt to rollback the plan creation
-		const { error: rollbackError } = await supabase
-			.from("user_plans")
-			.delete()
-			.eq("user_id", effectiveUserId)
-			.eq("plan_id", planId);
-
-		if (rollbackError) {
-			// Log the rollback failure but still throw the original error
-			console.error(
-				`Critical: Failed to rollback plan creation after signup step update failed. User ${effectiveUserId} may have orphaned plan.`,
-				rollbackError
-			);
-		}
-
-		throw new Error(`Failed to update user signup step: ${updateUserError.message}`);
-	}
-
-	// Update cache with new signup step
-	const authCache = new UserAuthCache();
-	await authCache.setUserAuthData(effectiveUserId, SIGNUP_STEPS.COMPLETE);
 
 	revalidatePath("/dashboard");
 }

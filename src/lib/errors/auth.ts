@@ -1,25 +1,38 @@
 import { AuthError } from "@supabase/supabase-js";
+import { RateLimitError } from "@/lib/rate-limit";
 
 export type AuthErrorType =
 	| "invalid_credentials"
 	| "email_not_confirmed"
 	| "email_not_verified"
 	| "invalid_email"
-	| "weak_password"
 	| "email_exists"
 	| "user_not_found"
 	| "network_error"
 	| "server_error"
 	| "too_many_requests"
+	| "rate_limit_exceeded"
 	| "unknown_error";
 
 export interface AuthErrorDetails {
 	type: AuthErrorType;
 	message: string;
 	field?: string;
+	resetTime?: number;
+	remainingAttempts?: number;
 }
 
 export function getAuthErrorMessage(error: unknown): AuthErrorDetails {
+	// Handle Rate Limit Error
+	if (error instanceof RateLimitError) {
+		return {
+			type: "rate_limit_exceeded",
+			message: error.message,
+			resetTime: error.resetTime,
+			remainingAttempts: error.remainingAttempts,
+		};
+	}
+
 	// Handle Supabase AuthError
 	if (error instanceof AuthError) {
 		// Use optional chaining for safer access
@@ -33,7 +46,7 @@ export function getAuthErrorMessage(error: unknown): AuthErrorDetails {
 				case "invalid_grant":
 					return {
 						type: "invalid_credentials",
-						message: "Invalid email or password.",
+						message: "Invalid email address or magic link expired.",
 						field: "email",
 					};
 				case "email_not_confirmed":
@@ -60,24 +73,12 @@ export function getAuthErrorMessage(error: unknown): AuthErrorDetails {
 						message: "Invalid email format.",
 						field: "email",
 					};
-				case "weak_password":
-					return {
-						type: "weak_password",
-						message: "Password is too weak. Please use a stronger password.",
-						field: "password",
-					};
 				case "email_exists":
 				case "user_already_exists":
 					return {
 						type: "email_exists",
 						message: "An account with this email already exists.",
 						field: "email",
-					};
-				case "same_password":
-					return {
-						type: "weak_password",
-						message: "New password must be different from the old one.",
-						field: "password",
 					};
 				case "otp_expired":
 					return {

@@ -1,43 +1,56 @@
 "use server";
 
-import { getServerClient } from "@/lib/supabase/server";
-
 import { getSiteUrl } from "@/lib/get-site-url";
-import type { PlanId } from "@/lib/plans/types";
-import type { SignUpFormData } from "@/lib/validations/auth";
+import { RateLimitError, rateLimiter } from "@/lib/rate-limit";
+import { getServerClient } from "@/lib/supabase/server";
+import type { MagicLinkFormData } from "@/lib/validations/auth";
 
-/**
- * Handles email signup with verification flow.
- * Creates user account and sends verification email.
- * User is NOT signed in after this action.
- */
-export async function emailSignUp(formData: SignUpFormData, planId: PlanId) {
-	const supabase = await getServerClient();
+export async function sendMagicLink(formData: MagicLinkFormData) {
+  const rateLimitResult = await rateLimiter.checkMagicLinkRateLimit(
+    formData.email
+  );
 
-	const {
-		data: { user },
-		error: signUpError,
-	} = await supabase.auth.signUp({
-		email: formData.email,
-		password: formData.password,
-		options: {
-			emailRedirectTo: `${getSiteUrl()}/auth/callback`,
-			data: {
-				first_name: formData.firstName,
-				last_name: formData.lastName,
-				country: formData.country,
-				selected_plan: planId,
-			},
-		},
-	});
+  if (!rateLimitResult.isAllowed) {
+    const resetMinutes = rateLimitResult.resetTime
+      ? Math.ceil((rateLimitResult.resetTime - Date.now()) / 60000)
+      : 5;
 
-	if (signUpError) {
-		throw signUpError;
-	}
+    throw new RateLimitError(
+      `Too many magic link requests. Please try again in ${resetMinutes} minute${resetMinutes !== 1 ? "s" : ""}.`,
+      rateLimitResult.remainingAttempts,
+      rateLimitResult.resetTime
+    );
+  }
 
-	if (!user) {
-		throw new Error("Could not sign up user.");
-	}
+  const supabase = await getServerClient();
 
-	return { user };
+  const { data, error } = await supabase.auth.signInWithOtp({
+    email: formData.email,
+    options: {
+      emailRedirectTo: `${getSiteUrl()}/auth/callback`,
+      shouldCreateUser: true,
+    },
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return {
+    success: true,
+    data,
+    remainingAttempts: rateLimitResult.remainingAttempts,
+  };
+}
+
+export async function signOut() {
+  const supabase = await getServerClient();
+
+  const { error } = await supabase.auth.signOut();
+
+  if (error) {
+    throw error;
+  }
+
+  return { success: true };
 }

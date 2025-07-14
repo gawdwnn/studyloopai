@@ -115,7 +115,7 @@ export function WhyChooseUsSection() {
 								size="lg"
 								asChild
 							>
-								<Link href="/auth/signup">Get Started Today</Link>
+								<Link href="/auth/signin">Get Started Today</Link>
 							</Button>
 
 							<p className="text-xs text-muted-foreground mt-4">

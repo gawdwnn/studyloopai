@@ -292,7 +292,7 @@ export function HomeNavbar() {
 										</Button>
 
 										<Button className="w-full mx-auto" asChild>
-											<Link href="/auth/signup" onClick={() => setIsMobileMenuOpen(false)}>
+											<Link href="/auth/signin" onClick={() => setIsMobileMenuOpen(false)}>
 												Get Started
 												<Zap className="ml-2 h-4 w-4" />
 											</Link>
@@ -320,7 +320,7 @@ export function HomeNavbar() {
 						onMouseEnter={() => setIsHovered(true)}
 						onMouseLeave={() => setIsHovered(false)}
 					>
-						<Link href="/auth/signup" className="flex items-center gap-1.5 sm:gap-2">
+						<Link href="/auth/signin" className="flex items-center gap-1.5 sm:gap-2">
 							<span>Get Started</span>
 							<Zap
 								className={`w-4 h-4 transition-transform duration-200 ${
