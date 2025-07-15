@@ -49,7 +49,7 @@ export function MagicLinkForm({
 		try {
 			await onSubmit(data);
 			setIsSubmitted(true);
-		} catch (err) {
+		} catch (_err) {
 			// Error handling is managed by parent component
 			setIsSubmitted(false);
 		}
@@ -121,7 +121,7 @@ export function MagicLinkForm({
 
 					<LoadingButton
 						type="submit"
-						className="w-full h-12 text-base"
+						className="w-full text-base"
 						loading={loading}
 						disabled={loading}
 					>

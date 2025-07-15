@@ -21,7 +21,7 @@ import {
   SidebarMenuSubItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { useAuth } from "@/hooks/use-auth";
+import { signOut } from "@/lib/actions/auth";
 import { cn } from "@/lib/utils";
 import {
   BookOpen,
@@ -40,7 +40,7 @@ import {
   User,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 
 interface RouteItem {
@@ -134,6 +134,7 @@ const bottomRoutes: RouteItem[] = [
 ];
 
 export function AppSidebar() {
+  const router = useRouter();
   const pathname = usePathname();
   const [openItems, setOpenItems] = useState<string[]>([]);
   const { setOpenMobile } = useSidebar();
@@ -151,8 +152,6 @@ export function AppSidebar() {
         : [...prev, href]
     );
   };
-
-  const { signOut } = useAuth();
 
   return (
     <Sidebar collapsible="icon">
@@ -310,7 +309,11 @@ export function AppSidebar() {
                       {route.label === "Sign Out" ? (
                         <button
                           type="button"
-                          onClick={signOut}
+                          onClick={async () => {
+                            closeMobileSidebar();
+                            await signOut();
+                            router.push("/auth/signin");
+                          }}
                           className="flex w-full items-center gap-2 text-left cursor-pointer"
                         >
                           <route.icon className="h-4 w-4" />

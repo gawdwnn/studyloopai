@@ -43,8 +43,8 @@ export function SignInForm() {
   return (
     <div className="mx-auto w-full max-w-md rounded-xl p-8 sm:p-10">
       <div className="text-center mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-2">
-          Welcome to StudyLoop
+        <h1 className="text-xl md:text-2xl font-bold text-foreground mb-2">
+          Welcome to StudyLoopAI
         </h1>
         <p className="text-sm md:text-base text-muted-foreground">
           Sign in to your account or create a new one
@@ -53,7 +53,7 @@ export function SignInForm() {
 
       {/* Google OAuth */}
       <div className="mb-6">
-        <GoogleSignInButton variant="signin" onError={setError} />
+        <GoogleSignInButton variant="signin" />
       </div>
 
       {/* Separator */}
