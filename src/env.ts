@@ -64,17 +64,23 @@ export const env = createEnv({
 	},
 
 	/**
-	 * Run in Edge Runtime
-	 * Skip validation in Edge Runtime
+	 * Skip validation during build time and Edge Runtime
+	 * This prevents build failures when environment variables aren't available
 	 */
-	skipValidation: !!process.env.SKIP_ENV_VALIDATION,
+	skipValidation: !!process.env.SKIP_ENV_VALIDATION || process.env.NODE_ENV === undefined,
 });
 
 // Export types for convenience
 export type Env = typeof env;
-export type ServerEnv = typeof env & {
-	[K in keyof typeof env]: K extends `NEXT_PUBLIC_${string}` ? never : (typeof env)[K];
+
+export type ServerEnv = {
+  [K in keyof typeof env as K extends `NEXT_PUBLIC_${string}`
+    ? never
+    : K]: (typeof env)[K];
 };
+
 export type ClientEnv = {
-	[K in keyof typeof env as K extends `NEXT_PUBLIC_${string}` ? K : never]: (typeof env)[K];
+  [K in keyof typeof env as K extends `NEXT_PUBLIC_${string}`
+    ? K
+    : never]: (typeof env)[K];
 };
