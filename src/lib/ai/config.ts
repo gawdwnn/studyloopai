@@ -1,11 +1,10 @@
+import { env } from "@/env";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createXai } from "@ai-sdk/xai";
 
-const xaiProvider = process.env.XAI_API_KEY ? createXai({ apiKey: process.env.XAI_API_KEY }) : null;
+const xaiProvider = env.XAI_API_KEY ? createXai({ apiKey: env.XAI_API_KEY }) : null;
 
-const openaiProvider = process.env.OPENAI_API_KEY
-	? createOpenAI({ apiKey: process.env.OPENAI_API_KEY })
-	: null;
+const openaiProvider = env.OPENAI_API_KEY ? createOpenAI({ apiKey: env.OPENAI_API_KEY }) : null;
 
 export function getTextGenerationModel() {
 	if (xaiProvider) return xaiProvider("grok-3");
