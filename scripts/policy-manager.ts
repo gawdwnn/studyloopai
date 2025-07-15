@@ -23,18 +23,7 @@ import { execSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import postgres from "postgres";
-
-function getDatabaseUrl() {
-	// Only import env when actually needed
-	const { env } = require("../src/env");
-	const databaseUrl = env.NODE_ENV === "production" ? env.PROD_DATABASE_URL : env.DATABASE_URL;
-
-	if (!databaseUrl) {
-		throw new Error("Appropriate database URL is not set in environment variables.");
-	}
-
-	return databaseUrl;
-}
+import { databaseUrl } from "@/lib/db";
 
 const POLICIES_DIR = resolve(join(process.cwd(), "drizzle", "policies"));
 const MANAGED_TABLES = [
@@ -90,7 +79,6 @@ class PolicyManager {
 
 	async connect(): Promise<boolean> {
 		try {
-			const databaseUrl = getDatabaseUrl();
 			this.client = postgres(databaseUrl);
 			// Test connection
 			await this.client`SELECT 1`;
