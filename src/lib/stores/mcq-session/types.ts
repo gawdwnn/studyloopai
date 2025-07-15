@@ -12,12 +12,12 @@ export type PracticeMode = "practice" | "exam";
 // MCQ-specific configuration
 export interface McqConfig {
 	courseId: string;
-	weeks: string[]; 
+	weeks: string[];
 	numQuestions: number;
 	difficulty: DifficultyLevel;
 	focus: FocusType;
 	practiceMode: PracticeMode;
-	timeLimit?: number; 
+	timeLimit?: number;
 	randomizeOptions?: boolean;
 }
 
