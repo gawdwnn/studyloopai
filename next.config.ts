@@ -3,11 +3,11 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
 	/* config options here */
 	serverExternalPackages: ["pdf-parse"],
-	
+
 	// Production optimizations
 	compress: true,
 	poweredByHeader: false,
-	
+
 	// Security headers for production
 	async headers() {
 		return [
@@ -34,20 +34,16 @@ const nextConfig: NextConfig = {
 			},
 		];
 	},
-	
+
 	// Image optimization configuration
 	images: {
 		formats: ["image/webp", "image/avif"],
 		minimumCacheTTL: 60,
 	},
-	
+
 	// Experimental features for performance
 	experimental: {
-		optimizePackageImports: [
-			"@radix-ui/react-icons",
-			"lucide-react",
-			"framer-motion",
-		],
+		optimizePackageImports: ["@radix-ui/react-icons", "lucide-react", "framer-motion"],
 	},
 };
 

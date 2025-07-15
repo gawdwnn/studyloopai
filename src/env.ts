@@ -2,7 +2,8 @@ import { createEnv } from "@t3-oss/env-nextjs";
 import { z } from "zod";
 
 // Input sanitization transform
-const sanitizeString = (schema: z.ZodString) => schema.transform((val) => val.trim().replace(/\0/g, ""));
+const sanitizeString = (schema: z.ZodString) =>
+	schema.transform((val) => val.trim().replace(/\0/g, ""));
 
 export const env = createEnv({
 	/**
@@ -72,8 +73,8 @@ export const env = createEnv({
 // Export types for convenience
 export type Env = typeof env;
 export type ServerEnv = typeof env & {
-	[K in keyof typeof env]: K extends `NEXT_PUBLIC_${string}` ? never : typeof env[K];
+	[K in keyof typeof env]: K extends `NEXT_PUBLIC_${string}` ? never : (typeof env)[K];
 };
 export type ClientEnv = {
-	[K in keyof typeof env as K extends `NEXT_PUBLIC_${string}` ? K : never]: typeof env[K];
+	[K in keyof typeof env as K extends `NEXT_PUBLIC_${string}` ? K : never]: (typeof env)[K];
 };

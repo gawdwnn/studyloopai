@@ -7,12 +7,12 @@ import { type NextRequest, NextResponse } from "next/server";
  */
 function validateRedirectUrl(url: string | null): string {
 	if (!url) return "/dashboard";
-	
+
 	// Only allow relative URLs that start with / but not //
 	if (url.startsWith("/") && !url.startsWith("//")) {
 		return url;
 	}
-	
+
 	// Block all external redirects - return default
 	return "/dashboard";
 }
@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
 	const supabase = await getServerClient();
 
 	const requestUrl = new URL(req.url);
-	
+
 	// Support both implicit flow (code) and PKCE flow (token_hash)
 	const code = requestUrl.searchParams.get("code");
 	const token_hash = requestUrl.searchParams.get("token_hash");
@@ -69,7 +69,6 @@ export async function GET(req: NextRequest) {
 
 		// On successful authentication, redirect to the validated destination
 		return NextResponse.redirect(`${requestUrl.origin}${next}`);
-		
 	} catch (error) {
 		console.error("Auth callback error:", error);
 		return NextResponse.redirect(

@@ -5,8 +5,9 @@ describe("Environment Configuration", () => {
 	describe("Environment Schema Validation", () => {
 		it("should create proper schema structure", () => {
 			// Test schema creation without validation
-			const sanitizeString = (schema: z.ZodString) => schema.transform((val) => val.trim().replace(/\0/g, ""));
-			
+			const sanitizeString = (schema: z.ZodString) =>
+				schema.transform((val) => val.trim().replace(/\0/g, ""));
+
 			expect(() => {
 				const testSchema = {
 					server: {
@@ -22,42 +23,45 @@ describe("Environment Configuration", () => {
 						NEXT_PUBLIC_SITE_URL: "http://localhost:3000",
 					},
 				};
-				
+
 				expect(testSchema.server.DATABASE_URL).toBeDefined();
 				expect(testSchema.client.NEXT_PUBLIC_SITE_URL).toBeDefined();
 			}).not.toThrow();
 		});
 
 		it("should handle string sanitization", () => {
-			const sanitizeString = (schema: z.ZodString) => schema.transform((val) => val.trim().replace(/\0/g, ""));
-			
+			const sanitizeString = (schema: z.ZodString) =>
+				schema.transform((val) => val.trim().replace(/\0/g, ""));
+
 			const testSchema = sanitizeString(z.string().min(1));
 			const result = testSchema.parse("  test\0value  ");
-			
+
 			expect(result).toBe("testvalue");
 		});
 
 		it("should validate URL strings", () => {
-			const sanitizeString = (schema: z.ZodString) => schema.transform((val) => val.trim().replace(/\0/g, ""));
-			
+			const sanitizeString = (schema: z.ZodString) =>
+				schema.transform((val) => val.trim().replace(/\0/g, ""));
+
 			const urlSchema = sanitizeString(z.string().url());
-			
+
 			expect(() => urlSchema.parse("https://example.com")).not.toThrow();
 			expect(() => urlSchema.parse("not-a-url")).toThrow();
 		});
 
 		it("should handle optional values", () => {
-			const sanitizeString = (schema: z.ZodString) => schema.transform((val) => val.trim().replace(/\0/g, ""));
-			
+			const sanitizeString = (schema: z.ZodString) =>
+				schema.transform((val) => val.trim().replace(/\0/g, ""));
+
 			const optionalSchema = sanitizeString(z.string().min(1)).optional();
-			
+
 			expect(optionalSchema.parse(undefined)).toBeUndefined();
 			expect(optionalSchema.parse("test")).toBe("test");
 		});
 
 		it("should validate environment variable types", () => {
 			const nodeEnvSchema = z.enum(["development", "test", "production"]).default("development");
-			
+
 			expect(nodeEnvSchema.parse("development")).toBe("development");
 			expect(nodeEnvSchema.parse("test")).toBe("test");
 			expect(nodeEnvSchema.parse("production")).toBe("production");
@@ -78,8 +82,9 @@ describe("Environment Configuration", () => {
 			};
 
 			expect(() => {
-				const sanitizeString = (schema: z.ZodString) => schema.transform((val) => val.trim().replace(/\0/g, ""));
-				
+				const sanitizeString = (schema: z.ZodString) =>
+					schema.transform((val) => val.trim().replace(/\0/g, ""));
+
 				const testConfig = {
 					server: {
 						DATABASE_URL: sanitizeString(z.string().url()),
@@ -95,9 +100,13 @@ describe("Environment Configuration", () => {
 				};
 
 				// Validate individual schemas
-				expect(testConfig.server.DATABASE_URL.parse(prodEnv.DATABASE_URL)).toBe(prodEnv.DATABASE_URL);
+				expect(testConfig.server.DATABASE_URL.parse(prodEnv.DATABASE_URL)).toBe(
+					prodEnv.DATABASE_URL
+				);
 				expect(testConfig.server.NODE_ENV.parse(prodEnv.NODE_ENV)).toBe("production");
-				expect(testConfig.client.NEXT_PUBLIC_SITE_URL.parse(prodEnv.NEXT_PUBLIC_SITE_URL)).toBe(prodEnv.NEXT_PUBLIC_SITE_URL);
+				expect(testConfig.client.NEXT_PUBLIC_SITE_URL.parse(prodEnv.NEXT_PUBLIC_SITE_URL)).toBe(
+					prodEnv.NEXT_PUBLIC_SITE_URL
+				);
 			}).not.toThrow();
 		});
 	});
