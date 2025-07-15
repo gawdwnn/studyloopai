@@ -37,7 +37,7 @@ export function CompletionStep() {
 
 	const hasProfile = profileData.firstName || profileData.lastName;
 	const hasGoals = profileData.studyGoals && profileData.studyGoals.length > 0;
-	const hasPlan = planSelection.selectedPlan && !planSelection.isSkipped;
+	const hasPlan = planSelection.selectedPlan;
 
 	const containerVariants = {
 		hidden: { opacity: 0 },
