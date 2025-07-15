@@ -1,97 +1,104 @@
 {
-	"version": "7",
-	"dialect": "postgresql",
-	"entries": [
-		{
-			"idx": 0,
-			"version": "7",
-			"when": 1750891058826,
-			"tag": "0000_stormy_black_bolt",
-			"breakpoints": true
-		},
-		{
-			"idx": 1,
-			"version": "7",
-			"when": 1750891058827,
-			"tag": "0001_apply_rls_policies",
-			"breakpoints": true
-		},
-		{
-			"idx": 2,
-			"version": "7",
-			"when": 1750946330771,
-			"tag": "0002_pretty_anthem",
-			"breakpoints": true
-		},
-		{
-			"idx": 3,
-			"version": "7",
-			"when": 1751210380008,
-			"tag": "0003_tranquil_valeria_richards",
-			"breakpoints": true
-		},
-		{
-			"idx": 4,
-			"version": "7",
-			"when": 1751476676596,
-			"tag": "0004_icy_quasar",
-			"breakpoints": true
-		},
-		{
-			"idx": 5,
-			"version": "7",
-			"when": 1751504700606,
-			"tag": "0005_tiresome_warbound",
-			"breakpoints": true
-		},
-		{
-			"idx": 6,
-			"version": "7",
-			"when": 1751561814339,
-			"tag": "0006_pretty_mad_thinker",
-			"breakpoints": true
-		},
-		{
-			"idx": 7,
-			"version": "7",
-			"when": 1751603714331,
-			"tag": "0007_little_meteorite",
-			"breakpoints": true
-		},
-		{
-			"idx": 8,
-			"version": "7",
-			"when": 1751742704767,
-			"tag": "0008_mysterious_lord_hawal",
-			"breakpoints": true
-		},
-		{
-			"idx": 9,
-			"version": "7",
-			"when": 1751946679778,
-			"tag": "0009_demonic_martin_li",
-			"breakpoints": true
-		},
-		{
-			"idx": 10,
-			"version": "7",
-			"when": 1752090706043,
-			"tag": "0010_elite_prodigy",
-			"breakpoints": true
-		},
-		{
-			"idx": 11,
-			"version": "7",
-			"when": 1752149339000,
-			"tag": "0011_fix_flashcards_count_column",
-			"breakpoints": true
-		},
-		{
-			"idx": 12,
-			"version": "7",
-			"when": 1752098276237,
-			"tag": "0012_left_captain_flint",
-			"breakpoints": true
-		}
-	]
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1750891058826,
+      "tag": "0000_stormy_black_bolt",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1750891058827,
+      "tag": "0001_apply_rls_policies",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1750946330771,
+      "tag": "0002_pretty_anthem",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1751210380008,
+      "tag": "0003_tranquil_valeria_richards",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1751476676596,
+      "tag": "0004_icy_quasar",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1751504700606,
+      "tag": "0005_tiresome_warbound",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1751561814339,
+      "tag": "0006_pretty_mad_thinker",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1751603714331,
+      "tag": "0007_little_meteorite",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1751742704767,
+      "tag": "0008_mysterious_lord_hawal",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1751946679778,
+      "tag": "0009_demonic_martin_li",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1752090706043,
+      "tag": "0010_elite_prodigy",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1752149339000,
+      "tag": "0011_fix_flashcards_count_column",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1752098276237,
+      "tag": "0012_left_captain_flint",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1752419409815,
+      "tag": "0013_gorgeous_patch",
+      "breakpoints": true
+    }
+  ]
 }

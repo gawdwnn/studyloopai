@@ -1,62 +1,81 @@
-import { createUserPlan } from "@/lib/actions/plans";
-import type { PlanId } from "@/lib/plans/types";
 import { getServerClient } from "@/lib/supabase/server";
 import { type NextRequest, NextResponse } from "next/server";
+
+/**
+ * Validates if a redirect URL is safe to use
+ * Only allows relative URLs that don't start with // (protocol-relative URLs)
+ */
+function validateRedirectUrl(url: string | null): string {
+	if (!url) return "/dashboard";
+	
+	// Only allow relative URLs that start with / but not //
+	if (url.startsWith("/") && !url.startsWith("//")) {
+		return url;
+	}
+	
+	// Block all external redirects - return default
+	return "/dashboard";
+}
 
 export async function GET(req: NextRequest) {
 	const supabase = await getServerClient();
 
 	const requestUrl = new URL(req.url);
+	
+	// Support both implicit flow (code) and PKCE flow (token_hash)
 	const code = requestUrl.searchParams.get("code");
-	const next = requestUrl.searchParams.get("next") || "/dashboard";
+	const token_hash = requestUrl.searchParams.get("token_hash");
+	const type = requestUrl.searchParams.get("type");
+	const next = validateRedirectUrl(requestUrl.searchParams.get("next"));
 
-	if (code) {
-		const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+	try {
+		// Handle PKCE flow (recommended for magic links)
+		if (token_hash && type === "email") {
+			const { error } = await supabase.auth.verifyOtp({
+				token_hash,
+				type: "email",
+			});
 
-		if (error) {
-			// If there's an error during code exchange, redirect to the sign-in page with an error message.
-			return NextResponse.redirect(
-				`${requestUrl.origin}/auth/signin?error=auth_error&error_description=${encodeURIComponent(
-					error.message
-				)}`
-			);
-		}
-
-		// Check if this is an email verification callback with a selected plan
-		if (data.user?.user_metadata?.selected_plan) {
-			try {
-				const selectedPlan = data.user.user_metadata.selected_plan as PlanId;
-
-				// Validate the plan before proceeding
-				if (!selectedPlan || typeof selectedPlan !== "string") {
-					console.error("Auth callback: Invalid plan in user metadata:", selectedPlan);
-					return NextResponse.redirect(
-						`${requestUrl.origin}/auth/signup?step=plan&error=invalid_plan`
-					);
-				}
-
-				// Complete the signup by creating the user plan
-				await createUserPlan(selectedPlan, data.user.id);
-
-				// Plan created successfully, user signup is now complete
-				// Middleware will handle the rest of the flow
-			} catch (error) {
-				// Log the specific error for debugging
-				console.error("Auth callback: Failed to create user plan:", error);
-
-				// Redirect to plan selection with error message
-				// This ensures the user can retry plan creation
+			if (error) {
+				console.error("PKCE auth error:", error);
 				return NextResponse.redirect(
-					`${requestUrl.origin}/auth/signup?step=plan&error=plan_creation_failed&error_description=${encodeURIComponent(
-						"Failed to create subscription plan. Please try again."
+					`${requestUrl.origin}/auth/signin?error=auth_error&error_description=${encodeURIComponent(
+						"Authentication failed. Please try again."
 					)}`
 				);
 			}
 		}
-	}
+		// Handle implicit flow (fallback for existing links)
+		else if (code) {
+			const { error } = await supabase.auth.exchangeCodeForSession(code);
 
-	// On successful authentication, redirect to the intended destination
-	// The database trigger automatically creates the user record with signup_step = 1
-	// The middleware will handle redirecting to plan selection if needed
-	return NextResponse.redirect(`${requestUrl.origin}${next}`);
+			if (error) {
+				console.error("Code exchange error:", error);
+				return NextResponse.redirect(
+					`${requestUrl.origin}/auth/signin?error=auth_error&error_description=${encodeURIComponent(
+						"Authentication failed. Please try again."
+					)}`
+				);
+			}
+		}
+		// No valid auth parameters
+		else {
+			return NextResponse.redirect(
+				`${requestUrl.origin}/auth/signin?error=invalid_request&error_description=${encodeURIComponent(
+					"Invalid authentication request."
+				)}`
+			);
+		}
+
+		// On successful authentication, redirect to the validated destination
+		return NextResponse.redirect(`${requestUrl.origin}${next}`);
+		
+	} catch (error) {
+		console.error("Auth callback error:", error);
+		return NextResponse.redirect(
+			`${requestUrl.origin}/auth/signin?error=server_error&error_description=${encodeURIComponent(
+				"An unexpected error occurred. Please try again."
+			)}`
+		);
+	}
 }

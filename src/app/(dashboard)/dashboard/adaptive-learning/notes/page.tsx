@@ -17,9 +17,10 @@ import { useUserCourses } from "@/hooks/use-courses";
 import { type GoldenNote, type Summary, useNotesData } from "@/hooks/use-notes";
 import { useQueryState } from "@/hooks/use-query-state";
 import { handleApiError, shouldShowRetry } from "@/lib/utils/error-handling";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function NotesPage() {
+  const router = useRouter();
   const { searchParams, setQueryState } = useQueryState();
   const { data: courses = [], isLoading: isLoadingCourses } = useUserCourses();
 
@@ -94,8 +95,8 @@ export default function NotesPage() {
           It looks like you haven&apos;t created any courses yet. Create your
           first course to start generating and managing your study notes.
         </p>
-        <Button asChild>
-          <Link href="/dashboard/courses">Create a New Course</Link>
+        <Button onClick={() => router.push("/dashboard?action=create")}>
+          Add a New Course
         </Button>
       </div>
     );

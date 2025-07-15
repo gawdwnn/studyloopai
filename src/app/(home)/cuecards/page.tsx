@@ -129,7 +129,7 @@ export default function CuecardsDemo() {
 				</p>
 				<div className="flex flex-col sm:flex-row gap-4 justify-center">
 					<Button size="lg" asChild>
-						<Link href="/auth/signup">
+						<Link href="/auth/signin">
 							Get Started Free <ArrowRight className="ml-2 h-4 w-4" />
 						</Link>
 					</Button>

@@ -53,7 +53,7 @@ export function FinalCTASection() {
 							className="text-lg px-8 py-6 hover:shadow-xl transition-all duration-300 hover:scale-105 bg-white text-primary hover:bg-white/90"
 							asChild
 						>
-							<Link href="/auth/signup" className="flex items-center gap-2">
+							<Link href="/auth/signin" className="flex items-center gap-2">
 								Start Free Trial
 								<ArrowRight className="w-5 h-5" />
 							</Link>

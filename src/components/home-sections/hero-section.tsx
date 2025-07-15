@@ -24,7 +24,7 @@ export function HeroSection() {
 							className="text-lg px-8 py-6 hover:shadow-lg transition-all duration-300 hover:scale-105"
 							asChild
 						>
-							<Link href="/auth/signup">Start Free Trial</Link>
+							<Link href="/auth/signin">Start Free Trial</Link>
 						</Button>
 						<Button
 							size="lg"
