@@ -23,21 +23,31 @@ export async function GET(req: NextRequest) {
 	const requestUrl = new URL(req.url);
 
 	// Support both implicit flow (code) and PKCE flow (token_hash)
+	// Check both search params and hash fragment for auth parameters
 	const code = requestUrl.searchParams.get("code");
 	const token_hash = requestUrl.searchParams.get("token_hash");
 	const type = requestUrl.searchParams.get("type");
 	const next = validateRedirectUrl(requestUrl.searchParams.get("next"));
 
+	// Handle cases where parameters might be in hash fragment
+	const hashParams = new URLSearchParams(requestUrl.hash.slice(1));
+	const hashCode = hashParams.get("code");
+	const hashTokenHash = hashParams.get("token_hash");
+	const hashType = hashParams.get("type");
+
 	try {
 		// Handle PKCE flow (recommended for magic links)
-		if (token_hash && type === "email") {
+		const finalTokenHash = token_hash || hashTokenHash;
+		const finalType = type || hashType;
+		const finalCode = code || hashCode;
+
+		if (finalTokenHash && finalType === "email") {
 			const { error } = await supabase.auth.verifyOtp({
-				token_hash,
+				token_hash: finalTokenHash,
 				type: "email",
 			});
 
 			if (error) {
-				console.error("PKCE auth error:", error);
 				return NextResponse.redirect(
 					`${requestUrl.origin}/auth/signin?error=auth_error&error_description=${encodeURIComponent(
 						"Authentication failed. Please try again."
@@ -46,11 +56,10 @@ export async function GET(req: NextRequest) {
 			}
 		}
 		// Handle implicit flow (fallback for existing links)
-		else if (code) {
-			const { error } = await supabase.auth.exchangeCodeForSession(code);
+		else if (finalCode) {
+			const { error } = await supabase.auth.exchangeCodeForSession(finalCode);
 
 			if (error) {
-				console.error("Code exchange error:", error);
 				return NextResponse.redirect(
 					`${requestUrl.origin}/auth/signin?error=auth_error&error_description=${encodeURIComponent(
 						"Authentication failed. Please try again."
@@ -62,15 +71,14 @@ export async function GET(req: NextRequest) {
 		else {
 			return NextResponse.redirect(
 				`${requestUrl.origin}/auth/signin?error=invalid_request&error_description=${encodeURIComponent(
-					"Invalid authentication request."
+					"Invalid authentication request. Please try requesting a new magic link."
 				)}`
 			);
 		}
 
 		// On successful authentication, redirect to the validated destination
 		return NextResponse.redirect(`${requestUrl.origin}${next}`);
-	} catch (error) {
-		console.error("Auth callback error:", error);
+	} catch {
 		return NextResponse.redirect(
 			`${requestUrl.origin}/auth/signin?error=server_error&error_description=${encodeURIComponent(
 				"An unexpected error occurred. Please try again."
