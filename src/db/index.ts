@@ -1,18 +1,12 @@
+import * as schema from "@/db/schema";
+import { databaseUrl } from "@/lib/db";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import * as schema from "./schema";
 
-if (!process.env.DATABASE_URL) {
-	throw new Error("DATABASE_URL is not set in src/db/index.ts");
-}
+const migrationClient = postgres(databaseUrl, { max: 1 });
 
-// For migrations
-const migrationClient = postgres(process.env.DATABASE_URL, { max: 1 });
-
-// For query purposes
-const queryClient = postgres(process.env.DATABASE_URL, { prepare: false });
+const queryClient = postgres(databaseUrl, { prepare: false });
 
 export const db = drizzle(queryClient, { schema });
 
-// Export for migrations
 export const migrationDb = drizzle(migrationClient, { schema });

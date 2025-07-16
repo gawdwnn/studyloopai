@@ -1,10 +1,4 @@
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function SettingsPage() {
 	return (
@@ -18,9 +12,7 @@ export default function SettingsPage() {
 			<Card>
 				<CardHeader>
 					<CardTitle>Appearance</CardTitle>
-					<CardDescription>
-						Customize how StudyLoop looks and feels
-					</CardDescription>
+					<CardDescription>Customize how StudyLoop looks and feels</CardDescription>
 				</CardHeader>
 				<CardContent>
 					<p className="text-muted-foreground">Appearance settings</p>
@@ -31,9 +23,7 @@ export default function SettingsPage() {
 			<Card>
 				<CardHeader>
 					<CardTitle>Notifications</CardTitle>
-					<CardDescription>
-						Choose what notifications you'd like to receive
-					</CardDescription>
+					<CardDescription>Choose what notifications you'd like to receive</CardDescription>
 				</CardHeader>
 				<CardContent>
 					<p className="text-muted-foreground">Notification settings</p>
@@ -44,9 +34,7 @@ export default function SettingsPage() {
 			<Card>
 				<CardHeader>
 					<CardTitle>Study Preferences</CardTitle>
-					<CardDescription>
-						Configure your learning and study preferences
-					</CardDescription>
+					<CardDescription>Configure your learning and study preferences</CardDescription>
 				</CardHeader>
 				<CardContent>
 					<p className="text-muted-foreground">Study preferences</p>
@@ -57,9 +45,7 @@ export default function SettingsPage() {
 			<Card>
 				<CardHeader>
 					<CardTitle>Language & Region</CardTitle>
-					<CardDescription>
-						Set your language and regional preferences
-					</CardDescription>
+					<CardDescription>Set your language and regional preferences</CardDescription>
 				</CardHeader>
 				<CardContent>
 					<p className="text-muted-foreground">Language settings</p>
@@ -70,9 +56,7 @@ export default function SettingsPage() {
 			<Card>
 				<CardHeader>
 					<CardTitle>Audio Settings</CardTitle>
-					<CardDescription>
-						Configure audio and sound preferences
-					</CardDescription>
+					<CardDescription>Configure audio and sound preferences</CardDescription>
 				</CardHeader>
 				<CardContent>
 					<p className="text-muted-foreground">Audio settings</p>

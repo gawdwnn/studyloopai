@@ -23,13 +23,7 @@ import { execSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import postgres from "postgres";
-
-// Load environment variables
-const env = process.env;
-if (!env.DATABASE_URL) {
-	console.error("❌ DATABASE_URL is not set in .env.local");
-	process.exit(1);
-}
+import { databaseUrl } from "@/lib/db";
 
 const POLICIES_DIR = resolve(join(process.cwd(), "drizzle", "policies"));
 const MANAGED_TABLES = [
@@ -85,7 +79,7 @@ class PolicyManager {
 
 	async connect(): Promise<boolean> {
 		try {
-			this.client = postgres(env.DATABASE_URL as string);
+			this.client = postgres(databaseUrl);
 			// Test connection
 			await this.client`SELECT 1`;
 			return true;

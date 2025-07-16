@@ -1,5 +1,5 @@
-import { AuthError } from "@supabase/supabase-js";
 import { RateLimitError } from "@/lib/rate-limit";
+import { AuthError } from "@supabase/supabase-js";
 
 export type AuthErrorType =
 	| "invalid_credentials"
