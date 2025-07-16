@@ -15,6 +15,7 @@ StudyLoopAI is a modern web application that leverages artificial intelligence t
 - **Styling**: Tailwind CSS v4 with Shadcn UI
 - **Background Jobs**: Trigger.dev
 - **Caching/Ratelimit**: Upstash
+- **Deployment**: Vercel
 - **Package Manager**: Bun
 
 ## Quick Start
