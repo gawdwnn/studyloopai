@@ -4,16 +4,17 @@ AI-Powered Personalised Study Platform
 
 ## Overview
 
-StudyLoopAI is a modern web application that leverages artificial intelligence to create personalized study experiences. Built with Next.js 15, it provides intelligent content generation, adaptive learning, and comprehensive course management.
+StudyLoopAI is a modern web application that leverages artificial intelligence to create personalized study experiences. it provides intelligent content generation, adaptive learning, and comprehensive course management.
 
 ## Tech Stack
 
 - **Framework**: Next.js 15 with App Router
-- **Database**: PostgreSQL with Drizzle ORM
+- **Database**: Supabase PostgreSQL with Drizzle ORM
 - **Authentication**: Supabase Auth
-- **AI Integration**: OpenAI GPT & xAI Grok models
+- **AI Integration**: NextJS AI SDK, Mistral OCR, OpenAI GPT & xAI Grok models, Langchain.
 - **Styling**: Tailwind CSS v4 with Shadcn UI
 - **Background Jobs**: Trigger.dev
+- **Caching/Ratelimit**: Upstash
 - **Package Manager**: Bun
 
 ## Quick Start
