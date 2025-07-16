@@ -22,24 +22,17 @@ export interface AuthErrorDetails {
 	remainingAttempts?: number;
 }
 
-// More robust type guard using a unique symbol and strict property type checks
 function isRateLimitError(error: unknown): error is {
 	[IS_RATE_LIMIT_ERROR]: true;
 	message: string;
 	remainingAttempts: number;
 	resetTime?: number;
 } {
-	if (typeof error !== "object" || error === null) {
-		return false;
-	}
-
-	const err = error as Record<string | symbol, unknown>;
-
-	return (
-		err[IS_RATE_LIMIT_ERROR] === true &&
-		typeof err.remainingAttempts === "number" &&
-		(typeof err.resetTime === "number" || typeof err.resetTime === "undefined")
-	);
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    IS_RATE_LIMIT_ERROR in error
+  );
 }
 
 export function getAuthErrorMessage(error: unknown): AuthErrorDetails {
