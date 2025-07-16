@@ -29,13 +29,16 @@ function isRateLimitError(error: unknown): error is {
   remainingAttempts: number;
   resetTime?: number;
 } {
+  if (typeof error !== "object" || error === null) {
+    return false;
+  }
+
+  const err = error as Record<string | symbol, unknown>;
+
   return (
-    typeof error === "object" &&
-    error !== null &&
-    (error as any)[IS_RATE_LIMIT_ERROR] === true &&
-    typeof (error as any).remainingAttempts === "number" &&
-    (typeof (error as any).resetTime === "number" ||
-      typeof (error as any).resetTime === "undefined")
+    err[IS_RATE_LIMIT_ERROR] === true &&
+    typeof err.remainingAttempts === "number" &&
+    (typeof err.resetTime === "number" || typeof err.resetTime === "undefined")
   );
 }
 
