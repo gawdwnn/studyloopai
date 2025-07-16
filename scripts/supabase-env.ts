@@ -3,6 +3,9 @@
 /**
  * Supabase Environment Management Script
  *
+ * IMPORTANT: This script operates ONLY on remote Supabase projects.
+ * All operations target the linked remote project, not local containers.
+ *
  * Features:
  * - Interactive environment switching (dev/prod)
  * - Progress indicators and spinners
@@ -10,6 +13,7 @@
  * - Database operations (migrations, policies, types)
  * - Colored output for better UX
  * - Automatic backups for production operations
+ * - Remote project validation before operations
  *
  * Usage:
  *   bun scripts/supabase-env.ts                    # Interactive mode
@@ -19,6 +23,7 @@
  *   bun scripts/supabase-env.ts status            # Show current status
  */
 
+import { env } from "@/env";
 import { confirm, input, select } from "@inquirer/prompts";
 import chalk from "chalk";
 import { execa } from "execa";
@@ -27,13 +32,13 @@ import ora from "ora";
 // Project configurations
 const PROJECTS = {
 	dev: {
-		ref: "iyoalhewbrqbncceziec",
+		ref: env.SUPABASE_DEV_PROJECT_REF || "iyoalhewbrqbncceziec",
 		name: "studyloopai-dev",
 		environment: "development",
 		color: chalk.blue,
 	},
 	prod: {
-		ref: "anitoreuxwosqotmscub",
+		ref: env.SUPABASE_PROD_PROJECT_REF || "anitoreuxwosqotmscub",
 		name: "studyloopai-prod",
 		environment: "production",
 		color: chalk.red,
@@ -45,15 +50,30 @@ type ProjectKey = keyof typeof PROJECTS;
 class SupabaseEnvManager {
 	private async getCurrentProject(): Promise<ProjectKey | null> {
 		try {
-			const { stdout } = await execa("npx", ["supabase", "status", "--output", "json"]);
-			const status = JSON.parse(stdout);
-			const currentRef = status.project_ref;
+			const { stdout } = await execa("npx", ["supabase", "projects", "list", "--output", "json"]);
+			const projects = JSON.parse(stdout);
+			const linkedProject = projects.find(
+				(p: { linked: boolean; id: string }) => p.linked === true
+			);
 
+			if (!linkedProject) return null;
+
+			const currentRef = linkedProject.id;
 			if (currentRef === PROJECTS.dev.ref) return "dev";
 			if (currentRef === PROJECTS.prod.ref) return "prod";
 			return null;
 		} catch {
 			return null;
+		}
+	}
+
+	private async ensureRemoteProject(): Promise<void> {
+		const current = await this.getCurrentProject();
+		if (!current) {
+			throw new Error(
+				"No remote Supabase project is currently linked. " +
+					"Please link a project first using 'bun scripts/supabase-env.ts switch'"
+			);
 		}
 	}
 
@@ -134,10 +154,13 @@ class SupabaseEnvManager {
 	}
 
 	async runOperations(projectKey: ProjectKey): Promise<void> {
+		// Ensure we're operating on a remote project
+		await this.ensureRemoteProject();
+
 		const project = PROJECTS[projectKey];
 		const isProduction = projectKey === "prod";
 
-		process.stdout.write(project.color(`\n🔧 ${project.name} Environment\n`));
+		process.stdout.write(project.color(`\n🔧 ${project.name} Environment (Remote)\n`));
 
 		const operations = [
 			{ name: "Generate migrations", value: "generate", safe: true },
@@ -278,19 +301,23 @@ class SupabaseEnvManager {
 	async status(): Promise<void> {
 		const current = await this.getCurrentProject();
 
-		process.stdout.write(chalk.blue("\n📊 Current Supabase Project Status\n"));
+		process.stdout.write(chalk.blue("\n📊 Current Supabase Project Status (Remote)\n"));
 
 		if (current) {
 			const project = PROJECTS[current];
 			process.stdout.write(`Environment: ${project.color(project.environment)}\n`);
 			process.stdout.write(`Project: ${project.name}\n`);
 			process.stdout.write(`Reference: ${project.ref}\n`);
+			process.stdout.write(chalk.green("✓ Remote project linked\n"));
 
 			if (current === "prod") {
 				process.stdout.write(chalk.yellow("⚠️  You are in production mode\n"));
 			}
 		} else {
-			process.stdout.write(chalk.yellow("No project currently linked\n"));
+			process.stdout.write(chalk.yellow("No remote project currently linked\n"));
+			process.stdout.write(
+				chalk.gray("Use 'bun scripts/supabase-env.ts switch' to link a project\n")
+			);
 		}
 
 		process.stdout.write(chalk.blue("\nAvailable Projects:\n"));
@@ -376,5 +403,8 @@ async function main() {
 
 // Check if this is the main module
 if (process.argv[1] === import.meta.url.replace("file://", "")) {
-	main();
+	main().catch((error) => {
+		process.stderr.write(chalk.red(`\n💥 Fatal error: ${String(error)}\n`));
+		process.exit(1);
+	});
 }

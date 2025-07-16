@@ -20,7 +20,6 @@
  *   bun scripts/policy-manager.ts apply file.sql --exec # Apply single policy (execute)
  *   bun scripts/policy-manager.ts apply-all            # Apply all policies (dry-run)
  *   bun scripts/policy-manager.ts apply-all --exec     # Apply all policies (execute)
- *   bun scripts/policy-manager.ts diff                 # Show policy differences
  */
 
 import { existsSync, readFileSync, readdirSync } from "node:fs";
@@ -28,7 +27,6 @@ import { join, resolve } from "node:path";
 import { databaseUrl } from "@/lib/db";
 import { confirm, select } from "@inquirer/prompts";
 import chalk from "chalk";
-import { execa } from "execa";
 import ora from "ora";
 import postgres from "postgres";
 
@@ -155,15 +153,23 @@ class PolicyManager {
 		const spinner = ora("Checking existing policies...").start();
 
 		try {
-			for (const policy of policies) {
-				const result = await this.client`
-          SELECT policyname, tablename 
-          FROM pg_policies 
-          WHERE policyname = ${policy.name} 
-          AND tablename = ${policy.table}
-        `;
+			// Use Promise.all() to check all policies concurrently for better performance
+			const results = await Promise.all(
+				policies.map(async (policy) => {
+					if (!this.client) throw new Error("Database not connected");
+					const result = await this.client`
+            SELECT policyname, tablename 
+            FROM pg_policies 
+            WHERE policyname = ${policy.name} 
+            AND tablename = ${policy.table}
+          `;
+					return { policy, exists: result.length > 0 };
+				})
+			);
 
-				if (result.length > 0) {
+			// Filter out policies that already exist
+			for (const { policy, exists } of results) {
+				if (exists) {
 					existing.push(policy);
 				}
 			}
@@ -195,6 +201,10 @@ class PolicyManager {
 		const spinner = ora(`Executing ${description}...`).start();
 
 		try {
+			// SECURITY NOTE: Using client.unsafe() for policy management
+			// This is intentional for RLS policy operations that require raw SQL execution
+			// Input validation happens at the file level - only .sql files from drizzle/policies/ are processed
+			// SQL content is read from version-controlled files, not user input
 			await this.client.unsafe(sql);
 			spinner.succeed(`${description} completed successfully`);
 			return { success: true };
@@ -355,42 +365,6 @@ class PolicyManager {
 		}
 	}
 
-	async showPolicyDiff(): Promise<boolean> {
-		const spinner = ora("Checking for schema differences using Supabase CLI...").start();
-
-		try {
-			// Check if supabase CLI is available
-			await execa("which", ["supabase"]);
-
-			// Run supabase db diff to show differences
-			const { stdout } = await execa("supabase", ["db", "diff", "--schema", "public"], {
-				cwd: process.cwd(),
-			});
-
-			if (stdout.trim()) {
-				spinner.succeed("Schema differences detected");
-				this.writeOutput(chalk.blue("\n📋 Schema differences:\n"));
-				this.writeOutput(stdout);
-			} else {
-				spinner.succeed("No schema differences detected");
-				this.writeOutput(chalk.green("\n✅ No schema differences detected\n"));
-			}
-
-			return true;
-		} catch {
-			spinner.fail("Supabase CLI not available or not linked");
-			this.writeOutput(
-				chalk.yellow("\n⚠️  Supabase CLI not available or not linked to a project\n")
-			);
-			this.writeOutput(
-				chalk.blue(
-					"💡 To use diff functionality, run: supabase link --project-ref your-project-ref\n"
-				)
-			);
-			return false;
-		}
-	}
-
 	async runInteractiveMode(): Promise<void> {
 		this.writeOutput(chalk.blue("\n🔧 RLS Policy Manager\n"));
 
@@ -400,17 +374,10 @@ class PolicyManager {
 				{ name: "Check current policy status", value: "check" },
 				{ name: "Apply single policy file", value: "apply" },
 				{ name: "Apply all policy files", value: "apply-all" },
-				{ name: "Show schema differences", value: "diff" },
 			],
 		});
 
-		// Handle diff command (no DB connection needed)
-		if (action === "diff") {
-			await this.showPolicyDiff();
-			return;
-		}
-
-		// Connect to database for other commands
+		// Connect to database for commands
 		if (!(await this.connect())) {
 			process.exit(1);
 		}
@@ -493,20 +460,14 @@ async function main(): Promise<void> {
 		}
 
 		// Show dry run notice for applicable commands
-		if (dryRun && command !== "check" && command !== "diff") {
+		if (dryRun && command !== "check") {
 			process.stdout.write(
 				chalk.blue("🧪 DRY RUN MODE - No changes will be made to the database\n")
 			);
 			process.stdout.write(chalk.gray("💡 Add --exec flag to execute changes\n\n"));
 		}
 
-		// Commands that don't require database connection
-		if (command === "diff") {
-			const success = await manager.showPolicyDiff();
-			process.exit(success ? 0 : 1);
-		}
-
-		// Connect to database for other commands
+		// Connect to database for commands
 		if (!(await manager.connect())) {
 			process.exit(1);
 		}
@@ -548,9 +509,6 @@ async function main(): Promise<void> {
 				);
 				process.stdout.write(
 					chalk.gray("  apply-all [--exec]              - Apply all policy files\n")
-				);
-				process.stdout.write(
-					chalk.gray("  diff                            - Show schema differences (Supabase CLI)\n")
 				);
 				process.stdout.write(chalk.white("\nFlags:\n"));
 				process.stdout.write(

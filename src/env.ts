@@ -23,6 +23,8 @@ export const env = createEnv({
 		STRIPE_SECRET_KEY: sanitizeString(z.string().min(1)).optional(),
 		STRIPE_WEBHOOK_SECRET: sanitizeString(z.string().min(1)).optional(),
 		RESEND_API_KEY: sanitizeString(z.string().min(1)).optional(),
+		SUPABASE_DEV_PROJECT_REF: sanitizeString(z.string().min(1)).optional(),
+		SUPABASE_PROD_PROJECT_REF: sanitizeString(z.string().min(1)).optional(),
 	},
 
 	/**
@@ -54,6 +56,8 @@ export const env = createEnv({
 		STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
 		STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
 		RESEND_API_KEY: process.env.RESEND_API_KEY,
+		SUPABASE_DEV_PROJECT_REF: process.env.SUPABASE_DEV_PROJECT_REF,
+		SUPABASE_PROD_PROJECT_REF: process.env.SUPABASE_PROD_PROJECT_REF,
 		NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
 		NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
 		NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -72,13 +76,9 @@ export const env = createEnv({
 export type Env = typeof env;
 
 export type ServerEnv = {
-  [K in keyof typeof env as K extends `NEXT_PUBLIC_${string}`
-    ? never
-    : K]: (typeof env)[K];
+	[K in keyof typeof env as K extends `NEXT_PUBLIC_${string}` ? never : K]: (typeof env)[K];
 };
 
 export type ClientEnv = {
-  [K in keyof typeof env as K extends `NEXT_PUBLIC_${string}`
-    ? K
-    : never]: (typeof env)[K];
+	[K in keyof typeof env as K extends `NEXT_PUBLIC_${string}` ? K : never]: (typeof env)[K];
 };
