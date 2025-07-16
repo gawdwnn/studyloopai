@@ -2,10 +2,12 @@
 
 import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
 import { MagicLinkForm } from "@/components/auth/magic-link-form";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { sendMagicLink } from "@/lib/actions/auth";
 import { type AuthErrorDetails, getAuthErrorMessage } from "@/lib/errors/auth";
 import type { MagicLinkFormData } from "@/lib/validations/auth";
+import { X } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -29,13 +31,16 @@ export function SignInForm() {
 
 		try {
 			await sendMagicLink(data);
-			// Success is handled by MagicLinkForm component (shows "check email" message)
 		} catch (e) {
 			const errorDetails = getAuthErrorMessage(e);
 			setError(errorDetails);
 		} finally {
 			setLoading(false);
 		}
+	};
+
+	const handleOAuthError = (oauthError: AuthErrorDetails) => {
+		setError(oauthError);
 	};
 
 	return (
@@ -49,9 +54,24 @@ export function SignInForm() {
 				</p>
 			</div>
 
+			{error && (
+				<div className="mb-6">
+					<Alert variant="destructive" className="relative">
+						<AlertDescription className="pr-8">{error.message}</AlertDescription>
+						<button
+							type="button"
+							onClick={() => setError(null)}
+							className="absolute right-2 top-2 opacity-70 hover:opacity-100 transition-opacity"
+						>
+							<X className="h-4 w-4" />
+						</button>
+					</Alert>
+				</div>
+			)}
+
 			{/* Google OAuth */}
 			<div className="mb-6">
-				<GoogleSignInButton variant="signin" />
+				<GoogleSignInButton variant="signin" onError={handleOAuthError} />
 			</div>
 
 			{/* Separator */}
@@ -68,7 +88,7 @@ export function SignInForm() {
 			<MagicLinkForm
 				onSubmit={handleMagicLinkSubmit}
 				loading={loading}
-				error={error}
+				error={null}
 				placeholder="your.email@example.com"
 			/>
 
