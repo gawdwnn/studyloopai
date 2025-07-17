@@ -34,12 +34,6 @@ export function FAQSection() {
 				"We offer a generous free plan that includes basic AI features and limited content uploads. Our Pro plan starts at $9.99/month with unlimited uploads, advanced AI features, and priority support. Students get a 50% discount with a valid .edu email address.",
 		},
 		{
-			id: "collaboration",
-			question: "Can I collaborate with classmates?",
-			answer:
-				"Yes! StudyLoop includes collaboration features that let you share study sets, create group quizzes, and work together on projects. You can form study groups, track collective progress, and even compete in friendly learning challenges.",
-		},
-		{
 			id: "spaced-repetition",
 			question: "How does the spaced repetition system work?",
 			answer:

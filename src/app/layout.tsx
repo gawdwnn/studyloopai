@@ -6,7 +6,6 @@ import { getSiteUrl } from "@/lib/get-site-url";
 import type { Metadata } from "next";
 import { Geist_Mono, Montserrat } from "next/font/google";
 import "./globals.css";
-import './custom.css';
 
 const montserrat = Montserrat({
 	variable: "--font-montserrat",
