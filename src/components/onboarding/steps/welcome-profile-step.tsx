@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useOnboardingStore } from "@/lib/stores/onboarding-store";
 import { motion } from "framer-motion";
-import { BookOpen, User, Users } from "lucide-react";
+import { User, Users } from "lucide-react";
 import { useState } from "react";
 
 export function WelcomeProfileStep() {
@@ -50,17 +50,11 @@ export function WelcomeProfileStep() {
 			variants={containerVariants}
 			initial="hidden"
 			animate="visible"
-			className="space-y-8"
+			className="space-y-16"
 		>
 			{/* Welcome Header */}
 			<motion.div variants={itemVariants} className="text-center space-y-4">
-				<div className="mx-auto w-20 h-20 bg-gradient-to-br from-primary to-primary/60 rounded-2xl flex items-center justify-center">
-					<BookOpen className="h-10 w-10 text-primary-foreground" />
-				</div>
 				<div className="space-y-2">
-					<h2 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-						Welcome to StudyLoopAI
-					</h2>
 					<p className="text-lg text-muted-foreground max-w-md mx-auto">
 						Let's start by setting up your profile.
 					</p>
