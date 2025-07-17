@@ -176,7 +176,7 @@ export function AnimatedSection({
 				timelineRef.current.kill();
 			}
 		};
-	}, [background]);
+	}, []);
 
 	const backgroundClasses = {
 		default: "",

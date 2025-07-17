@@ -4,45 +4,45 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Brain, MessageCircle, Sparkles, Target, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 
+const phases = [
+	{
+		icon: MessageCircle,
+		title: "Scanning Content",
+		description: "Analyzing your materials with AI precision...",
+		typingText: "Found 47 key concepts, 12 formulas, 8 case studies...",
+		color: "var(--homepage-primary)",
+		bgGradient: "from-blue-500/20 to-purple-500/20",
+	},
+	{
+		icon: Brain,
+		title: "Learning Your Style",
+		description: "Adapting to your unique learning patterns...",
+		typingText: "Visual learner detected. Preference for examples. Optimal: 25min sessions.",
+		color: "var(--homepage-ai-primary)",
+		bgGradient: "from-purple-500/20 to-pink-500/20",
+	},
+	{
+		icon: Target,
+		title: "Crafting Your Plan",
+		description: "Building personalized study materials...",
+		typingText: "Generated 23 quiz questions, 5 summaries, 12 flashcards...",
+		color: "var(--homepage-success)",
+		bgGradient: "from-green-500/20 to-blue-500/20",
+	},
+	{
+		icon: Zap,
+		title: "Ready to Excel!",
+		description: "Your personalized AI study companion is ready",
+		typingText: "Success rate prediction: 94% • Estimated mastery: 8 days",
+		color: "var(--homepage-accent)",
+		bgGradient: "from-orange-500/20 to-yellow-500/20",
+	},
+];
+
 export function AIAssistant() {
 	const [currentPhase, setCurrentPhase] = useState(0);
 	const [isThinking, setIsThinking] = useState(false);
 	const [typedText, setTypedText] = useState("");
-
-	const phases = [
-		{
-			icon: MessageCircle,
-			title: "Scanning Content",
-			description: "Analyzing your materials with AI precision...",
-			typingText: "Found 47 key concepts, 12 formulas, 8 case studies...",
-			color: "var(--homepage-primary)",
-			bgGradient: "from-blue-500/20 to-purple-500/20",
-		},
-		{
-			icon: Brain,
-			title: "Learning Your Style",
-			description: "Adapting to your unique learning patterns...",
-			typingText: "Visual learner detected. Preference for examples. Optimal: 25min sessions.",
-			color: "var(--homepage-ai-primary)",
-			bgGradient: "from-purple-500/20 to-pink-500/20",
-		},
-		{
-			icon: Target,
-			title: "Crafting Your Plan",
-			description: "Building personalized study materials...",
-			typingText: "Generated 23 quiz questions, 5 summaries, 12 flashcards...",
-			color: "var(--homepage-success)",
-			bgGradient: "from-green-500/20 to-blue-500/20",
-		},
-		{
-			icon: Zap,
-			title: "Ready to Excel!",
-			description: "Your personalized AI study companion is ready",
-			typingText: "Success rate prediction: 94% • Estimated mastery: 8 days",
-			color: "var(--homepage-accent)",
-			bgGradient: "from-orange-500/20 to-yellow-500/20",
-		},
-	];
 
 	// Typing animation effect
 	useEffect(() => {
@@ -59,7 +59,7 @@ export function AIAssistant() {
 		}, 50);
 
 		return () => clearInterval(typeInterval);
-	}, [currentPhase, phases]);
+	}, [currentPhase]);
 
 	// Phase progression with thinking animation
 	useEffect(() => {
@@ -72,7 +72,7 @@ export function AIAssistant() {
 		}, 4000);
 
 		return () => clearInterval(interval);
-	}, [phases.length]);
+	}, []);
 
 	const currentPhaseData = phases[currentPhase];
 	const Icon = currentPhaseData.icon;
@@ -125,7 +125,7 @@ export function AIAssistant() {
 								<div className="flex space-x-1">
 									{[0, 1, 2].map((i) => (
 										<motion.div
-											key={i}
+											key={`thinking-dot-${i}`}
 											className="w-2 h-2 rounded-full"
 											style={{ backgroundColor: currentPhaseData.color }}
 											animate={{
@@ -165,7 +165,7 @@ export function AIAssistant() {
 				<div className="absolute inset-0 pointer-events-none">
 					{[...Array(8)].map((_, i) => (
 						<motion.div
-							key={`sparkle-${i}`}
+							key={`sparkle-${i + 1}`}
 							className="absolute"
 							style={{
 								top: `${30 + Math.sin((i * 45 * Math.PI) / 180) * 35}%`,
@@ -235,7 +235,7 @@ export function AIAssistant() {
 			>
 				{phases.map((phase, index) => (
 					<motion.div
-						key={`indicator-${index}`}
+						key={phase.title}
 						className="relative"
 						animate={{
 							scale: index === currentPhase ? 1.2 : 1,
@@ -243,7 +243,7 @@ export function AIAssistant() {
 						transition={{ duration: 0.3, ease: "easeOut" }}
 					>
 						<div
-							className={`w-2 h-2 rounded-full transition-all duration-300`}
+							className="w-2 h-2 rounded-full transition-all duration-300"
 							style={{
 								backgroundColor: index === currentPhase ? phase.color : `${phase.color}40`,
 								boxShadow: index === currentPhase ? `0 0 12px ${phase.color}60` : "none",
