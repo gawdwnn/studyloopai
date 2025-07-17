@@ -15,7 +15,6 @@ export function FinalCTASection() {
 			className="py-20 bg-gradient-to-br from-primary via-primary to-accent text-primary-foreground relative overflow-hidden"
 			style={{
 				background: "linear-gradient(135deg, var(--homepage-primary), var(--homepage-ai-primary))",
-				color: "white",
 			}}
 		>
 			{/* Background Pattern */}
@@ -77,15 +76,15 @@ export function FinalCTASection() {
 					{/* Trust Signals */}
 					<div className="flex flex-col sm:flex-row items-center justify-center gap-6 text-sm opacity-80">
 						<div className="flex items-center gap-2">
-							<div className="w-2 h-2 bg-green-400 rounded-full" />
+							<div className="w-2 h-2 bg-current rounded-full opacity-60" />
 							<span>100+ students trust us</span>
 						</div>
 						<div className="flex items-center gap-2">
-							<div className="w-2 h-2 bg-blue-400 rounded-full" />
+							<div className="w-2 h-2 bg-current rounded-full opacity-60" />
 							<span>4.9/5 star rating</span>
 						</div>
 						<div className="flex items-center gap-2">
-							<div className="w-2 h-2 bg-purple-400 rounded-full" />
+							<div className="w-2 h-2 bg-current rounded-full opacity-60" />
 							<span>3+ Universities</span>
 						</div>
 					</div>

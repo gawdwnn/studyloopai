@@ -284,7 +284,7 @@ export function PersonalizationDemo() {
 												<p className="mb-2">
 													Visual learner detected - showing diagram-based question:
 												</p>
-												<div className="bg-blue-50 p-3 rounded border-l-4 border-blue-400">
+												<div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded border-l-4 border-blue-400 dark:border-blue-600">
 													📊 Which diagram best represents the concept of photosynthesis?
 												</div>
 											</div>
@@ -302,7 +302,7 @@ export function PersonalizationDemo() {
 												<p className="mb-2">
 													Auditory learner detected - providing audio explanation:
 												</p>
-												<div className="bg-purple-50 p-3 rounded border-l-4 border-purple-400">
+												<div className="bg-purple-50 dark:bg-purple-900/20 p-3 rounded border-l-4 border-purple-400 dark:border-purple-600">
 													🎵 Listen to the explanation and answer: What is the main process in
 													photosynthesis?
 												</div>
@@ -321,7 +321,7 @@ export function PersonalizationDemo() {
 												<p className="mb-2">
 													Kinesthetic learner detected - interactive simulation:
 												</p>
-												<div className="bg-green-50 p-3 rounded border-l-4 border-green-400">
+												<div className="bg-green-50 dark:bg-green-900/20 p-3 rounded border-l-4 border-green-400 dark:border-green-600">
 													🔬 Drag and drop the components to build the photosynthesis equation
 												</div>
 											</div>

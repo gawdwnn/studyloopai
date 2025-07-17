@@ -7,10 +7,14 @@ import {
 } from "@/components/home-sections";
 import { HomepageSection } from "@/components/home-sections/animated-section";
 import { ScrollReveal } from "@/components/scroll-reveal";
+import { HomeNavbar } from "@/components/home-sections/home-navbar";
+import { HomeFooter } from "@/components/home-sections/home-footer";
 
 export default function Home() {
 	return (
-		<div className="flex flex-col min-h-screen">
+		<div className="relative flex min-h-screen flex-col">
+			<HomeNavbar />
+			<main className="flex-1">
 			{/* Hero Section - Hook visitors instantly with AI companion */}
 			<HeroSection />
 
@@ -45,6 +49,8 @@ export default function Home() {
 			<ScrollReveal direction="up" duration={0.8}>
 				<FinalCTASection />
 			</ScrollReveal>
+			</main>
+			<HomeFooter />
 		</div>
 	);
 }
