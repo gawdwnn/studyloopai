@@ -66,8 +66,13 @@ export default function OnboardingLayout({
 						<Link href="/" className="flex items-center gap-2">
 							<span className="font-bold text-xl">StudyLoopAI</span>
 						</Link>
-						<Button variant="ghost" onClick={handleSkip} disabled={isPending}>
-							{isPending ? "Skipping..." : "Skip for now"}
+						<Button
+							variant="outline"
+							onClick={handleSkip}
+							disabled={isPending}
+							className="border-2 hover:bg-accent font-medium"
+						>
+							{isPending ? "Skipping..." : "Skip for now →"}
 						</Button>
 					</div>
 				</div>

@@ -75,21 +75,6 @@ export function CompletionStep() {
 				>
 					<CheckCircle className="h-10 w-10 text-white" />
 				</motion.div>
-
-				<motion.div
-					initial={{ y: 20, opacity: 0 }}
-					animate={{ y: 0, opacity: 1 }}
-					transition={{ duration: 0.5, delay: 0.2 }}
-					className="space-y-2"
-				>
-					<h2 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-						Welcome to StudyLoopAI!
-					</h2>
-					<p className="text-lg text-muted-foreground max-w-md mx-auto">
-						{hasProfile && `Welcome ${profileData.firstName}! `}
-						Your AI-powered learning journey starts now.
-					</p>
-				</motion.div>
 			</motion.div>
 
 			{/* Setup summary */}
