@@ -93,19 +93,19 @@ export function WhyChooseUsSection() {
 							{/* Stats Grid */}
 							<div className="grid grid-cols-2 gap-4 mb-8">
 								<div className="text-center p-4 bg-background/50 rounded-lg">
-									<div className="text-2xl font-bold text-primary">95%</div>
+									<div className="text-2xl font-bold text-primary grading">95%</div>
 									<div className="text-sm text-muted-foreground">Grade Improvement</div>
 								</div>
 								<div className="text-center p-4 bg-background/50 rounded-lg">
-									<div className="text-2xl font-bold text-primary">10hrs</div>
+									<div className="text-2xl font-bold text-primary grading">10hrs</div>
 									<div className="text-sm text-muted-foreground">Time Saved Weekly</div>
 								</div>
 								<div className="text-center p-4 bg-background/50 rounded-lg">
-									<div className="text-2xl font-bold text-primary">3+</div>
+									<div className="text-2xl font-bold text-primary grading">3+</div>
 									<div className="text-sm text-muted-foreground">Universities</div>
 								</div>
 								<div className="text-center p-4 bg-background/50 rounded-lg">
-									<div className="text-2xl font-bold text-primary">24/7</div>
+									<div className="text-2xl font-bold text-primary grading">24/7</div>
 									<div className="text-sm text-muted-foreground">AI Assistant</div>
 								</div>
 							</div>
