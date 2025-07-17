@@ -1,0 +1,36 @@
+
+h1 {
+  /* background: #ec1717 !important; */
+  padding: 2rem;
+  color: #0950C3;
+  
+}
+
+.text-muted-foreground{
+    /* color: #595959; */
+    color: #575757;
+    font-weight: 500;
+}
+
+.to-accent\/10{
+    color: #333 !important;
+
+}
+
+.header-space{
+    background-color: rgb(255, 255, 255);
+}
+
+.text-secondary-foreground{
+    padding: 10px;
+    color: #595959;
+    font-weight: 600;
+}
+
+.full-bg{
+    background-color: #0950C3; 
+}
+
+.grading{
+    color: #0950C3;
+}

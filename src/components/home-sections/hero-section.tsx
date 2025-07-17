@@ -2,17 +2,27 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
+
+  <h1 className="text-4xl font-bold tracking-tight sm:text-6xl mb-6 my-custom-hero">
+		Study Smarter, Not Harder with AI-Powered Learning
+		</h1>
+
+
 export function HeroSection() {
 	return (
-		<section className="relative overflow-hidden bg-gradient-to-br from-primary/10 via-background to-accent/10 py-20 lg:py-28">
+		<section className="relative overflow-hidden from-primary/10 via-background to-accent/10 py-20 lg:py-28 header-space">
+					{/* <section className="relative overflow-hidden bg-gradient-to-br from-primary/10 via-background to-accent/10 py-20 lg:py-28"></section> */}
 			<div className="container mx-auto px-4">
 				<div className="text-center max-w-4xl mx-auto">
 					<Badge variant="secondary" className="mb-6">
 						🎓 AI-Powered Study Platform
 					</Badge>
-					<h1 className="text-4xl font-bold tracking-tight sm:text-6xl mb-6 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+					
+					<h1 className="text-4xl font-bold tracking-tight sm:text-6xl mb-6">
+						{/* bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent */}
 						Study Smarter, Not Harder with AI-Powered Learning
 					</h1>
+
 					<p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto leading-relaxed">
 						Join thousands of students who are transforming their study habits with personalized AI
 						tools. Upload your course materials and get instant smart summaries, adaptive quizzes,

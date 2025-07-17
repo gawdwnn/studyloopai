@@ -11,7 +11,8 @@ export function FinalCTASection() {
 	];
 
 	return (
-		<section className="py-20 bg-gradient-to-br from-primary via-primary to-accent text-primary-foreground relative overflow-hidden">
+		<section className="py-20 from-primary via-primary to-accent text-primary-foreground full-bg relative overflow-hidden">
+			{/* <section className="py-20 bg-gradient-to-br from-primary via-primary to-accent text-primary-foreground relative overflow-hidden"></section> */}
 			{/* Background Pattern */}
 			<div className="absolute inset-0 opacity-10">
 				<div className="absolute top-10 left-10 w-32 h-32 border border-current rounded-full" />
@@ -27,7 +28,8 @@ export function FinalCTASection() {
 					</div>
 
 					<h2 className="text-3xl md:text-5xl font-bold mb-6">Ready to Transform Your Learning?</h2>
-					<p className="text-xl opacity-90 mb-8 max-w-2xl mx-auto leading-relaxed">
+					<p className="text-xl mb-8 max-w-2xl mx-auto leading-relaxed">
+						{/* <p className="text-xl opacity-90 mb-8 max-w-2xl mx-auto leading-relaxed"></p> */}
 						Join thousands of students who have already improved their grades with our AI-powered
 						study tools. Start your journey to academic success today.
 					</p>
