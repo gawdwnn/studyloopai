@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { skipOnboarding } from "@/lib/actions/user";
+import { completeOnboarding as completeOnboardingAction, skipOnboarding } from "@/lib/actions/user";
 import {
 	TOTAL_STEPS,
 	useOnboardingProgress,
@@ -32,8 +32,11 @@ export default function OnboardingLayout({
 
 	const handleNext = () => {
 		if (currentStep === TOTAL_STEPS) {
-			completeOnboarding();
-			router.push("/dashboard");
+			startTransition(async () => {
+				await completeOnboardingAction();
+				completeOnboarding();
+				router.push("/dashboard");
+			});
 		} else {
 			const nextSlug = getStepInfo(currentStep + 1).slug;
 			router.push(`/onboarding/${nextSlug}`);
@@ -115,8 +118,8 @@ export default function OnboardingLayout({
 							)}
 						</div>
 						<div className="flex items-center gap-4">
-							<Button onClick={handleNext}>
-								{isLastStep ? "Finish" : "Next"}
+							<Button onClick={handleNext} disabled={isPending}>
+								{isLastStep ? (isPending ? "Finishing..." : "Finish") : "Next"}
 								{!isLastStep && <ArrowRight className="h-4 w-4 ml-2" />}
 							</Button>
 						</div>
