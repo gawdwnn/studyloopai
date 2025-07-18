@@ -254,43 +254,6 @@ export function BeforeAfterDemo() {
 				</AnimatePresence>
 			</div>
 
-			{/* Transformation Stats with Stagger Animation */}
-			<motion.div
-				className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12"
-				initial={{ opacity: 0, y: 30 }}
-				animate={{ opacity: 1, y: 0 }}
-				transition={{ duration: 0.6, delay: 0.3 }}
-			>
-				{[
-					{ value: "70%", label: "Less time wasted on mastered topics", color: "text-green-600" },
-					{ value: "3x", label: "Faster improvement in weak areas", color: "text-blue-600" },
-					{ value: "95%", label: "Students report better understanding", color: "text-purple-600" },
-				].map((stat, index) => (
-					<motion.div
-						key={stat.label}
-						initial={{ opacity: 0, y: 20, scale: 0.9 }}
-						animate={{ opacity: 1, y: 0, scale: 1 }}
-						transition={{
-							duration: 0.5,
-							delay: 0.5 + index * 0.1,
-							type: "spring",
-							stiffness: 200,
-						}}
-					>
-						<Card className="text-center p-6 hover:shadow-lg transition-shadow duration-300">
-							<motion.div
-								className={`text-3xl font-bold ${stat.color} mb-2`}
-								animate={{ scale: [1, 1.1, 1] }}
-								transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY, delay: index * 0.5 }}
-							>
-								{stat.value}
-							</motion.div>
-							<div className="text-sm text-muted-foreground">{stat.label}</div>
-						</Card>
-					</motion.div>
-				))}
-			</motion.div>
-
 			{/* Call to Action with Hover Animation */}
 			<motion.div
 				className="text-center mt-8"
