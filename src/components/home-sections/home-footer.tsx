@@ -2,7 +2,7 @@
 
 import { ScrollRevealStagger } from "@/components/scroll-reveal";
 import { Button } from "@/components/ui/button";
-import { ParallaxWatermark } from "@/components/ui/parallax-watermark";
+import { ParallaxWatermark } from "@/components/home-sections/parallax-watermark";
 import { cn } from "@/lib/utils";
 import {
 	ArrowRight,
