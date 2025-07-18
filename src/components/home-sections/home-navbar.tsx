@@ -36,11 +36,11 @@ export function HomeNavbar() {
 				<div className="flex items-center gap-2 min-w-0 flex-shrink-0">
 					<Link href="/" className="flex items-center gap-2 group">
 						<div className="relative">
-							<div className="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
+							<div className="w-8 h-8 bg-gradient-to-br from-[var(--homepage-primary)] to-[var(--homepage-ai-primary)] rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
 								<Brain className="w-4 h-4 text-white" />
 							</div>
-							<div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-								<Sparkles className="w-2 h-2 text-yellow-600 absolute top-0.5 left-0.5" />
+							<div className="absolute -top-1 -right-1 w-3 h-3 bg-[var(--homepage-accent)] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+								<Sparkles className="w-2 h-2 text-[var(--homepage-accent-foreground)] absolute top-0.5 left-0.5" />
 							</div>
 						</div>
 						<span className="font-bold text-lg sm:text-xl bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
@@ -48,7 +48,7 @@ export function HomeNavbar() {
 						</span>
 						<Badge
 							variant="secondary"
-							className="text-xs px-1.5 sm:px-2 py-0.5 bg-primary/10 text-primary border-primary/20"
+							className="text-xs px-1.5 sm:px-2 py-0.5 bg-[var(--homepage-ai-primary)]/10 text-[var(--homepage-ai-primary)] border-[var(--homepage-ai-primary)]/20"
 						>
 							AI
 						</Badge>
@@ -76,14 +76,14 @@ export function HomeNavbar() {
 									</div>
 									<NavigationMenuLink
 										href="/dashboard/adaptive-learning/quizzes"
-										className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground group"
+										className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-all duration-300 hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground group hover:scale-105 hover:shadow-md"
 									>
 										<div className="flex items-center gap-2">
 											<div className="w-8 h-8 bg-blue-500/10 rounded-lg flex items-center justify-center">
 												<FileQuestion className="w-4 h-4 text-blue-600" />
 											</div>
 											<div className="text-sm font-medium leading-none">Smart Quizzes</div>
-											<ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+											<ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300" />
 										</div>
 										<p className="line-clamp-2 text-sm leading-snug text-muted-foreground mt-2">
 											AI-generated quizzes that adapt to your learning pace
@@ -91,14 +91,14 @@ export function HomeNavbar() {
 									</NavigationMenuLink>
 									<NavigationMenuLink
 										href="/dashboard/adaptive-learning/cuecards"
-										className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground group"
+										className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-all duration-300 hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground group hover:scale-105 hover:shadow-md"
 									>
 										<div className="flex items-center gap-2">
 											<div className="w-8 h-8 bg-green-500/10 rounded-lg flex items-center justify-center">
 												<Brain className="w-4 h-4 text-green-600" />
 											</div>
 											<div className="text-sm font-medium leading-none">Smart Cuecards</div>
-											<ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+											<ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300" />
 										</div>
 										<p className="line-clamp-2 text-sm leading-snug text-muted-foreground mt-2">
 											AI-generated cuecards for efficient memorization
@@ -106,14 +106,14 @@ export function HomeNavbar() {
 									</NavigationMenuLink>
 									<NavigationMenuLink
 										href="/dashboard/course-planner"
-										className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground group"
+										className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-all duration-300 hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground group hover:scale-105 hover:shadow-md"
 									>
 										<div className="flex items-center gap-2">
 											<div className="w-8 h-8 bg-purple-500/10 rounded-lg flex items-center justify-center">
 												<Calendar className="w-4 h-4 text-purple-600" />
 											</div>
 											<div className="text-sm font-medium leading-none">Course Planner</div>
-											<ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+											<ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300" />
 										</div>
 										<p className="line-clamp-2 text-sm leading-snug text-muted-foreground mt-2">
 											AI-powered study planning and scheduling
@@ -121,14 +121,14 @@ export function HomeNavbar() {
 									</NavigationMenuLink>
 									<NavigationMenuLink
 										href="/dashboard/adaptive-learning/multiple-choice"
-										className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground group"
+										className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-all duration-300 hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground group hover:scale-105 hover:shadow-md"
 									>
 										<div className="flex items-center gap-2">
 											<div className="w-8 h-8 bg-orange-500/10 rounded-lg flex items-center justify-center">
 												<GraduationCap className="w-4 h-4 text-orange-600" />
 											</div>
 											<div className="text-sm font-medium leading-none">Multiple Choice</div>
-											<ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+											<ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300" />
 										</div>
 										<p className="line-clamp-2 text-sm leading-snug text-muted-foreground mt-2">
 											Practice with AI-generated multiple choice questions
@@ -136,14 +136,14 @@ export function HomeNavbar() {
 									</NavigationMenuLink>
 									<NavigationMenuLink
 										href="/dashboard/adaptive-learning/open-questions"
-										className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground group"
+										className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-all duration-300 hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground group hover:scale-105 hover:shadow-md"
 									>
 										<div className="flex items-center gap-2">
 											<div className="w-8 h-8 bg-pink-500/10 rounded-lg flex items-center justify-center">
 												<MessageSquare className="w-4 h-4 text-pink-600" />
 											</div>
 											<div className="text-sm font-medium leading-none">Open Questions</div>
-											<ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+											<ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300" />
 										</div>
 										<p className="line-clamp-2 text-sm leading-snug text-muted-foreground mt-2">
 											Deep learning with open-ended questions
@@ -188,13 +188,13 @@ export function HomeNavbar() {
 									{/* Mobile Navigation Header */}
 									<div className="flex items-center justify-between pb-4 border-b px-2">
 										<div className="flex items-center gap-2">
-											<div className="w-6 h-6 bg-gradient-to-br from-primary to-accent rounded-md flex items-center justify-center">
+											<div className="w-6 h-6 bg-gradient-to-br from-[var(--homepage-primary)] to-[var(--homepage-ai-primary)] rounded-md flex items-center justify-center">
 												<Brain className="w-3 h-3 text-white" />
 											</div>
 											<span className="font-bold text-lg">StudyLoop</span>
 											<Badge
 												variant="secondary"
-												className="text-xs px-1.5 py-0.5 bg-primary/10 text-primary border-primary/20"
+												className="text-xs px-1.5 py-0.5 bg-[var(--homepage-ai-primary)]/10 text-[var(--homepage-ai-primary)] border-[var(--homepage-ai-primary)]/20"
 											>
 												AI
 											</Badge>
@@ -209,7 +209,7 @@ export function HomeNavbar() {
 
 										<Link
 											href="/dashboard/adaptive-learning/quizzes"
-											className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-accent transition-colors"
+											className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-accent hover:scale-105 transition-all duration-300 group"
 											onClick={() => setIsMobileMenuOpen(false)}
 										>
 											<div className="w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center">
@@ -219,12 +219,12 @@ export function HomeNavbar() {
 												<div className="font-medium">Smart Quizzes</div>
 												<div className="text-sm text-muted-foreground">AI-adaptive quizzes</div>
 											</div>
-											<ArrowRight className="w-4 h-4 text-muted-foreground" />
+											<ArrowRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-1 transition-transform duration-300" />
 										</Link>
 
 										<Link
 											href="/dashboard/adaptive-learning/cuecards"
-											className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-accent transition-colors"
+											className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-accent hover:scale-105 transition-all duration-300 group"
 											onClick={() => setIsMobileMenuOpen(false)}
 										>
 											<div className="w-10 h-10 bg-green-500/10 rounded-lg flex items-center justify-center">
@@ -234,12 +234,12 @@ export function HomeNavbar() {
 												<div className="font-medium">Smart Cuecards</div>
 												<div className="text-sm text-muted-foreground">AI-generated cards</div>
 											</div>
-											<ArrowRight className="w-4 h-4 text-muted-foreground" />
+											<ArrowRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-1 transition-transform duration-300" />
 										</Link>
 
 										<Link
 											href="/dashboard/course-planner"
-											className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-accent transition-colors"
+											className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-accent hover:scale-105 transition-all duration-300 group"
 											onClick={() => setIsMobileMenuOpen(false)}
 										>
 											<div className="w-10 h-10 bg-purple-500/10 rounded-lg flex items-center justify-center">
@@ -249,12 +249,12 @@ export function HomeNavbar() {
 												<div className="font-medium">Course Planner</div>
 												<div className="text-sm text-muted-foreground">Study planning</div>
 											</div>
-											<ArrowRight className="w-4 h-4 text-muted-foreground" />
+											<ArrowRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-1 transition-transform duration-300" />
 										</Link>
 
 										<Link
 											href="/dashboard/adaptive-learning/multiple-choice"
-											className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-accent transition-colors"
+											className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-accent hover:scale-105 transition-all duration-300 group"
 											onClick={() => setIsMobileMenuOpen(false)}
 										>
 											<div className="w-10 h-10 bg-orange-500/10 rounded-lg flex items-center justify-center">
@@ -264,12 +264,12 @@ export function HomeNavbar() {
 												<div className="font-medium">Multiple Choice</div>
 												<div className="text-sm text-muted-foreground">Practice questions</div>
 											</div>
-											<ArrowRight className="w-4 h-4 text-muted-foreground" />
+											<ArrowRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-1 transition-transform duration-300" />
 										</Link>
 
 										<Link
 											href="/dashboard/adaptive-learning/open-questions"
-											className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-accent transition-colors"
+											className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-accent hover:scale-105 transition-all duration-300 group"
 											onClick={() => setIsMobileMenuOpen(false)}
 										>
 											<div className="w-10 h-10 bg-pink-500/10 rounded-lg flex items-center justify-center">
@@ -279,7 +279,7 @@ export function HomeNavbar() {
 												<div className="font-medium">Open Questions</div>
 												<div className="text-sm text-muted-foreground">Deep learning</div>
 											</div>
-											<ArrowRight className="w-4 h-4 text-muted-foreground" />
+											<ArrowRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-1 transition-transform duration-300" />
 										</Link>
 									</div>
 

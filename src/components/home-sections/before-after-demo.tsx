@@ -116,7 +116,9 @@ export function BeforeAfterDemo() {
 					<div className="space-y-2">
 						<div className="text-sm font-medium">Personalized Study Plan</div>
 						<div className="bg-card p-3 rounded border-l-4 border-green-400 dark:border-green-600">
-							<div className="text-xs text-green-600 dark:text-green-400 mb-1">Tailored for Visual Learner</div>
+							<div className="text-xs text-green-600 dark:text-green-400 mb-1">
+								Tailored for Visual Learner
+							</div>
 							<div className="text-sm">🎨 Interactive diagrams for Chapter 1</div>
 							<div className="text-sm">📊 Focus on weak areas: Cellular respiration</div>
 							<div className="text-sm">⚡ Quick review of mastered concepts</div>
@@ -187,7 +189,9 @@ export function BeforeAfterDemo() {
 					<div className="space-y-2">
 						<div className="text-sm font-medium">AI Insights</div>
 						<div className="bg-blue-100 dark:bg-blue-900/20 p-3 rounded">
-							<div className="text-xs text-blue-600 dark:text-blue-400">💡 Your AI companion noticed:</div>
+							<div className="text-xs text-blue-600 dark:text-blue-400">
+								💡 Your AI companion noticed:
+							</div>
 							<div className="text-sm">
 								"You learn faster with visual examples. Here's a diagram to help with today's
 								concept."

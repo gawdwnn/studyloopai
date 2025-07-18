@@ -12,7 +12,7 @@ export function FinalCTASection() {
 
 	return (
 		<section
-			className="py-20 bg-gradient-to-br from-primary via-primary to-accent text-primary-foreground relative overflow-hidden"
+			className="py-20 text-white relative overflow-hidden"
 			style={{
 				background: "linear-gradient(135deg, var(--homepage-primary), var(--homepage-ai-primary))",
 			}}
@@ -28,10 +28,12 @@ export function FinalCTASection() {
 				<div className="text-center max-w-4xl mx-auto">
 					<div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 rounded-full mb-6">
 						<Zap className="w-4 h-4" />
-						<span className="text-sm font-medium">Limited Time: 50% Off for Students</span>
+						<span className="text-sm font-medium">Limited Time: free for Students</span>
 					</div>
 
-					<h2 className="text-3xl md:text-5xl font-bold mb-6">Ready to Transform Your Learning?</h2>
+					<h2 className="text-3xl md:text-5xl font-bold mb-6 homepage-text-balanced">
+						Ready to Transform Your Learning?
+					</h2>
 					<p className="text-xl opacity-90 mb-8 max-w-2xl mx-auto leading-relaxed">
 						Join thousands of students who have already improved their grades with our AI-powered
 						study tools. Start your journey to academic success today.
@@ -55,7 +57,7 @@ export function FinalCTASection() {
 						<Button
 							size="lg"
 							variant="secondary"
-							className="text-lg px-8 py-6 hover:shadow-xl transition-all duration-300 hover:scale-105 bg-white text-primary hover:bg-white/90"
+							className="text-lg px-8 py-6 hover:shadow-xl transition-all duration-300 hover:scale-105 bg-white text-[var(--homepage-primary)] hover:bg-white/90"
 							asChild
 						>
 							<Link href="/auth/signin" className="flex items-center gap-2">
@@ -66,35 +68,11 @@ export function FinalCTASection() {
 						<Button
 							size="lg"
 							variant="outline"
-							className="text-lg px-8 py-6 border-primary-foreground text-primary-foreground bg-transparent hover:bg-white hover:text-primary hover:shadow-xl transition-all duration-300 hover:scale-105"
+							className="text-lg px-8 py-6 border-white text-white bg-transparent hover:bg-white hover:text-[var(--homepage-primary)] hover:shadow-xl transition-all duration-300 hover:scale-105"
 							asChild
 						>
 							<Link href="/cuecards">Try Demo First</Link>
 						</Button>
-					</div>
-
-					{/* Trust Signals */}
-					<div className="flex flex-col sm:flex-row items-center justify-center gap-6 text-sm opacity-80">
-						<div className="flex items-center gap-2">
-							<div className="w-2 h-2 bg-current rounded-full opacity-60" />
-							<span>100+ students trust us</span>
-						</div>
-						<div className="flex items-center gap-2">
-							<div className="w-2 h-2 bg-current rounded-full opacity-60" />
-							<span>4.9/5 star rating</span>
-						</div>
-						<div className="flex items-center gap-2">
-							<div className="w-2 h-2 bg-current rounded-full opacity-60" />
-							<span>3+ Universities</span>
-						</div>
-					</div>
-
-					{/* Urgency */}
-					<div className="mt-8 p-4 bg-white/10 rounded-lg border border-white/20">
-						<p className="text-sm font-medium">
-							⚡ Special offer: Use code <span className="font-bold">STUDENT50</span> for 50% off
-							your first 3 months
-						</p>
 					</div>
 				</div>
 			</div>

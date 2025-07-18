@@ -1,5 +1,6 @@
 "use client";
 
+import { ScrollReveal, ScrollRevealStagger } from "@/components/scroll-reveal";
 import {
 	Accordion,
 	AccordionContent,
@@ -54,46 +55,75 @@ const faqs = [
 
 export function FAQSection() {
 	return (
-		<section className="py-20">
+		<section className="py-20 bg-gradient-to-br from-background via-muted/10 to-background">
 			<div className="container mx-auto px-4">
-				<div className="text-center mb-16">
-					<h2 className="text-3xl font-bold mb-4">Frequently Asked Questions</h2>
-					<p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-						Everything you need to know about StudyLoop. Can't find the answer you're looking for?
-						<a href="/contact" className="text-primary hover:underline ml-1">
-							Contact our support team
-						</a>
-						.
-					</p>
-				</div>
+				<ScrollReveal direction="fade" duration={0.8}>
+					<div className="text-center mb-16">
+						<h2 className="text-3xl font-bold mb-4 homepage-text-balanced">
+							Frequently Asked Questions
+						</h2>
+						<p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+							Everything you need to know about StudyLoop. Can't find the answer you're looking for?
+							<a href="/contact" className="text-[var(--homepage-primary)] hover:underline ml-1">
+								Contact our support team
+							</a>
+							.
+						</p>
+					</div>
+				</ScrollReveal>
 
 				<div className="max-w-3xl mx-auto">
-					<Accordion type="single" collapsible className="space-y-4">
-						{faqs.map((faq) => (
-							<AccordionItem
-								key={faq.id}
-								value={faq.id}
-								className="border border-border rounded-lg px-6 bg-background/50 hover:bg-background transition-colors"
-							>
-								<AccordionTrigger className="text-left font-semibold hover:no-underline py-6">
-									{faq.question}
-								</AccordionTrigger>
-								<AccordionContent className="text-muted-foreground leading-relaxed pb-6">
-									{faq.answer}
-								</AccordionContent>
-							</AccordionItem>
-						))}
-					</Accordion>
+					<ScrollRevealStagger staggerDelay={0.1}>
+						<Accordion type="single" collapsible className="space-y-4">
+							{faqs.map((faq) => (
+								<AccordionItem
+									key={faq.id}
+									value={faq.id}
+									className="border border-border rounded-lg px-6 bg-background/50 hover:bg-background hover:shadow-md hover:scale-[1.02] transition-all duration-300"
+								>
+									<AccordionTrigger className="text-left font-semibold hover:no-underline py-6">
+										{faq.question}
+									</AccordionTrigger>
+									<AccordionContent className="text-muted-foreground leading-relaxed pb-6">
+										{faq.answer}
+									</AccordionContent>
+								</AccordionItem>
+							))}
+						</Accordion>
+					</ScrollRevealStagger>
 				</div>
 
-				{/* Support CTA */}
-				<div className="text-center mt-12">
-					<div className="inline-flex items-center gap-2 px-6 py-3 bg-primary/10 rounded-full text-primary">
-						<span className="text-sm font-medium">
-							Still have questions? Our support team responds in under 2 hours
-						</span>
+				{/* Newsletter Waitlist Section */}
+				<ScrollReveal direction="up" delay={0.4} duration={0.6}>
+					<div className="text-center mt-16 max-w-2xl mx-auto">
+						<div className="inline-flex items-center gap-2 rounded-full bg-[var(--homepage-ai-primary)]/20 px-4 py-2 mb-6">
+							<span className="text-sm font-medium text-[var(--homepage-ai-primary)]">
+								Join 100+ students
+							</span>
+						</div>
+						<h3 className="text-2xl font-bold mb-4">
+							The AI learning revolution was waiting for you.
+						</h3>
+						<p className="text-lg text-muted-foreground mb-8">
+							Get exclusive study tips, AI insights, and early access to new features.
+						</p>
+
+						<form className="flex gap-3 max-w-md mx-auto">
+							<input
+								type="email"
+								placeholder="your.email@university.edu"
+								className="flex-1 px-4 py-3 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:border-[var(--homepage-primary)] focus:outline-none h-12"
+								required
+							/>
+							<button
+								type="submit"
+								className="h-12 px-6 bg-gradient-to-r from-[var(--homepage-primary)] to-[var(--homepage-ai-primary)] hover:opacity-90 text-white rounded-lg font-medium transition-opacity"
+							>
+								Join the waitlist
+							</button>
+						</form>
 					</div>
-				</div>
+				</ScrollReveal>
 			</div>
 		</section>
 	);

@@ -304,7 +304,7 @@ export function HeroSection() {
 									))}
 								</div>
 								<span className="font-semibold">4.9/5</span>
-								<span className="text-sm opacity-75">(500+ students)</span>
+								<span className="text-sm opacity-75">(100+ students)</span>
 							</div>
 						</motion.div>
 					</motion.div>
