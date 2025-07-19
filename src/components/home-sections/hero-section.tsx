@@ -40,162 +40,6 @@ export function HeroSection() {
 
 	return (
 		<section className="relative overflow-hidden homepage-gradient-bg py-4 lg:py-6 min-h-[calc(100vh-5rem)] flex items-center">
-			{/* Enhanced Background Elements */}
-			<div className="absolute inset-0 -z-10">
-				{/* Geometric shapes using CSS custom properties with border utilities */}
-				<motion.div
-					className="absolute top-10 left-10 w-32 h-32 rounded-full border-2 opacity-60"
-					style={{
-						borderColor: "hsl(var(--primary))",
-						color: "hsl(var(--primary))",
-					}}
-					animate={{
-						rotate: [0, 360],
-						scale: [1, 1.1, 1],
-					}}
-					transition={{
-						duration: 20,
-						repeat: Number.POSITIVE_INFINITY,
-						ease: "linear",
-					}}
-				/>
-				<motion.div
-					className="absolute bottom-20 right-20 w-24 h-24 rounded-full border-2 opacity-50"
-					style={{
-						borderColor: "hsl(var(--chart-2))",
-						color: "hsl(var(--chart-2))",
-					}}
-					animate={{
-						y: [-10, 10, -10],
-					}}
-					transition={{
-						duration: 4,
-						repeat: Number.POSITIVE_INFINITY,
-						ease: "easeInOut",
-					}}
-				/>
-				<motion.div
-					className="absolute top-1/2 left-1/4 w-16 h-16 rounded-full border-2 opacity-40"
-					style={{
-						borderColor: "hsl(var(--accent))",
-						color: "hsl(var(--accent))",
-					}}
-					animate={{
-						scale: [1, 1.2, 1],
-						rotate: [0, -180, 0],
-					}}
-					transition={{
-						duration: 8,
-						repeat: Number.POSITIVE_INFINITY,
-						ease: "easeInOut",
-					}}
-				/>
-				<motion.div
-					className="absolute top-1/4 right-1/3 w-20 h-20 border-2 rotate-45 opacity-35"
-					style={{
-						borderColor: "hsl(var(--chart-3))",
-						color: "hsl(var(--chart-3))",
-					}}
-					animate={{
-						rotate: [45, 225, 45],
-						scale: [1, 0.8, 1],
-					}}
-					transition={{
-						duration: 12,
-						repeat: Number.POSITIVE_INFINITY,
-						ease: "linear",
-					}}
-				/>
-				<motion.div
-					className="absolute bottom-1/3 left-1/2 w-48 h-12 border-2 opacity-30"
-					style={{
-						borderColor: "hsl(var(--primary))",
-						color: "hsl(var(--primary))",
-					}}
-					animate={{
-						x: [-20, 20, -20],
-					}}
-					transition={{
-						duration: 6,
-						repeat: Number.POSITIVE_INFINITY,
-						ease: "easeInOut",
-					}}
-				/>
-				<motion.div
-					className="absolute top-3/4 left-1/6 w-12 h-12 border-2 rotate-45 opacity-45"
-					style={{
-						borderColor: "hsl(var(--chart-2))",
-						color: "hsl(var(--chart-2))",
-					}}
-					animate={{
-						rotate: [45, 405, 45],
-						y: [-5, 5, -5],
-					}}
-					transition={{
-						duration: 10,
-						repeat: Number.POSITIVE_INFINITY,
-						ease: "easeInOut",
-					}}
-				/>
-				<motion.div
-					className="absolute top-20 right-1/4 w-6 h-32 border-2 opacity-25"
-					style={{
-						borderColor: "hsl(var(--accent))",
-						color: "hsl(var(--accent))",
-					}}
-					animate={{
-						rotate: [0, 360],
-					}}
-					transition={{
-						duration: 15,
-						repeat: Number.POSITIVE_INFINITY,
-						ease: "linear",
-					}}
-				/>
-
-				{/* Animated Gradient Orbs */}
-				<motion.div
-					className="absolute rounded-full opacity-30"
-					style={{
-						background: "linear-gradient(45deg, hsl(var(--primary)), hsl(var(--chart-2)))",
-						width: "300px",
-						height: "300px",
-						top: "10%",
-						right: "15%",
-					}}
-					animate={{
-						scale: [1, 1.05, 1],
-						rotate: [0, 360],
-						opacity: [0.3, 0.5, 0.3],
-					}}
-					transition={{
-						duration: 25,
-						repeat: Number.POSITIVE_INFINITY,
-						ease: "linear",
-					}}
-				/>
-				<motion.div
-					className="absolute rounded-full opacity-20"
-					style={{
-						background: "linear-gradient(135deg, hsl(var(--chart-2)), hsl(var(--accent)))",
-						width: "200px",
-						height: "200px",
-						bottom: "20%",
-						left: "10%",
-					}}
-					animate={{
-						scale: [1, 1.1, 1],
-						rotate: [0, -360],
-						opacity: [0.2, 0.4, 0.2],
-					}}
-					transition={{
-						duration: 30,
-						repeat: Number.POSITIVE_INFINITY,
-						ease: "linear",
-					}}
-				/>
-			</div>
-
 			<div className="container mx-auto px-4 relative z-10">
 				<div className="max-w-4xl mx-auto text-center">
 					<ScrollRevealStagger staggerDelay={0.2}>
@@ -347,21 +191,19 @@ export function HeroSection() {
 							{/* Trust Indicators - Enhanced */}
 							<div className="space-y-4 lg:space-y-6">
 								<div className="flex items-center justify-center gap-8 text-base flex-wrap">
-									{["Free forever plan", "Privacy-first design", "Works with any course"].map(
-										(feature) => (
-											<div
-												key={feature}
-												className="flex items-center gap-3 group hover:scale-105 transition-transform duration-300"
-											>
-												<span className="text-green-500 font-bold text-lg group-hover:scale-110 transition-transform duration-300">
-													✓
-												</span>
-												<span className="group-hover:text-primary transition-colors duration-300">
-													{feature}
-												</span>
-											</div>
-										)
-									)}
+									{["Free plan", "Privacy-first design", "Works with any course"].map((feature) => (
+										<div
+											key={feature}
+											className="flex items-center gap-3 group hover:scale-105 transition-transform duration-300"
+										>
+											<span className="text-green-500 font-bold text-lg group-hover:scale-110 transition-transform duration-300">
+												✓
+											</span>
+											<span className="group-hover:text-primary transition-colors duration-300">
+												{feature}
+											</span>
+										</div>
+									))}
 								</div>
 
 								{/* Social Proof */}
