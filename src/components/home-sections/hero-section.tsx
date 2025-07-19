@@ -1,12 +1,12 @@
 "use client";
 
+import { ScrollRevealStagger } from "@/components/scroll-reveal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
-import { ArrowRight, Brain, GraduationCap, Star, Upload, Zap } from "lucide-react";
+import { ArrowRight, Brain, GraduationCap, Star, Upload } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { HeroResultsDemo } from "./hero-results-demo";
 
 export function HeroSection() {
 	const [typedText, setTypedText] = useState("");
@@ -38,47 +38,20 @@ export function HeroSection() {
 		return () => clearInterval(typeInterval);
 	}, [currentWordIndex, dynamicWords]);
 
-	const containerVariants = {
-		hidden: { opacity: 0 },
-		visible: {
-			opacity: 1,
-			transition: {
-				staggerChildren: 0.2,
-				delayChildren: 0.1,
-			},
-		},
-	};
-
-	const itemVariants = {
-		hidden: { opacity: 0, y: 30 },
-		visible: {
-			opacity: 1,
-			y: 0,
-			transition: {
-				duration: 0.8,
-				ease: "easeOut",
-			},
-		},
-	};
-
 	return (
-		<section className="relative overflow-hidden homepage-gradient-bg py-20 lg:py-32 min-h-[90vh] flex items-center">
-			{/* Subtle Background Elements */}
+		<section className="relative overflow-hidden homepage-gradient-bg py-4 lg:py-6 min-h-[calc(100vh-5rem)] flex items-center">
+			{/* Enhanced Background Elements */}
 			<div className="absolute inset-0 -z-10">
-				{/* Single Gentle Orb */}
+				{/* Geometric shapes using CSS custom properties with border utilities */}
 				<motion.div
-					className="absolute rounded-full opacity-10"
+					className="absolute top-10 left-10 w-32 h-32 rounded-full border-2 opacity-60"
 					style={{
-						background:
-							"linear-gradient(45deg, var(--homepage-primary), var(--homepage-ai-primary))",
-						width: "400px",
-						height: "400px",
-						top: "20%",
-						right: "10%",
+						borderColor: "hsl(var(--primary))",
+						color: "hsl(var(--primary))",
 					}}
 					animate={{
-						scale: [1, 1.05, 1],
 						rotate: [0, 360],
+						scale: [1, 1.1, 1],
 					}}
 					transition={{
 						duration: 20,
@@ -86,240 +59,328 @@ export function HeroSection() {
 						ease: "linear",
 					}}
 				/>
+				<motion.div
+					className="absolute bottom-20 right-20 w-24 h-24 rounded-full border-2 opacity-50"
+					style={{
+						borderColor: "hsl(var(--chart-2))",
+						color: "hsl(var(--chart-2))",
+					}}
+					animate={{
+						y: [-10, 10, -10],
+					}}
+					transition={{
+						duration: 4,
+						repeat: Number.POSITIVE_INFINITY,
+						ease: "easeInOut",
+					}}
+				/>
+				<motion.div
+					className="absolute top-1/2 left-1/4 w-16 h-16 rounded-full border-2 opacity-40"
+					style={{
+						borderColor: "hsl(var(--accent))",
+						color: "hsl(var(--accent))",
+					}}
+					animate={{
+						scale: [1, 1.2, 1],
+						rotate: [0, -180, 0],
+					}}
+					transition={{
+						duration: 8,
+						repeat: Number.POSITIVE_INFINITY,
+						ease: "easeInOut",
+					}}
+				/>
+				<motion.div
+					className="absolute top-1/4 right-1/3 w-20 h-20 border-2 rotate-45 opacity-35"
+					style={{
+						borderColor: "hsl(var(--chart-3))",
+						color: "hsl(var(--chart-3))",
+					}}
+					animate={{
+						rotate: [45, 225, 45],
+						scale: [1, 0.8, 1],
+					}}
+					transition={{
+						duration: 12,
+						repeat: Number.POSITIVE_INFINITY,
+						ease: "linear",
+					}}
+				/>
+				<motion.div
+					className="absolute bottom-1/3 left-1/2 w-48 h-12 border-2 opacity-30"
+					style={{
+						borderColor: "hsl(var(--primary))",
+						color: "hsl(var(--primary))",
+					}}
+					animate={{
+						x: [-20, 20, -20],
+					}}
+					transition={{
+						duration: 6,
+						repeat: Number.POSITIVE_INFINITY,
+						ease: "easeInOut",
+					}}
+				/>
+				<motion.div
+					className="absolute top-3/4 left-1/6 w-12 h-12 border-2 rotate-45 opacity-45"
+					style={{
+						borderColor: "hsl(var(--chart-2))",
+						color: "hsl(var(--chart-2))",
+					}}
+					animate={{
+						rotate: [45, 405, 45],
+						y: [-5, 5, -5],
+					}}
+					transition={{
+						duration: 10,
+						repeat: Number.POSITIVE_INFINITY,
+						ease: "easeInOut",
+					}}
+				/>
+				<motion.div
+					className="absolute top-20 right-1/4 w-6 h-32 border-2 opacity-25"
+					style={{
+						borderColor: "hsl(var(--accent))",
+						color: "hsl(var(--accent))",
+					}}
+					animate={{
+						rotate: [0, 360],
+					}}
+					transition={{
+						duration: 15,
+						repeat: Number.POSITIVE_INFINITY,
+						ease: "linear",
+					}}
+				/>
+
+				{/* Animated Gradient Orbs */}
+				<motion.div
+					className="absolute rounded-full opacity-30"
+					style={{
+						background: "linear-gradient(45deg, hsl(var(--primary)), hsl(var(--chart-2)))",
+						width: "300px",
+						height: "300px",
+						top: "10%",
+						right: "15%",
+					}}
+					animate={{
+						scale: [1, 1.05, 1],
+						rotate: [0, 360],
+						opacity: [0.3, 0.5, 0.3],
+					}}
+					transition={{
+						duration: 25,
+						repeat: Number.POSITIVE_INFINITY,
+						ease: "linear",
+					}}
+				/>
+				<motion.div
+					className="absolute rounded-full opacity-20"
+					style={{
+						background: "linear-gradient(135deg, hsl(var(--chart-2)), hsl(var(--accent)))",
+						width: "200px",
+						height: "200px",
+						bottom: "20%",
+						left: "10%",
+					}}
+					animate={{
+						scale: [1, 1.1, 1],
+						rotate: [0, -360],
+						opacity: [0.2, 0.4, 0.2],
+					}}
+					transition={{
+						duration: 30,
+						repeat: Number.POSITIVE_INFINITY,
+						ease: "linear",
+					}}
+				/>
 			</div>
 
 			<div className="container mx-auto px-4 relative z-10">
-				<motion.div
-					className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center max-w-7xl mx-auto"
-					variants={containerVariants}
-					initial="hidden"
-					animate="visible"
-				>
-					{/* Left Column */}
-					<motion.div className="text-center lg:text-left space-y-8" variants={itemVariants}>
-						{/* Animated Badge */}
-						<motion.div
-							initial={{ opacity: 0, scale: 0.8, rotate: -5 }}
-							animate={{ opacity: 1, scale: 1, rotate: 0 }}
-							transition={{ duration: 0.6, ease: "easeOut" }}
-						>
-							<Badge
-								variant="secondary"
-								className="mb-6 px-4 py-2 text-sm bg-white/90 backdrop-blur-md border-0 shadow-lg"
-								style={{
-									background:
-										"linear-gradient(135deg, var(--homepage-card), var(--homepage-card)90)",
-									color: "var(--homepage-primary)",
-									boxShadow: "0 8px 32px var(--homepage-primary)20",
-								}}
-							>
-								<motion.span
-									animate={{ rotate: [0, 10, -10, 0] }}
-									transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY }}
-									className="mr-2"
-								>
-									🤖
-								</motion.span>
-								Meet Your AI Study Companion
-							</Badge>
-						</motion.div>
-
-						{/* Dynamic Heading */}
-						<div className="space-y-4">
-							<motion.h1
-								className="text-4xl lg:text-6xl font-bold tracking-tight leading-tight"
-								variants={itemVariants}
-							>
-								<motion.span
-									className="block mb-2"
-									initial={{ opacity: 0, x: -50 }}
-									animate={{ opacity: 1, x: 0 }}
-									transition={{ duration: 0.8, delay: 0.2 }}
-								>
-									Your Personal
-								</motion.span>
-
-								<motion.div
-									className="block relative min-h-[1.2em]"
-									initial={{ opacity: 0, scale: 0.8 }}
-									animate={{ opacity: 1, scale: 1 }}
-									transition={{ duration: 0.8, delay: 0.4 }}
+				<div className="max-w-4xl mx-auto text-center">
+					<ScrollRevealStagger staggerDelay={0.2}>
+						{/* Main Content */}
+						<div className="text-center space-y-8 lg:space-y-10">
+							{/* Animated Badge */}
+							<div>
+								<Badge
+									variant="secondary"
+									className="px-6 py-3 text-sm bg-white/90 backdrop-blur-md border-0 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105"
+									style={{
+										background:
+											"linear-gradient(135deg, var(--homepage-card), var(--homepage-card)90)",
+										color: "var(--homepage-primary)",
+										boxShadow: "0 8px 32px var(--homepage-primary)20",
+									}}
 								>
 									<motion.span
-										key={currentWordIndex}
-										className="inline-block bg-gradient-to-r bg-clip-text text-transparent"
+										animate={{ rotate: [0, 10, -10, 0] }}
+										transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY }}
+										className="mr-2"
+									>
+										🤖
+									</motion.span>
+									Meet Your AI Study Companion
+								</Badge>
+							</div>
+
+							{/* Dynamic Heading */}
+							<div className="space-y-4 lg:space-y-6">
+								<h1 className="text-5xl lg:text-7xl font-bold tracking-tight leading-tight">
+									<span className="block mb-4 text-foreground">Your Personal</span>
+
+									<div className="block relative min-h-[1.2em]">
+										<motion.span
+											key={currentWordIndex}
+											className="inline-block bg-gradient-to-r bg-clip-text text-transparent"
+											style={{
+												background:
+													"linear-gradient(135deg, var(--homepage-primary), var(--homepage-ai-primary))",
+												WebkitBackgroundClip: "text",
+												WebkitTextFillColor: "transparent",
+											}}
+											initial={{ opacity: 0, y: 20, rotateX: -90 }}
+											animate={{ opacity: 1, y: 0, rotateX: 0 }}
+											exit={{ opacity: 0, y: -20, rotateX: 90 }}
+											transition={{ duration: 0.6, ease: "easeOut" }}
+										>
+											{typedText}
+											<motion.span
+												className="inline-block w-1 h-14 lg:h-20 ml-2"
+												style={{ backgroundColor: "var(--homepage-primary)" }}
+												animate={{ opacity: [1, 0, 1] }}
+												transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY }}
+											/>
+										</motion.span>
+									</div>
+								</h1>
+
+								{/* Description */}
+								<div
+									className="text-xl lg:text-2xl leading-relaxed max-w-3xl mx-auto"
+									style={{ color: "var(--homepage-muted-foreground)" }}
+								>
+									Transform any course material into{" "}
+									<span className="font-semibold" style={{ color: "var(--homepage-primary)" }}>
+										personalized quizzes
+									</span>
+									,{" "}
+									<span className="font-semibold" style={{ color: "var(--homepage-ai-primary)" }}>
+										smart summaries
+									</span>
+									, and{" "}
+									<span className="font-semibold" style={{ color: "var(--homepage-success)" }}>
+										adaptive study plans
+									</span>{" "}
+									that learn{" "}
+									<span className="font-bold relative inline-block">
+										your unique style
+										<motion.div
+											className="absolute bottom-0 left-0 right-0 h-0.5"
+											style={{ backgroundColor: "var(--homepage-accent)" }}
+											initial={{ scaleX: 0 }}
+											animate={{ scaleX: 1 }}
+											transition={{ duration: 1, delay: 1.5 }}
+										/>
+									</span>
+								</div>
+							</div>
+
+							{/* Simple Process Steps */}
+							<div className="flex flex-row gap-4 sm:gap-8 items-center justify-center">
+								{[
+									{ icon: Upload, label: "Upload", color: "var(--homepage-primary)" },
+									{ icon: Brain, label: "AI Learns", color: "var(--homepage-ai-primary)" },
+									{ icon: GraduationCap, label: "You Master", color: "var(--homepage-success)" },
+								].map((step, index) => (
+									<div key={step.label} className="flex items-center gap-2 sm:gap-4">
+										<div className="flex flex-col items-center gap-2 sm:gap-3 group cursor-pointer hover:scale-105 transition-transform duration-300">
+											<div
+												className="w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center text-white shadow-xl group-hover:shadow-2xl transition-all duration-300"
+												style={{ backgroundColor: step.color }}
+											>
+												<step.icon className="w-6 h-6 sm:w-8 sm:h-8 group-hover:scale-110 transition-transform duration-300" />
+											</div>
+											<span className="font-medium text-sm sm:text-base text-center group-hover:text-primary transition-colors duration-300">
+												{step.label}
+											</span>
+										</div>
+										{index < 2 && (
+											<div className="mx-2 sm:mx-4">
+												<ArrowRight className="w-5 h-5 sm:w-6 sm:h-6 opacity-60" />
+											</div>
+										)}
+									</div>
+								))}
+							</div>
+
+							{/* CTA Buttons - Enhanced Primary Focus */}
+							<div className="flex justify-center">
+								<motion.div
+									whileHover={{ scale: 1.02, y: -2 }}
+									whileTap={{ scale: 0.98 }}
+									transition={{ type: "spring", stiffness: 400, damping: 17 }}
+								>
+									<Button
+										size="lg"
+										className="text-xl px-12 py-8 rounded-2xl shadow-2xl font-semibold relative overflow-hidden group hover:shadow-3xl transition-all duration-500"
 										style={{
 											background:
 												"linear-gradient(135deg, var(--homepage-primary), var(--homepage-ai-primary))",
-											WebkitBackgroundClip: "text",
-											WebkitTextFillColor: "transparent",
+											color: "white",
+											boxShadow: "0 8px 32px var(--homepage-primary)40",
 										}}
-										initial={{ opacity: 0, y: 20, rotateX: -90 }}
-										animate={{ opacity: 1, y: 0, rotateX: 0 }}
-										exit={{ opacity: 0, y: -20, rotateX: 90 }}
-										transition={{ duration: 0.6, ease: "easeOut" }}
+										asChild
 									>
-										{typedText}
-										<motion.span
-											className="inline-block w-1 h-12 lg:h-16 ml-2"
-											style={{ backgroundColor: "var(--homepage-primary)" }}
-											animate={{ opacity: [1, 0, 1] }}
-											transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY }}
-										/>
-									</motion.span>
+										<Link href="/auth/signin">
+											<span className="relative z-10 flex items-center gap-3">
+												Start Learning for Free
+												<ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform duration-300" />
+											</span>
+											{/* Hover shimmer effect */}
+											<div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12 opacity-0 group-hover:opacity-100 group-hover:animate-shimmer transition-opacity duration-300" />
+										</Link>
+									</Button>
 								</motion.div>
-							</motion.h1>
+							</div>
 
-							{/* Description */}
-							<motion.p
-								className="text-xl leading-relaxed max-w-2xl mx-auto lg:mx-0"
-								style={{ color: "var(--homepage-muted-foreground)" }}
-								variants={itemVariants}
-							>
-								Transform any course material into{" "}
-								<span className="font-semibold" style={{ color: "var(--homepage-primary)" }}>
-									personalized quizzes
-								</span>
-								,{" "}
-								<span className="font-semibold" style={{ color: "var(--homepage-ai-primary)" }}>
-									smart summaries
-								</span>
-								, and{" "}
-								<span className="font-semibold" style={{ color: "var(--homepage-success)" }}>
-									adaptive study plans
-								</span>{" "}
-								that learn{" "}
-								<em className="font-bold not-italic relative">
-									your unique style
-									<motion.div
-										className="absolute bottom-0 left-0 right-0 h-0.5"
-										style={{ backgroundColor: "var(--homepage-accent)" }}
-										initial={{ scaleX: 0 }}
-										animate={{ scaleX: 1 }}
-										transition={{ duration: 1, delay: 1.5 }}
-									/>
-								</em>
-							</motion.p>
-						</div>
-
-						{/* Simple Process Steps */}
-						<motion.div
-							className="flex flex-row gap-2 sm:gap-4 items-center justify-center lg:justify-start"
-							variants={itemVariants}
-						>
-							{[
-								{ icon: Upload, label: "Upload", color: "var(--homepage-primary)" },
-								{ icon: Brain, label: "AI Learns", color: "var(--homepage-ai-primary)" },
-								{ icon: GraduationCap, label: "You Master", color: "var(--homepage-success)" },
-							].map((step, index) => (
-								<div key={step.label} className="flex items-center gap-1 sm:gap-3">
-									<div className="flex flex-col items-center gap-1 sm:gap-2">
-										<div
-											className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-white shadow-lg"
-											style={{ backgroundColor: step.color }}
-										>
-											<step.icon className="w-5 h-5 sm:w-6 sm:h-6" />
-										</div>
-										<span className="font-medium text-xs sm:text-sm text-center">{step.label}</span>
-									</div>
-									{index < 2 && (
-										<div className="mx-1 sm:mx-2">
-											<ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 opacity-60" />
-										</div>
+							{/* Trust Indicators - Enhanced */}
+							<div className="space-y-4 lg:space-y-6">
+								<div className="flex items-center justify-center gap-8 text-base flex-wrap">
+									{["Free forever plan", "Privacy-first design", "Works with any course"].map(
+										(feature) => (
+											<div
+												key={feature}
+												className="flex items-center gap-3 group hover:scale-105 transition-transform duration-300"
+											>
+												<span className="text-green-500 font-bold text-lg group-hover:scale-110 transition-transform duration-300">
+													✓
+												</span>
+												<span className="group-hover:text-primary transition-colors duration-300">
+													{feature}
+												</span>
+											</div>
+										)
 									)}
 								</div>
-							))}
-						</motion.div>
 
-						{/* CTA Buttons - Enhanced Primary Focus */}
-						<motion.div
-							className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start"
-							variants={itemVariants}
-						>
-							{/* PRIMARY CTA - Enhanced and Focused */}
-							<motion.div
-								whileHover={{ scale: 1.02, y: -1 }}
-								whileTap={{ scale: 0.98 }}
-								transition={{ type: "spring", stiffness: 400 }}
-							>
-								<Button
-									size="lg"
-									className="text-lg px-10 py-7 rounded-xl shadow-2xl font-semibold relative overflow-hidden"
-									style={{
-										background:
-											"linear-gradient(135deg, var(--homepage-primary), var(--homepage-ai-primary))",
-										color: "white",
-										boxShadow: "0 8px 32px var(--homepage-primary)40",
-									}}
-									asChild
-								>
-									<Link href="/auth/signin">
-										<span className="relative z-10 flex items-center gap-2">
-											Start Learning for Free
-											<ArrowRight className="w-5 h-5" />
-										</span>
-									</Link>
-								</Button>
-							</motion.div>
-
-							{/* Secondary CTA - Simplified */}
-							<Button
-								size="lg"
-								variant="outline"
-								className="text-lg px-8 py-6 rounded-xl shadow-lg backdrop-blur-sm bg-white/50"
-								style={{
-									borderColor: "var(--homepage-primary)",
-									color: "var(--homepage-primary)",
-								}}
-								asChild
-							>
-								<Link href="/cuecards">
-									<Zap className="w-5 h-5 mr-2" />
-									See Demo
-								</Link>
-							</Button>
-						</motion.div>
-
-						{/* Trust Indicators - Simplified */}
-						<motion.div className="space-y-4" variants={itemVariants}>
-							<div className="flex items-center justify-center lg:justify-start gap-6 text-sm flex-wrap">
-								{["Free forever plan", "Privacy-first design", "Works with any course"].map(
-									(feature) => (
-										<div key={feature} className="flex items-center gap-2">
-											<span className="text-green-500 font-bold">✓</span>
-											<span>{feature}</span>
-										</div>
-									)
-								)}
-							</div>
-
-							{/* Social Proof */}
-							<div className="flex items-center justify-center lg:justify-start gap-4 pt-4">
-								<div className="flex">
-									{Array.from({ length: 5 }, (_, i) => (
-										<Star
-											key={`star-rating-${i + 1}`}
-											className="w-5 h-5 fill-yellow-400 text-yellow-400"
-										/>
-									))}
+								{/* Social Proof */}
+								<div className="flex items-center justify-center gap-6 pt-2">
+									<div className="flex">
+										{Array.from({ length: 5 }, (_, i) => (
+											<Star
+												key={`star-rating-${i + 1}`}
+												className="w-6 h-6 fill-yellow-400 text-yellow-400 hover:scale-110 transition-transform duration-300"
+											/>
+										))}
+									</div>
+									<span className="font-semibold text-lg">4.9/5</span>
+									<span className="text-base opacity-75">(100+ students)</span>
 								</div>
-								<span className="font-semibold">4.9/5</span>
-								<span className="text-sm opacity-75">(100+ students)</span>
 							</div>
-						</motion.div>
-					</motion.div>
-
-					{/* Right Column - Results Dashboard Demo */}
-					<motion.div
-						className="flex justify-center lg:justify-end"
-						variants={itemVariants}
-						initial={{ opacity: 0, scale: 0.8, rotateY: 30 }}
-						animate={{ opacity: 1, scale: 1, rotateY: 0 }}
-						transition={{ duration: 1, ease: "easeOut", delay: 0.6 }}
-					>
-						<HeroResultsDemo />
-					</motion.div>
-				</motion.div>
+						</div>
+					</ScrollRevealStagger>
+				</div>
 			</div>
 		</section>
 	);
