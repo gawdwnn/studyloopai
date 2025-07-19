@@ -1,35 +1,50 @@
 import {
+	BeforeAfterDemo,
 	FAQSection,
-	FeaturesSection,
-	FinalCTASection,
 	HeroSection,
-	ReviewsSection,
-	WhyChooseUsSection,
+	HomeFooter,
+	HomeNavbar,
+	PersonalizationDemo,
 } from "@/components/home-sections";
+import { HomepageSection } from "@/components/home-sections/animated-section";
+import { ScrollReveal } from "@/components/scroll-reveal";
 
 export default function Home() {
 	return (
-		<div className="flex flex-col min-h-screen">
-			{/* Hero Section - Hook visitors instantly */}
-			<HeroSection />
+		<div className="relative flex min-h-screen flex-col">
+			<HomeNavbar />
+			<main className="flex-1">
+				{/* Hero Section - Hook visitors instantly with AI companion */}
+				<HeroSection />
 
-			{/* Company Logos - Add instant credibility */}
-			{/* <CompanyLogosSection /> */}
+				{/* Before/After Demo - Show clear transformation */}
+				<HomepageSection
+					background="muted"
+					title="See the Transformation"
+					subtitle="Compare the frustrating experience of generic study tools with the personalized power of your AI study companion"
+				>
+					<ScrollReveal direction="scale" duration={0.8} delay={0.2}>
+						<BeforeAfterDemo />
+					</ScrollReveal>
+				</HomepageSection>
 
-			{/* Features Section - Highlight what sets your app apart */}
-			<FeaturesSection />
+				{/* Personalization Demo - Interactive proof of concept */}
+				<HomepageSection
+					background="feature"
+					title="Customize Your Learning Experience"
+					subtitle="Your AI study companion learns your preferences and creates a completely personalized learning experience"
+				>
+					<ScrollReveal direction="up" duration={0.8} delay={0.3}>
+						<PersonalizationDemo />
+					</ScrollReveal>
+				</HomepageSection>
 
-			{/* Why Choose Us Section - Make strengths obvious */}
-			<WhyChooseUsSection />
-
-			{/* Reviews Section - Let happy users convince the rest */}
-			<ReviewsSection />
-
-			{/* FAQ Section - Reduce hesitation with smart answers */}
-			<FAQSection />
-
-			{/* Final CTA - Wrap up with confident CTA */}
-			<FinalCTASection />
+				{/* FAQ Section - Address common questions before support */}
+				<ScrollReveal direction="fade" duration={1}>
+					<FAQSection />
+				</ScrollReveal>
+			</main>
+			<HomeFooter />
 		</div>
 	);
 }

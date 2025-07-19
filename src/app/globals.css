@@ -266,3 +266,133 @@ body:has(.w-md-editor-focus) {
 html:has(.w-md-editor-focus) {
 	overflow: auto !important;
 }
+
+/* Homepage Redesign - Custom CSS Variables (Non-breaking) */
+:root {
+	/* Accessibility-compliant colors for homepage */
+	--homepage-primary: oklch(0.45 0.15 250);
+	--homepage-primary-foreground: oklch(1 0 0);
+	--homepage-secondary: oklch(0.55 0.12 140);
+	--homepage-secondary-foreground: oklch(0.25 0.08 140);
+	--homepage-accent: oklch(0.6 0.15 35);
+	--homepage-accent-foreground: oklch(0.2 0.05 35);
+	--homepage-success: oklch(0.55 0.16 145);
+	--homepage-success-foreground: oklch(1 0 0);
+	--homepage-warning: oklch(0.65 0.14 70);
+	--homepage-warning-foreground: oklch(0.15 0 0);
+
+	/* AI Assistant brand colors */
+	--homepage-ai-primary: oklch(0.6 0.15 280);
+	--homepage-ai-secondary: oklch(0.7 0.12 320);
+	--homepage-ai-accent: oklch(0.8 0.1 200);
+
+	/* Improved contrast backgrounds */
+	--homepage-card: oklch(0.99 0.003 250);
+	--homepage-muted: oklch(0.95 0.005 250);
+	--homepage-muted-foreground: oklch(0.4 0.02 250);
+
+	/* Gradient backgrounds */
+	--homepage-hero-gradient: linear-gradient(
+		135deg,
+		oklch(0.98 0.005 250) 0%,
+		oklch(0.96 0.01 280) 50%,
+		oklch(0.98 0.005 250) 100%
+	);
+	--homepage-feature-gradient: linear-gradient(
+		180deg,
+		oklch(0.99 0.003 250) 0%,
+		oklch(0.97 0.005 250) 100%
+	);
+}
+
+.dark {
+	/* Dark mode homepage colors */
+	--homepage-primary: oklch(0.6 0.15 250);
+	--homepage-primary-foreground: oklch(1 0 0);
+	--homepage-secondary: oklch(0.55 0.12 140);
+	--homepage-secondary-foreground: oklch(0.9 0.05 140);
+	--homepage-accent: oklch(0.7 0.15 35);
+	--homepage-accent-foreground: oklch(0.9 0.05 35);
+	--homepage-success: oklch(0.6 0.16 145);
+	--homepage-success-foreground: oklch(1 0 0);
+	--homepage-warning: oklch(0.7 0.14 70);
+	--homepage-warning-foreground: oklch(0.1 0 0);
+
+	/* AI Assistant dark mode colors */
+	--homepage-ai-primary: oklch(0.65 0.15 280);
+	--homepage-ai-secondary: oklch(0.7 0.12 320);
+	--homepage-ai-accent: oklch(0.75 0.1 200);
+
+	/* Dark mode backgrounds */
+	--homepage-card: oklch(0.25 0.005 250);
+	--homepage-muted: oklch(0.22 0.005 250);
+	--homepage-muted-foreground: oklch(0.65 0.02 250);
+
+	/* Dark mode gradients */
+	--homepage-hero-gradient: linear-gradient(
+		135deg,
+		oklch(0.2 0.005 250) 0%,
+		oklch(0.18 0.01 280) 50%,
+		oklch(0.2 0.005 250) 100%
+	);
+	--homepage-feature-gradient: linear-gradient(
+		180deg,
+		oklch(0.22 0.005 250) 0%,
+		oklch(0.2 0.005 250) 100%
+	);
+}
+
+/* Homepage-specific utility classes */
+.homepage-gradient-bg {
+	background: var(--homepage-hero-gradient);
+}
+
+.homepage-feature-bg {
+	background: var(--homepage-feature-gradient);
+}
+
+.homepage-ai-glow {
+	box-shadow: 0 0 20px oklch(var(--homepage-ai-primary) / 0.3);
+}
+
+.homepage-text-balanced {
+	text-wrap: balance;
+}
+
+/* Animation for AI assistant */
+@keyframes homepage-ai-pulse {
+	0%,
+	100% {
+		transform: scale(1);
+		opacity: 1;
+	}
+	50% {
+		transform: scale(1.05);
+		opacity: 0.8;
+	}
+}
+
+.homepage-ai-pulse {
+	animation: homepage-ai-pulse 3s ease-in-out infinite;
+}
+
+@keyframes homepage-data-flow {
+	0% {
+		transform: translateX(-100%) translateY(0);
+		opacity: 0;
+	}
+	10% {
+		opacity: 1;
+	}
+	90% {
+		opacity: 1;
+	}
+	100% {
+		transform: translateX(100%) translateY(0);
+		opacity: 0;
+	}
+}
+
+.homepage-data-flow {
+	animation: homepage-data-flow 4s ease-in-out infinite;
+}
