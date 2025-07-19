@@ -30,6 +30,8 @@ const LoadingButton = forwardRef<HTMLButtonElement, LoadingButtonProps>(
 					(disabled || loading) && "hover:cursor-not-allowed"
 				)}
 				disabled={disabled || loading}
+				aria-busy={loading}
+				aria-label={loading ? loadingText || "Loading, please wait" : undefined}
 				{...props}
 			>
 				<div
@@ -37,12 +39,13 @@ const LoadingButton = forwardRef<HTMLButtonElement, LoadingButtonProps>(
 						"flex items-center justify-center transition-opacity duration-200",
 						loading ? "opacity-0" : "opacity-100"
 					)}
+					aria-hidden={loading}
 				>
 					{children}
 				</div>
 				{loading && (
-					<div className="absolute inset-0 flex items-center justify-center">
-						<Loader2 className="w-4 h-4 animate-spin mr-2" />
+					<div className="absolute inset-0 flex items-center justify-center" aria-live="polite">
+						<Loader2 className="w-4 h-4 animate-spin mr-2" aria-hidden="true" />
 						<span>{loadingText || "Loading..."}</span>
 					</div>
 				)}
