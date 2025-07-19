@@ -1,7 +1,7 @@
 import { logger, schemaTask, tags } from "@trigger.dev/sdk";
 import { z } from "zod";
 
-const GenerateCuecardsPayload = z.object({
+const GenerateConceptMapsPayload = z.object({
 	weekId: z.string().min(1, "Week ID is required"),
 	courseId: z.string().min(1, "Course ID is required"),
 	materialIds: z
@@ -10,83 +10,85 @@ const GenerateCuecardsPayload = z.object({
 	configId: z.string().uuid("Config ID must be a valid UUID"),
 });
 
-const GenerateCuecardsOutput = z.object({
+const GenerateConceptMapsOutput = z.object({
 	success: z.boolean(),
 	weekId: z.string(),
-	contentType: z.literal("cuecards"),
+	contentType: z.literal("conceptMaps"),
 	generatedCount: z.number(),
 	error: z.string().optional(),
 });
 
-type GenerateCuecardsPayloadType = z.infer<typeof GenerateCuecardsPayload>;
+type GenerateConceptMapsPayloadType = z.infer<
+	typeof GenerateConceptMapsPayload
+>;
 
-export const generateCuecards = schemaTask({
-	id: "generate-cuecards",
-	schema: GenerateCuecardsPayload,
+export const generateConceptMaps = schemaTask({
+	id: "generate-concept-maps",
+	schema: GenerateConceptMapsPayload,
 	maxDuration: 300, // 5 minutes for individual content type
-	onStart: async ({ payload }: { payload: GenerateCuecardsPayloadType }) => {
-		logger.info("🃏 Cuecards generation task started", {
+	onStart: async ({ payload }: { payload: GenerateConceptMapsPayloadType }) => {
+		logger.info("🗺️ Concept Maps generation task started", {
 			weekId: payload.weekId,
 		});
 	},
-	run: async (payload: GenerateCuecardsPayloadType, { ctx: _ctx }) => {
+	run: async (payload: GenerateConceptMapsPayloadType, { ctx: _ctx }) => {
 		const { weekId, courseId, materialIds, configId } = payload;
 
-		await tags.add([`weekId:${payload.weekId}`, "contentType:cuecards"]);
+		await tags.add([`weekId:${payload.weekId}`, "contentType:conceptMaps"]);
 
 		try {
 			const { getFeatureGenerationConfig } = await import(
 				"@/lib/actions/generation-config"
 			);
-			const cuecardsConfig = await getFeatureGenerationConfig(
+			const conceptMapsConfig = await getFeatureGenerationConfig(
 				configId,
-				"cuecards"
+				"conceptMaps"
 			);
 
-			if (!cuecardsConfig) {
+			if (!conceptMapsConfig) {
 				throw new Error(
-					"Cuecards configuration not found or feature not enabled"
+					"Conceptmaps configuration not found or feature not enabled"
 				);
 			}
-			logger.info("🃏 Using selective configuration for cuecards", {
+			logger.info("🗺️ Using selective configuration for concept maps", {
 				weekId,
 				materialCount: materialIds.length,
-				config: cuecardsConfig,
+				config: conceptMapsConfig,
 			});
 
-			const { generateCuecardsForWeek } = await import(
+			const { generateConceptMapsForWeek } = await import(
 				"@/lib/ai/content-generators"
 			);
 
-			const result = await generateCuecardsForWeek(
+			const result = await generateConceptMapsForWeek(
 				courseId,
 				weekId,
 				materialIds,
-				cuecardsConfig
+				conceptMapsConfig
 			);
 
 			if (!result.success) {
-				throw new Error(result.error || "Cuecards generation failed");
+				throw new Error(result.error || "Concept maps generation failed");
 			}
 
 			return {
 				success: true,
 				weekId,
-				contentType: "cuecards" as const,
+				contentType: "conceptMaps" as const,
 				generatedCount: result.generatedCount || 0,
 			};
 		} catch (error) {
 			const errorMessage =
 				error instanceof Error ? error.message : "An unknown error occurred";
-			logger.error("❌ Cuecards generation failed", {
+			logger.error("❌ Concept maps generation failed", {
 				weekId,
 				error: errorMessage,
 			});
 			throw error;
 		}
 	},
-	cleanup: async ({ payload }: { payload: GenerateCuecardsPayloadType }) => {
-		logger.info("🧹 Cuecards generation task cleanup complete", {
+	cleanup: async ({ payload }: { payload: GenerateConceptMapsPayloadType }) => {
+		logger.info("🧹 Concept maps generation task cleanup complete", {
 			weekId: payload.weekId,
 		});
 	},
@@ -94,10 +96,10 @@ export const generateCuecards = schemaTask({
 		payload,
 		output,
 	}: {
-		payload: GenerateCuecardsPayloadType;
-		output: z.infer<typeof GenerateCuecardsOutput>;
+		payload: GenerateConceptMapsPayloadType;
+		output: z.infer<typeof GenerateConceptMapsOutput>;
 	}) => {
-		logger.info("✅ Cuecards generation completed successfully", {
+		logger.info("✅ Concept maps generation completed successfully", {
 			weekId: payload.weekId,
 			generatedCount: output.generatedCount,
 		});
@@ -107,7 +109,7 @@ export const generateCuecards = schemaTask({
 		);
 		await updateWeekContentGenerationMetadata(
 			payload.weekId,
-			"cuecards",
+			"conceptMaps",
 			output.generatedCount,
 			logger
 		);
@@ -116,11 +118,11 @@ export const generateCuecards = schemaTask({
 		payload,
 		error,
 	}: {
-		payload: GenerateCuecardsPayloadType;
+		payload: GenerateConceptMapsPayloadType;
 		error: unknown;
 	}) => {
 		const errorMessage = error instanceof Error ? error.message : String(error);
-		logger.error("❌ Cuecards generation failed permanently", {
+		logger.error("❌ Concept maps generation failed permanently", {
 			weekId: payload.weekId,
 			error: errorMessage,
 		});

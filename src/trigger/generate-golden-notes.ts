@@ -1,11 +1,13 @@
-import { db } from "@/db";
-import { courseMaterials } from "@/db/schema";
 import { logger, schemaTask, tags } from "@trigger.dev/sdk";
-import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 const GenerateGoldenNotesPayload = z.object({
 	weekId: z.string().min(1, "Week ID is required"),
+	courseId: z.string().min(1, "Course ID is required"),
+	materialIds: z
+		.array(z.string())
+		.min(1, "At least one material ID is required"),
+	configId: z.string().uuid("Config ID must be a valid UUID"),
 });
 
 const GenerateGoldenNotesOutput = z.object({
@@ -16,7 +18,9 @@ const GenerateGoldenNotesOutput = z.object({
 	error: z.string().optional(),
 });
 
-type GenerateGoldenNotesPayloadType = z.infer<typeof GenerateGoldenNotesPayload>;
+type GenerateGoldenNotesPayloadType = z.infer<
+	typeof GenerateGoldenNotesPayload
+>;
 
 export const generateGoldenNotes = schemaTask({
 	id: "generate-golden-notes",
@@ -28,53 +32,40 @@ export const generateGoldenNotes = schemaTask({
 		});
 	},
 	run: async (payload: GenerateGoldenNotesPayloadType, { ctx: _ctx }) => {
-		const { weekId } = payload;
+		const { weekId, courseId, materialIds, configId } = payload;
 
-		// Tag this run for enhanced observability
 		await tags.add([`weekId:${payload.weekId}`, "contentType:goldenNotes"]);
 
 		try {
-			// Fetch all materials belonging to this week
-			const materials = await db
-				.select({
-					id: courseMaterials.id,
-					uploadedBy: courseMaterials.uploadedBy,
-					courseId: courseMaterials.courseId,
-					processingMetadata: courseMaterials.processingMetadata,
-				})
-				.from(courseMaterials)
-				.where(eq(courseMaterials.weekId, weekId));
-
-			if (materials.length === 0) {
-				throw new Error("No materials found for given week");
-			}
-
-			const { uploadedBy: userId, courseId } = materials[0];
-
-			// Import generation config manager for adaptive configuration
-			const { getEffectiveCourseWeekGenerationConfig } = await import(
-				"@/lib/services/adaptive-generation-service"
+			const { getFeatureGenerationConfig } = await import(
+				"@/lib/actions/generation-config"
+			);
+			const goldenNotesConfig = await getFeatureGenerationConfig(
+				configId,
+				"goldenNotes"
 			);
 
-			// Get the effective configuration with adaptive features for this week
-			const adaptiveConfig = await getEffectiveCourseWeekGenerationConfig(userId, weekId, courseId);
-
-			logger.info("📝 Using adaptive configuration for golden notes", {
+			if (!goldenNotesConfig) {
+				throw new Error(
+					"Golden notes configuration not found or feature not enabled"
+				);
+			}
+			logger.info("📝 Using selective configuration for golden notes", {
 				weekId,
-				config: adaptiveConfig,
+				materialCount: materialIds.length,
+				config: goldenNotesConfig,
 			});
 
-			// Import the specific generator
-			const { generateGoldenNotesForWeek } = await import("@/lib/ai/content-generators");
+			const { generateGoldenNotesForCourseWeek } = await import(
+				"@/lib/ai/content-generators"
+			);
 
-			const materialIds = materials.map((m) => m.id);
-
-			// Generate golden notes for the week
-			const result = await generateGoldenNotesForWeek(courseId, weekId, materialIds, {
-				goldenNotesCount: adaptiveConfig.goldenNotesCount,
-				difficulty: adaptiveConfig.difficulty,
-				focus: adaptiveConfig.focus,
-			});
+			const result = await generateGoldenNotesForCourseWeek(
+				courseId,
+				weekId,
+				materialIds,
+				goldenNotesConfig
+			);
 
 			if (!result.success) {
 				throw new Error(result.error || "Golden notes generation failed");
@@ -87,7 +78,8 @@ export const generateGoldenNotes = schemaTask({
 				generatedCount: result.generatedCount || 0,
 			};
 		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+			const errorMessage =
+				error instanceof Error ? error.message : "An unknown error occurred";
 			logger.error("❌ Golden notes generation failed", {
 				weekId,
 				error: errorMessage,
@@ -112,7 +104,6 @@ export const generateGoldenNotes = schemaTask({
 			generatedCount: output.generatedCount,
 		});
 
-		// Dynamically import and call the shared utility
 		const { updateWeekContentGenerationMetadata } = await import(
 			"@/lib/services/processing-metadata-service"
 		);

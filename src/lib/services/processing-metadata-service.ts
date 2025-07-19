@@ -17,7 +17,8 @@ export type ContentType =
 	| "multipleChoice"
 	| "openQuestions"
 	| "summaries"
-	| "goldenNotes";
+	| "goldenNotes"
+	| "conceptMaps";
 
 /**
  * Updates material-level document processing metadata (processing status, extraction, chunking, embedding)
@@ -32,7 +33,8 @@ export async function updateMaterialProcessingMetadata(
 		.from(courseMaterials)
 		.where(eq(courseMaterials.id, materialId));
 
-	const currentMetadata = (currentMaterial?.processingMetadata as ProcessingMetadata) || {};
+	const currentMetadata =
+		(currentMaterial?.processingMetadata as ProcessingMetadata) || {};
 
 	// Merge updates with existing metadata (document processing only)
 	const mergedMetadata: ProcessingMetadata = {
@@ -61,7 +63,9 @@ export async function updateWeekContentGenerationMetadata(
 	try {
 		// Get current week metadata
 		const [currentWeek] = await db
-			.select({ contentGenerationMetadata: courseWeeks.contentGenerationMetadata })
+			.select({
+				contentGenerationMetadata: courseWeeks.contentGenerationMetadata,
+			})
 			.from(courseWeeks)
 			.where(eq(courseWeeks.id, weekId));
 
@@ -70,7 +74,8 @@ export async function updateWeekContentGenerationMetadata(
 		}
 
 		const currentMetadata =
-			(currentWeek.contentGenerationMetadata as WeekContentGenerationMetadata) || {};
+			(currentWeek.contentGenerationMetadata as WeekContentGenerationMetadata) ||
+			{};
 
 		// Initialize generationResults if it doesn't exist
 		if (!currentMetadata.generationResults) {
@@ -82,6 +87,7 @@ export async function updateWeekContentGenerationMetadata(
 					mcqs: 0,
 					openQuestions: 0,
 					summaries: 0,
+					conceptMaps: 0,
 				},
 				generatedAt: new Date().toISOString(),
 			};
@@ -97,6 +103,7 @@ export async function updateWeekContentGenerationMetadata(
 			openQuestions: "openQuestions",
 			summaries: "summaries",
 			goldenNotes: "goldenNotes",
+			conceptMaps: "conceptMaps",
 		};
 
 		// Update the specific content type count

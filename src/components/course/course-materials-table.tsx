@@ -14,8 +14,20 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import type { courseMaterials, courseWeeks, courses } from "@/db/schema";
-import { CONTENT_TYPES, CONTENT_TYPE_LABELS } from "@/lib/constants/file-upload";
-import { AudioLines, File, FileText, Image, Link, Search, TrashIcon, Video } from "lucide-react";
+import {
+	CONTENT_TYPES,
+	CONTENT_TYPE_LABELS,
+} from "@/lib/constants/file-upload";
+import {
+	AudioLines,
+	File,
+	FileText,
+	Image,
+	Link,
+	Search,
+	TrashIcon,
+	Video,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 
 type CourseMaterialWithRelations = typeof courseMaterials.$inferSelect & {
@@ -29,7 +41,6 @@ type CourseMaterialWithRelations = typeof courseMaterials.$inferSelect & {
 
 interface CourseMaterialsTableProps {
 	courseMaterials: CourseMaterialWithRelations[];
-	isLoading: boolean;
 	onDeleteMaterial: (materialId: string, materialName: string) => void;
 	isDeleting: boolean;
 	deletingMaterials?: Set<string>;
@@ -37,7 +48,6 @@ interface CourseMaterialsTableProps {
 
 export function CourseMaterialsTable({
 	courseMaterials,
-	isLoading,
 	onDeleteMaterial,
 	isDeleting,
 	deletingMaterials = new Set(),
@@ -65,7 +75,9 @@ export function CourseMaterialsTable({
 	// Filter materials based on search term
 	const filteredMaterials = courseMaterials.filter(
 		(material) =>
-			(material.fileName || material.title).toLowerCase().includes(searchTerm.toLowerCase()) ||
+			(material.fileName || material.title)
+				.toLowerCase()
+				.includes(searchTerm.toLowerCase()) ||
 			material.course?.name?.toLowerCase().includes(searchTerm.toLowerCase())
 	);
 
@@ -80,15 +92,6 @@ export function CourseMaterialsTable({
 			return (a.fileName || a.title).localeCompare(b.fileName || b.title);
 		});
 	}, [filteredMaterials]);
-
-	if (isLoading) {
-		return (
-			<div className="space-y-4 w-full">
-				<div className="h-8 bg-muted animate-pulse rounded" />
-				<div className="h-64 bg-muted animate-pulse rounded" />
-			</div>
-		);
-	}
 
 	return (
 		<div className="space-y-4 w-full">
@@ -111,10 +114,18 @@ export function CourseMaterialsTable({
 						<TableHeader>
 							<TableRow className="bg-muted/50">
 								<TableHead className="w-20 whitespace-nowrap">Week</TableHead>
-								<TableHead className="min-w-[150px] whitespace-nowrap">Course Name</TableHead>
-								<TableHead className="min-w-[200px] whitespace-nowrap">Material Name</TableHead>
-								<TableHead className="w-40 whitespace-nowrap">Processing Status</TableHead>
-								<TableHead className="w-48 whitespace-nowrap">Generated Content</TableHead>
+								<TableHead className="min-w-[150px] whitespace-nowrap">
+									Course Name
+								</TableHead>
+								<TableHead className="min-w-[200px] whitespace-nowrap">
+									Material Name
+								</TableHead>
+								<TableHead className="w-40 whitespace-nowrap">
+									Processing Status
+								</TableHead>
+								<TableHead className="w-48 whitespace-nowrap">
+									Generated Content
+								</TableHead>
 								<TableHead className="w-16 whitespace-nowrap" />
 							</TableRow>
 						</TableHeader>
@@ -160,7 +171,9 @@ export function CourseMaterialsTable({
 											<TableCell>
 												<MaterialStatusIndicator
 													uploadStatus={material.uploadStatus || "pending"}
-													embeddingStatus={material.embeddingStatus || "pending"}
+													embeddingStatus={
+														material.embeddingStatus || "pending"
+													}
 													totalChunks={material.totalChunks || 0}
 													embeddedChunks={material.embeddedChunks || 0}
 													runId={material.runId || undefined}
@@ -195,7 +208,10 @@ export function CourseMaterialsTable({
 														cancelText="Cancel"
 														variant="destructive"
 														onConfirm={() =>
-															onDeleteMaterial(material.id, material.fileName || material.title)
+															onDeleteMaterial(
+																material.id,
+																material.fileName || material.title
+															)
 														}
 														isLoading={isDeleting}
 														disabled={isDeleting || isBeingDeleted}
@@ -207,7 +223,10 @@ export function CourseMaterialsTable({
 								})
 							) : (
 								<TableRow>
-									<TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+									<TableCell
+										colSpan={6}
+										className="text-center py-8 text-muted-foreground"
+									>
 										{searchTerm
 											? "No materials found matching your search."
 											: "No materials uploaded yet."}

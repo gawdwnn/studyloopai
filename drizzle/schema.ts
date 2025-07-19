@@ -1,3 +1,12 @@
+import type {
+	ConceptMapsConfig,
+	CuecardsConfig,
+	GoldenNotesConfig,
+	McqsConfig,
+	OpenQuestionsConfig,
+	SelectiveGenerationConfig,
+	SummariesConfig,
+} from "@/types/generation-types";
 import {
 	boolean,
 	foreignKey,
@@ -57,11 +66,12 @@ export type ProcessingMetadata = {
 export type WeekContentGenerationMetadata = {
 	// Batch trigger information
 	batchInfo?: {
-		goldenNotes: { batchId: string; status?: string };
-		cuecards: { batchId: string; status?: string };
-		mcqs: { batchId: string; status?: string };
-		openQuestions: { batchId: string; status?: string };
-		summaries: { batchId: string; status?: string };
+		goldenNotes?: { batchId: string; status?: string };
+		cuecards?: { batchId: string; status?: string };
+		mcqs?: { batchId: string; status?: string };
+		openQuestions?: { batchId: string; status?: string };
+		summaries?: { batchId: string; status?: string };
+		conceptMaps?: { batchId: string; status?: string };
 	};
 
 	// Content generation results
@@ -74,6 +84,7 @@ export type WeekContentGenerationMetadata = {
 			mcqs: number;
 			openQuestions: number;
 			summaries: number;
+			conceptMaps: number;
 		};
 		generatedAt: string;
 	};
@@ -86,6 +97,106 @@ export type WeekContentGenerationMetadata = {
 	// Error handling
 	errors?: string[];
 	partialSuccess?: boolean;
+};
+
+// Generation metadata type for selective generation tracking
+export type GenerationMetadata = {
+	cuecards?: {
+		status:
+			| "not_requested"
+			| "pending"
+			| "in_progress"
+			| "completed"
+			| "failed";
+		jobId?: string;
+		lastGenerated?: string;
+		lastAttempt?: string;
+		configVersion?: number;
+		error?: {
+			code: string;
+			message: string;
+		};
+	};
+	mcqs?: {
+		status:
+			| "not_requested"
+			| "pending"
+			| "in_progress"
+			| "completed"
+			| "failed";
+		jobId?: string;
+		lastGenerated?: string;
+		lastAttempt?: string;
+		configVersion?: number;
+		error?: {
+			code: string;
+			message: string;
+		};
+	};
+	openQuestions?: {
+		status:
+			| "not_requested"
+			| "pending"
+			| "in_progress"
+			| "completed"
+			| "failed";
+		jobId?: string;
+		lastGenerated?: string;
+		lastAttempt?: string;
+		configVersion?: number;
+		error?: {
+			code: string;
+			message: string;
+		};
+	};
+	summaries?: {
+		status:
+			| "not_requested"
+			| "pending"
+			| "in_progress"
+			| "completed"
+			| "failed";
+		jobId?: string;
+		lastGenerated?: string;
+		lastAttempt?: string;
+		configVersion?: number;
+		error?: {
+			code: string;
+			message: string;
+		};
+	};
+	goldenNotes?: {
+		status:
+			| "not_requested"
+			| "pending"
+			| "in_progress"
+			| "completed"
+			| "failed";
+		jobId?: string;
+		lastGenerated?: string;
+		lastAttempt?: string;
+		configVersion?: number;
+		error?: {
+			code: string;
+			message: string;
+		};
+	};
+	conceptMaps?: {
+		status:
+			| "not_requested"
+			| "pending"
+			| "in_progress"
+			| "completed"
+			| "failed";
+		jobId?: string;
+		lastGenerated?: string;
+		lastAttempt?: string;
+		configVersion?: number;
+		error?: {
+			code: string;
+			message: string;
+		};
+	};
 };
 
 // Content metadata type for different content types
@@ -145,7 +256,9 @@ export const courseMaterials = pgTable(
 		uploadedBy: uuid("uploaded_by").notNull(),
 		createdAt: timestamp("created_at").defaultNow().notNull(),
 		updatedAt: timestamp("updated_at").defaultNow().notNull(),
-		embeddingStatus: varchar("embedding_status", { length: 50 }).default("pending"),
+		embeddingStatus: varchar("embedding_status", { length: 50 }).default(
+			"pending"
+		),
 		embeddingMetadata: jsonb("embedding_metadata").default({}),
 		totalChunks: integer("total_chunks").default(0),
 		embeddedChunks: integer("embedded_chunks").default(0),
@@ -159,11 +272,19 @@ export const courseMaterials = pgTable(
 		sourceUrl: text("source_url"), // For weblinks in future
 		transcriptPath: varchar("transcript_path", { length: 500 }), // For video/audio in future
 		thumbnailPath: varchar("thumbnail_path", { length: 500 }), // For videos/images in future
+		// Selective generation tracking
+		generationMetadata: jsonb("generation_metadata").default({}),
 	},
 	(table) => [
 		index("idx_course_materials_course_id").using("btree", table.courseId),
-		index("idx_course_materials_content_type").using("btree", table.contentType),
-		index("idx_course_materials_processing_status").using("btree", table.processingMetadata),
+		index("idx_course_materials_content_type").using(
+			"btree",
+			table.contentType
+		),
+		index("idx_course_materials_processing_status").using(
+			"btree",
+			table.processingMetadata
+		),
 	]
 );
 
@@ -180,9 +301,9 @@ export const courseWeeks = pgTable(
 		isActive: boolean("is_active").default(true),
 
 		// Content generation tracking
-		contentGenerationStatus: varchar("content_generation_status", { length: 50 }).default(
-			"pending"
-		),
+		contentGenerationStatus: varchar("content_generation_status", {
+			length: 50,
+		}).default("pending"),
 		contentGenerationMetadata: jsonb("content_generation_metadata").default({}),
 		contentGenerationTriggeredAt: timestamp("content_generation_triggered_at"),
 		contentGenerationCompletedAt: timestamp("content_generation_completed_at"),
@@ -196,7 +317,10 @@ export const courseWeeks = pgTable(
 			"btree",
 			table.contentGenerationStatus
 		),
-		unique("course_weeks_course_id_week_number_unique").on(table.courseId, table.weekNumber),
+		unique("course_weeks_course_id_week_number_unique").on(
+			table.courseId,
+			table.weekNumber
+		),
 	]
 );
 
@@ -266,7 +390,11 @@ export const cuecards = pgTable(
 		index("idx_cuecards_course_id").using("btree", table.courseId),
 		index("idx_cuecards_week_id").using("btree", table.weekId),
 		index("idx_cuecards_difficulty").using("btree", table.difficulty),
-		index("idx_cuecards_course_week").using("btree", table.courseId, table.weekId),
+		index("idx_cuecards_course_week").using(
+			"btree",
+			table.courseId,
+			table.weekId
+		),
 		foreignKey({
 			columns: [table.courseId],
 			foreignColumns: [courses.id],
@@ -333,7 +461,11 @@ export const openQuestions = pgTable(
 		index("idx_open_questions_course_id").using("btree", table.courseId),
 		index("idx_open_questions_week_id").using("btree", table.weekId),
 		index("idx_open_questions_difficulty").using("btree", table.difficulty),
-		index("idx_open_questions_course_week").using("btree", table.courseId, table.weekId),
+		index("idx_open_questions_course_week").using(
+			"btree",
+			table.courseId,
+			table.weekId
+		),
 		foreignKey({
 			columns: [table.courseId],
 			foreignColumns: [courses.id],
@@ -366,7 +498,11 @@ export const summaries = pgTable(
 		index("idx_summaries_course_id").using("btree", table.courseId),
 		index("idx_summaries_week_id").using("btree", table.weekId),
 		index("idx_summaries_type").using("btree", table.summaryType),
-		index("idx_summaries_course_week").using("btree", table.courseId, table.weekId),
+		index("idx_summaries_course_week").using(
+			"btree",
+			table.courseId,
+			table.weekId
+		),
 		foreignKey({
 			columns: [table.courseId],
 			foreignColumns: [courses.id],
@@ -401,7 +537,11 @@ export const goldenNotes = pgTable(
 		index("idx_golden_notes_week_id").using("btree", table.weekId),
 		index("idx_golden_notes_priority").using("btree", table.priority),
 		index("idx_golden_notes_category").using("btree", table.category),
-		index("idx_golden_notes_course_week").using("btree", table.courseId, table.weekId),
+		index("idx_golden_notes_course_week").using(
+			"btree",
+			table.courseId,
+			table.weekId
+		),
 		foreignKey({
 			columns: [table.courseId],
 			foreignColumns: [courses.id],
@@ -411,6 +551,43 @@ export const goldenNotes = pgTable(
 			columns: [table.weekId],
 			foreignColumns: [courseWeeks.id],
 			name: "golden_notes_week_id_fkey",
+		}).onDelete("cascade"),
+	]
+);
+
+// Concept maps table - AI generated visual concept maps and mind maps
+export const conceptMaps = pgTable(
+	"concept_maps",
+	{
+		id: uuid().defaultRandom().primaryKey().notNull(),
+		courseId: uuid("course_id").notNull(),
+		weekId: uuid("week_id").notNull(),
+		title: varchar({ length: 255 }).notNull(),
+		content: text().notNull(), // JSON string containing the concept map data
+		style: varchar({ length: 50 }).default("hierarchical").notNull(), // hierarchical, radial, network
+		metadata: jsonb().default({}),
+		version: integer().default(1).notNull(),
+		createdAt: timestamp("created_at").defaultNow().notNull(),
+		updatedAt: timestamp("updated_at").defaultNow().notNull(),
+	},
+	(table) => [
+		index("idx_concept_maps_course_id").using("btree", table.courseId),
+		index("idx_concept_maps_week_id").using("btree", table.weekId),
+		index("idx_concept_maps_style").using("btree", table.style),
+		index("idx_concept_maps_course_week").using(
+			"btree",
+			table.courseId,
+			table.weekId
+		),
+		foreignKey({
+			columns: [table.courseId],
+			foreignColumns: [courses.id],
+			name: "concept_maps_course_id_fkey",
+		}).onDelete("cascade"),
+		foreignKey({
+			columns: [table.weekId],
+			foreignColumns: [courseWeeks.id],
+			name: "concept_maps_week_id_fkey",
 		}).onDelete("cascade"),
 	]
 );
@@ -440,8 +617,16 @@ export const ownNotes = pgTable(
 		index("idx_own_notes_course_id").using("btree", table.courseId),
 		index("idx_own_notes_note_type").using("btree", table.noteType),
 		index("idx_own_notes_created_at").using("btree", table.createdAt),
-		index("idx_own_notes_course_week").using("btree", table.courseId, table.weekId),
-		index("idx_own_notes_user_course").using("btree", table.userId, table.courseId),
+		index("idx_own_notes_course_week").using(
+			"btree",
+			table.courseId,
+			table.weekId
+		),
+		index("idx_own_notes_user_course").using(
+			"btree",
+			table.userId,
+			table.courseId
+		),
 		foreignKey({
 			columns: [table.userId],
 			foreignColumns: [usersInAuth.id],
@@ -477,7 +662,9 @@ export const generationConfigs = pgTable(
 		institutionId: uuid("institution_id"), // Future: For INSTITUTION_DEFAULT
 
 		// Configuration data stored as JSONB for flexibility
-		configData: jsonb("config_data").notNull(), // Full GenerationConfig object
+		configData: jsonb("config_data")
+			.$type<SelectiveGenerationConfig>()
+			.notNull(), // Full GenerationConfig object
 
 		// Adaptive learning metadata (only for ADAPTIVE_ALGORITHM)
 		adaptationReason: text("adaptation_reason"),
@@ -497,9 +684,21 @@ export const generationConfigs = pgTable(
 	},
 	(table) => [
 		// Composite indexes for efficient queries
-		index("idx_generation_configs_user_scope").using("btree", table.userId, table.configSource),
-		index("idx_generation_configs_course_scope").using("btree", table.courseId, table.configSource),
-		index("idx_generation_configs_week_scope").using("btree", table.weekId, table.configSource),
+		index("idx_generation_configs_user_scope").using(
+			"btree",
+			table.userId,
+			table.configSource
+		),
+		index("idx_generation_configs_course_scope").using(
+			"btree",
+			table.courseId,
+			table.configSource
+		),
+		index("idx_generation_configs_week_scope").using(
+			"btree",
+			table.weekId,
+			table.configSource
+		),
 		index("idx_generation_configs_source_active").using(
 			"btree",
 			table.configSource,
@@ -541,6 +740,56 @@ export const generationConfigs = pgTable(
 	]
 );
 
+// User prompt templates for selective generation
+export const userPromptTemplates = pgTable(
+	"user_prompt_templates",
+	{
+		id: uuid().defaultRandom().primaryKey().notNull(),
+		userId: uuid("user_id").notNull(),
+		featureType: varchar("feature_type", { length: 50 }).notNull(), // 'cuecards', 'mcqs', 'openQuestions', etc.
+		name: varchar("name", { length: 255 }).notNull(), // "My favorite technical MCQ prompt"
+		config: jsonb("config")
+			.$type<
+				| CuecardsConfig
+				| McqsConfig
+				| OpenQuestionsConfig
+				| SummariesConfig
+				| GoldenNotesConfig
+				| ConceptMapsConfig
+			>()
+			.notNull(), // The full config, including custom prompt
+		isDefault: boolean("is_default").default(false),
+		createdAt: timestamp("created_at").defaultNow().notNull(),
+		updatedAt: timestamp("updated_at").defaultNow().notNull(),
+	},
+	(table) => [
+		// Indexes
+		index("idx_user_prompt_templates_user_id").using("btree", table.userId),
+		index("idx_user_prompt_templates_feature_type").using(
+			"btree",
+			table.featureType
+		),
+		index("idx_user_prompt_templates_is_default").using(
+			"btree",
+			table.isDefault
+		),
+
+		// Foreign key constraints
+		foreignKey({
+			columns: [table.userId],
+			foreignColumns: [usersInAuth.id],
+			name: "user_prompt_templates_user_id_fkey",
+		}).onDelete("cascade"),
+
+		// Unique constraint - only one template with same name per user per feature type
+		unique("unique_user_template_name").on(
+			table.userId,
+			table.name,
+			table.featureType
+		),
+	]
+);
+
 // Future: Institutions table for institutional scaling
 export const institutions = pgTable(
 	"institutions",
@@ -579,8 +828,6 @@ export const institutions = pgTable(
 	]
 );
 
-// Add exams esque table called revisions
-
 // User progress tracking table
 export const userProgress = pgTable(
 	"user_progress",
@@ -597,9 +844,17 @@ export const userProgress = pgTable(
 		updatedAt: timestamp("updated_at").defaultNow().notNull(),
 	},
 	(table) => [
-		unique("user_progress_unique").on(table.userId, table.contentType, table.contentId),
+		unique("user_progress_unique").on(
+			table.userId,
+			table.contentType,
+			table.contentId
+		),
 		index("idx_user_progress_user_id").using("btree", table.userId),
-		index("idx_user_progress_content").using("btree", table.contentType, table.contentId),
+		index("idx_user_progress_content").using(
+			"btree",
+			table.contentType,
+			table.contentId
+		),
 		index("idx_user_progress_status").using("btree", table.status),
 	]
 );
@@ -620,7 +875,11 @@ export const userPlans = pgTable(
 		subscriptionStatus: subscriptionStatus("subscription_status"),
 		currentPeriodEnd: timestamp("current_period_end"),
 	},
-	(table) => [unique("user_plans_stripe_subscription_id_unique").on(table.stripeSubscriptionId)]
+	(table) => [
+		unique("user_plans_stripe_subscription_id_unique").on(
+			table.stripeSubscriptionId
+		),
+	]
 );
 
 // Users table
@@ -641,7 +900,9 @@ export const users = pgTable(
 		updatedAt: timestamp("updated_at").defaultNow().notNull(),
 		stripeCustomerId: varchar("stripe_customer_id", { length: 255 }),
 		country: varchar({ length: 100 }),
-		onboardingCompleted: boolean("onboarding_completed").default(false).notNull(),
+		onboardingCompleted: boolean("onboarding_completed")
+			.default(false)
+			.notNull(),
 		onboardingSkipped: boolean("onboarding_skipped").default(false).notNull(),
 		institutionId: uuid("institution_id"),
 	},

@@ -1,4 +1,5 @@
-import type { GenerationConfig } from "@/components/course/course-material-upload-wizard";
+// Legacy GenerationConfig removed - using SelectiveGenerationConfig only
+import type { SelectiveGenerationConfig } from "@/types/generation-types";
 
 /** Payload returned by the /api/materials/presign endpoint */
 export interface PresignUploadResponse {
@@ -9,7 +10,9 @@ export interface PresignUploadResponse {
 }
 
 /** Fetches a signed upload URL for a new course material */
-export async function presignUpload(body: Record<string, unknown>): Promise<PresignUploadResponse> {
+export async function presignUpload(
+	body: Record<string, unknown>
+): Promise<PresignUploadResponse> {
 	const res = await fetch("/api/materials/presign", {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
@@ -34,13 +37,13 @@ export async function completeUpload(
 	materialIds: string[],
 	weekId: string,
 	courseId: string,
-	generationConfig?: GenerationConfig
+	selectiveConfig: SelectiveGenerationConfig
 ): Promise<CompleteUploadResponse> {
 	const res = await fetch("/api/materials/complete", {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		credentials: "include",
-		body: JSON.stringify({ materialIds, weekId, courseId, generationConfig }),
+		body: JSON.stringify({ materialIds, weekId, courseId, selectiveConfig }),
 	});
 
 	if (!res.ok) {
