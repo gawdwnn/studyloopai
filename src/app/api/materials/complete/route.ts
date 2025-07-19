@@ -2,23 +2,14 @@
 
 import { db } from "@/db";
 import { courseMaterials } from "@/db/schema";
+import { persistSelectiveConfig } from "@/lib/actions/generation-config";
 import { getServerClient } from "@/lib/supabase/server";
+import { SelectiveGenerationConfigSchema } from "@/lib/validation/generation-config";
 import type { ingestCourseMaterials } from "@/trigger/ingest-course-materials";
 import { tasks } from "@trigger.dev/sdk";
 import { and, eq, inArray } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-
-// Generation config validation schema
-const GenerationConfigSchema = z.object({
-	goldenNotesCount: z.number().min(1).max(20),
-	cuecardsCount: z.number().min(1).max(50),
-	summaryLength: z.number().min(50).max(1000),
-	examExercisesCount: z.number().min(1).max(20),
-	mcqExercisesCount: z.number().min(1).max(50),
-	difficulty: z.enum(["beginner", "intermediate", "advanced"]),
-	focus: z.enum(["conceptual", "practical", "mixed"]),
-});
 
 const BodySchema = z.object({
 	materialIds: z
@@ -27,7 +18,7 @@ const BodySchema = z.object({
 		.max(50, "Maximum 50 materials allowed per batch"),
 	weekId: z.string().uuid("Invalid week ID"),
 	courseId: z.string().uuid("Invalid course ID"),
-	generationConfig: GenerationConfigSchema.optional(),
+	selectiveConfig: SelectiveGenerationConfigSchema,
 });
 
 export async function POST(req: NextRequest) {
@@ -40,17 +31,24 @@ export async function POST(req: NextRequest) {
 			data: { user },
 		} = await supabase.auth.getUser();
 
-		if (!user) return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
+		if (!user)
+			return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
 
 		const materials = await db
 			.select()
 			.from(courseMaterials)
 			.where(
-				and(inArray(courseMaterials.id, body.materialIds), eq(courseMaterials.uploadedBy, user.id))
+				and(
+					inArray(courseMaterials.id, body.materialIds),
+					eq(courseMaterials.uploadedBy, user.id)
+				)
 			);
 
 		if (materials.length === 0) {
-			return NextResponse.json({ error: "No matching materials found" }, { status: 404 });
+			return NextResponse.json(
+				{ error: "No matching materials found" },
+				{ status: 404 }
+			);
 		}
 
 		// Check if some materials were filtered out (could be due to RLS or non-existence)
@@ -65,7 +63,10 @@ export async function POST(req: NextRequest) {
 		const ingestMaterials = materials.filter((m) => m.filePath);
 
 		if (ingestMaterials.length === 0) {
-			return NextResponse.json({ error: "No materials are ready for processing" }, { status: 400 });
+			return NextResponse.json(
+				{ error: "No materials are ready for processing" },
+				{ status: 400 }
+			);
 		}
 
 		// Update uploadStatus to completed
@@ -79,24 +80,58 @@ export async function POST(req: NextRequest) {
 				)
 			);
 
-		if (body.generationConfig) {
-			const { saveCourseWeekGenerationConfig } = await import(
-				"@/lib/services/adaptive-generation-service"
+		// Handle selective generation config
+		// Validate that enabled features have corresponding configs
+		const { validateSelectiveGenerationConfig } = await import(
+			"@/lib/validation/generation-config"
+		);
+		const configErrors = validateSelectiveGenerationConfig(
+			body.selectiveConfig
+		);
+		if (configErrors.length > 0) {
+			return NextResponse.json(
+				{
+					error: `Configuration validation failed: ${configErrors[0].message}`,
+				},
+				{ status: 400 }
 			);
+		}
 
-			// Save config for the course week
-			const configSaveResult = await saveCourseWeekGenerationConfig(
-				body.weekId,
-				body.courseId,
-				user.id,
-				body.generationConfig
-			);
+		// Persist the user's selected config to database
+		const savedConfigId = await persistSelectiveConfig(
+			body.selectiveConfig,
+			body.weekId,
+			body.courseId,
+			user.id
+		);
 
-			if (!configSaveResult) {
-				console.error(`Failed to save generation config for week ${body.weekId}`);
-				// Continue with processing - config save failure shouldn't block processing
+		// Update generation metadata to track which features should be generated
+		const metadata: Record<
+			string,
+			{ status: string; configVersion: number; configId: string }
+		> = {};
+		for (const [feature, selected] of Object.entries(
+			body.selectiveConfig.selectedFeatures
+		)) {
+			if (selected) {
+				metadata[feature] = {
+					status: "pending",
+					configVersion: 1,
+					configId: savedConfigId,
+				};
 			}
 		}
+
+		// Update materials with generation metadata
+		await db
+			.update(courseMaterials)
+			.set({ generationMetadata: metadata })
+			.where(
+				inArray(
+					courseMaterials.id,
+					ingestMaterials.map((m) => m.id)
+				)
+			);
 
 		// Trigger ingest task for those materials
 		const ingestHandle = await tasks.trigger<typeof ingestCourseMaterials>(
@@ -108,6 +143,7 @@ export async function POST(req: NextRequest) {
 					filePath: m.filePath as string,
 					contentType: m.contentType as string,
 				})),
+				configId: savedConfigId,
 			}
 		);
 

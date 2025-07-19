@@ -3,11 +3,20 @@
 import { db } from "@/db";
 import { courseMaterials, courseWeeks, courses } from "@/db/schema";
 import { deleteContentForCourse } from "@/lib/services/content-deletion-service";
-import { cancelMultipleJobs, extractRunIds } from "@/lib/services/job-cancellation-service";
-import { cleanupStorageFiles, extractFilePaths } from "@/lib/services/storage-cleanup-service";
+import {
+	cancelMultipleJobs,
+	extractRunIds,
+} from "@/lib/services/job-cancellation-service";
+import {
+	cleanupStorageFiles,
+	extractFilePaths,
+} from "@/lib/services/storage-cleanup-service";
 import { getServerClient } from "@/lib/supabase/server";
 import { withErrorHandling } from "@/lib/utils/error-handling";
-import { type CourseCreationData, CourseCreationSchema } from "@/lib/validations/courses";
+import {
+	type CourseCreationData,
+	CourseCreationSchema,
+} from "@/lib/validations/courses";
 import { asc, desc, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
@@ -33,11 +42,14 @@ export async function createCourse(formData: CourseCreationData) {
 			.returning();
 
 		// Create course weeks based on durationWeeks
-		const weeks = Array.from({ length: newCourse.durationWeeks || 12 }, (_, i) => ({
-			courseId: newCourse.id,
-			weekNumber: i + 1,
-			title: `Week ${i + 1}`,
-		}));
+		const weeks = Array.from(
+			{ length: newCourse.durationWeeks || 12 },
+			(_, i) => ({
+				courseId: newCourse.id,
+				weekNumber: i + 1,
+				title: `Week ${i + 1}`,
+			})
+		);
 
 		await db.insert(courseWeeks).values(weeks);
 
@@ -121,7 +133,10 @@ export async function getCourseWeeks(courseId: string) {
 	);
 }
 
-export async function updateCourse(courseId: string, data: Partial<CourseCreationData>) {
+export async function updateCourse(
+	courseId: string,
+	data: Partial<CourseCreationData>
+) {
 	try {
 		const supabase = await getServerClient();
 		const {
@@ -182,7 +197,9 @@ export async function deleteCourse(courseId: string) {
 		});
 
 		if (!course) {
-			throw new Error("Course not found or you don't have permission to delete it.");
+			throw new Error(
+				"Course not found or you don't have permission to delete it."
+			);
 		}
 
 		// Verify ownership
@@ -209,13 +226,20 @@ export async function deleteCourse(courseId: string) {
 			const materialIds = materialsData.map((m) => m.id);
 
 			// Delete all content for the course (AI content, materials, weeks, configs, chunks)
-			const contentResult = await deleteContentForCourse(tx, courseId, materialIds);
+			const contentResult = await deleteContentForCourse(
+				tx,
+				courseId,
+				materialIds
+			);
 
 			// Delete the main course record
-			const [deletedCourse] = await tx.delete(courses).where(eq(courses.id, courseId)).returning({
-				id: courses.id,
-				name: courses.name,
-			});
+			const [deletedCourse] = await tx
+				.delete(courses)
+				.where(eq(courses.id, courseId))
+				.returning({
+					id: courses.id,
+					name: courses.name,
+				});
 
 			if (!deletedCourse) {
 				throw new Error("Failed to delete course from database.");
@@ -247,11 +271,14 @@ export async function deleteCourse(courseId: string) {
 			weeksDeleted: deletionResult.weeksDeleted,
 			filesDeleted: storageResult.filesDeleted,
 			jobsCancelled: jobCancellationResult.jobsCancelled,
-			storageErrors: storageResult.hasErrors ? storageResult.storageErrors : undefined,
+			storageErrors: storageResult.hasErrors
+				? storageResult.storageErrors
+				: undefined,
 		};
 	} catch (error) {
 		// Comprehensive error logging
-		const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+		const errorMessage =
+			error instanceof Error ? error.message : "Unknown error occurred";
 
 		console.error(`Failed to delete course ${courseId}:`, {
 			error: errorMessage,

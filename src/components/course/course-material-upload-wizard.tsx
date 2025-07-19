@@ -1,12 +1,18 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Loader2, Settings, Upload } from "lucide-react";
+import {
+	ChevronLeft,
+	ChevronRight,
+	Loader2,
+	Settings,
+	Upload,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { CourseWeekSelector } from "@/components/course/course-week-selector";
 import { FileUploadDropzone } from "@/components/course/file-upload-dropzone";
-import { GenerationSettings } from "@/components/course/generation-settings";
+import { SelectiveGenerationSettings } from "@/components/course/selective-generation-settings";
 import { UploadSummary } from "@/components/course/upload-summary";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,40 +25,35 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import type { courses } from "@/db/schema";
 import { getCourseWeeks } from "@/lib/actions/courses";
 import { COURSE_MATERIALS_BUCKET } from "@/lib/constants/storage";
-import { completeUpload, presignUpload } from "@/lib/services/course-material-service";
+import {
+	completeUpload,
+	presignUpload,
+} from "@/lib/services/course-material-service";
 import { createClient } from "@/lib/supabase/client";
+import { getDefaultSelectiveConfig } from "@/stores/upload-wizard-store";
+import type { Course } from "@/types/database-types";
+import type { SelectiveGenerationConfig } from "@/types/generation-types";
 import { useQuery } from "@tanstack/react-query";
 
 interface CourseMaterialUploadWizardProps {
-	courses: (typeof courses.$inferSelect)[];
+	courses: Course[];
 	onUploadSuccess: () => void;
-}
-
-export interface GenerationConfig {
-	goldenNotesCount: number;
-	cuecardsCount: number;
-	summaryLength: number;
-	examExercisesCount: number;
-	mcqExercisesCount: number;
-	difficulty: "beginner" | "intermediate" | "advanced";
-	focus: "conceptual" | "practical" | "mixed";
 }
 
 export interface UploadData {
 	courseId: string;
 	weekId: string;
 	files: File[];
-	generationConfig: GenerationConfig;
+	generationConfig: SelectiveGenerationConfig;
 }
 
 export interface MaterialUploadData {
 	courseId: string;
 	weekId?: string;
 	file: File;
-	generationConfig: GenerationConfig;
+	generationConfig: SelectiveGenerationConfig;
 	contentType?: string;
 }
 
@@ -72,22 +73,14 @@ const STEPS = [
 	},
 ];
 
-const DEFAULT_GENERATION_CONFIG: GenerationConfig = {
-	goldenNotesCount: 5,
-	cuecardsCount: 10,
-	summaryLength: 300,
-	examExercisesCount: 5,
-	mcqExercisesCount: 10,
-	difficulty: "intermediate",
-	focus: "conceptual",
-};
-
 export function CourseMaterialUploadWizard({
 	courses,
 	onUploadSuccess,
 }: CourseMaterialUploadWizardProps) {
 	const [isOpen, setIsOpen] = useState(false);
-	const [currentStep, setCurrentStep] = useState<WizardStep>(WIZARD_STEPS.COURSE_AND_FILES);
+	const [currentStep, setCurrentStep] = useState<WizardStep>(
+		WIZARD_STEPS.COURSE_AND_FILES
+	);
 	const [isUploading, setIsUploading] = useState(false);
 
 	// Step 1 data
@@ -95,9 +88,9 @@ export function CourseMaterialUploadWizard({
 	const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
 	const [files, setFiles] = useState<File[]>([]);
 
-	// Step 2 data
-	const [generationConfig, setGenerationConfig] =
-		useState<GenerationConfig>(DEFAULT_GENERATION_CONFIG);
+	// Selective generation config with store's default
+	const [selectiveConfig, setSelectiveConfig] =
+		useState<SelectiveGenerationConfig>(getDefaultSelectiveConfig);
 
 	const selectedCourse = courses.find((c) => c.id === selectedCourseId);
 
@@ -112,7 +105,7 @@ export function CourseMaterialUploadWizard({
 		setSelectedCourseId("");
 		setSelectedWeek(null);
 		setFiles([]);
-		setGenerationConfig(DEFAULT_GENERATION_CONFIG);
+		setSelectiveConfig(getDefaultSelectiveConfig());
 		setIsUploading(false);
 	};
 
@@ -148,14 +141,27 @@ export function CourseMaterialUploadWizard({
 			return;
 		}
 
+		// Validate selective generation config
+		const { validateSelectiveGenerationConfig } = await import(
+			"@/lib/validation/generation-config"
+		);
+		const errors = validateSelectiveGenerationConfig(selectiveConfig);
+		if (errors.length > 0) {
+			toast.error(errors[0].message);
+			return;
+		}
+
 		// Client-side batch size validation
-		if (files.length > 50) {
-			toast.error("Maximum 50 files allowed per batch. Please reduce the number of files.");
+		if (files.length > 5) {
+			toast.error(
+				"Maximum 5 files allowed per batch. Please reduce the number of files."
+			);
 			return;
 		}
 
 		const selectedWeekData = courseWeeks.find(
-			(week) => week.courseId === selectedCourseId && week.weekNumber === selectedWeek
+			(week) =>
+				week.courseId === selectedCourseId && week.weekNumber === selectedWeek
 		);
 
 		if (!selectedWeekData) {
@@ -197,7 +203,8 @@ export function CourseMaterialUploadWizard({
 					uploadedMaterialIds.push(presignRes.materialId);
 				} catch (fileErr) {
 					// Handle individual file errors (e.g., validation failures)
-					const errorMessage = fileErr instanceof Error ? fileErr.message : "Unknown error";
+					const errorMessage =
+						fileErr instanceof Error ? fileErr.message : "Unknown error";
 					failedUploads.push({
 						fileName: file.name,
 						error: errorMessage,
@@ -224,7 +231,7 @@ export function CourseMaterialUploadWizard({
 					uploadedMaterialIds,
 					selectedWeekData.id,
 					selectedCourseId,
-					generationConfig
+					selectiveConfig
 				);
 
 				const successMessage =
@@ -237,12 +244,16 @@ export function CourseMaterialUploadWizard({
 				onUploadSuccess();
 			} catch (processErr) {
 				// Handle processing initiation errors
-				const errorMessage = processErr instanceof Error ? processErr.message : "Unknown error";
-				toast.error(`Files uploaded but processing failed to start: ${errorMessage}`);
+				const errorMessage =
+					processErr instanceof Error ? processErr.message : "Unknown error";
+				toast.error(
+					`Files uploaded but processing failed to start: ${errorMessage}`
+				);
 			}
 		} catch (err) {
 			// Handle unexpected errors
-			const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";
+			const errorMessage =
+				err instanceof Error ? err.message : "An unexpected error occurred";
 			toast.error(`Upload failed: ${errorMessage}`);
 		} finally {
 			setIsUploading(false);
@@ -280,7 +291,8 @@ export function CourseMaterialUploadWizard({
 						Course Content Upload & Generation
 					</DialogTitle>
 					<DialogDescription>
-						Upload your course materials and configure AI content generation settings
+						Upload your course materials and configure AI content generation
+						settings
 					</DialogDescription>
 				</DialogHeader>
 
@@ -315,7 +327,9 @@ export function CourseMaterialUploadWizard({
 										{step.title}
 									</p>
 								</div>
-								{index < STEPS.length - 1 && <div className="w-16 h-px bg-border mx-4" />}
+								{index < STEPS.length - 1 && (
+									<div className="w-16 h-px bg-border mx-4" />
+								)}
 							</div>
 						);
 					})}
@@ -344,9 +358,13 @@ export function CourseMaterialUploadWizard({
 						<div className="space-y-2">
 							<Label>Course Materials *</Label>
 							<FileUploadDropzone
-								onFilesAdded={(newFiles) => setFiles((f) => [...f, ...newFiles])}
+								onFilesAdded={(newFiles) =>
+									setFiles((f) => [...f, ...newFiles])
+								}
 								files={files}
-								onRemoveFile={(index) => setFiles((f) => f.filter((_, i) => i !== index))}
+								onRemoveFile={(index) =>
+									setFiles((f) => f.filter((_, i) => i !== index))
+								}
 							/>
 						</div>
 					</div>
@@ -365,7 +383,10 @@ export function CourseMaterialUploadWizard({
 						)}
 						<Separator />
 
-						<GenerationSettings config={generationConfig} onConfigChange={setGenerationConfig} />
+						<SelectiveGenerationSettings
+							config={selectiveConfig}
+							onConfigChange={setSelectiveConfig}
+						/>
 					</div>
 				)}
 
@@ -386,21 +407,33 @@ export function CourseMaterialUploadWizard({
 					</div>
 
 					<div className="flex gap-2">
-						<Button variant="outline" onClick={handleClose} disabled={isUploading}>
+						<Button
+							variant="outline"
+							onClick={handleClose}
+							disabled={isUploading}
+						>
 							Cancel
 						</Button>
 
 						{currentStep === WIZARD_STEPS.COURSE_AND_FILES ? (
-							<Button onClick={handleNextStep} disabled={!canProceedToStep2()} className="gap-2">
+							<Button
+								onClick={handleNextStep}
+								disabled={!canProceedToStep2()}
+								className="gap-2"
+							>
 								Next
 								<ChevronRight className="h-4 w-4" />
 							</Button>
 						) : (
-							<Button onClick={handleGenerate} disabled={isUploading} className="gap-2">
+							<Button
+								onClick={handleGenerate}
+								disabled={isUploading}
+								className="gap-2"
+							>
 								{isUploading ? (
 									<>
 										<Loader2 className="h-4 w-4 animate-spin" />
-										Processing...
+										Uploading...
 									</>
 								) : (
 									"Generate Content"

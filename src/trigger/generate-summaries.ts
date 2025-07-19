@@ -1,11 +1,13 @@
-import { db } from "@/db";
-import { courseMaterials } from "@/db/schema";
 import { logger, schemaTask, tags } from "@trigger.dev/sdk";
-import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 const GenerateSummariesPayload = z.object({
 	weekId: z.string().min(1, "Week ID is required"),
+	courseId: z.string().min(1, "Course ID is required"),
+	materialIds: z
+		.array(z.string())
+		.min(1, "At least one material ID is required"),
+	configId: z.string().uuid("Config ID must be a valid UUID"),
 });
 
 const GenerateSummariesOutput = z.object({
@@ -28,52 +30,40 @@ export const generateSummaries = schemaTask({
 		});
 	},
 	run: async (payload: GenerateSummariesPayloadType, { ctx: _ctx }) => {
-		const { weekId } = payload;
+		const { weekId, courseId, materialIds, configId } = payload;
 
-		// Tag this run for enhanced observability
 		await tags.add([`weekId:${payload.weekId}`, "contentType:summaries"]);
 
 		try {
-			// Fetch all materials belonging to this week
-			const materials = await db
-				.select({
-					id: courseMaterials.id,
-					uploadedBy: courseMaterials.uploadedBy,
-					courseId: courseMaterials.courseId,
-					processingMetadata: courseMaterials.processingMetadata,
-				})
-				.from(courseMaterials)
-				.where(eq(courseMaterials.weekId, weekId));
-
-			if (materials.length === 0) {
-				throw new Error("No materials found for given week");
-			}
-
-			const { uploadedBy: userId, courseId } = materials[0];
-
-			// Import generation config manager for adaptive configuration
-			const { getEffectiveCourseWeekGenerationConfig } = await import(
-				"@/lib/services/adaptive-generation-service"
+			const { getFeatureGenerationConfig } = await import(
+				"@/lib/actions/generation-config"
+			);
+			const summariesConfig = await getFeatureGenerationConfig(
+				configId,
+				"summaries"
 			);
 
-			// Get the effective configuration with adaptive features
-			const adaptiveConfig = await getEffectiveCourseWeekGenerationConfig(userId, weekId, courseId);
-
-			logger.info("📄 Using adaptive configuration for summaries", {
+			if (!summariesConfig) {
+				throw new Error(
+					"Summaries configuration not found or feature not enabled"
+				);
+			}
+			logger.info("📄 Using selective configuration for summaries", {
 				weekId,
-				config: adaptiveConfig,
+				materialCount: materialIds.length,
+				config: summariesConfig,
 			});
 
-			// Import the specific generator
-			const { generateSummariesForWeek } = await import("@/lib/ai/content-generators");
+			const { generateSummariesForWeek } = await import(
+				"@/lib/ai/content-generators"
+			);
 
-			const materialIds = materials.map((m) => m.id);
-
-			// Generate summaries for the week
-			const result = await generateSummariesForWeek(courseId, weekId, materialIds, {
-				summaryLength: adaptiveConfig.summaryLength,
-				difficulty: adaptiveConfig.difficulty,
-			});
+			const result = await generateSummariesForWeek(
+				courseId,
+				weekId,
+				materialIds,
+				summariesConfig
+			);
 
 			if (!result.success) {
 				throw new Error(result.error || "Summaries generation failed");
@@ -86,7 +76,8 @@ export const generateSummaries = schemaTask({
 				generatedCount: result.generatedCount || 0,
 			};
 		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+			const errorMessage =
+				error instanceof Error ? error.message : "An unknown error occurred";
 			logger.error("❌ Summaries generation failed", {
 				weekId,
 				error: errorMessage,
@@ -111,7 +102,6 @@ export const generateSummaries = schemaTask({
 			generatedCount: output.generatedCount,
 		});
 
-		// Dynamically import and call the shared utility
 		const { updateWeekContentGenerationMetadata } = await import(
 			"@/lib/services/processing-metadata-service"
 		);

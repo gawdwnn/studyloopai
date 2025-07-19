@@ -106,6 +106,20 @@
 			"when": 1752500000000,
 			"tag": "0014_remove_flashcards_table",
 			"breakpoints": true
+		},
+		{
+			"idx": 15,
+			"version": "7",
+			"when": 1752724225691,
+			"tag": "0015_volatile_changeling",
+			"breakpoints": true
+		},
+		{
+			"idx": 16,
+			"version": "7",
+			"when": 1752854475962,
+			"tag": "0016_overjoyed_moonstone",
+			"breakpoints": true
 		}
 	]
 }
