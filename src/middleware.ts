@@ -1,8 +1,9 @@
-import { getServerClient } from "@/lib/supabase/server";
+import { getAdminClient, getServerClient } from "@/lib/supabase/server";
 import { type NextRequest, NextResponse } from "next/server";
 
 async function isOnboardingComplete(userId: string): Promise<boolean> {
-	const supabase = await getServerClient();
+	// Use admin client to bypass RLS policies for middleware checks
+	const supabase = getAdminClient();
 	const { data: user, error } = await supabase
 		.from("users")
 		.select("onboarding_completed, onboarding_skipped")
