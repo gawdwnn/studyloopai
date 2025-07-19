@@ -34,6 +34,7 @@ import postgres from "postgres";
 const POLICIES_DIR = resolve(join(process.cwd(), "drizzle", "policies"));
 
 const MANAGED_TABLES = [
+	"users",
 	"golden_notes",
 	"own_notes",
 	"generation_configs",
