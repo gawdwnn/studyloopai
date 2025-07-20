@@ -503,6 +503,7 @@ export const generationConfigs = pgTable(
 			table.isActive
 		),
 		index("idx_generation_configs_applied_at").using("btree", table.appliedAt),
+		index("idx_generation_configs_status").using("btree", table.generationStatus),
 
 		// Foreign key constraints with proper cascade behavior
 		foreignKey({
