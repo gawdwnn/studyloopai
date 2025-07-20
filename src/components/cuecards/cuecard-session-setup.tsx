@@ -1,13 +1,22 @@
 "use client";
 
+import { OnDemandGenerationDialog } from "@/components/generation/on-demand-generation-dialog";
 import {
 	Accordion,
 	AccordionContent,
 	AccordionItem,
 	AccordionTrigger,
 } from "@/components/ui/accordion";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+	Card,
+	CardContent,
+	CardFooter,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
@@ -17,6 +26,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { useContentAvailability } from "@/hooks/use-content-availability";
 import { useCourseWeeks } from "@/hooks/use-course-week";
 import { useQueryState } from "@/hooks/use-query-state";
 import type {
@@ -26,8 +36,8 @@ import type {
 	FocusType,
 	PracticeMode,
 } from "@/lib/stores/cuecard-session/types";
-import { X } from "lucide-react";
-import { useEffect } from "react";
+import { AlertCircle, Loader2, PlayCircle, Sparkles, X } from "lucide-react";
+import { useEffect, useState } from "react";
 
 type Course = {
 	id: string;
@@ -47,17 +57,35 @@ export function CuecardSessionSetup({
 	onClose,
 }: CuecardSessionSetupProps) {
 	const { searchParams, setQueryState } = useQueryState();
+	const [showGenerationDialog, setShowGenerationDialog] = useState(false);
 
 	// Initialize state from URL or defaults
-	const selectedCourse = searchParams.get("courseId") || (courses.length > 0 ? courses[0].id : "");
+	const selectedCourse =
+		searchParams.get("courseId") || (courses.length > 0 ? courses[0].id : "");
 	const selectedWeek = searchParams.get("week") || "all-weeks";
 	const selectedMode = (searchParams.get("mode") as CuecardMode) || "both";
 	const cardCount = searchParams.get("count") || "20";
-	const difficulty = (searchParams.get("difficulty") as DifficultyLevel) || "mixed";
+	const difficulty =
+		(searchParams.get("difficulty") as DifficultyLevel) || "mixed";
 	const focus = (searchParams.get("focus") as FocusType) || "tailored-for-me";
-	const practiceMode = (searchParams.get("practiceMode") as PracticeMode) || "practice";
+	const practiceMode =
+		(searchParams.get("practiceMode") as PracticeMode) || "practice";
 
-	const { data: weeks = [], isLoading: loadingWeeks } = useCourseWeeks(selectedCourse);
+	const { data: weeks = [], isLoading: loadingWeeks } =
+		useCourseWeeks(selectedCourse);
+
+	// Content availability detection
+	const {
+		isLoading: loadingAvailability,
+		getContentTypeStatus,
+		refetch: refetchAvailability,
+	} = useContentAvailability({
+		courseId: selectedCourse,
+		weekId: selectedWeek === "all-weeks" ? "" : selectedWeek,
+		enabled: selectedCourse && selectedWeek !== "all-weeks",
+	});
+
+	const cuecardsStatus = getContentTypeStatus("cuecards");
 
 	// When selectedCourse changes, if the selectedWeek is not in the new list of weeks, reset it.
 	useEffect(() => {
@@ -76,6 +104,20 @@ export function CuecardSessionSetup({
 			return;
 		}
 
+		// Check if we need to trigger generation
+		if (selectedWeek !== "all-weeks" && !cuecardsStatus.canStartSession) {
+			if (cuecardsStatus.isGenerating) {
+				// Already generating, just wait
+				return;
+			}
+
+			if (!cuecardsStatus.isAvailable) {
+				// Need to generate content first
+				setShowGenerationDialog(true);
+				return;
+			}
+		}
+
 		const config: CuecardConfig = {
 			courseId: selectedCourse,
 			weeks: selectedWeek === "all-weeks" ? [] : [selectedWeek],
@@ -87,6 +129,66 @@ export function CuecardSessionSetup({
 		};
 		onStartSession(config);
 	};
+
+	const handleGenerationComplete = () => {
+		setShowGenerationDialog(false);
+		refetchAvailability();
+
+		// Auto-start session after generation completes
+		setTimeout(() => {
+			handleStartSession();
+		}, 500);
+	};
+
+	const getStartButtonState = () => {
+		if (!selectedCourse) {
+			return {
+				disabled: true,
+				text: "Start Session",
+				variant: "default" as const,
+			};
+		}
+
+		if (selectedWeek === "all-weeks") {
+			return {
+				disabled: false,
+				text: "Start Session",
+				variant: "default" as const,
+			};
+		}
+
+		if (loadingAvailability) {
+			return {
+				disabled: true,
+				text: "Checking Content...",
+				variant: "default" as const,
+			};
+		}
+
+		if (cuecardsStatus.isGenerating) {
+			return {
+				disabled: true,
+				text: "Generating Content...",
+				variant: "default" as const,
+			};
+		}
+
+		if (!cuecardsStatus.isAvailable) {
+			return {
+				disabled: false,
+				text: "Generate & Start Session",
+				variant: "default" as const,
+			};
+		}
+
+		return {
+			disabled: false,
+			text: "Start Session",
+			variant: "default" as const,
+		};
+	};
+
+	const buttonState = getStartButtonState();
 
 	if (courses.length === 0) {
 		return (
@@ -166,7 +268,45 @@ export function CuecardSessionSetup({
 								))}
 							</SelectContent>
 						</Select>
-						{loadingWeeks && <p className="text-xs text-muted-foreground">Loading weeks...</p>}
+						{loadingWeeks && (
+							<p className="text-xs text-muted-foreground">Loading weeks...</p>
+						)}
+
+						{/* Content Availability Indicator */}
+						{selectedWeek !== "all-weeks" && (
+							<div className="mt-3">
+								{loadingAvailability ? (
+									<div className="flex items-center gap-2 text-sm text-muted-foreground">
+										<Loader2 className="h-4 w-4 animate-spin" />
+										<span>Checking content availability...</span>
+									</div>
+								) : cuecardsStatus.isGenerating ? (
+									<Alert>
+										<Loader2 className="h-4 w-4 animate-spin" />
+										<AlertDescription>
+											Cuecards are being generated for this week. This may take
+											a few minutes.
+										</AlertDescription>
+									</Alert>
+								) : cuecardsStatus.isAvailable ? (
+									<div className="flex items-center gap-2 text-sm text-green-600">
+										<PlayCircle className="h-4 w-4" />
+										<span>{cuecardsStatus.count} cuecards available</span>
+										<Badge variant="secondary" className="text-xs">
+											Ready
+										</Badge>
+									</div>
+								) : (
+									<Alert>
+										<AlertCircle className="h-4 w-4" />
+										<AlertDescription>
+											No cuecards found for this week. We'll generate them for
+											you when you start the session.
+										</AlertDescription>
+									</Alert>
+								)}
+							</div>
+						)}
 					</div>
 
 					{/* Settings Section */}
@@ -181,7 +321,9 @@ export function CuecardSessionSetup({
 									<div className="space-y-2">
 										<Select
 											value={difficulty}
-											onValueChange={(value) => setQueryState({ difficulty: value })}
+											onValueChange={(value) =>
+												setQueryState({ difficulty: value })
+											}
 										>
 											<SelectTrigger className="h-12 w-full">
 												<SelectValue placeholder="Select difficulty of the cards" />
@@ -211,7 +353,9 @@ export function CuecardSessionSetup({
 												<SelectItem value="50">50</SelectItem>
 											</SelectContent>
 										</Select>
-										<p className="text-xs text-muted-foreground">Select the number of cards</p>
+										<p className="text-xs text-muted-foreground">
+											Select the number of cards
+										</p>
 									</div>
 
 									{/* Focus Selection */}
@@ -224,16 +368,26 @@ export function CuecardSessionSetup({
 												<SelectValue />
 											</SelectTrigger>
 											<SelectContent>
-												<SelectItem value="tailored-for-me">Tailored for me</SelectItem>
-												<SelectItem value="weak-areas">Focus on weak areas</SelectItem>
-												<SelectItem value="recent-content">Recent content</SelectItem>
-												<SelectItem value="comprehensive">Comprehensive review</SelectItem>
+												<SelectItem value="tailored-for-me">
+													Tailored for me
+												</SelectItem>
+												<SelectItem value="weak-areas">
+													Focus on weak areas
+												</SelectItem>
+												<SelectItem value="recent-content">
+													Recent content
+												</SelectItem>
+												<SelectItem value="comprehensive">
+													Comprehensive review
+												</SelectItem>
 											</SelectContent>
 										</Select>
-										<p className="text-xs text-muted-foreground">Select Focus</p>
 										<p className="text-xs text-muted-foreground">
-											"Tailored for me" includes cards you've struggled with and uses spaced
-											repetition.
+											Select Focus
+										</p>
+										<p className="text-xs text-muted-foreground">
+											"Tailored for me" includes cards you've struggled with and
+											uses spaced repetition.
 										</p>
 									</div>
 
@@ -249,7 +403,9 @@ export function CuecardSessionSetup({
 											<SelectContent>
 												<SelectItem value="both">Both</SelectItem>
 												<SelectItem value="term-first">Term First</SelectItem>
-												<SelectItem value="definition-first">Definition First</SelectItem>
+												<SelectItem value="definition-first">
+													Definition First
+												</SelectItem>
 											</SelectContent>
 										</Select>
 										<p className="text-xs text-muted-foreground">
@@ -260,28 +416,42 @@ export function CuecardSessionSetup({
 									{/* Practice Mode Selection */}
 									<RadioGroup
 										value={practiceMode}
-										onValueChange={(value) => setQueryState({ practiceMode: value })}
+										onValueChange={(value) =>
+											setQueryState({ practiceMode: value })
+										}
 										className="grid grid-cols-2 gap-4"
 									>
 										<div>
-											<RadioGroupItem value="practice" id="practice" className="peer sr-only" />
+											<RadioGroupItem
+												value="practice"
+												id="practice"
+												className="peer sr-only"
+											/>
 											<Label
 												htmlFor="practice"
 												className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
 											>
 												Practice
 											</Label>
-											<p className="text-xs text-muted-foreground mt-1">Get instant feedback.</p>
+											<p className="text-xs text-muted-foreground mt-1">
+												Get instant feedback.
+											</p>
 										</div>
 										<div>
-											<RadioGroupItem value="exam" id="exam" className="peer sr-only" />
+											<RadioGroupItem
+												value="exam"
+												id="exam"
+												className="peer sr-only"
+											/>
 											<Label
 												htmlFor="exam"
 												className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
 											>
 												Exam
 											</Label>
-											<p className="text-xs text-muted-foreground mt-1">See results at the end.</p>
+											<p className="text-xs text-muted-foreground mt-1">
+												See results at the end.
+											</p>
 										</div>
 									</RadioGroup>
 								</AccordionContent>
@@ -291,10 +461,33 @@ export function CuecardSessionSetup({
 				</CardContent>
 
 				<CardFooter className="px-8 pb-8">
-					<Button className="w-full h-12" onClick={handleStartSession}>
-						Start Session
+					<Button
+						className="w-full h-12"
+						onClick={handleStartSession}
+						disabled={buttonState.disabled}
+						variant={buttonState.variant}
+					>
+						{buttonState.disabled &&
+							(buttonState.text.includes("Checking") ||
+								buttonState.text.includes("Generating")) && (
+								<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+							)}
+						{buttonState.text.includes("Generate") && !buttonState.disabled && (
+							<Sparkles className="mr-2 h-4 w-4" />
+						)}
+						{buttonState.text}
 					</Button>
 				</CardFooter>
+
+				{/* On-Demand Generation Dialog */}
+				<OnDemandGenerationDialog
+					isOpen={showGenerationDialog}
+					onClose={() => setShowGenerationDialog(false)}
+					courseId={selectedCourse}
+					weekId={selectedWeek}
+					contentTypes={["cuecards"]}
+					onGenerationComplete={handleGenerationComplete}
+				/>
 			</Card>
 		</div>
 	);

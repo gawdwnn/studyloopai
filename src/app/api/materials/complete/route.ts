@@ -1,9 +1,10 @@
 "use server";
 
 import { db } from "@/db";
-import { courseMaterials } from "@/db/schema";
+import { courseMaterials, courseWeeks } from "@/db/schema";
 import { persistSelectiveConfig } from "@/lib/actions/generation-config";
 import { getServerClient } from "@/lib/supabase/server";
+import { getUserFriendlyErrorMessage } from "@/lib/utils/error-messages";
 import { SelectiveGenerationConfigSchema } from "@/lib/validation/generation-config";
 import type { ingestCourseMaterials } from "@/trigger/ingest-course-materials";
 import { tasks } from "@trigger.dev/sdk";
@@ -91,7 +92,7 @@ export async function POST(req: NextRequest) {
 		if (configErrors.length > 0) {
 			return NextResponse.json(
 				{
-					error: `Configuration validation failed: ${configErrors[0].message}`,
+					error: "Please check your generation settings and try again.",
 				},
 				{ status: 400 }
 			);
@@ -133,6 +134,12 @@ export async function POST(req: NextRequest) {
 				)
 			);
 
+		// Mark the week as having materials
+		await db
+			.update(courseWeeks)
+			.set({ hasMaterials: true })
+			.where(eq(courseWeeks.id, body.weekId));
+
 		// Trigger ingest task for those materials
 		const ingestHandle = await tasks.trigger<typeof ingestCourseMaterials>(
 			"ingest-course-materials",
@@ -153,8 +160,14 @@ export async function POST(req: NextRequest) {
 			publicAccessToken: ingestHandle.publicAccessToken,
 		});
 	} catch (err) {
+		console.error("Materials completion error:", err);
+		
+		const userMessage = getUserFriendlyErrorMessage(
+			err instanceof Error ? err : "Unknown error occurred"
+		);
+		
 		return NextResponse.json(
-			{ error: err instanceof Error ? err.message : "Unknown error" },
+			{ error: userMessage },
 			{ status: 400 }
 		);
 	}

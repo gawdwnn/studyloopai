@@ -32,6 +32,7 @@ import {
 	presignUpload,
 } from "@/lib/services/course-material-service";
 import { createClient } from "@/lib/supabase/client";
+import { handleErrorWithLogging } from "@/lib/utils/error-messages";
 import { getDefaultSelectiveConfig } from "@/stores/upload-wizard-store";
 import type { Course } from "@/types/database-types";
 import type { SelectiveGenerationConfig } from "@/types/generation-types";
@@ -99,6 +100,7 @@ export function CourseMaterialUploadWizard({
 		queryFn: () => getCourseWeeks(selectedCourseId),
 		enabled: !!selectedCourseId,
 	});
+
 
 	const resetWizard = () => {
 		setCurrentStep(WIZARD_STEPS.COURSE_AND_FILES);
@@ -193,9 +195,14 @@ export function CourseMaterialUploadWizard({
 						.uploadToSignedUrl(presignRes.filePath, presignRes.token, file);
 
 					if (uploadErr) {
+						const errorMessage = handleErrorWithLogging(
+							uploadErr,
+							"File storage upload",
+							{ fileName: file.name, bucket: COURSE_MATERIALS_BUCKET }
+						);
 						failedUploads.push({
 							fileName: file.name,
-							error: uploadErr.message,
+							error: errorMessage,
 						});
 						continue;
 					}
@@ -203,8 +210,11 @@ export function CourseMaterialUploadWizard({
 					uploadedMaterialIds.push(presignRes.materialId);
 				} catch (fileErr) {
 					// Handle individual file errors (e.g., validation failures)
-					const errorMessage =
-						fileErr instanceof Error ? fileErr.message : "Unknown error";
+					const errorMessage = handleErrorWithLogging(
+						fileErr instanceof Error ? fileErr : "Unknown error occurred",
+						"File upload",
+						{ fileName: file.name, fileSize: file.size }
+					);
 					failedUploads.push({
 						fileName: file.name,
 						error: errorMessage,
@@ -244,17 +254,29 @@ export function CourseMaterialUploadWizard({
 				onUploadSuccess();
 			} catch (processErr) {
 				// Handle processing initiation errors
-				const errorMessage =
-					processErr instanceof Error ? processErr.message : "Unknown error";
-				toast.error(
-					`Files uploaded but processing failed to start: ${errorMessage}`
+				const errorMessage = handleErrorWithLogging(
+					processErr instanceof Error ? processErr : "Processing initialization failed",
+					"Upload completion",
+					{ 
+						materialIds: uploadedMaterialIds, 
+						weekId: selectedWeekData.id,
+						courseId: selectedCourseId 
+					}
 				);
+				toast.error(`Files uploaded successfully but ${errorMessage.toLowerCase()}`);
 			}
 		} catch (err) {
 			// Handle unexpected errors
-			const errorMessage =
-				err instanceof Error ? err.message : "An unexpected error occurred";
-			toast.error(`Upload failed: ${errorMessage}`);
+			const errorMessage = handleErrorWithLogging(
+				err instanceof Error ? err : "Unexpected error during upload",
+				"Upload process",
+				{ 
+					selectedCourseId,
+					selectedWeek,
+					fileCount: files.length 
+				}
+			);
+			toast.error(errorMessage);
 		} finally {
 			setIsUploading(false);
 		}
@@ -352,6 +374,7 @@ export function CourseMaterialUploadWizard({
 							courseLabel="Course"
 							weekLabel="Week"
 							required={true}
+							showOnlyWeeksWithoutMaterials={true}
 						/>
 
 						{/* File Upload */}

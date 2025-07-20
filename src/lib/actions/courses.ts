@@ -17,7 +17,7 @@ import {
 	type CourseCreationData,
 	CourseCreationSchema,
 } from "@/lib/validations/courses";
-import { asc, desc, eq } from "drizzle-orm";
+import { asc, desc, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 export async function createCourse(formData: CourseCreationData) {
@@ -68,9 +68,13 @@ export async function createCourse(formData: CourseCreationData) {
 }
 
 export async function getUserCourses() {
+	const { data: { user } } = await (await getServerClient()).auth.getUser();
+	if (!user) throw new Error("Authentication required");
+	
 	return await withErrorHandling(
 		async () => {
 			const userCourses = await db.query.courses.findMany({
+				where: eq(courses.userId, user.id),
 				orderBy: desc(courses.createdAt),
 			});
 			return userCourses;
@@ -94,9 +98,25 @@ export async function getCourseById(courseId: string) {
 }
 
 export async function getAllUserMaterials() {
+	const { data: { user } } = await (await getServerClient()).auth.getUser();
+	if (!user) throw new Error("Authentication required");
+	
 	return await withErrorHandling(
 		async () => {
+			// Get user's course IDs first
+			const userCourses = await db.select({ id: courses.id })
+				.from(courses)
+				.where(eq(courses.userId, user.id));
+			
+			const courseIds = userCourses.map(c => c.id);
+			
+			if (courseIds.length === 0) {
+				return [];
+			}
+			
+			// Query materials for user's courses only
 			const materials = await db.query.courseMaterials.findMany({
+				where: inArray(courseMaterials.courseId, courseIds),
 				with: {
 					courseWeek: {
 						columns: {
@@ -112,6 +132,7 @@ export async function getAllUserMaterials() {
 				},
 				orderBy: desc(courseMaterials.createdAt),
 			});
+			
 			return materials;
 		},
 		"getAllUserMaterials",
@@ -132,6 +153,7 @@ export async function getCourseWeeks(courseId: string) {
 		[]
 	);
 }
+
 
 export async function updateCourse(
 	courseId: string,

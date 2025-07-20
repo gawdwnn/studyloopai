@@ -63,8 +63,6 @@ export function CuecardSessionManager({ courses }: CuecardSessionManagerProps) {
 		}
 	};
 
-	console.log(cuecardSession);
-
 	const handleCardFeedback = (feedback: CuecardFeedback) => {
 		if (cuecardSession.status !== "active") return;
 		const card = cuecardSession.currentCard;

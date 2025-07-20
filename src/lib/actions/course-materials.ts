@@ -27,7 +27,10 @@ export async function addCourseMaterial(material: {
 	}
 
 	const course = await db.query.courses.findFirst({
-		where: eq(courses.id, material.courseId),
+		where: and(
+			eq(courses.id, material.courseId),
+			eq(courses.userId, user.id)
+		),
 		columns: { id: true, userId: true },
 	});
 
@@ -62,6 +65,12 @@ export async function addCourseMaterial(material: {
 		uploadStatus: "completed",
 	});
 
+	// Mark the week as having materials
+	await db
+		.update(courseWeeks)
+		.set({ hasMaterials: true })
+		.where(eq(courseWeeks.id, week.id));
+
 	revalidatePath(`/dashboard/course-materials/${material.courseId}`);
 }
 
@@ -83,7 +92,7 @@ export async function deleteCourseMaterial(materialId: string, filePath?: string
 		| undefined;
 
 	try {
-		// Step 1: Fetch material with ownership verification and get all related data
+		// Step 1: Fetch material with ownership verification
 		material = await db.query.courseMaterials.findFirst({
 			where: eq(courseMaterials.id, materialId),
 			with: {
@@ -132,6 +141,21 @@ export async function deleteCourseMaterial(materialId: string, filePath?: string
 
 			if (!deletedMaterial) {
 				throw new Error("Failed to delete course material from database.");
+			}
+
+			// Check if this was the last material for the week
+			const remainingMaterials = await tx
+				.select({ id: courseMaterials.id })
+				.from(courseMaterials)
+				.where(eq(courseMaterials.weekId, material.weekId))
+				.limit(1);
+
+			// If no materials remain, mark the week as not having materials
+			if (remainingMaterials.length === 0) {
+				await tx
+					.update(courseWeeks)
+					.set({ hasMaterials: false })
+					.where(eq(courseWeeks.id, material.weekId));
 			}
 
 			return {

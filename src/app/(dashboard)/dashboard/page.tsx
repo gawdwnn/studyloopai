@@ -9,12 +9,14 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { BookPlus } from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
+import { useCurrentUserName } from "@/hooks/use-current-user-name";
 
 export default function DashboardPage() {
 	const [isPending, startTransition] = useTransition();
 	const [deletingCourses, setDeletingCourses] = useState<Set<string>>(new Set());
 	const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
 	const { searchParams, setQueryState } = useQueryState();
+	const userName = useCurrentUserName();
 
 	const queryClient = useQueryClient();
 
@@ -103,8 +105,7 @@ export default function DashboardPage() {
 		<div className="space-y-12">
 			<div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
 				<div>
-					{/* //TODO: Add user name*/}
-					<h1 className="text-2xl font-bold tracking-tight md:text-3xl">Welcome back Smart, 👋</h1>
+					<h1 className="text-2xl font-bold tracking-tight md:text-3xl">Welcome back {userName}, 👋</h1>
 					<p className="text-muted-foreground">Here's an overview of your courses and progress.</p>
 				</div>
 				<div className="w-full md:w-auto">

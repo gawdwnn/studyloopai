@@ -27,6 +27,7 @@ export function StepCourseSelection({ courses }: StepCourseSelectionProps) {
 		enabled: !!selectedCourseId,
 	});
 
+
 	const handleCourseChange = (courseId: string) => {
 		setCourseSelection(courseId, "", 0);
 	};
@@ -64,6 +65,7 @@ export function StepCourseSelection({ courses }: StepCourseSelectionProps) {
 					courseLabel="Course"
 					weekLabel="Week"
 					required={true}
+					showOnlyWeeksWithoutMaterials={true}
 				/>
 			</CardContent>
 		</Card>

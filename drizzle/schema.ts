@@ -269,9 +269,9 @@ export const courseMaterials = pgTable(
 		processingStartedAt: timestamp("processing_started_at"),
 		processingCompletedAt: timestamp("processing_completed_at"),
 		contentMetadata: jsonb("content_metadata").default({}),
-		sourceUrl: text("source_url"), // For weblinks in future
-		transcriptPath: varchar("transcript_path", { length: 500 }), // For video/audio in future
-		thumbnailPath: varchar("thumbnail_path", { length: 500 }), // For videos/images in future
+		sourceUrl: text("source_url"),
+		transcriptPath: varchar("transcript_path", { length: 500 }),
+		thumbnailPath: varchar("thumbnail_path", { length: 500 }),
 		// Selective generation tracking
 		generationMetadata: jsonb("generation_metadata").default({}),
 	},
@@ -299,6 +299,7 @@ export const courseWeeks = pgTable(
 		startDate: timestamp("start_date"),
 		endDate: timestamp("end_date"),
 		isActive: boolean("is_active").default(true),
+		hasMaterials: boolean("has_materials").default(false),
 
 		// Content generation tracking
 		contentGenerationStatus: varchar("content_generation_status", {
@@ -317,6 +318,7 @@ export const courseWeeks = pgTable(
 			"btree",
 			table.contentGenerationStatus
 		),
+		index("idx_course_weeks_has_materials").using("btree", table.hasMaterials),
 		unique("course_weeks_course_id_week_number_unique").on(
 			table.courseId,
 			table.weekNumber
