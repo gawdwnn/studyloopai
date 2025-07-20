@@ -1,12 +1,4 @@
-import type {
-	ConceptMapsConfig,
-	CuecardsConfig,
-	GoldenNotesConfig,
-	McqsConfig,
-	OpenQuestionsConfig,
-	SelectiveGenerationConfig,
-	SummariesConfig,
-} from "@/types/generation-types";
+import type { GenerationTemplate, SelectiveGenerationConfig } from "@/types/generation-types";
 import {
 	boolean,
 	foreignKey,
@@ -43,193 +35,8 @@ export const configurationSource = pgEnum("configuration_source", [
 	"course_week_override",
 	"adaptive_algorithm",
 	"system_default",
-	"institution_default", // Future: institution-level defaults
+	"institution_default",
 ]);
-
-// Processing metadata type for course materials - DOCUMENT PROCESSING ONLY
-export type ProcessingMetadata = {
-	processingStatus?: "pending" | "processing" | "completed" | "failed";
-	error?: string;
-	processingTimeMs?: number;
-	extractedText?: boolean;
-	chunkingCompleted?: boolean;
-	embeddingCompleted?: boolean;
-
-	// Future content type processing metadata
-	videoDurationMs?: number; // For videos
-	audioTranscribed?: boolean; // For audio
-	thumbnailGenerated?: boolean; // For videos/images
-	contentExtracted?: boolean; // For weblinks
-};
-
-// Week-level content generation metadata type - AI CONTENT GENERATION TRACKING
-export type WeekContentGenerationMetadata = {
-	// Batch trigger information
-	batchInfo?: {
-		goldenNotes?: { batchId: string; status?: string };
-		cuecards?: { batchId: string; status?: string };
-		mcqs?: { batchId: string; status?: string };
-		openQuestions?: { batchId: string; status?: string };
-		summaries?: { batchId: string; status?: string };
-		conceptMaps?: { batchId: string; status?: string };
-	};
-
-	// Content generation results
-	totalMaterialsProcessed?: number;
-	generationResults?: {
-		totalGenerated: number;
-		contentCounts: {
-			goldenNotes: number;
-			cuecards: number;
-			mcqs: number;
-			openQuestions: number;
-			summaries: number;
-			conceptMaps: number;
-		};
-		generatedAt: string;
-	};
-
-	// Timing information
-	startedAt?: string;
-	completedAt?: string;
-	durationMs?: number;
-
-	// Error handling
-	errors?: string[];
-	partialSuccess?: boolean;
-};
-
-// Generation metadata type for selective generation tracking
-export type GenerationMetadata = {
-	cuecards?: {
-		status:
-			| "not_requested"
-			| "pending"
-			| "in_progress"
-			| "completed"
-			| "failed";
-		jobId?: string;
-		lastGenerated?: string;
-		lastAttempt?: string;
-		configVersion?: number;
-		error?: {
-			code: string;
-			message: string;
-		};
-	};
-	mcqs?: {
-		status:
-			| "not_requested"
-			| "pending"
-			| "in_progress"
-			| "completed"
-			| "failed";
-		jobId?: string;
-		lastGenerated?: string;
-		lastAttempt?: string;
-		configVersion?: number;
-		error?: {
-			code: string;
-			message: string;
-		};
-	};
-	openQuestions?: {
-		status:
-			| "not_requested"
-			| "pending"
-			| "in_progress"
-			| "completed"
-			| "failed";
-		jobId?: string;
-		lastGenerated?: string;
-		lastAttempt?: string;
-		configVersion?: number;
-		error?: {
-			code: string;
-			message: string;
-		};
-	};
-	summaries?: {
-		status:
-			| "not_requested"
-			| "pending"
-			| "in_progress"
-			| "completed"
-			| "failed";
-		jobId?: string;
-		lastGenerated?: string;
-		lastAttempt?: string;
-		configVersion?: number;
-		error?: {
-			code: string;
-			message: string;
-		};
-	};
-	goldenNotes?: {
-		status:
-			| "not_requested"
-			| "pending"
-			| "in_progress"
-			| "completed"
-			| "failed";
-		jobId?: string;
-		lastGenerated?: string;
-		lastAttempt?: string;
-		configVersion?: number;
-		error?: {
-			code: string;
-			message: string;
-		};
-	};
-	conceptMaps?: {
-		status:
-			| "not_requested"
-			| "pending"
-			| "in_progress"
-			| "completed"
-			| "failed";
-		jobId?: string;
-		lastGenerated?: string;
-		lastAttempt?: string;
-		configVersion?: number;
-		error?: {
-			code: string;
-			message: string;
-		};
-	};
-};
-
-// Content metadata type for different content types
-export type ContentMetadata = {
-	// PDF-specific
-	pageCount?: number;
-	pdfVersion?: string;
-	hasImages?: boolean;
-
-	// Video-specific (future)
-	duration?: number;
-	resolution?: string;
-	format?: string;
-	frameRate?: number;
-
-	// Audio-specific (future)
-	sampleRate?: number;
-	bitrate?: number;
-
-	// Image-specific (future)
-	width?: number;
-	height?: number;
-
-	// Weblink-specific (future)
-	url?: string;
-	title?: string;
-	domain?: string;
-	scrapedAt?: string;
-
-	// Common
-	language?: string;
-	encoding?: string;
-};
 
 // This is a minimal definition of the auth.users table from Supabase.
 // It's used to establish a foreign key relationship with the public.users table.
@@ -251,15 +58,12 @@ export const courseMaterials = pgTable(
 		fileSize: integer("file_size"),
 		mimeType: varchar("mime_type", { length: 100 }),
 		uploadStatus: varchar("upload_status", { length: 50 }).default("pending"),
-		processingMetadata: jsonb("processing_metadata"),
-		runId: text("run_id"),
 		uploadedBy: uuid("uploaded_by").notNull(),
 		createdAt: timestamp("created_at").defaultNow().notNull(),
 		updatedAt: timestamp("updated_at").defaultNow().notNull(),
 		embeddingStatus: varchar("embedding_status", { length: 50 }).default(
 			"pending"
 		),
-		embeddingMetadata: jsonb("embedding_metadata").default({}),
 		totalChunks: integer("total_chunks").default(0),
 		embeddedChunks: integer("embedded_chunks").default(0),
 
@@ -268,12 +72,9 @@ export const courseMaterials = pgTable(
 		originalFilename: varchar("original_filename", { length: 255 }),
 		processingStartedAt: timestamp("processing_started_at"),
 		processingCompletedAt: timestamp("processing_completed_at"),
-		contentMetadata: jsonb("content_metadata").default({}),
 		sourceUrl: text("source_url"),
 		transcriptPath: varchar("transcript_path", { length: 500 }),
 		thumbnailPath: varchar("thumbnail_path", { length: 500 }),
-		// Selective generation tracking
-		generationMetadata: jsonb("generation_metadata").default({}),
 	},
 	(table) => [
 		index("idx_course_materials_course_id").using("btree", table.courseId),
@@ -281,9 +82,13 @@ export const courseMaterials = pgTable(
 			"btree",
 			table.contentType
 		),
-		index("idx_course_materials_processing_status").using(
+		index("idx_course_materials_embedding_status").using(
 			"btree",
-			table.processingMetadata
+			table.embeddingStatus
+		),
+		index("idx_course_materials_upload_status").using(
+			"btree",
+			table.uploadStatus
 		),
 	]
 );
@@ -296,28 +101,14 @@ export const courseWeeks = pgTable(
 		courseId: uuid("course_id").notNull(),
 		weekNumber: integer("week_number").notNull(),
 		title: varchar({ length: 255 }),
-		startDate: timestamp("start_date"),
-		endDate: timestamp("end_date"),
 		isActive: boolean("is_active").default(true),
 		hasMaterials: boolean("has_materials").default(false),
-
-		// Content generation tracking
-		contentGenerationStatus: varchar("content_generation_status", {
-			length: 50,
-		}).default("pending"),
-		contentGenerationMetadata: jsonb("content_generation_metadata").default({}),
-		contentGenerationTriggeredAt: timestamp("content_generation_triggered_at"),
-		contentGenerationCompletedAt: timestamp("content_generation_completed_at"),
 
 		createdAt: timestamp("created_at").defaultNow().notNull(),
 		updatedAt: timestamp("updated_at").defaultNow().notNull(),
 	},
 	(table) => [
 		index("idx_course_weeks_course_id").using("btree", table.courseId),
-		index("idx_course_weeks_content_generation_status").using(
-			"btree",
-			table.contentGenerationStatus
-		),
 		index("idx_course_weeks_has_materials").using("btree", table.hasMaterials),
 		unique("course_weeks_course_id_week_number_unique").on(
 			table.courseId,
@@ -412,36 +203,36 @@ export const cuecards = pgTable(
 
 // Multiple choice questions table - AI generated MCQs
 export const multipleChoiceQuestions = pgTable(
-	"multiple_choice_questions",
-	{
-		id: uuid().defaultRandom().primaryKey().notNull(),
-		courseId: uuid("course_id").notNull(),
-		weekId: uuid("week_id").notNull(),
-		question: text().notNull(),
-		options: jsonb().notNull(), // Array of strings ['A', 'B', 'C', 'D']
-		correctAnswer: varchar("correct_answer", { length: 5 }).notNull(),
-		explanation: text(),
-		difficulty: varchar({ length: 20 }).default("intermediate"),
-		metadata: jsonb().default({}),
-		createdAt: timestamp("created_at").defaultNow().notNull(),
-		updatedAt: timestamp("updated_at").defaultNow().notNull(),
-	},
-	(table) => [
-		index("idx_mcq_course_id").using("btree", table.courseId),
-		index("idx_mcq_week_id").using("btree", table.weekId),
-		index("idx_mcq_difficulty").using("btree", table.difficulty),
-		index("idx_mcq_course_week").using("btree", table.courseId, table.weekId),
-		foreignKey({
-			columns: [table.courseId],
-			foreignColumns: [courses.id],
-			name: "multiple_choice_questions_course_id_fkey",
-		}).onDelete("cascade"),
-		foreignKey({
-			columns: [table.weekId],
-			foreignColumns: [courseWeeks.id],
-			name: "multiple_choice_questions_week_id_fkey",
-		}).onDelete("cascade"),
-	]
+  "multiple_choice_questions",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    courseId: uuid("course_id").notNull(),
+    weekId: uuid("week_id").notNull(),
+    question: text().notNull(),
+    options: jsonb().$type<string[]>().notNull(), // Array of strings ['A', 'B', 'C', 'D']
+    correctAnswer: varchar("correct_answer", { length: 5 }).notNull(),
+    explanation: text(),
+    difficulty: varchar({ length: 20 }).default("intermediate"),
+    metadata: jsonb().default({}),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("idx_mcq_course_id").using("btree", table.courseId),
+    index("idx_mcq_week_id").using("btree", table.weekId),
+    index("idx_mcq_difficulty").using("btree", table.difficulty),
+    index("idx_mcq_course_week").using("btree", table.courseId, table.weekId),
+    foreignKey({
+      columns: [table.courseId],
+      foreignColumns: [courses.id],
+      name: "multiple_choice_questions_course_id_fkey",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.weekId],
+      foreignColumns: [courseWeeks.id],
+      name: "multiple_choice_questions_week_id_fkey",
+    }).onDelete("cascade"),
+  ]
 );
 
 // Open questions table - AI generated essay/discussion questions
@@ -529,8 +320,8 @@ export const goldenNotes = pgTable(
 		content: text().notNull(),
 		priority: integer().default(1),
 		category: varchar({ length: 100 }),
-		metadata: jsonb().default({}),
 		version: integer().default(1).notNull(),
+		metadata: jsonb().default({}),
 		createdAt: timestamp("created_at").defaultNow().notNull(),
 		updatedAt: timestamp("updated_at").defaultNow().notNull(),
 	},
@@ -567,8 +358,8 @@ export const conceptMaps = pgTable(
 		title: varchar({ length: 255 }).notNull(),
 		content: text().notNull(), // JSON string containing the concept map data
 		style: varchar({ length: 50 }).default("hierarchical").notNull(), // hierarchical, radial, network
-		metadata: jsonb().default({}),
 		version: integer().default(1).notNull(),
+		metadata: jsonb().default({}),
 		createdAt: timestamp("created_at").defaultNow().notNull(),
 		updatedAt: timestamp("updated_at").defaultNow().notNull(),
 	},
@@ -596,59 +387,58 @@ export const conceptMaps = pgTable(
 
 // Own notes table - User-created notes and annotations
 export const ownNotes = pgTable(
-	"own_notes",
-	{
-		id: uuid().defaultRandom().primaryKey().notNull(),
-		userId: uuid("user_id").notNull(),
-		weekId: uuid("week_id").notNull(),
-		courseId: uuid("course_id").notNull(),
-		title: varchar({ length: 255 }).notNull(),
-		content: text().notNull(),
-		noteType: varchar("note_type", { length: 50 }).default("general"),
-		tags: jsonb().default([]),
-		isPrivate: boolean("is_private").default(true),
-		color: varchar({ length: 20 }).default("#ffffff"),
-		metadata: jsonb().default({}),
-		version: integer().default(1).notNull(),
-		createdAt: timestamp("created_at").defaultNow().notNull(),
-		updatedAt: timestamp("updated_at").defaultNow().notNull(),
-	},
-	(table) => [
-		index("idx_own_notes_user_id").using("btree", table.userId),
-		index("idx_own_notes_week_id").using("btree", table.weekId),
-		index("idx_own_notes_course_id").using("btree", table.courseId),
-		index("idx_own_notes_note_type").using("btree", table.noteType),
-		index("idx_own_notes_created_at").using("btree", table.createdAt),
-		index("idx_own_notes_course_week").using(
-			"btree",
-			table.courseId,
-			table.weekId
-		),
-		index("idx_own_notes_user_course").using(
-			"btree",
-			table.userId,
-			table.courseId
-		),
-		foreignKey({
-			columns: [table.userId],
-			foreignColumns: [usersInAuth.id],
-			name: "own_notes_user_id_fkey",
-		}).onDelete("cascade"),
-		foreignKey({
-			columns: [table.weekId],
-			foreignColumns: [courseWeeks.id],
-			name: "own_notes_week_id_fkey",
-		}).onDelete("cascade"),
-		foreignKey({
-			columns: [table.courseId],
-			foreignColumns: [courses.id],
-			name: "own_notes_course_id_fkey",
-		}).onDelete("cascade"),
-	]
+  "own_notes",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    userId: uuid("user_id").notNull(),
+    weekId: uuid("week_id").notNull(),
+    courseId: uuid("course_id").notNull(),
+    title: varchar({ length: 255 }).notNull(),
+    content: text().notNull(),
+    noteType: varchar("note_type", { length: 50 }).default("general"),
+    tags: jsonb().$type<string[]>().default([]),
+    isPrivate: boolean("is_private").default(true),
+    color: varchar({ length: 20 }).default("#ffffff"),
+    metadata: jsonb().default({}),
+    version: integer().default(1).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("idx_own_notes_user_id").using("btree", table.userId),
+    index("idx_own_notes_week_id").using("btree", table.weekId),
+    index("idx_own_notes_course_id").using("btree", table.courseId),
+    index("idx_own_notes_note_type").using("btree", table.noteType),
+    index("idx_own_notes_created_at").using("btree", table.createdAt),
+    index("idx_own_notes_course_week").using(
+      "btree",
+      table.courseId,
+      table.weekId
+    ),
+    index("idx_own_notes_user_course").using(
+      "btree",
+      table.userId,
+      table.courseId
+    ),
+    foreignKey({
+      columns: [table.userId],
+      foreignColumns: [usersInAuth.id],
+      name: "own_notes_user_id_fkey",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.weekId],
+      foreignColumns: [courseWeeks.id],
+      name: "own_notes_week_id_fkey",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.courseId],
+      foreignColumns: [courses.id],
+      name: "own_notes_course_id_fkey",
+    }).onDelete("cascade"),
+  ]
 );
 
 // Generation configurations table
-// Generation configurations table - Unified scope-based design
 export const generationConfigs = pgTable(
 	"generation_configs",
 	{
@@ -658,21 +448,21 @@ export const generationConfigs = pgTable(
 		configSource: configurationSource("config_source").notNull(),
 
 		// Flexible scope associations (nullable for different scopes)
-		userId: uuid("user_id"), // For USER_PREFERENCE
-		courseId: uuid("course_id"), // For COURSE_DEFAULT, COURSE_WEEK_OVERRIDE
-		weekId: uuid("week_id"), // For COURSE_WEEK_OVERRIDE
-		institutionId: uuid("institution_id"), // Future: For INSTITUTION_DEFAULT
+		userId: uuid("user_id"),
+		courseId: uuid("course_id"),
+		weekId: uuid("week_id"),
+		institutionId: uuid("institution_id"),
 
 		// Configuration data stored as JSONB for flexibility
 		configData: jsonb("config_data")
 			.$type<SelectiveGenerationConfig>()
-			.notNull(), // Full GenerationConfig object
+			.notNull(),
 
 		// Adaptive learning metadata (only for ADAPTIVE_ALGORITHM)
 		adaptationReason: text("adaptation_reason"),
 		userPerformanceLevel: varchar("user_performance_level", { length: 20 }),
 		learningGaps: jsonb("learning_gaps"),
-		adaptiveFactors: jsonb("adaptive_factors"), // Full AdaptiveFactors object
+		adaptiveFactors: jsonb("adaptive_factors"),
 
 		// Tracking and lifecycle
 		isActive: boolean("is_active").default(true),
@@ -680,9 +470,15 @@ export const generationConfigs = pgTable(
 		createdAt: timestamp("created_at").defaultNow().notNull(),
 		updatedAt: timestamp("updated_at").defaultNow().notNull(),
 
+		// Generation status tracking (added in status tracking cleanup)
+		generationStatus: varchar("generation_status", { length: 20 }).default("pending"), // 'pending', 'processing', 'completed', 'failed'
+		generationStartedAt: timestamp("generation_started_at"),
+		generationCompletedAt: timestamp("generation_completed_at"),
+		failedFeatures: jsonb("failed_features").default("[]"),
+
 		// Metadata for auditing and debugging
-		createdBy: uuid("created_by"), // Who created this config
-		metadata: jsonb("metadata"), // Additional context/debugging info
+		createdBy: uuid("created_by"),
+		metadata: jsonb("metadata"),
 	},
 	(table) => [
 		// Composite indexes for efficient queries
@@ -749,17 +545,10 @@ export const userPromptTemplates = pgTable(
 		id: uuid().defaultRandom().primaryKey().notNull(),
 		userId: uuid("user_id").notNull(),
 		featureType: varchar("feature_type", { length: 50 }).notNull(), // 'cuecards', 'mcqs', 'openQuestions', etc.
-		name: varchar("name", { length: 255 }).notNull(), // "My favorite technical MCQ prompt"
+		name: varchar("name", { length: 255 }).notNull(),
 		config: jsonb("config")
-			.$type<
-				| CuecardsConfig
-				| McqsConfig
-				| OpenQuestionsConfig
-				| SummariesConfig
-				| GoldenNotesConfig
-				| ConceptMapsConfig
-			>()
-			.notNull(), // The full config, including custom prompt
+			.$type<GenerationTemplate["config"]>()
+			.notNull(), // Uses existing GenerationTemplate type
 		isDefault: boolean("is_default").default(false),
 		createdAt: timestamp("created_at").defaultNow().notNull(),
 		updatedAt: timestamp("updated_at").defaultNow().notNull(),

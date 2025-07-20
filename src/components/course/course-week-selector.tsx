@@ -8,11 +8,11 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import type { courseWeeks, courses } from "@/db/schema";
+import type { Course, CourseWeek } from "@/types/database-types";
 
 interface CourseWeekSelectorProps {
-	courses: (typeof courses.$inferSelect)[];
-	courseWeeks: (typeof courseWeeks.$inferSelect)[];
+	courses: Course[];
+	courseWeeks: CourseWeek[];
 	selectedCourseId: string | null;
 	onCourseChange: (courseId: string) => void;
 	selectedWeek: number | null;

@@ -4,10 +4,6 @@ import { db } from "@/db";
 import { courseMaterials, courseWeeks, courses } from "@/db/schema";
 import { deleteContentForCourse } from "@/lib/services/content-deletion-service";
 import {
-	cancelMultipleJobs,
-	extractRunIds,
-} from "@/lib/services/job-cancellation-service";
-import {
 	cleanupStorageFiles,
 	extractFilePaths,
 } from "@/lib/services/storage-cleanup-service";
@@ -121,7 +117,6 @@ export async function getAllUserMaterials() {
 					courseWeek: {
 						columns: {
 							weekNumber: true,
-							contentGenerationMetadata: true,
 						},
 					},
 					course: {
@@ -205,11 +200,7 @@ export async function deleteCourse(courseId: string) {
 	}
 
 	let course: { id: string; name: string; userId: string } | undefined;
-	let materialsData: Array<{
-		id: string;
-		filePath: string | null;
-		runId: string | null;
-	}> = [];
+
 
 	try {
 		// Step 1: Fetch course with ownership verification and get all related data
@@ -229,22 +220,14 @@ export async function deleteCourse(courseId: string) {
 			throw new Error("You don't have permission to delete this course.");
 		}
 
-		// Get all materials for this course with file paths and runIds
-		materialsData = await db
-			.select({
-				id: courseMaterials.id,
-				filePath: courseMaterials.filePath,
-				runId: courseMaterials.runId,
-			})
-			.from(courseMaterials)
-			.where(eq(courseMaterials.courseId, courseId));
-
-		// Step 2: Cancel running background jobs for all materials
-		const runIds = extractRunIds(materialsData);
-		const jobCancellationResult = await cancelMultipleJobs(runIds);
+		// Step 2: Get all course materials for file cleanup
+		const materialsData = await db.query.courseMaterials.findMany({
+			where: eq(courseMaterials.courseId, courseId),
+			columns: { id: true, filePath: true },
+		});
 
 		// Step 3: Execute comprehensive deletion in transaction
-		const deletionResult = await db.transaction(async (tx) => {
+		await db.transaction(async (tx) => {
 			const materialIds = materialsData.map((m) => m.id);
 
 			// Delete all content for the course (AI content, materials, weeks, configs, chunks)
@@ -275,7 +258,7 @@ export async function deleteCourse(courseId: string) {
 
 		// Step 4: Clean up storage files (after successful DB deletion)
 		const allFilePaths = extractFilePaths(materialsData);
-		const storageResult = await cleanupStorageFiles(allFilePaths);
+		await cleanupStorageFiles(allFilePaths);
 
 		// Step 5: Revalidate related pages
 		revalidatePath("/dashboard");
@@ -284,18 +267,6 @@ export async function deleteCourse(courseId: string) {
 		// Return comprehensive deletion summary
 		return {
 			success: true,
-			courseId,
-			courseName: deletionResult.name,
-			materialsDeleted: deletionResult.materialsDeleted,
-			configsDeleted: deletionResult.configsDeleted,
-			aiContentDeleted: deletionResult.aiContentDeleted,
-			chunksDeleted: deletionResult.chunksDeleted,
-			weeksDeleted: deletionResult.weeksDeleted,
-			filesDeleted: storageResult.filesDeleted,
-			jobsCancelled: jobCancellationResult.jobsCancelled,
-			storageErrors: storageResult.hasErrors
-				? storageResult.storageErrors
-				: undefined,
 		};
 	} catch (error) {
 		// Comprehensive error logging
@@ -307,7 +278,6 @@ export async function deleteCourse(courseId: string) {
 			courseId,
 			userId: user.id,
 			courseExists: !!course,
-			materialsCount: materialsData.length,
 		});
 
 		// Re-throw with user-friendly message

@@ -12,10 +12,6 @@ const GenerateConceptMapsPayload = z.object({
 
 const GenerateConceptMapsOutput = z.object({
 	success: z.boolean(),
-	weekId: z.string(),
-	contentType: z.literal("conceptMaps"),
-	generatedCount: z.number(),
-	error: z.string().optional(),
 });
 
 type GenerateConceptMapsPayloadType = z.infer<
@@ -26,11 +22,6 @@ export const generateConceptMaps = schemaTask({
 	id: "generate-concept-maps",
 	schema: GenerateConceptMapsPayload,
 	maxDuration: 300, // 5 minutes for individual content type
-	onStart: async ({ payload }: { payload: GenerateConceptMapsPayloadType }) => {
-		logger.info("🗺️ Concept Maps generation task started", {
-			weekId: payload.weekId,
-		});
-	},
 	run: async (payload: GenerateConceptMapsPayloadType, { ctx: _ctx }) => {
 		const { weekId, courseId, materialIds, configId } = payload;
 
@@ -52,8 +43,8 @@ export const generateConceptMaps = schemaTask({
 			}
 			logger.info("🗺️ Using selective configuration for concept maps", {
 				weekId,
-				materialCount: materialIds.length,
-				config: conceptMapsConfig,
+				courseId,
+				conceptMapsConfig,
 			});
 
 			const { generateConceptMapsForWeek } = await import(
@@ -73,49 +64,30 @@ export const generateConceptMaps = schemaTask({
 
 			return {
 				success: true,
-				weekId,
-				contentType: "conceptMaps" as const,
-				generatedCount: result.generatedCount || 0,
 			};
 		} catch (error) {
 			const errorMessage =
 				error instanceof Error ? error.message : "An unknown error occurred";
 			logger.error("❌ Concept maps generation failed", {
 				weekId,
+				courseId,
+				configId,
 				error: errorMessage,
 			});
 			throw error;
 		}
 	},
-	cleanup: async ({ payload }: { payload: GenerateConceptMapsPayloadType }) => {
-		logger.info("🧹 Concept maps generation task cleanup complete", {
-			weekId: payload.weekId,
-		});
-	},
 	onSuccess: async ({
-		payload,
 		output,
 	}: {
 		payload: GenerateConceptMapsPayloadType;
 		output: z.infer<typeof GenerateConceptMapsOutput>;
 	}) => {
 		logger.info("✅ Concept maps generation completed successfully", {
-			weekId: payload.weekId,
-			generatedCount: output.generatedCount,
+			success: output.success,
 		});
-
-		const { updateWeekContentGenerationMetadata } = await import(
-			"@/lib/services/processing-metadata-service"
-		);
-		await updateWeekContentGenerationMetadata(
-			payload.weekId,
-			"conceptMaps",
-			output.generatedCount,
-			logger
-		);
 	},
 	onFailure: async ({
-		payload,
 		error,
 	}: {
 		payload: GenerateConceptMapsPayloadType;
@@ -123,7 +95,6 @@ export const generateConceptMaps = schemaTask({
 	}) => {
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		logger.error("❌ Concept maps generation failed permanently", {
-			weekId: payload.weekId,
 			error: errorMessage,
 		});
 	},

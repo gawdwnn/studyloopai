@@ -5,11 +5,11 @@ import { BookOpen, Calendar, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import type { courseWeeks, courses } from "@/db/schema";
+import type { Course, CourseWeek } from "@/types/database-types";
 
 interface UploadSummaryProps {
-	course: typeof courses.$inferSelect | undefined;
-	courseWeeks: (typeof courseWeeks.$inferSelect)[];
+	course: Course | undefined;
+	courseWeeks: CourseWeek[];
 	weekNumber: number;
 	files: File[];
 }

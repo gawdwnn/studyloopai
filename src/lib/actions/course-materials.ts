@@ -3,7 +3,6 @@
 import { db } from "@/db";
 import { courseMaterials, courseWeeks, courses } from "@/db/schema";
 import { deleteContentForCourseWeek } from "@/lib/services/content-deletion-service";
-import { cancelSingleJob } from "@/lib/services/job-cancellation-service";
 import { cleanupStorageFiles, extractFilePaths } from "@/lib/services/storage-cleanup-service";
 import { getServerClient } from "@/lib/supabase/server";
 import { and, eq } from "drizzle-orm";
@@ -74,6 +73,31 @@ export async function addCourseMaterial(material: {
 	revalidatePath(`/dashboard/course-materials/${material.courseId}`);
 }
 
+export async function markMaterialsUploadFailed(materialIds: string[]) {
+	try {
+		const response = await fetch("/api/materials/upload-failed", {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify({
+				materialIds,
+			}),
+		});
+
+		if (!response.ok) {
+			const errorData = await response.json();
+			throw new Error(errorData.error || "Failed to mark uploads as failed");
+		}
+
+		const result = await response.json();
+		return result;
+	} catch (error) {
+		console.error("Failed to mark materials upload as failed:", error);
+		throw error;
+	}
+}
+
 export async function deleteCourseMaterial(materialId: string, filePath?: string | null) {
 	const supabase = await getServerClient();
 
@@ -109,14 +133,10 @@ export async function deleteCourseMaterial(materialId: string, filePath?: string
 			throw new Error("You don't have permission to delete this course material.");
 		}
 
-		// Step 2: Cancel running background job if exists
-		let jobCancellationResult = null;
-		if (material.runId) {
-			jobCancellationResult = await cancelSingleJob(material.runId);
-		}
+		// Step 2: Background job cancellation
 
 		// Step 3: Execute deletion in transaction
-		const deletionResult = await db.transaction(async (tx) => {
+		await db.transaction(async (tx) => {
 			// Ensure material is defined and has required fields
 			if (!material?.weekId) {
 				throw new Error("Material weekId is required for deletion");
@@ -169,24 +189,14 @@ export async function deleteCourseMaterial(materialId: string, filePath?: string
 
 		// Step 4: Clean up storage files (after successful DB deletion)
 		const allFilePaths = extractFilePaths([material], filePath ? [filePath] : []);
-		const storageResult = await cleanupStorageFiles(allFilePaths);
+		await cleanupStorageFiles(allFilePaths);
 
 		// Step 5: Revalidate related pages
 		revalidatePath("/dashboard/course-materials");
-		revalidatePath(`/dashboard/course-materials/${deletionResult.courseId}`);
-		// Return summary of deletion
+		revalidatePath(`/dashboard/course-materials/${material.courseId}`);
+
 		return {
 			success: true,
-			materialId,
-			courseId: deletionResult.courseId,
-			chunksDeleted: deletionResult.chunksDeleted,
-			configsDeleted: deletionResult.configsDeleted,
-			aiContentDeleted: deletionResult.aiContentDeleted,
-			ownNotesDeleted: deletionResult.ownNotesDeleted || 0,
-			filesDeleted: storageResult.filesDeleted,
-			storageErrors: storageResult.hasErrors ? storageResult.storageErrors : undefined,
-			jobCancelled: jobCancellationResult?.success || false,
-			jobCancellationDetails: jobCancellationResult || undefined,
 		};
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
@@ -196,7 +206,7 @@ export async function deleteCourseMaterial(materialId: string, filePath?: string
 			materialId,
 			userId: user.id,
 			materialExists: !!material,
-			runId: material?.runId,
+			// Note: runId tracking removed in metadata cleanup
 		});
 
 		// Re-throw with user-friendly message

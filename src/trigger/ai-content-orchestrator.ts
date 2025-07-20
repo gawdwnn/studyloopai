@@ -1,12 +1,8 @@
-import { db } from "@/db";
-import {
-	type WeekContentGenerationMetadata,
-	courseMaterials,
-	courseWeeks,
-} from "@/db/schema";
 import { logger, schemaTask, tags } from "@trigger.dev/sdk";
-import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { db } from "@/db";
+import { generationConfigs } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import { generateConceptMaps } from "./generate-concept-maps";
 import { generateCuecards } from "./generate-cuecards";
 import { generateGoldenNotes } from "./generate-golden-notes";
@@ -17,12 +13,12 @@ import { generateSummaries } from "./generate-summaries";
 const AiContentOrchestratorPayload = z.object({
 	weekId: z.string().min(1, "Week ID is required"),
 	courseId: z.string().min(1, "Course ID is required"),
+	materialIds: z.array(z.string().uuid()).min(1, "At least one material ID is required"),
 	configId: z.string().uuid().optional(),
 });
 
 const AiContentOrchestratorOutput = z.object({
 	success: z.boolean(),
-	weekId: z.string(),
 	results: z.array(
 		z.object({
 			contentType: z.string(),
@@ -32,15 +28,6 @@ const AiContentOrchestratorOutput = z.object({
 			error: z.string().optional(),
 		})
 	),
-	totalGenerated: z.number(),
-	contentBatchInfo: z
-		.record(
-			z.object({
-				batchId: z.string(),
-			})
-		)
-		.optional(),
-	error: z.string().optional(),
 });
 
 type AiContentOrchestratorPayloadType = z.infer<
@@ -59,10 +46,11 @@ export const aiContentOrchestrator = schemaTask({
 		logger.info("🚀 AI Content Generation orchestrator started", {
 			weekId: payload.weekId,
 			courseId: payload.courseId,
+			configId: payload.configId,
 		});
 	},
 	run: async (payload: AiContentOrchestratorPayloadType, { ctx: _ctx }) => {
-		const { weekId, courseId, configId } = payload;
+		const { weekId, courseId, materialIds, configId } = payload;
 
 		await tags.add([
 			`weekId:${payload.weekId}`,
@@ -71,53 +59,30 @@ export const aiContentOrchestrator = schemaTask({
 		]);
 
 		try {
-			// Validate that materials exist for this week and course
-			const materials = await db
-				.select({
-					id: courseMaterials.id,
-					uploadedBy: courseMaterials.uploadedBy,
-					courseId: courseMaterials.courseId,
-				})
-				.from(courseMaterials)
-				.where(eq(courseMaterials.weekId, weekId));
-
-			if (materials.length === 0) {
-				throw new Error("No materials found for given course week");
-			}
-
-			// Validate that all materials belong to the expected course
-			const courseMismatch = materials.some((m) => m.courseId !== courseId);
-			if (courseMismatch) {
-				throw new Error(
-					`Materials found for different course than expected: ${courseId}`
-				);
-			}
-
-			// Extract material IDs to pass down to individual generators
-			const materialIds = materials.map((m) => m.id);
-
-			// Get the course week for metadata updates
-			const [courseWeek] = await db
-				.select({
-					id: courseWeeks.id,
-					contentGenerationMetadata: courseWeeks.contentGenerationMetadata,
-				})
-				.from(courseWeeks)
-				.where(eq(courseWeeks.id, weekId));
-
-			if (!courseWeek) {
-				throw new Error("Course week not found");
-			}
-
-			logger.info("🎯 Triggering parallel content generation", {
+			logger.info("🎯 Triggering parallel content generation with validated materials", {
 				weekId,
-				materialCount: materials.length,
+				courseId,
+				materialIds,
+				materialCount: materialIds.length,
 				configId,
 			});
 
 			if (!configId) {
 				throw new Error("Configuration ID is required for content generation");
 			}
+
+			await db
+				.update(generationConfigs)
+				.set({
+					generationStatus: "processing",
+					generationStartedAt: new Date(),
+				})
+				.where(eq(generationConfigs.id, configId));
+
+			logger.info("🔄 Updated generation config status to processing", {
+				configId,
+				weekId,
+			});
 
 			const batchRuns: Record<string, { batchId: string } | undefined> = {};
 
@@ -203,103 +168,61 @@ export const aiContentOrchestrator = schemaTask({
 			);
 
 			const successfulTriggers = results.filter((r) => r.success).length;
-			const totalGenerated = 0; // Individual tasks will track their own counts
-
-			// Update week-level metadata to indicate orchestration completed with tracking info
-			const currentWeekMetadata =
-				(courseWeek.contentGenerationMetadata as WeekContentGenerationMetadata) ||
-				{};
-
-			// Build batch info dynamically for triggered tasks
-			const batchInfo: WeekContentGenerationMetadata["batchInfo"] = {};
-
-			if (batchRuns.goldenNotes?.batchId) {
-				batchInfo.goldenNotes = {
-					batchId: batchRuns.goldenNotes.batchId,
-					status: "triggered",
-				};
-			}
-			if (batchRuns.cuecards?.batchId) {
-				batchInfo.cuecards = {
-					batchId: batchRuns.cuecards.batchId,
-					status: "triggered",
-				};
-			}
-			if (batchRuns.mcqs?.batchId) {
-				batchInfo.mcqs = {
-					batchId: batchRuns.mcqs.batchId,
-					status: "triggered",
-				};
-			}
-			if (batchRuns.openQuestions?.batchId) {
-				batchInfo.openQuestions = {
-					batchId: batchRuns.openQuestions.batchId,
-					status: "triggered",
-				};
-			}
-			if (batchRuns.summaries?.batchId) {
-				batchInfo.summaries = {
-					batchId: batchRuns.summaries.batchId,
-					status: "triggered",
-				};
-			}
-			if (batchRuns.conceptMaps?.batchId) {
-				batchInfo.conceptMaps = {
-					batchId: batchRuns.conceptMaps.batchId,
-					status: "triggered",
-				};
-			}
-
-			const updatedWeekMetadata: WeekContentGenerationMetadata = {
-				...currentWeekMetadata,
-				totalMaterialsProcessed: materials.length,
-				batchInfo,
-				startedAt: new Date().toISOString(),
-			};
 
 			await db
-				.update(courseWeeks)
+				.update(generationConfigs)
 				.set({
-					contentGenerationStatus: "processing",
-					contentGenerationMetadata: updatedWeekMetadata,
-					contentGenerationTriggeredAt: new Date(),
+					generationStatus: "completed",
+					generationCompletedAt: new Date(),
 				})
-				.where(eq(courseWeeks.id, weekId));
+				.where(eq(generationConfigs.id, configId));
+
+			logger.info("✅ Updated generation config status to completed", {
+				configId,
+				weekId,
+				successfulTriggers,
+			});
 
 			return {
 				success: successfulTriggers > 0,
-				weekId,
 				results,
-				totalGenerated,
-				contentBatchInfo,
 			};
 		} catch (error) {
 			const errorMessage =
 				error instanceof Error ? error.message : "An unknown error occurred";
 
-			// Update week-level status to indicate orchestration failure
-			await db
-				.update(courseWeeks)
-				.set({
-					contentGenerationStatus: "failed",
-					contentGenerationMetadata: {
-						errors: [errorMessage],
-						partialSuccess: false,
-					},
-				})
-				.where(eq(courseWeeks.id, weekId));
+			if (configId) {
+				try {
+					await db
+						.update(generationConfigs)
+						.set({
+							generationStatus: "failed",
+							generationCompletedAt: new Date(),
+							failedFeatures: [],
+						})
+						.where(eq(generationConfigs.id, configId));
+
+					logger.error("❌ Updated generation config status to failed", {
+						configId,
+						weekId,
+						error: errorMessage,
+					});
+				} catch (updateErr) {
+					logger.error("Failed to update generation config status", {
+						configId,
+						originalError: errorMessage,
+						updateError: updateErr instanceof Error ? updateErr.message : "Unknown",
+					});
+				}
+			}
+
+			logger.error("Content generation orchestration failed", {
+				weekId,
+				error: errorMessage,
+			});
 
 			throw error;
 		}
-	},
-	cleanup: async ({
-		payload,
-	}: {
-		payload: AiContentOrchestratorPayloadType;
-	}) => {
-		logger.info("🧹 AI content generation orchestrator cleanup complete", {
-			weekId: payload.weekId,
-		});
 	},
 	onSuccess: async ({
 		payload,
@@ -310,6 +233,8 @@ export const aiContentOrchestrator = schemaTask({
 	}) => {
 		logger.info("✅ AI content generation orchestration completed", {
 			weekId: payload.weekId,
+			courseId: payload.courseId,
+			configId: payload.configId,
 			successfulTriggers: output.results.filter((r) => r.success).length,
 			totalTasks: output.results.length,
 		});
@@ -323,8 +248,10 @@ export const aiContentOrchestrator = schemaTask({
 	}) => {
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		logger.error("❌ AI content generation orchestration failed", {
-			weekId: payload.weekId,
-			error: errorMessage,
-		});
+      weekId: payload.weekId,
+      courseId: payload.courseId,
+			configId: payload.configId,
+      error: errorMessage,
+    });
 	},
 });

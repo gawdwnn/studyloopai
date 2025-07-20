@@ -13,11 +13,11 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import type { courseMaterials, courseWeeks, courses } from "@/db/schema";
 import {
 	CONTENT_TYPES,
 	CONTENT_TYPE_LABELS,
 } from "@/lib/constants/file-upload";
+import type { Course, CourseMaterial, CourseWeek } from "@/types/database-types";
 import {
 	AudioLines,
 	File,
@@ -30,13 +30,9 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
-type CourseMaterialWithRelations = typeof courseMaterials.$inferSelect & {
-	course?: Pick<typeof courses.$inferSelect, "name"> | null;
-	courseWeek?: Pick<
-		typeof courseWeeks.$inferSelect,
-		"weekNumber" | "contentGenerationMetadata"
-	> | null;
-	publicAccessToken?: string | null;
+type CourseMaterialWithRelations = CourseMaterial & {
+	course?: Pick<Course, "name"> | null;
+	courseWeek?: Pick<CourseWeek, "weekNumber"> | null;
 };
 
 interface CourseMaterialsTableProps {
@@ -176,8 +172,6 @@ export function CourseMaterialsTable({
 													}
 													totalChunks={material.totalChunks || 0}
 													embeddedChunks={material.embeddedChunks || 0}
-													runId={material.runId || undefined}
-													publicToken={material.publicAccessToken || undefined}
 												/>
 											</TableCell>
 

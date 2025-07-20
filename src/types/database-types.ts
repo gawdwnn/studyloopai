@@ -4,8 +4,6 @@
  */
 
 import type {
-	GenerationMetadata,
-	ProcessingMetadata,
 	conceptMaps,
 	courseMaterials,
 	courseWeeks,
@@ -90,46 +88,7 @@ export type NewUserPlan = InferInsertModel<typeof userPlans>;
 export type Institution = InferSelectModel<typeof institutions>;
 export type NewInstitution = InferInsertModel<typeof institutions>;
 
-// Type guards for JSONB fields
-export function isProcessingMetadata(
-	value: unknown
-): value is ProcessingMetadata {
-	if (typeof value !== "object" || value === null) {
-		return false;
-	}
-
-	const obj = value as Record<string, unknown>;
-	return "status" in obj && typeof obj.status === "string";
-}
-
-export function isGenerationMetadata(
-	value: unknown
-): value is GenerationMetadata {
-	if (typeof value !== "object" || value === null) {
-		return false;
-	}
-
-	const obj = value as Record<string, unknown>;
-	const validFeatureKeys = [
-		"cuecards",
-		"mcqs",
-		"openQuestions",
-		"summaries",
-		"goldenNotes",
-		"conceptMaps",
-	];
-
-	// Empty object is valid
-	if (Object.keys(obj).length === 0) {
-		return true;
-	}
-
-	// Check if any key is a valid feature key
-	return Object.keys(obj).some((key) => validFeatureKeys.includes(key));
-}
-
-// Re-export types that are used in JSONB columns
-export type { GenerationMetadata, ProcessingMetadata };
+// Note: Processing and generation metadata types removed during metadata cleanup
 
 export type {
 	ConceptMapsConfig,

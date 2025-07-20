@@ -65,7 +65,6 @@ export async function POST(req: NextRequest) {
 				mimeType: body.mimeType,
 				contentType: detectedContentType,
 				uploadStatus: "pending",
-				processingMetadata: { processingStatus: "pending" },
 				uploadedBy: user.id,
 			})
 			.returning();
@@ -81,6 +80,16 @@ export async function POST(req: NextRequest) {
 
 		if (!success || !signedUrl) {
 			console.error("Failed to create signed URL:", error);
+			
+			// Mark the material as failed since signed URL creation failed
+			try {
+				await db.update(courseMaterials)
+					.set({ uploadStatus: "failed" })
+					.where(eq(courseMaterials.id, material.id));
+			} catch (updateErr) {
+				console.error("Failed to update material status to failed:", updateErr);
+			}
+			
 			return NextResponse.json({ error: "Service temporarily unavailable. Please try again in a few moments." }, { status: 500 });
 		}
 

@@ -6,7 +6,7 @@
  */
 
 import { db } from "@/db";
-import { courseMaterials, courseWeeks } from "@/db/schema";
+import { courseMaterials, courseWeeks, courses } from "@/db/schema";
 import { persistSelectiveConfig } from "@/lib/actions/generation-config";
 import { getServerClient } from "@/lib/supabase/server";
 import { SelectiveGenerationConfigSchema } from "@/lib/validation/generation-config";
@@ -48,20 +48,19 @@ export async function POST(req: NextRequest) {
 			return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
 		}
 
-		// Verify user owns the course and week
+		// Verify user owns the course and week (through course ownership)
 		const [week] = await db
 			.select({
 				id: courseWeeks.id,
 				courseId: courseWeeks.courseId,
-				userId: courseWeeks.userId,
-				contentGenerationStatus: courseWeeks.contentGenerationStatus,
 			})
 			.from(courseWeeks)
+			.innerJoin(courses, eq(courses.id, courseWeeks.courseId))
 			.where(
 				and(
 					eq(courseWeeks.id, body.weekId),
 					eq(courseWeeks.courseId, body.courseId),
-					eq(courseWeeks.userId, user.id)
+					eq(courses.userId, user.id)
 				)
 			);
 
@@ -69,14 +68,6 @@ export async function POST(req: NextRequest) {
 			return NextResponse.json(
 				{ error: "Course week not found or access denied" },
 				{ status: 404 }
-			);
-		}
-
-		// Check if generation is already in progress
-		if (week.contentGenerationStatus === "processing") {
-			return NextResponse.json(
-				{ error: "Generation already in progress for this week" },
-				{ status: 409 }
 			);
 		}
 
@@ -118,23 +109,6 @@ export async function POST(req: NextRequest) {
 		const selectiveConfig =
 			body.config || createDefaultSelectiveConfig(body.contentTypes);
 
-		// Validate that requested content types are enabled in config
-		const enabledTypes = Object.entries(selectiveConfig.selectedFeatures)
-			.filter(([_, enabled]) => enabled)
-			.map(([type, _]) => type as FeatureType);
-
-		const missingTypes = body.contentTypes.filter(
-			(type) => !enabledTypes.includes(type)
-		);
-		if (missingTypes.length > 0) {
-			return NextResponse.json(
-				{
-					error: `Content types not enabled in config: ${missingTypes.join(", ")}`,
-				},
-				{ status: 400 }
-			);
-		}
-
 		// Persist the configuration
 		const configId = await persistSelectiveConfig(
 			selectiveConfig,
@@ -148,7 +122,7 @@ export async function POST(req: NextRequest) {
 			"@/trigger/ai-content-orchestrator"
 		);
 
-		const handle = await tasks.trigger(aiContentOrchestrator.id, {
+		await tasks.trigger(aiContentOrchestrator.id, {
 			weekId: body.weekId,
 			courseId: body.courseId,
 			configId,
@@ -156,11 +130,6 @@ export async function POST(req: NextRequest) {
 
 		return NextResponse.json({
 			success: true,
-			runId: handle.id,
-			publicAccessToken: handle.publicAccessToken,
-			configId,
-			contentTypes: body.contentTypes,
-			materialCount: readyMaterials.length,
 		});
 	} catch (error) {
 		console.error("On-demand generation trigger failed:", error);
@@ -198,49 +167,45 @@ function createDefaultSelectiveConfig(contentTypes: FeatureType[]) {
 			goldenNotes: selectedFeatures.goldenNotes
 				? {
 						count: 5,
-						style: "comprehensive" as const,
-						includeExamples: true,
 						difficulty: "intermediate" as const,
+						focus: "mixed" as const,
 					}
 				: undefined,
 			cuecards: selectedFeatures.cuecards
 				? {
 						count: 10,
 						difficulty: "intermediate" as const,
-						includeHints: false,
-						style: "question_answer" as const,
+						focus: "mixed" as const,
+						mode: "definition" as const,
 					}
 				: undefined,
 			mcqs: selectedFeatures.mcqs
 				? {
 						count: 10,
 						difficulty: "intermediate" as const,
-						includeExplanations: true,
-						questionStyle: "application" as const,
+						focus: "mixed" as const,
 					}
 				: undefined,
 			openQuestions: selectedFeatures.openQuestions
 				? {
 						count: 5,
 						difficulty: "intermediate" as const,
-						includeRubric: true,
-						questionType: "analytical" as const,
+						focus: "mixed" as const,
 					}
 				: undefined,
 			summaries: selectedFeatures.summaries
 				? {
-						summaryType: "comprehensive" as const,
-						maxWords: 300,
-						includeKeyPoints: true,
-						style: "academic" as const,
+						count: 3,
+						difficulty: "intermediate" as const,
+						focus: "mixed" as const,
+						length: "medium" as const,
 					}
 				: undefined,
 			conceptMaps: selectedFeatures.conceptMaps
 				? {
+						difficulty: "intermediate" as const,
+						focus: "mixed" as const,
 						style: "hierarchical" as const,
-						maxNodes: 15,
-						includeDefinitions: true,
-						complexity: "medium" as const,
 					}
 				: undefined,
 		},

@@ -2,46 +2,22 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import type { WeekContentGenerationMetadata, courseMaterials, courseWeeks } from "@/db/schema";
+import type { Course, CourseMaterial, CourseWeek } from "@/types/database-types";
 
-type CourseMaterialWithRelations = typeof courseMaterials.$inferSelect & {
-	courseWeek?: Pick<
-		typeof courseWeeks.$inferSelect,
-		"weekNumber" | "contentGenerationMetadata"
-	> | null;
+type CourseMaterialWithRelations = CourseMaterial & {
+	course?: Pick<Course, "name"> | null;
+	courseWeek?: Pick<CourseWeek, "weekNumber"> | null;
 };
 
 interface GeneratedContentBadgesProps {
 	material: CourseMaterialWithRelations;
-}
-
-// Helper function to get content generation data from week-level metadata
-function getContentGenerationData(material: CourseMaterialWithRelations) {
-	const weekMetadata = material.courseWeek
-		?.contentGenerationMetadata as WeekContentGenerationMetadata | null;
-	const contentCounts = weekMetadata?.generationResults?.contentCounts;
-
-	return {
-		cuecards: {
-			count: contentCounts?.cuecards || 0,
-			success: (contentCounts?.cuecards || 0) > 0,
-		},
-		multipleChoice: {
-			count: contentCounts?.mcqs || 0,
-			success: (contentCounts?.mcqs || 0) > 0,
-		},
-		openQuestions: {
-			count: contentCounts?.openQuestions || 0,
-			success: (contentCounts?.openQuestions || 0) > 0,
-		},
-		summaries: {
-			count: contentCounts?.summaries || 0,
-			success: (contentCounts?.summaries || 0) > 0,
-		},
-		goldenNotes: {
-			count: contentCounts?.goldenNotes || 0,
-			success: (contentCounts?.goldenNotes || 0) > 0,
-		},
+	contentCounts?: {
+		cuecards: number;
+		mcqs: number;
+		openQuestions: number;
+		summaries: number;
+		goldenNotes: number;
+		conceptMaps: number;
 	};
 }
 
@@ -70,10 +46,23 @@ function ContentBadge({ count, emoji, label }: ContentBadgeProps) {
 	);
 }
 
-export function GeneratedContentBadges({ material }: GeneratedContentBadgesProps) {
-	const processingData = getContentGenerationData(material);
-	const totalGenerated = Object.values(processingData).reduce(
-		(sum, item) => sum + (item.count || 0),
+export function GeneratedContentBadges({ contentCounts }: GeneratedContentBadgesProps) {
+	// TODO: Integrate with content-availability-service to show per-material content counts
+	// Need to query AI content tables (cuecards, summaries, mcqs, etc.) filtered by:
+	// - courseId and weekId (from material)
+	// - Generated from this specific material (requires tracking material source in AI tables)
+	// This will show which content types and counts have been generated for each material
+	
+	if (!contentCounts) {
+		return (
+			<Badge variant="secondary" className="text-xs">
+				Content tracking pending
+			</Badge>
+		);
+	}
+
+	const totalGenerated = Object.values(contentCounts).reduce(
+		(sum, count) => sum + count,
 		0
 	);
 
@@ -87,28 +76,31 @@ export function GeneratedContentBadges({ material }: GeneratedContentBadgesProps
 
 	return (
 		<div className="flex flex-wrap gap-1 items-center">
-			{processingData.goldenNotes.count > 0 && (
-				<ContentBadge count={processingData.goldenNotes.count} emoji="📝" label="Study Notes" />
+			{contentCounts.goldenNotes > 0 && (
+				<ContentBadge count={contentCounts.goldenNotes} emoji="📝" label="Study Notes" />
 			)}
-			{processingData.cuecards.count > 0 && (
-				<ContentBadge count={processingData.cuecards.count} emoji="🃏" label="Cuecards" />
+			{contentCounts.cuecards > 0 && (
+				<ContentBadge count={contentCounts.cuecards} emoji="🃏" label="Cuecards" />
 			)}
-			{processingData.multipleChoice.count > 0 && (
+			{contentCounts.mcqs > 0 && (
 				<ContentBadge
-					count={processingData.multipleChoice.count}
+					count={contentCounts.mcqs}
 					emoji="❓"
 					label="Multiple Choice Questions"
 				/>
 			)}
-			{processingData.openQuestions.count > 0 && (
+			{contentCounts.openQuestions > 0 && (
 				<ContentBadge
-					count={processingData.openQuestions.count}
+					count={contentCounts.openQuestions}
 					emoji="💭"
 					label="Open Questions"
 				/>
 			)}
-			{processingData.summaries.count > 0 && (
-				<ContentBadge count={processingData.summaries.count} emoji="📄" label="Summaries" />
+			{contentCounts.summaries > 0 && (
+				<ContentBadge count={contentCounts.summaries} emoji="📄" label="Summaries" />
+			)}
+			{contentCounts.conceptMaps > 0 && (
+				<ContentBadge count={contentCounts.conceptMaps} emoji="🗺️" label="Concept Maps" />
 			)}
 		</div>
 	);

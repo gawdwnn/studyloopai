@@ -12,10 +12,6 @@ const GenerateOpenQuestionsPayload = z.object({
 
 const GenerateOpenQuestionsOutput = z.object({
 	success: z.boolean(),
-	weekId: z.string(),
-	contentType: z.literal("openQuestions"),
-	generatedCount: z.number(),
-	error: z.string().optional(),
 });
 
 type GenerateOpenQuestionsPayloadType = z.infer<
@@ -26,13 +22,6 @@ export const generateOpenQuestions = schemaTask({
 	id: "generate-open-questions",
 	schema: GenerateOpenQuestionsPayload,
 	maxDuration: 300, // 5 minutes for individual content type
-	onStart: async ({
-		payload,
-	}: { payload: GenerateOpenQuestionsPayloadType }) => {
-		logger.info("📋 Open Questions generation task started", {
-			weekId: payload.weekId,
-		});
-	},
 	run: async (payload: GenerateOpenQuestionsPayloadType, { ctx: _ctx }) => {
 		const { weekId, courseId, materialIds, configId } = payload;
 
@@ -54,8 +43,8 @@ export const generateOpenQuestions = schemaTask({
 			}
 			logger.info("📋 Using selective configuration for open questions", {
 				weekId,
-				materialCount: materialIds.length,
-				config: openQuestionsConfig,
+				courseId,
+				openQuestionsConfig,
 			});
 
 			const { generateOpenQuestionsForWeek } = await import(
@@ -75,59 +64,35 @@ export const generateOpenQuestions = schemaTask({
 
 			return {
 				success: true,
-				weekId,
-				contentType: "openQuestions" as const,
-				generatedCount: result.generatedCount || 0,
 			};
 		} catch (error) {
 			const errorMessage =
 				error instanceof Error ? error.message : "An unknown error occurred";
 			logger.error("❌ Open questions generation failed", {
 				weekId,
+				courseId,
+				configId,
 				error: errorMessage,
 			});
 			throw error;
 		}
 	},
-	cleanup: async ({
-		payload,
-	}: { payload: GenerateOpenQuestionsPayloadType }) => {
-		logger.info("🧹 Open questions generation task cleanup complete", {
-			weekId: payload.weekId,
-		});
-	},
 	onSuccess: async ({
-		payload,
 		output,
 	}: {
-		payload: GenerateOpenQuestionsPayloadType;
 		output: z.infer<typeof GenerateOpenQuestionsOutput>;
 	}) => {
 		logger.info("✅ Open questions generation completed successfully", {
-			weekId: payload.weekId,
-			generatedCount: output.generatedCount,
+			success: output.success,
 		});
-
-		const { updateWeekContentGenerationMetadata } = await import(
-			"@/lib/services/processing-metadata-service"
-		);
-		await updateWeekContentGenerationMetadata(
-			payload.weekId,
-			"openQuestions",
-			output.generatedCount,
-			logger
-		);
 	},
 	onFailure: async ({
-		payload,
 		error,
 	}: {
-		payload: GenerateOpenQuestionsPayloadType;
 		error: unknown;
 	}) => {
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		logger.error("❌ Open questions generation failed permanently", {
-			weekId: payload.weekId,
 			error: errorMessage,
 		});
 	},

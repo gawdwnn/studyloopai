@@ -127,6 +127,13 @@
       "when": 1752973504602,
       "tag": "0017_tricky_maria_hill",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1753026793876,
+      "tag": "0018_wide_power_pack",
+      "breakpoints": true
     }
   ]
 }

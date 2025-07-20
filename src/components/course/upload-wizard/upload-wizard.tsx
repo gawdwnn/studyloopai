@@ -107,8 +107,8 @@ export function UploadWizard({ courses, onUploadSuccess }: UploadWizardProps) {
 			return;
 		}
 
-		if (files.length > 50) {
-			toast.error("Maximum 50 files allowed per batch");
+		if (files.length > 5) {
+			toast.error("Maximum 5 files allowed per batch");
 			return;
 		}
 

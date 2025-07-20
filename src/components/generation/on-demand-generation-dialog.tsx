@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+import { triggerGeneration } from "@/lib/services/generation-service";
 import type { FeatureType } from "@/types/generation-types";
 import {
 	AlertCircle,
@@ -76,22 +77,11 @@ export function OnDemandGenerationDialog({
 		setProgress((prev) => ({ ...prev, status: "starting", progress: 5 }));
 
 		try {
-			const response = await fetch("/api/generation/trigger", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					courseId,
-					weekId,
-					contentTypes,
-				}),
+			const result = await triggerGeneration({
+				courseId,
+				weekId,
+				contentTypes,
 			});
-
-			if (!response.ok) {
-				const error = await response.json();
-				throw new Error(error.error || "Failed to start generation");
-			}
-
-			const result = await response.json();
 
 			setProgress((prev) => ({
 				...prev,

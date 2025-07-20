@@ -82,7 +82,7 @@ export function CuecardSessionSetup({
 	} = useContentAvailability({
 		courseId: selectedCourse,
 		weekId: selectedWeek === "all-weeks" ? "" : selectedWeek,
-		enabled: selectedCourse && selectedWeek !== "all-weeks",
+		enabled: Boolean(selectedCourse && selectedWeek !== "all-weeks"),
 	});
 
 	const cuecardsStatus = getContentTypeStatus("cuecards");

@@ -12,10 +12,6 @@ const GenerateSummariesPayload = z.object({
 
 const GenerateSummariesOutput = z.object({
 	success: z.boolean(),
-	weekId: z.string(),
-	contentType: z.literal("summaries"),
-	generatedCount: z.number(),
-	error: z.string().optional(),
 });
 
 type GenerateSummariesPayloadType = z.infer<typeof GenerateSummariesPayload>;
@@ -24,11 +20,6 @@ export const generateSummaries = schemaTask({
 	id: "generate-summaries",
 	schema: GenerateSummariesPayload,
 	maxDuration: 300, // 5 minutes for individual content type
-	onStart: async ({ payload }: { payload: GenerateSummariesPayloadType }) => {
-		logger.info("📄 Summaries generation task started", {
-			weekId: payload.weekId,
-		});
-	},
 	run: async (payload: GenerateSummariesPayloadType, { ctx: _ctx }) => {
 		const { weekId, courseId, materialIds, configId } = payload;
 
@@ -50,8 +41,8 @@ export const generateSummaries = schemaTask({
 			}
 			logger.info("📄 Using selective configuration for summaries", {
 				weekId,
-				materialCount: materialIds.length,
-				config: summariesConfig,
+				courseId,
+				summariesConfig,
 			});
 
 			const { generateSummariesForWeek } = await import(
@@ -71,57 +62,35 @@ export const generateSummaries = schemaTask({
 
 			return {
 				success: true,
-				weekId,
-				contentType: "summaries" as const,
-				generatedCount: result.generatedCount || 0,
 			};
 		} catch (error) {
 			const errorMessage =
 				error instanceof Error ? error.message : "An unknown error occurred";
 			logger.error("❌ Summaries generation failed", {
 				weekId,
+				courseId,
+				configId,
 				error: errorMessage,
 			});
 			throw error;
 		}
 	},
-	cleanup: async ({ payload }: { payload: GenerateSummariesPayloadType }) => {
-		logger.info("🧹 Summaries generation task cleanup complete", {
-			weekId: payload.weekId,
-		});
-	},
 	onSuccess: async ({
-		payload,
 		output,
 	}: {
-		payload: GenerateSummariesPayloadType;
 		output: z.infer<typeof GenerateSummariesOutput>;
 	}) => {
 		logger.info("✅ Summaries generation completed successfully", {
-			weekId: payload.weekId,
-			generatedCount: output.generatedCount,
+			success: output.success,
 		});
-
-		const { updateWeekContentGenerationMetadata } = await import(
-			"@/lib/services/processing-metadata-service"
-		);
-		await updateWeekContentGenerationMetadata(
-			payload.weekId,
-			"summaries",
-			output.generatedCount,
-			logger
-		);
 	},
 	onFailure: async ({
-		payload,
 		error,
 	}: {
-		payload: GenerateSummariesPayloadType;
 		error: unknown;
 	}) => {
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		logger.error("❌ Summaries generation failed permanently", {
-			weekId: payload.weekId,
 			error: errorMessage,
 		});
 	},

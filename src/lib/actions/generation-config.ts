@@ -74,6 +74,85 @@ export async function getGenerationConfigById(
 }
 
 /**
+ * Get generation config with full status information
+ * Used for status tracking and monitoring
+ */
+export async function getGenerationConfigWithStatus(
+	configId: string
+): Promise<{
+	configData: SelectiveGenerationConfig;
+	isActive: boolean;
+	generationStatus: string;
+	generationStartedAt: Date | null;
+	generationCompletedAt: Date | null;
+	failedFeatures: string[];
+} | null> {
+	const result = await db
+		.select({
+			configData: generationConfigs.configData,
+			isActive: generationConfigs.isActive,
+			generationStatus: generationConfigs.generationStatus,
+			generationStartedAt: generationConfigs.generationStartedAt,
+			generationCompletedAt: generationConfigs.generationCompletedAt,
+			failedFeatures: generationConfigs.failedFeatures,
+		})
+		.from(generationConfigs)
+		.where(eq(generationConfigs.id, configId))
+		.limit(1);
+
+	const config = result[0];
+	if (!config) {
+		return null;
+	}
+
+	return {
+		configData: config.configData as SelectiveGenerationConfig,
+		isActive: config.isActive || false,
+		generationStatus: config.generationStatus || "pending",
+		generationStartedAt: config.generationStartedAt,
+		generationCompletedAt: config.generationCompletedAt,
+		failedFeatures: (config.failedFeatures as string[]) || [],
+	};
+}
+
+/**
+ * Get active generation configs for a specific week
+ * Used to check if generation is currently in progress
+ */
+export async function getActiveGenerationConfigsForWeek(
+	courseId: string,
+	weekId: string
+): Promise<Array<{
+	id: string;
+	generationStatus: string;
+	generationStartedAt: Date | null;
+	selectedFeatures: SelectiveGenerationConfig["selectedFeatures"];
+}>> {
+	const result = await db
+		.select({
+			id: generationConfigs.id,
+			generationStatus: generationConfigs.generationStatus,
+			generationStartedAt: generationConfigs.generationStartedAt,
+			configData: generationConfigs.configData,
+		})
+		.from(generationConfigs)
+		.where(
+			and(
+				eq(generationConfigs.courseId, courseId),
+				eq(generationConfigs.weekId, weekId),
+				eq(generationConfigs.isActive, true)
+			)
+		);
+
+	return result.map((config) => ({
+		id: config.id,
+		generationStatus: config.generationStatus || "pending",
+		generationStartedAt: config.generationStartedAt,
+		selectedFeatures: (config.configData as SelectiveGenerationConfig)?.selectedFeatures || {},
+	}));
+}
+
+/**
  * Get a generation config by ID with specific feature config
  * Useful for generators that only need their specific config portion
  */

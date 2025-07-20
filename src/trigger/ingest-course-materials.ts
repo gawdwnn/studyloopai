@@ -72,8 +72,7 @@ export const ingestCourseMaterials = schemaTask({
 				embeddingItems,
 				{}
 			);
-
-		// Type the runs properly - batchTriggerAndWait returns runs with this structure
+			
 		const embeddingRuns = embeddingResult.runs as EmbeddingRun[];
 
 		for (const run of embeddingRuns) {
@@ -96,20 +95,20 @@ export const ingestCourseMaterials = schemaTask({
 			.map((r) => r.output.materialId);
 
 		// Get the weekId and courseId - all materials in a batch should belong to the same week and course
-		const rows = await db
-			.select({
-				weekId: courseMaterials.weekId,
-				courseId: courseMaterials.courseId,
-			})
-			.from(courseMaterials)
-			.where(inArray(courseMaterials.id, materialIds));
+		const courseMaterialsRows = await db
+      .select({
+        weekId: courseMaterials.weekId,
+        courseId: courseMaterials.courseId,
+      })
+      .from(courseMaterials)
+      .where(inArray(courseMaterials.id, materialIds));
 
 		// Validate that all materials belong to the same week and course
 		const weekIds = Array.from(
-			new Set(rows.map((r) => r.weekId).filter(Boolean))
+			new Set(courseMaterialsRows.map((r) => r.weekId).filter(Boolean))
 		) as string[];
 		const courseIds = Array.from(
-			new Set(rows.map((r) => r.courseId).filter(Boolean))
+			new Set(courseMaterialsRows.map((r) => r.courseId).filter(Boolean))
 		) as string[];
 
 		if (weekIds.length === 0) {
@@ -138,24 +137,21 @@ export const ingestCourseMaterials = schemaTask({
 		logger.info("🧩 All embeddings complete, triggering AI generation", {
 			userId,
 			materialIds,
-			rows,
-			weekIds,
-			courseIds,
 			weekId,
 			courseId,
 			configId: payload.configId,
 		});
 
-		// Trigger AI content generation for the course week
+		// Trigger AI content generation for the course week with validated material IDs
 		await aiContentOrchestrator.trigger({
 			weekId,
 			courseId,
+			materialIds,
 			configId: payload.configId,
 		});
 
 		return {
 			success: true,
-			materialCount: materials.length,
 		};
 	},
 });

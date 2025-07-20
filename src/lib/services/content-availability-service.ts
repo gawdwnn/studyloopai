@@ -1,15 +1,15 @@
 /**
  * Content Availability Service
  *
- * Real-time detection of available vs. generating content for intelligent session setup
- * and on-demand generation triggering
+ * Real-time detection of available content for intelligent session setup
+ * 
+ * Note: Simplified post-metadata cleanup - no generation status tracking
+ * We only check for existing content availability
  */
 
 import { db } from "@/db";
 import {
-	type WeekContentGenerationMetadata,
 	conceptMaps,
-	courseWeeks,
 	cuecards,
 	goldenNotes,
 	multipleChoiceQuestions,
@@ -23,17 +23,14 @@ export interface ContentAvailabilityStatus {
 	courseId: string;
 	weekId: string;
 	contentAvailability: Record<FeatureType, ContentTypeAvailability>;
-	overallStatus: "available" | "generating" | "none" | "error";
+	overallStatus: "available" | "none" | "error";
 	lastUpdated: Date;
-	generationMetadata?: WeekContentGenerationMetadata;
 }
 
 export interface ContentTypeAvailability {
-	status: "available" | "generating" | "none" | "error";
+	status: "available" | "none" | "error";
 	count: number;
-	isGenerating: boolean;
-	batchId?: string;
-	lastGenerated?: Date;
+	isGenerating: boolean; // Now properly tracks generation status
 	error?: string;
 }
 
@@ -45,23 +42,9 @@ export async function getContentAvailability(
 	weekId: string
 ): Promise<ContentAvailabilityStatus> {
 	try {
-		// Get week metadata to check generation status
-		const [week] = await db
-			.select({
-				id: courseWeeks.id,
-				contentGenerationStatus: courseWeeks.contentGenerationStatus,
-				contentGenerationMetadata: courseWeeks.contentGenerationMetadata,
-				contentGenerationTriggeredAt: courseWeeks.contentGenerationTriggeredAt,
-			})
-			.from(courseWeeks)
-			.where(
-				and(eq(courseWeeks.id, weekId), eq(courseWeeks.courseId, courseId))
-			);
-
-		if (!week) {
-			throw new Error("Course week not found");
-		}
-
+		// Check if generation is in progress
+		const isGenerating = await isGenerationInProgress(courseId, weekId);
+		
 		// Get content counts for each type
 		const contentCounts = await Promise.all([
 			getContentCount("goldenNotes", courseId, weekId),
@@ -81,55 +64,18 @@ export async function getContentAvailability(
 			conceptMapsCount,
 		] = contentCounts;
 
-		const generationMetadata =
-			week.contentGenerationMetadata as WeekContentGenerationMetadata | null;
-		const isGenerating = week.contentGenerationStatus === "processing";
-
 		// Build availability status for each content type
 		const contentAvailability: Record<FeatureType, ContentTypeAvailability> = {
-			goldenNotes: buildContentTypeAvailability(
-				"goldenNotes",
-				goldenNotesCount,
-				isGenerating,
-				generationMetadata
-			),
-			cuecards: buildContentTypeAvailability(
-				"cuecards",
-				cuecardsCount,
-				isGenerating,
-				generationMetadata
-			),
-			mcqs: buildContentTypeAvailability(
-				"mcqs",
-				mcqsCount,
-				isGenerating,
-				generationMetadata
-			),
-			openQuestions: buildContentTypeAvailability(
-				"openQuestions",
-				openQuestionsCount,
-				isGenerating,
-				generationMetadata
-			),
-			summaries: buildContentTypeAvailability(
-				"summaries",
-				summariesCount,
-				isGenerating,
-				generationMetadata
-			),
-			conceptMaps: buildContentTypeAvailability(
-				"conceptMaps",
-				conceptMapsCount,
-				isGenerating,
-				generationMetadata
-			),
+			goldenNotes: buildContentTypeAvailability("goldenNotes", goldenNotesCount, isGenerating),
+			cuecards: buildContentTypeAvailability("cuecards", cuecardsCount, isGenerating),
+			mcqs: buildContentTypeAvailability("mcqs", mcqsCount, isGenerating),
+			openQuestions: buildContentTypeAvailability("openQuestions", openQuestionsCount, isGenerating),
+			summaries: buildContentTypeAvailability("summaries", summariesCount, isGenerating),
+			conceptMaps: buildContentTypeAvailability("conceptMaps", conceptMapsCount, isGenerating),
 		};
 
-		// Determine overall status
-		const overallStatus = determineOverallStatus(
-			contentAvailability,
-			isGenerating
-		);
+		// Determine overall status (simplified: available if any content exists)
+		const overallStatus = determineOverallStatus(contentAvailability);
 
 		return {
 			courseId,
@@ -137,49 +83,18 @@ export async function getContentAvailability(
 			contentAvailability,
 			overallStatus,
 			lastUpdated: new Date(),
-			generationMetadata: generationMetadata || undefined,
 		};
 	} catch (error) {
 		console.error("Content availability check failed:", error);
 
 		// Return error status with empty availability
 		const errorAvailability: Record<FeatureType, ContentTypeAvailability> = {
-			goldenNotes: {
-				status: "error",
-				count: 0,
-				isGenerating: false,
-				error: error instanceof Error ? error.message : "Unknown error",
-			},
-			cuecards: {
-				status: "error",
-				count: 0,
-				isGenerating: false,
-				error: error instanceof Error ? error.message : "Unknown error",
-			},
-			mcqs: {
-				status: "error",
-				count: 0,
-				isGenerating: false,
-				error: error instanceof Error ? error.message : "Unknown error",
-			},
-			openQuestions: {
-				status: "error",
-				count: 0,
-				isGenerating: false,
-				error: error instanceof Error ? error.message : "Unknown error",
-			},
-			summaries: {
-				status: "error",
-				count: 0,
-				isGenerating: false,
-				error: error instanceof Error ? error.message : "Unknown error",
-			},
-			conceptMaps: {
-				status: "error",
-				count: 0,
-				isGenerating: false,
-				error: error instanceof Error ? error.message : "Unknown error",
-			},
+			goldenNotes: createErrorAvailability(error),
+			cuecards: createErrorAvailability(error),
+			mcqs: createErrorAvailability(error),
+			openQuestions: createErrorAvailability(error),
+			summaries: createErrorAvailability(error),
+			conceptMaps: createErrorAvailability(error),
 		};
 
 		return {
@@ -201,36 +116,11 @@ export async function getContentTypeAvailability(
 	contentType: FeatureType
 ): Promise<ContentTypeAvailability> {
 	try {
+		const isGenerating = await isGenerationInProgress(courseId, weekId);
 		const count = await getContentCount(contentType, courseId, weekId);
-
-		// Check if generation is in progress
-		const [week] = await db
-			.select({
-				contentGenerationStatus: courseWeeks.contentGenerationStatus,
-				contentGenerationMetadata: courseWeeks.contentGenerationMetadata,
-			})
-			.from(courseWeeks)
-			.where(
-				and(eq(courseWeeks.id, weekId), eq(courseWeeks.courseId, courseId))
-			);
-
-		const isGenerating = week?.contentGenerationStatus === "processing";
-		const generationMetadata =
-			week?.contentGenerationMetadata as WeekContentGenerationMetadata | null;
-
-		return buildContentTypeAvailability(
-			contentType,
-			count,
-			isGenerating,
-			generationMetadata
-		);
+		return buildContentTypeAvailability(contentType, count, isGenerating);
 	} catch (error) {
-		return {
-			status: "error",
-			count: 0,
-			isGenerating: false,
-			error: error instanceof Error ? error.message : "Unknown error",
-		};
+		return createErrorAvailability(error);
 	}
 }
 
@@ -281,19 +171,12 @@ function getTableForContentType(contentType: FeatureType) {
  * Build availability status for a content type
  */
 function buildContentTypeAvailability(
-	contentType: FeatureType,
+	_contentType: FeatureType,
 	count: number,
-	isWeekGenerating: boolean,
-	generationMetadata: WeekContentGenerationMetadata | null
+	isGenerating: boolean
 ): ContentTypeAvailability {
-	// Check if this specific content type is being generated
-	const batchInfo = generationMetadata?.batchInfo?.[contentType];
-	const isGenerating = isWeekGenerating && batchInfo?.status === "triggered";
-
 	let status: ContentTypeAvailability["status"];
-	if (isGenerating) {
-		status = "generating";
-	} else if (count > 0) {
+	if (count > 0) {
 		status = "available";
 	} else {
 		status = "none";
@@ -302,11 +185,19 @@ function buildContentTypeAvailability(
 	return {
 		status,
 		count,
-		isGenerating,
-		batchId: batchInfo?.batchId,
-		lastGenerated: generationMetadata?.startedAt
-			? new Date(generationMetadata.startedAt)
-			: undefined,
+		isGenerating, // Now properly tracks generation status
+	};
+}
+
+/**
+ * Create error availability status
+ */
+function createErrorAvailability(error: unknown): ContentTypeAvailability {
+	return {
+		status: "error",
+		count: 0,
+		isGenerating: false,
+		error: error instanceof Error ? error.message : "Unknown error",
 	};
 }
 
@@ -314,19 +205,13 @@ function buildContentTypeAvailability(
  * Determine the overall status based on individual content availability
  */
 function determineOverallStatus(
-	contentAvailability: Record<FeatureType, ContentTypeAvailability>,
-	isGenerating: boolean
-): "available" | "generating" | "none" | "error" {
+	contentAvailability: Record<FeatureType, ContentTypeAvailability>
+): "available" | "none" | "error" {
 	const statuses = Object.values(contentAvailability);
 
 	// If any content has errors, overall status is error
 	if (statuses.some((s) => s.status === "error")) {
 		return "error";
-	}
-
-	// If generation is in progress, overall status is generating
-	if (isGenerating || statuses.some((s) => s.isGenerating)) {
-		return "generating";
 	}
 
 	// If any content is available, overall status is available
@@ -340,34 +225,33 @@ function determineOverallStatus(
 
 /**
  * Check if any content is currently being generated for a week
+ * Now uses generation config status tracking
  */
 export async function isGenerationInProgress(
 	courseId: string,
 	weekId: string
 ): Promise<boolean> {
-	const [week] = await db
-		.select({
-			contentGenerationStatus: courseWeeks.contentGenerationStatus,
-		})
-		.from(courseWeeks)
-		.where(and(eq(courseWeeks.id, weekId), eq(courseWeeks.courseId, courseId)));
-
-	return week?.contentGenerationStatus === "processing";
+	const { getActiveGenerationConfigsForWeek } = await import(
+		"@/lib/actions/generation-config"
+	);
+	
+	const activeConfigs = await getActiveGenerationConfigsForWeek(courseId, weekId);
+	
+	// Check if any config is currently processing
+	return activeConfigs.some((config) => config.generationStatus === "processing");
 }
 
 /**
- * Get generation progress for a week (if available)
+ * Get active generation configs for a week
+ * Now uses proper generation config status tracking
  */
-export async function getGenerationProgress(
+export async function getActiveGenerationConfigs(
 	courseId: string,
 	weekId: string
-): Promise<WeekContentGenerationMetadata | null> {
-	const [week] = await db
-		.select({
-			contentGenerationMetadata: courseWeeks.contentGenerationMetadata,
-		})
-		.from(courseWeeks)
-		.where(and(eq(courseWeeks.id, weekId), eq(courseWeeks.courseId, courseId)));
-
-	return week?.contentGenerationMetadata as WeekContentGenerationMetadata | null;
+) {
+	const { getActiveGenerationConfigsForWeek } = await import(
+		"@/lib/actions/generation-config"
+	);
+	
+	return await getActiveGenerationConfigsForWeek(courseId, weekId);
 }

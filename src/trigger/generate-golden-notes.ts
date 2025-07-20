@@ -12,10 +12,6 @@ const GenerateGoldenNotesPayload = z.object({
 
 const GenerateGoldenNotesOutput = z.object({
 	success: z.boolean(),
-	weekId: z.string(),
-	contentType: z.literal("goldenNotes"),
-	generatedCount: z.number(),
-	error: z.string().optional(),
 });
 
 type GenerateGoldenNotesPayloadType = z.infer<
@@ -26,11 +22,6 @@ export const generateGoldenNotes = schemaTask({
 	id: "generate-golden-notes",
 	schema: GenerateGoldenNotesPayload,
 	maxDuration: 300, // 5 minutes for individual content type
-	onStart: async ({ payload }: { payload: GenerateGoldenNotesPayloadType }) => {
-		logger.info("📝 Golden Notes generation task started", {
-			weekId: payload.weekId,
-		});
-	},
 	run: async (payload: GenerateGoldenNotesPayloadType, { ctx: _ctx }) => {
 		const { weekId, courseId, materialIds, configId } = payload;
 
@@ -52,8 +43,9 @@ export const generateGoldenNotes = schemaTask({
 			}
 			logger.info("📝 Using selective configuration for golden notes", {
 				weekId,
+				courseId,
+				goldenNotesConfig,
 				materialCount: materialIds.length,
-				config: goldenNotesConfig,
 			});
 
 			const { generateGoldenNotesForCourseWeek } = await import(
@@ -73,49 +65,31 @@ export const generateGoldenNotes = schemaTask({
 
 			return {
 				success: true,
-				weekId,
-				contentType: "goldenNotes" as const,
-				generatedCount: result.generatedCount || 0,
 			};
 		} catch (error) {
 			const errorMessage =
 				error instanceof Error ? error.message : "An unknown error occurred";
 			logger.error("❌ Golden notes generation failed", {
 				weekId,
+				courseId,
+				configId,
 				error: errorMessage,
 			});
 			throw error;
 		}
 	},
-	cleanup: async ({ payload }: { payload: GenerateGoldenNotesPayloadType }) => {
-		logger.info("🧹 Golden notes generation task cleanup complete", {
-			weekId: payload.weekId,
-		});
-	},
 	onSuccess: async ({
-		payload,
 		output,
 	}: {
 		payload: GenerateGoldenNotesPayloadType;
 		output: z.infer<typeof GenerateGoldenNotesOutput>;
 	}) => {
 		logger.info("✅ Golden notes generation completed successfully", {
-			weekId: payload.weekId,
-			generatedCount: output.generatedCount,
-		});
 
-		const { updateWeekContentGenerationMetadata } = await import(
-			"@/lib/services/processing-metadata-service"
-		);
-		await updateWeekContentGenerationMetadata(
-			payload.weekId,
-			"goldenNotes",
-			output.generatedCount,
-			logger
-		);
+			success: output.success,
+		});
 	},
 	onFailure: async ({
-		payload,
 		error,
 	}: {
 		payload: GenerateGoldenNotesPayloadType;
@@ -123,7 +97,6 @@ export const generateGoldenNotes = schemaTask({
 	}) => {
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		logger.error("❌ Golden notes generation failed permanently", {
-			weekId: payload.weekId,
 			error: errorMessage,
 		});
 	},

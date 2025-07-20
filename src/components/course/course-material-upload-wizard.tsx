@@ -25,9 +25,11 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { markMaterialsUploadFailed } from "@/lib/actions/course-materials";
 import { getCourseWeeks } from "@/lib/actions/courses";
 import { COURSE_MATERIALS_BUCKET } from "@/lib/constants/storage";
 import {
+	type PresignUploadResponse,
 	completeUpload,
 	presignUpload,
 } from "@/lib/services/course-material-service";
@@ -100,7 +102,6 @@ export function CourseMaterialUploadWizard({
 		queryFn: () => getCourseWeeks(selectedCourseId),
 		enabled: !!selectedCourseId,
 	});
-
 
 	const resetWizard = () => {
 		setCurrentStep(WIZARD_STEPS.COURSE_AND_FILES);
@@ -176,12 +177,17 @@ export function CourseMaterialUploadWizard({
 		const uploadedMaterialIds: string[] = [];
 
 		try {
-			const failedUploads: Array<{ fileName: string; error: string }> = [];
+			const failedUploads: Array<{
+				fileName: string;
+				error: string;
+				materialId?: string;
+			}> = [];
 
 			for (const file of files) {
+				let presignRes: PresignUploadResponse | null = null;
 				try {
 					// Step 1: presign
-					const presignRes = await presignUpload({
+					presignRes = await presignUpload({
 						courseId: selectedCourseId,
 						weekId: selectedWeekData.id,
 						fileName: file.name,
@@ -203,6 +209,7 @@ export function CourseMaterialUploadWizard({
 						failedUploads.push({
 							fileName: file.name,
 							error: errorMessage,
+							materialId: presignRes.materialId,
 						});
 						continue;
 					}
@@ -218,14 +225,31 @@ export function CourseMaterialUploadWizard({
 					failedUploads.push({
 						fileName: file.name,
 						error: errorMessage,
+						materialId: presignRes?.materialId, // May be undefined if presign failed
 					});
 				}
 			}
 
-			// Report failed uploads
+			// Report failed uploads and update database status
 			if (failedUploads.length > 0) {
 				const failedFileNames = failedUploads.map((f) => f.fileName).join(", ");
 				toast.error(`Failed to upload: ${failedFileNames}`);
+
+				// Mark failed uploads in database
+				const failedMaterialIds = failedUploads
+					.map((f) => f.materialId)
+					.filter((id): id is string => !!id);
+
+				if (failedMaterialIds.length > 0) {
+					try {
+						await markMaterialsUploadFailed(failedMaterialIds);
+					} catch (statusErr) {
+						console.error(
+							"Failed to update upload status in database:",
+							statusErr
+						);
+					}
+				}
 			}
 
 			if (uploadedMaterialIds.length === 0) {
@@ -255,25 +279,29 @@ export function CourseMaterialUploadWizard({
 			} catch (processErr) {
 				// Handle processing initiation errors
 				const errorMessage = handleErrorWithLogging(
-					processErr instanceof Error ? processErr : "Processing initialization failed",
+					processErr instanceof Error
+						? processErr
+						: "Processing initialization failed",
 					"Upload completion",
-					{ 
-						materialIds: uploadedMaterialIds, 
+					{
+						materialIds: uploadedMaterialIds,
 						weekId: selectedWeekData.id,
-						courseId: selectedCourseId 
+						courseId: selectedCourseId,
 					}
 				);
-				toast.error(`Files uploaded successfully but ${errorMessage.toLowerCase()}`);
+				toast.error(
+					`Files uploaded successfully but ${errorMessage.toLowerCase()}`
+				);
 			}
 		} catch (err) {
 			// Handle unexpected errors
 			const errorMessage = handleErrorWithLogging(
 				err instanceof Error ? err : "Unexpected error during upload",
 				"Upload process",
-				{ 
+				{
 					selectedCourseId,
 					selectedWeek,
-					fileCount: files.length 
+					fileCount: files.length,
 				}
 			);
 			toast.error(errorMessage);

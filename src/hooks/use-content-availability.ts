@@ -1,6 +1,7 @@
 "use client";
 
 import type { ContentAvailabilityStatus } from "@/lib/services/content-availability-service";
+import { getGenerationStatus } from "@/lib/services/generation-service";
 import type { FeatureType } from "@/types/generation-types";
 import { useCallback, useEffect, useState } from "react";
 
@@ -31,7 +32,7 @@ export function useContentAvailability({
 	courseId,
 	weekId,
 	enabled = true,
-	pollingInterval = 10000, // 10 seconds
+	pollingInterval = 5000, // 5 seconds
 }: UseContentAvailabilityOptions): UseContentAvailabilityReturn {
 	const [data, setData] = useState<ContentAvailabilityStatus | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
@@ -44,18 +45,10 @@ export function useContentAvailability({
 			setIsLoading(true);
 			setError(null);
 
-			const response = await fetch(
-				`/api/generation/status?courseId=${courseId}&weekId=${weekId}`
-			);
-
-			if (!response.ok) {
-				const errorData = await response.json();
-				throw new Error(
-					errorData.error || "Failed to fetch content availability"
-				);
-			}
-
-			const result = await response.json();
+			const result = await getGenerationStatus({
+				courseId,
+				weekId,
+			});
 			setData(result);
 		} catch (err) {
 			const errorMessage =
@@ -96,8 +89,7 @@ export function useContentAvailability({
 
 			const isAvailable =
 				availability.status === "available" && availability.count > 0;
-			const isGenerating =
-				availability.isGenerating || availability.status === "generating";
+			const isGenerating = availability.isGenerating; // Simplified: no "generating" status
 			const canStartSession = isAvailable && !isGenerating;
 
 			return {
@@ -122,11 +114,9 @@ export function useContentAvailability({
 	// Helper to check if any content is generating
 	const isAnyGenerating = Boolean(
 		data &&
-			(data.overallStatus === "generating" ||
-				Object.values(data.contentAvailability).some(
-					(availability) =>
-						availability.isGenerating || availability.status === "generating"
-				))
+			Object.values(data.contentAvailability).some(
+				(availability) => availability.isGenerating
+			)
 	);
 
 	// Helper to check if can start session for specific content type

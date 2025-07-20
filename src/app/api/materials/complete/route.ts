@@ -16,7 +16,7 @@ const BodySchema = z.object({
 	materialIds: z
 		.array(z.string().uuid("Invalid material ID"))
 		.min(1, "At least one material ID is required")
-		.max(50, "Maximum 50 materials allowed per batch"),
+		.max(5, "Maximum 5 materials allowed per batch"),
 	weekId: z.string().uuid("Invalid week ID"),
 	courseId: z.string().uuid("Invalid course ID"),
 	selectiveConfig: SelectiveGenerationConfigSchema,
@@ -106,34 +106,6 @@ export async function POST(req: NextRequest) {
 			user.id
 		);
 
-		// Update generation metadata to track which features should be generated
-		const metadata: Record<
-			string,
-			{ status: string; configVersion: number; configId: string }
-		> = {};
-		for (const [feature, selected] of Object.entries(
-			body.selectiveConfig.selectedFeatures
-		)) {
-			if (selected) {
-				metadata[feature] = {
-					status: "pending",
-					configVersion: 1,
-					configId: savedConfigId,
-				};
-			}
-		}
-
-		// Update materials with generation metadata
-		await db
-			.update(courseMaterials)
-			.set({ generationMetadata: metadata })
-			.where(
-				inArray(
-					courseMaterials.id,
-					ingestMaterials.map((m) => m.id)
-				)
-			);
-
 		// Mark the week as having materials
 		await db
 			.update(courseWeeks)
@@ -141,7 +113,7 @@ export async function POST(req: NextRequest) {
 			.where(eq(courseWeeks.id, body.weekId));
 
 		// Trigger ingest task for those materials
-		const ingestHandle = await tasks.trigger<typeof ingestCourseMaterials>(
+		await tasks.trigger<typeof ingestCourseMaterials>(
 			"ingest-course-materials",
 			{
 				userId: user.id,
@@ -156,8 +128,6 @@ export async function POST(req: NextRequest) {
 
 		return NextResponse.json({
 			success: true,
-			runId: ingestHandle.id,
-			publicAccessToken: ingestHandle.publicAccessToken,
 		});
 	} catch (err) {
 		console.error("Materials completion error:", err);

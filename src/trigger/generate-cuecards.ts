@@ -12,10 +12,6 @@ const GenerateCuecardsPayload = z.object({
 
 const GenerateCuecardsOutput = z.object({
 	success: z.boolean(),
-	weekId: z.string(),
-	contentType: z.literal("cuecards"),
-	generatedCount: z.number(),
-	error: z.string().optional(),
 });
 
 type GenerateCuecardsPayloadType = z.infer<typeof GenerateCuecardsPayload>;
@@ -24,11 +20,6 @@ export const generateCuecards = schemaTask({
 	id: "generate-cuecards",
 	schema: GenerateCuecardsPayload,
 	maxDuration: 300, // 5 minutes for individual content type
-	onStart: async ({ payload }: { payload: GenerateCuecardsPayloadType }) => {
-		logger.info("🃏 Cuecards generation task started", {
-			weekId: payload.weekId,
-		});
-	},
 	run: async (payload: GenerateCuecardsPayloadType, { ctx: _ctx }) => {
 		const { weekId, courseId, materialIds, configId } = payload;
 
@@ -49,10 +40,10 @@ export const generateCuecards = schemaTask({
 				);
 			}
 			logger.info("🃏 Using selective configuration for cuecards", {
-				weekId,
-				materialCount: materialIds.length,
-				config: cuecardsConfig,
-			});
+        weekId,
+        courseId,
+        cuecardsConfig,
+      });
 
 			const { generateCuecardsForWeek } = await import(
 				"@/lib/ai/content-generators"
@@ -70,50 +61,31 @@ export const generateCuecards = schemaTask({
 			}
 
 			return {
-				success: true,
-				weekId,
-				contentType: "cuecards" as const,
-				generatedCount: result.generatedCount || 0,
+				success: true
 			};
 		} catch (error) {
 			const errorMessage =
 				error instanceof Error ? error.message : "An unknown error occurred";
 			logger.error("❌ Cuecards generation failed", {
 				weekId,
+				courseId,
+				configId,
 				error: errorMessage,
 			});
 			throw error;
 		}
 	},
-	cleanup: async ({ payload }: { payload: GenerateCuecardsPayloadType }) => {
-		logger.info("🧹 Cuecards generation task cleanup complete", {
-			weekId: payload.weekId,
-		});
-	},
 	onSuccess: async ({
-		payload,
 		output,
 	}: {
 		payload: GenerateCuecardsPayloadType;
 		output: z.infer<typeof GenerateCuecardsOutput>;
 	}) => {
 		logger.info("✅ Cuecards generation completed successfully", {
-			weekId: payload.weekId,
-			generatedCount: output.generatedCount,
+			success: output.success,
 		});
-
-		const { updateWeekContentGenerationMetadata } = await import(
-			"@/lib/services/processing-metadata-service"
-		);
-		await updateWeekContentGenerationMetadata(
-			payload.weekId,
-			"cuecards",
-			output.generatedCount,
-			logger
-		);
 	},
 	onFailure: async ({
-		payload,
 		error,
 	}: {
 		payload: GenerateCuecardsPayloadType;
@@ -121,7 +93,6 @@ export const generateCuecards = schemaTask({
 	}) => {
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		logger.error("❌ Cuecards generation failed permanently", {
-			weekId: payload.weekId,
 			error: errorMessage,
 		});
 	},
