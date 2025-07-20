@@ -10,7 +10,7 @@ import type { MagicLinkFormData } from "@/lib/validations/auth";
 import { X } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 export function SignInForm() {
 	const [loading, setLoading] = useState(false);
@@ -25,7 +25,7 @@ export function SignInForm() {
 		}
 	}, [searchParams]);
 
-	const handleMagicLinkSubmit = async (data: MagicLinkFormData) => {
+	const handleMagicLinkSubmit = useCallback(async (data: MagicLinkFormData) => {
 		setLoading(true);
 		setError(null);
 
@@ -37,14 +37,14 @@ export function SignInForm() {
 		} finally {
 			setLoading(false);
 		}
-	};
+	}, []);
 
-	const handleOAuthError = (oauthError: AuthErrorDetails) => {
+	const handleOAuthError = useCallback((oauthError: AuthErrorDetails) => {
 		setError(oauthError);
-	};
+	}, []);
 
 	return (
-		<div className="mx-auto w-full max-w-md rounded-xl p-8 sm:p-10">
+		<div className="mx-auto w-full max-w-md rounded-xl p-6 sm:p-8">
 			<div className="text-center mb-6">
 				<h1 className="text-xl md:text-2xl font-bold text-foreground mb-2">
 					Welcome to StudyLoopAI
@@ -61,9 +61,10 @@ export function SignInForm() {
 						<button
 							type="button"
 							onClick={() => setError(null)}
-							className="absolute right-2 top-2 opacity-70 hover:opacity-100 transition-opacity"
+							className="absolute right-2 top-2 opacity-70 hover:opacity-100 transition-opacity focus:outline-none focus:ring-2 focus:ring-destructive/50 focus:ring-offset-2 rounded"
+							aria-label="Dismiss error message"
 						>
-							<X className="h-4 w-4" />
+							<X className="h-4 w-4" aria-hidden="true" />
 						</button>
 					</Alert>
 				</div>
@@ -95,7 +96,7 @@ export function SignInForm() {
 			{/* Footer */}
 			<div className="mt-8 text-center space-y-4">
 				<div className="text-xs text-muted-foreground">
-					By continuing, you agree to our{" "}
+					By continuing, you agree to{" "}
 					<Link href="/legal/terms-of-service" className="text-primary hover:underline">
 						Terms of Service
 					</Link>{" "}

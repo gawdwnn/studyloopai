@@ -1,252 +1,293 @@
-import { Badge } from "@/components/ui/badge";
+"use client";
+
+import { ScrollRevealStagger } from "@/components/scroll-reveal";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { ParallaxWatermark } from "@/components/home-sections/parallax-watermark";
+import { cn } from "@/lib/utils";
 import {
 	ArrowRight,
-	Brain,
-	FileText,
 	Github,
-	GraduationCap,
 	Linkedin,
-	Mail,
+	type LucideIcon,
 	Sparkles,
 	Twitter,
 	Zap,
 } from "lucide-react";
 import Link from "next/link";
+import type React from "react";
+
+// Data Definitions for Footer Content
+const featureLinks = [
+	{ name: "Smart Quizzes", href: "/dashboard/adaptive-learning/quizzes" },
+	{ name: "AI Cuecards", href: "/dashboard/adaptive-learning/cuecards" },
+	{ name: "Course Planner", href: "/dashboard/course-planner" },
+	{ name: "Ask AI Tutor", href: "/dashboard/ask-ai" },
+];
+
+const resourceLinks = [
+	{ name: "Study Materials", href: "/dashboard/course-materials" },
+	{ name: "Learning Blog", href: "/blog" },
+	{ name: "Success Stories", href: "/success-stories" },
+	{ name: "API Docs", href: "/developers" },
+];
+
+const companyLinks = [
+	{ name: "About Us", href: "/about" },
+	{ name: "Pricing", href: "/pricing" },
+	{ name: "Contact", href: "/contact" },
+	{ name: "Careers", href: "/careers" },
+];
+
+const socialLinks = [
+	{
+		name: "LinkedIn",
+		href: "https://linkedin.com/company/studyloop",
+		icon: Linkedin,
+	},
+	{ name: "Twitter", href: "https://twitter.com/studyloop", icon: Twitter },
+	{ name: "Github", href: "https://github.com/studyloop", icon: Github },
+];
+
+const legalLinks = [
+	{ name: "Terms of Service", href: "/legal/terms" },
+	{ name: "Privacy Policy", href: "/legal/privacy" },
+	{ name: "Cookie Policy", href: "/legal/cookies" },
+];
+
+const ctaCardsData = [
+	{
+		variant: "pink",
+		icon: <Sparkles className="w-6 h-6 text-pink-400" />,
+		preTitle: "Want to know more?",
+		title: "Keep learning how we can help.",
+		buttonText: "Learn More",
+		buttonLink: "/about",
+		buttonProps: {
+			variant: "ghost",
+			className: "text-pink-300 hover:text-white hover:bg-pink-500/20 group-hover:translate-x-2",
+		},
+	},
+	{
+		variant: "blue",
+		icon: <Zap className="w-6 h-6 text-blue-400" />,
+		preTitle: "Ready to transform learning?",
+		title: "Yes, let's get started!",
+		buttonText: "Start Free",
+		buttonLink: "/auth/signin",
+		buttonProps: {
+			className:
+				"bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white border-0 group-hover:translate-x-2",
+		},
+	},
+] as const;
+
+// Reusable Components
+type FooterCtaCardProps = {
+	variant: "pink" | "blue";
+	icon: React.ReactNode;
+	preTitle: string;
+	title: string;
+	buttonText: string;
+	buttonLink: string;
+	buttonProps: React.ComponentProps<typeof Button>;
+};
+
+const ctaCardStyles = {
+	pink: {
+		container:
+			"from-pink-500/10 via-pink-400/5 to-rose-500/10 border-pink-500/20 hover:border-pink-400/30 hover:shadow-pink-500/10",
+		iconContainer: "bg-pink-500/20",
+		preTitle: "text-pink-300",
+		gradientOverlay: "from-pink-500/5",
+	},
+	blue: {
+		container:
+			"from-blue-500/10 via-cyan-400/5 to-blue-600/10 border-blue-500/20 hover:border-blue-400/30 hover:shadow-blue-500/10",
+		iconContainer: "bg-blue-500/20",
+		preTitle: "text-blue-300",
+		gradientOverlay: "from-blue-500/5",
+	},
+};
+
+function FooterCtaCard({
+	variant,
+	icon,
+	preTitle,
+	title,
+	buttonText,
+	buttonLink,
+	buttonProps,
+}: FooterCtaCardProps) {
+	const styles = ctaCardStyles[variant];
+	return (
+		<div
+			className={cn(
+				"group relative p-8 rounded-2xl bg-gradient-to-br transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl",
+				styles.container
+			)}
+		>
+			<div className="relative z-10">
+				<div className="flex items-center gap-3 mb-4">
+					<div
+						className={cn(
+							"w-12 h-12 rounded-full flex items-center justify-center",
+							styles.iconContainer
+						)}
+					>
+						{icon}
+					</div>
+					<span className={cn("text-sm font-medium", styles.preTitle)}>{preTitle}</span>
+				</div>
+				<h3 className="text-2xl font-bold mb-4 text-white">{title}</h3>
+				<Button
+					size="lg"
+					{...buttonProps}
+					className={cn("mt-4 transition-all duration-300", buttonProps.className)}
+					asChild
+				>
+					<Link href={buttonLink} className="flex items-center gap-2">
+						<span>{buttonText}</span>
+						<ArrowRight className="w-5 h-5" />
+					</Link>
+				</Button>
+			</div>
+			<div
+				className={cn(
+					"absolute inset-0 rounded-2xl bg-gradient-to-r to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500",
+					styles.gradientOverlay
+				)}
+			/>
+		</div>
+	);
+}
+
+type FooterLinkColumnProps = {
+	title: string;
+	links: { name: string; href: string }[];
+};
+
+function FooterLinkColumn({ title, links }: FooterLinkColumnProps) {
+	return (
+		<div>
+			<h3 className="font-semibold text-sm uppercase tracking-wider text-slate-400 mb-6">
+				{title}
+			</h3>
+			<ul className="space-y-4">
+				{links.map((item) => (
+					<li key={item.name}>
+						<Link
+							href={item.href}
+							className="text-slate-300 hover:text-white transition-colors duration-200"
+						>
+							{item.name}
+						</Link>
+					</li>
+				))}
+			</ul>
+		</div>
+	);
+}
+
+type ContactColumnProps = {
+	socialLinks: { name: string; href: string; icon: LucideIcon }[];
+};
+
+function ContactColumn({ socialLinks }: ContactColumnProps) {
+	return (
+		<div>
+			<h3 className="font-semibold text-sm uppercase tracking-wider text-slate-400 mb-6">
+				CONTACT
+			</h3>
+			<div className="space-y-4">
+				<div>
+					<a
+						href="mailto:hello@studyloop.ai"
+						className="text-slate-300 hover:text-white transition-colors duration-200"
+					>
+						hello@studyloop.ai
+					</a>
+				</div>
+				<div>
+					<span className="text-slate-300">1.800.STUDYLOOP</span>
+				</div>
+				<div className="flex gap-4 pt-2">
+					{socialLinks.map((social) => (
+						<a
+							key={social.name}
+							href={social.href}
+							aria-label={social.name}
+							className="text-slate-400 hover:text-white transition-colors duration-200"
+						>
+							<social.icon className="w-5 h-5" />
+						</a>
+					))}
+				</div>
+			</div>
+		</div>
+	);
+}
 
 export function HomeFooter() {
 	return (
-		<footer className="bg-gradient-to-br from-background via-muted/20 to-accent/5 border-t">
-			<div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-				{/* Main Footer Content */}
-				<div className="py-16">
-					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
-						{/* Brand Section */}
-						<div className="lg:col-span-1">
-							<div className="flex items-center gap-2 mb-4">
-								<div className="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center">
-									<Brain className="w-4 h-4 text-white" />
-								</div>
-								<span className="font-bold text-xl">StudyLoop</span>
-								<Badge
-									variant="secondary"
-									className="text-xs px-2 py-0.5 bg-primary/10 text-primary border-primary/20"
-								>
-									AI
-								</Badge>
-							</div>
-							<p className="text-muted-foreground mb-6 leading-relaxed">
-								The future of learning is here. Transform your study habits with AI-powered tools
-								that adapt to your unique learning style.
-							</p>
-							<div className="flex items-center gap-4">
-								<Link
-									href="#"
-									className="w-9 h-9 bg-muted rounded-lg flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-colors group"
-								>
-									<Twitter className="w-4 h-4 group-hover:scale-110 transition-transform" />
-								</Link>
-								<Link
-									href="#"
-									className="w-9 h-9 bg-muted rounded-lg flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-colors group"
-								>
-									<Linkedin className="w-4 h-4 group-hover:scale-110 transition-transform" />
-								</Link>
-								<Link
-									href="#"
-									className="w-9 h-9 bg-muted rounded-lg flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-colors group"
-								>
-									<Github className="w-4 h-4 group-hover:scale-110 transition-transform" />
-								</Link>
-							</div>
-						</div>
+		<footer className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white">
+			{/* Animated Background Elements */}
+			<div className="absolute inset-0 opacity-10">
+				{/* Shapes for the background */}
+				<div className="absolute top-10 left-10 w-32 h-32 border border-current rounded-full" />
+				<div className="absolute bottom-10 right-10 w-24 h-24 border border-current rounded-full" />
+				<div className="absolute top-1/2 left-1/3 w-16 h-16 border border-current rounded-full" />
+				<div className="absolute top-1/4 right-1/4 w-20 h-20 border border-current" />
+				<div className="absolute bottom-1/3 left-1/2 w-48 h-12 border border-current" />
+				<div className="absolute top-3/4 left-1/4 w-12 h-12 border border-current rotate-45" />
+				<div className="absolute bottom-1/2 right-1/3 w-8 h-32 border border-current" />
+			</div>
 
-						{/* Learning Tools */}
-						<div>
-							<h3 className="font-semibold mb-4 flex items-center gap-2">
-								<Sparkles className="w-4 h-4 text-primary" />
-								Learning Tools
-							</h3>
-							<ul className="space-y-3">
-								<li>
-									<Link
-										href="/dashboard/adaptive-learning/quizzes"
-										className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2 group"
-									>
-										Smart Quizzes
-										<ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-									</Link>
-								</li>
-								<li>
-									<Link
-										href="/dashboard/adaptive-learning/cuecards"
-										className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2 group"
-									>
-										Smart Cuecards
-										<ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-									</Link>
-								</li>
-								<li>
-									<Link
-										href="/dashboard/course-planner"
-										className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2 group"
-									>
-										Course Planner
-										<ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-									</Link>
-								</li>
-								<li>
-									<Link
-										href="/dashboard/adaptive-learning/multiple-choice"
-										className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2 group"
-									>
-										Multiple Choice
-										<ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-									</Link>
-								</li>
-								<li>
-									<Link
-										href="/dashboard/adaptive-learning/open-questions"
-										className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2 group"
-									>
-										Open Questions
-										<ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-									</Link>
-								</li>
-							</ul>
-						</div>
+			{/* Background Branding with Parallax */}
+			<ParallaxWatermark text="StudyLoopAI" repeat={3} parallaxType="horizontal" />
 
-						{/* Resources & Support */}
-						<div>
-							<h3 className="font-semibold mb-4 flex items-center gap-2">
-								<GraduationCap className="w-4 h-4 text-primary" />
-								Resources & Support
-							</h3>
-							<ul className="space-y-3">
-								<li>
-									<Link
-										href="/dashboard/course-materials/files"
-										className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2 group"
-									>
-										Course Materials
-										<ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-									</Link>
-								</li>
-								<li>
-									<Link
-										href="/dashboard/course-materials/notes"
-										className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2 group"
-									>
-										Study Notes
-										<ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-									</Link>
-								</li>
-								<li>
-									<Link
-										href="/dashboard/ask-ai"
-										className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2 group"
-									>
-										Ask AI
-										<ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-									</Link>
-								</li>
-								<li>
-									<Link
-										href="/dashboard/feedback"
-										className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2 group"
-									>
-										Feedback
-										<ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-									</Link>
-								</li>
-							</ul>
+			<div className="relative mx-auto max-w-7xl px-6 lg:px-8">
+				{/* Hero CTA Cards Section */}
+				<div className="pt-20 pb-16">
+					<ScrollRevealStagger staggerDelay={0.2}>
+						<div className="grid md:grid-cols-2 gap-6 mb-20">
+							{ctaCardsData.map((card) => (
+								<FooterCtaCard key={card.title} {...card} />
+							))}
 						</div>
-
-						{/* Legal & Blog */}
-						<div>
-							<h3 className="font-semibold mb-4 flex items-center gap-2">
-								<FileText className="w-4 h-4 text-primary" />
-								Legal & Blog
-							</h3>
-							<ul className="space-y-3">
-								<li>
-									<Link
-										href="/legal/terms-of-service"
-										className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2 group"
-									>
-										Terms of Service
-										<ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-									</Link>
-								</li>
-								<li>
-									<Link
-										href="/legal/privacy-policy"
-										className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2 group"
-									>
-										Privacy Policy
-										<ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-									</Link>
-								</li>
-								<li>
-									<Link
-										href="/legal/cookie-policy"
-										className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2 group"
-									>
-										Cookie Policy
-										<ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-									</Link>
-								</li>
-								<li>
-									<Link
-										href="/blog"
-										className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2 group"
-									>
-										Blog
-										<ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-									</Link>
-								</li>
-							</ul>
-						</div>
-					</div>
+					</ScrollRevealStagger>
 				</div>
 
-				{/* Newsletter Section */}
-				<div className="border-t py-8">
-					<div className="max-w-2xl mx-auto text-center">
-						<h3 className="font-semibold mb-4 flex items-center justify-center gap-2">
-							<Mail className="w-4 h-4 text-primary" />
-							Stay Updated
-						</h3>
-						<p className="text-muted-foreground mb-6 text-sm">
-							Get weekly study tips, AI insights, and exclusive offers for students.
-						</p>
-						<div className="space-y-3">
-							<div className="flex gap-2 max-w-md mx-auto">
-								<Input type="email" placeholder="Enter your email" className="flex-1" />
-								<Button size="sm" className="px-3">
-									<ArrowRight className="w-4 h-4" />
-								</Button>
-							</div>
-							<p className="text-xs text-muted-foreground">Join 100+ students already subscribed</p>
+				{/* Links Grid */}
+				<div className="pb-16">
+					<ScrollRevealStagger staggerDelay={0.1}>
+						<div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-16">
+							<FooterLinkColumn title="FEATURES" links={featureLinks} />
+							<FooterLinkColumn title="RESOURCES" links={resourceLinks} />
+							<FooterLinkColumn title="COMPANY" links={companyLinks} />
+							<ContactColumn socialLinks={socialLinks} />
 						</div>
-					</div>
+					</ScrollRevealStagger>
 				</div>
 
-				{/* Bottom Section */}
-				<div className="border-t py-6">
+				{/* Bottom Bar */}
+				<div className="border-t border-slate-700/50 py-8">
 					<div className="flex flex-col md:flex-row justify-between items-center gap-4">
-						<div className="flex items-center gap-4 text-sm text-muted-foreground">
-							<span>© {new Date().getFullYear()} StudyLoop. All rights reserved.</span>
+						{/* Legal Links */}
+						<div className="flex flex-wrap gap-6 text-sm">
+							{legalLinks.map((link) => (
+								<Link
+									key={link.name}
+									href={link.href}
+									className="text-slate-400 hover:text-white transition-colors"
+								>
+									{link.name}
+								</Link>
+							))}
 						</div>
-						<div className="flex items-center gap-2 text-sm">
-							<span className="text-muted-foreground">Powered by</span>
-							<div className="flex items-center gap-1">
-								<Zap className="w-3 h-3 text-primary" />
-								<span className="font-medium bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-									Advanced AI
-								</span>
-							</div>
+
+						{/* Copyright */}
+						<div className="text-sm text-slate-400">
+							© {new Date().getFullYear()} StudyLoop AI. All rights reserved.
 						</div>
 					</div>
 				</div>

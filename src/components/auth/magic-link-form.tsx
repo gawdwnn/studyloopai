@@ -77,7 +77,8 @@ export function MagicLinkForm({
 						setIsSubmitted(false);
 						form.reset();
 					}}
-					className="text-sm text-primary hover:underline"
+					className="text-sm text-primary hover:underline focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded px-2 py-1"
+					aria-label="Go back to email form"
 				>
 					Try a different email
 				</button>
@@ -100,15 +101,23 @@ export function MagicLinkForm({
 						name="email"
 						render={({ field }) => (
 							<FormItem>
-								{showLabel && <FormLabel>Email Address</FormLabel>}
+								{showLabel ? (
+									<FormLabel>Email Address</FormLabel>
+								) : (
+									<FormLabel className="sr-only">Email Address</FormLabel>
+								)}
 								<FormControl>
 									<div className="relative group">
-										<Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 group-focus-within:text-primary transition-colors" />
+										<Mail
+											className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 group-focus-within:text-primary transition-colors"
+											aria-hidden="true"
+										/>
 										<Input
 											type="email"
 											placeholder={placeholder}
 											className="pl-10 focus:ring-2 focus:ring-primary/20 transition-all"
-											aria-label="Email address"
+											aria-label={showLabel ? undefined : "Email address"}
+											aria-describedby="email-helper-text"
 											disabled={loading}
 											{...field}
 										/>
@@ -131,7 +140,7 @@ export function MagicLinkForm({
 			</Form>
 
 			<div className="text-center">
-				<p className="text-xs text-muted-foreground">
+				<p id="email-helper-text" className="text-xs text-muted-foreground">
 					We'll send you a secure link to sign in without a password
 				</p>
 			</div>
