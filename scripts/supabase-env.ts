@@ -133,8 +133,24 @@ class SupabaseEnvManager {
 		const spinner = ora(description).start();
 
 		try {
-			await execa(command, args, { stdio: "inherit" });
-			spinner.succeed(`${description} completed`);
+			// Special handling for policy-manager script which needs clean stdio
+			if (args.includes("scripts/policy-manager.ts")) {
+				spinner.stop();
+				// Use spawn with stdio inheritance for better terminal control
+				const { stdout, stderr } = await execa(command, args, {
+					stdio: ["inherit", "pipe", "pipe"],
+					env: { ...process.env, FORCE_COLOR: "1" }
+				});
+				
+				// Output the results
+				if (stdout) process.stdout.write(stdout);
+				if (stderr) process.stderr.write(stderr);
+				
+				console.log(chalk.green(`✔ ${description} completed`));
+			} else {
+				await execa(command, args, { stdio: "inherit" });
+				spinner.succeed(`${description} completed`);
+			}
 		} catch (error) {
 			spinner.fail(`${description} failed`);
 			throw error;
