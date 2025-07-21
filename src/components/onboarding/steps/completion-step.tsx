@@ -2,33 +2,44 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { useOnboardingStore } from "@/lib/stores/onboarding-store";
+import { useOnboardingStore } from "@/stores/onboarding-store";
 import { motion } from "framer-motion";
-import { ArrowRight, BookOpen, Brain, CheckCircle, Sparkles, Target } from "lucide-react";
+import {
+	ArrowRight,
+	BookOpen,
+	Brain,
+	CheckCircle,
+	Sparkles,
+	Target,
+} from "lucide-react";
 
 const nextSteps = [
 	{
 		icon: BookOpen,
 		title: "Upload your first document",
-		description: "Add course materials to start generating AI-powered study content",
+		description:
+			"Add course materials to start generating AI-powered study content",
 		color: "text-blue-500",
 	},
 	{
 		icon: Brain,
 		title: "Explore AI features",
-		description: "Try flashcards, quizzes, and summaries tailored to your materials",
+		description:
+			"Try flashcards, quizzes, and summaries tailored to your materials",
 		color: "text-purple-500",
 	},
 	{
 		icon: Target,
 		title: "Set study goals",
-		description: "Track your progress and stay motivated with personalized insights",
+		description:
+			"Track your progress and stay motivated with personalized insights",
 		color: "text-green-500",
 	},
 ];
 
 export function CompletionStep() {
-	const { profileData, planSelection, completeOnboarding } = useOnboardingStore();
+	const { profileData, planSelection, completeOnboarding } =
+		useOnboardingStore();
 
 	const handleGetStarted = () => {
 		completeOnboarding();
@@ -79,11 +90,17 @@ export function CompletionStep() {
 
 			{/* Setup summary */}
 			<motion.div variants={itemVariants} className="space-y-4">
-				<h3 className="text-sm font-medium text-center text-muted-foreground">Setup Summary</h3>
+				<h3 className="text-sm font-medium text-center text-muted-foreground">
+					Setup Summary
+				</h3>
 
 				<div className="grid grid-cols-1 md:grid-cols-3 gap-3">
 					{/* Profile status */}
-					<Card className={hasProfile ? "border-green-200 bg-green-50" : "border-gray-200"}>
+					<Card
+						className={
+							hasProfile ? "border-green-200 bg-green-50" : "border-gray-200"
+						}
+					>
 						<CardContent className="p-3 text-center">
 							<div
 								className={`text-sm font-medium ${hasProfile ? "text-green-700" : "text-gray-500"}`}
@@ -97,7 +114,11 @@ export function CompletionStep() {
 					</Card>
 
 					{/* Goals status */}
-					<Card className={hasGoals ? "border-green-200 bg-green-50" : "border-gray-200"}>
+					<Card
+						className={
+							hasGoals ? "border-green-200 bg-green-50" : "border-gray-200"
+						}
+					>
 						<CardContent className="p-3 text-center">
 							<div
 								className={`text-sm font-medium ${hasGoals ? "text-green-700" : "text-gray-500"}`}
@@ -105,13 +126,19 @@ export function CompletionStep() {
 								Study Goals
 							</div>
 							<div className="text-xs text-muted-foreground mt-1">
-								{hasGoals ? `${profileData.studyGoals?.length} selected` : "Skipped"}
+								{hasGoals
+									? `${profileData.studyGoals?.length} selected`
+									: "Skipped"}
 							</div>
 						</CardContent>
 					</Card>
 
 					{/* Plan status */}
-					<Card className={hasPlan ? "border-green-200 bg-green-50" : "border-gray-200"}>
+					<Card
+						className={
+							hasPlan ? "border-green-200 bg-green-50" : "border-gray-200"
+						}
+					>
 						<CardContent className="p-3 text-center">
 							<div
 								className={`text-sm font-medium ${hasPlan ? "text-green-700" : "text-gray-500"}`}
@@ -128,11 +155,17 @@ export function CompletionStep() {
 
 			{/* Next steps */}
 			<motion.div variants={itemVariants} className="space-y-4">
-				<h3 className="text-sm font-medium text-center text-muted-foreground">What's Next?</h3>
+				<h3 className="text-sm font-medium text-center text-muted-foreground">
+					What's Next?
+				</h3>
 
 				<div className="grid grid-cols-1 gap-3">
 					{nextSteps.map((step) => (
-						<motion.div key={step.title} variants={itemVariants} whileHover={{ scale: 1.01 }}>
+						<motion.div
+							key={step.title}
+							variants={itemVariants}
+							whileHover={{ scale: 1.01 }}
+						>
 							<Card className="hover:shadow-sm transition-shadow">
 								<CardContent className="p-4">
 									<div className="flex items-center gap-3">
@@ -155,7 +188,11 @@ export function CompletionStep() {
 
 			{/* Action button */}
 			<motion.div variants={itemVariants} className="text-center space-y-4">
-				<Button onClick={handleGetStarted} size="lg" className="min-w-[200px] gap-2">
+				<Button
+					onClick={handleGetStarted}
+					size="lg"
+					className="min-w-[200px] gap-2"
+				>
 					<Sparkles className="h-4 w-4" />
 					Start Learning
 					<ArrowRight className="h-4 w-4" />

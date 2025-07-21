@@ -1,7 +1,7 @@
 // Sample Open Questions data for development and testing
 // In production, this would be replaced with data from the database
 
-import type { OpenQuestion } from "@/lib/stores/open-question-session/types";
+import type { OpenQuestion } from "@/stores/open-question-session/types";
 
 export const SAMPLE_OPEN_QUESTIONS: OpenQuestion[] = [
 	{

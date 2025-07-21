@@ -27,7 +27,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { markMaterialsUploadFailed } from "@/lib/actions/course-materials";
 import { getCourseWeeks } from "@/lib/actions/courses";
-import { COURSE_MATERIALS_BUCKET } from "@/lib/constants/storage";
+import { COURSE_MATERIALS_BUCKET } from "@/lib/config/storage";
 import {
 	type PresignUploadResponse,
 	completeUpload,

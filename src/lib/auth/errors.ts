@@ -28,11 +28,9 @@ function isRateLimitError(error: unknown): error is {
 	remainingAttempts: number;
 	resetTime?: number;
 } {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    IS_RATE_LIMIT_ERROR in error
-  );
+	return (
+		typeof error === "object" && error !== null && IS_RATE_LIMIT_ERROR in error
+	);
 }
 
 export function getAuthErrorMessage(error: unknown): AuthErrorDetails {
@@ -130,14 +128,16 @@ export function getAuthErrorMessage(error: unknown): AuthErrorDetails {
 		if (error.message.includes("Invalid authentication request")) {
 			return {
 				type: "invalid_credentials",
-				message: "The magic link is invalid or expired. Please request a new one.",
+				message:
+					"The magic link is invalid or expired. Please request a new one.",
 			};
 		}
 
 		if (error.message.includes("Authentication failed")) {
 			return {
 				type: "server_error",
-				message: "Authentication failed. Please try requesting a new magic link.",
+				message:
+					"Authentication failed. Please try requesting a new magic link.",
 			};
 		}
 

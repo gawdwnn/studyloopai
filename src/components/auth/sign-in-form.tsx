@@ -5,8 +5,8 @@ import { MagicLinkForm } from "@/components/auth/magic-link-form";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { sendMagicLink } from "@/lib/actions/auth";
-import { type AuthErrorDetails, getAuthErrorMessage } from "@/lib/errors/auth";
-import type { MagicLinkFormData } from "@/lib/validations/auth";
+import { type AuthErrorDetails, getAuthErrorMessage } from "@/lib/auth/errors";
+import type { MagicLinkFormData } from "@/lib/auth/validation";
 import { X } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -21,7 +21,9 @@ export function SignInForm() {
 		const urlError = searchParams.get("error");
 		const errorDescription = searchParams.get("error_description");
 		if (urlError) {
-			setError(getAuthErrorMessage(new Error(errorDescription ?? "An error occurred.")));
+			setError(
+				getAuthErrorMessage(new Error(errorDescription ?? "An error occurred."))
+			);
 		}
 	}, [searchParams]);
 
@@ -57,7 +59,9 @@ export function SignInForm() {
 			{error && (
 				<div className="mb-6">
 					<Alert variant="destructive" className="relative">
-						<AlertDescription className="pr-8">{error.message}</AlertDescription>
+						<AlertDescription className="pr-8">
+							{error.message}
+						</AlertDescription>
 						<button
 							type="button"
 							onClick={() => setError(null)}
@@ -81,7 +85,9 @@ export function SignInForm() {
 					<Separator className="w-full" />
 				</div>
 				<div className="relative flex justify-center text-xs uppercase">
-					<span className="bg-background px-2 text-muted-foreground">Or continue with email</span>
+					<span className="bg-background px-2 text-muted-foreground">
+						Or continue with email
+					</span>
 				</div>
 			</div>
 
@@ -97,17 +103,24 @@ export function SignInForm() {
 			<div className="mt-8 text-center space-y-4">
 				<div className="text-xs text-muted-foreground">
 					By continuing, you agree to{" "}
-					<Link href="/legal/terms-of-service" className="text-primary hover:underline">
+					<Link
+						href="/legal/terms-of-service"
+						className="text-primary hover:underline"
+					>
 						Terms of Service
 					</Link>{" "}
 					and{" "}
-					<Link href="/legal/privacy-policy" className="text-primary hover:underline">
+					<Link
+						href="/legal/privacy-policy"
+						className="text-primary hover:underline"
+					>
 						Privacy Policy
 					</Link>
 				</div>
 
 				<div className="text-xs text-muted-foreground">
-					New to StudyLoop? No worries! We'll create your account automatically when you sign in.
+					New to StudyLoop? No worries! We'll create your account automatically
+					when you sign in.
 				</div>
 			</div>
 		</div>

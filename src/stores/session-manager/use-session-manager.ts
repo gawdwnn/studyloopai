@@ -28,7 +28,10 @@ function getTimeOfDay(date: Date): number {
 	return date.getHours();
 }
 
-function calculateCompletionPercentage(currentIndex: number, totalItems: number): number {
+function calculateCompletionPercentage(
+	currentIndex: number,
+	totalItems: number
+): number {
 	return totalItems > 0 ? Math.round((currentIndex / totalItems) * 100) : 0;
 }
 
@@ -55,18 +58,27 @@ async function generateSmartRecommendations(
 			},
 			estimatedDuration: 15,
 			priority: "high",
-			benefits: ["Improve understanding", "Build confidence", "Fill knowledge gaps"],
+			benefits: [
+				"Improve understanding",
+				"Build confidence",
+				"Fill knowledge gaps",
+			],
 		});
 	}
 
 	// Recommend based on session type balance
 	const sessionCounts = analytics.sessionTypeBreakdown;
-	const totalSessions = Object.values(sessionCounts).reduce((sum, type) => sum + type.count, 0);
+	const totalSessions = Object.values(sessionCounts).reduce(
+		(sum, type) => sum + type.count,
+		0
+	);
 
 	if (totalSessions > 0) {
 		const cuecardPercentage = sessionCounts.cuecards.count / totalSessions;
-		const mcqPercentage = sessionCounts["multiple-choice"].count / totalSessions;
-		const openQPercentage = sessionCounts["open-questions"].count / totalSessions;
+		const mcqPercentage =
+			sessionCounts["multiple-choice"].count / totalSessions;
+		const openQPercentage =
+			sessionCounts["open-questions"].count / totalSessions;
 
 		// Recommend underused session types
 		if (cuecardPercentage < 0.3) {
@@ -82,7 +94,11 @@ async function generateSmartRecommendations(
 				},
 				estimatedDuration: 10,
 				priority: "medium",
-				benefits: ["Improve memory retention", "Quick review", "Strengthen fundamentals"],
+				benefits: [
+					"Improve memory retention",
+					"Quick review",
+					"Strengthen fundamentals",
+				],
 			});
 		}
 
@@ -99,7 +115,11 @@ async function generateSmartRecommendations(
 				},
 				estimatedDuration: 15,
 				priority: "medium",
-				benefits: ["Identify knowledge gaps", "Practice for exams", "Quick feedback"],
+				benefits: [
+					"Identify knowledge gaps",
+					"Practice for exams",
+					"Quick feedback",
+				],
 			});
 		}
 
@@ -132,7 +152,8 @@ async function generateSmartRecommendations(
 	if (Math.abs(currentHour - productiveHour) <= 2) {
 		recommendations.push({
 			type: "multiple-choice",
-			reason: "This is your most productive time - tackle challenging questions!",
+			reason:
+				"This is your most productive time - tackle challenging questions!",
 			config: {
 				courseId: "current",
 				weeks: [],
@@ -142,7 +163,11 @@ async function generateSmartRecommendations(
 			},
 			estimatedDuration: 20,
 			priority: "high",
-			benefits: ["Maximize learning efficiency", "Challenge yourself", "Build expertise"],
+			benefits: [
+				"Maximize learning efficiency",
+				"Challenge yourself",
+				"Build expertise",
+			],
 		});
 	}
 
@@ -157,7 +182,10 @@ const useSessionManager = create<SessionManagerStore>()(
 
 				actions: {
 					// Session coordination
-					startSession: async (type: SessionType, config: BaseSessionConfig) => {
+					startSession: async (
+						type: SessionType,
+						config: BaseSessionConfig
+					) => {
 						try {
 							const sessionId = generateSessionId(type);
 							const now = new Date();
@@ -166,7 +194,10 @@ const useSessionManager = create<SessionManagerStore>()(
 							const currentActive = get().activeSession;
 							if (currentActive) {
 								await get().actions.endSession(currentActive.id, {
-									totalTime: differenceInMilliseconds(new Date(), currentActive.startedAt),
+									totalTime: differenceInMilliseconds(
+										new Date(),
+										currentActive.startedAt
+									),
 									itemsCompleted: currentActive.progress.currentIndex,
 									accuracy: 0, // Would be calculated by the specific session store
 								});
@@ -192,13 +223,19 @@ const useSessionManager = create<SessionManagerStore>()(
 							return sessionId;
 						} catch (error) {
 							set({
-								error: error instanceof Error ? error.message : "Failed to start session",
+								error:
+									error instanceof Error
+										? error.message
+										: "Failed to start session",
 							});
 							throw error;
 						}
 					},
 
-					endSession: async (sessionId: string, finalStats: SessionHistoryEntry["finalStats"]) => {
+					endSession: async (
+						sessionId: string,
+						finalStats: SessionHistoryEntry["finalStats"]
+					) => {
 						const state = get();
 						const activeSession = state.activeSession;
 
@@ -240,7 +277,10 @@ const useSessionManager = create<SessionManagerStore>()(
 							await get().actions.generateRecommendations();
 						} catch (error) {
 							set({
-								error: error instanceof Error ? error.message : "Failed to end session",
+								error:
+									error instanceof Error
+										? error.message
+										: "Failed to end session",
 							});
 						}
 					},
@@ -300,13 +340,16 @@ const useSessionManager = create<SessionManagerStore>()(
 						let history = state.sessionHistory;
 
 						if (filter?.type) {
-							history = history.filter((session) => session.type === filter.type);
+							history = history.filter(
+								(session) => session.type === filter.type
+							);
 						}
 
 						if (filter?.dateRange) {
 							const { start, end } = filter.dateRange;
 							history = history.filter(
-								(session) => session.startedAt >= start && session.startedAt <= end
+								(session) =>
+									session.startedAt >= start && session.startedAt <= end
 							);
 						}
 
@@ -315,7 +358,11 @@ const useSessionManager = create<SessionManagerStore>()(
 
 					getSessionById: (sessionId: string) => {
 						const state = get();
-						return state.sessionHistory.find((session) => session.id === sessionId) || null;
+						return (
+							state.sessionHistory.find(
+								(session) => session.id === sessionId
+							) || null
+						);
 					},
 
 					deleteSession: (sessionId: string) => {
@@ -353,7 +400,8 @@ const useSessionManager = create<SessionManagerStore>()(
 								(sum, session) => sum + session.finalStats.totalTime,
 								0
 							);
-							const averageSessionLength = totalTimeSpent / totalSessions / (1000 * 60); // minutes
+							const averageSessionLength =
+								totalTimeSpent / totalSessions / (1000 * 60); // minutes
 
 							// Session type breakdown
 							const sessionTypeBreakdown = {
@@ -383,9 +431,12 @@ const useSessionManager = create<SessionManagerStore>()(
 							for (const session of history) {
 								const type = session.type;
 								sessionTypeBreakdown[type].count++;
-								sessionTypeBreakdown[type].averageAccuracy += session.finalStats.accuracy;
-								sessionTypeBreakdown[type].averageScore += session.finalStats.score || 0;
-								sessionTypeBreakdown[type].totalTime += session.finalStats.totalTime;
+								sessionTypeBreakdown[type].averageAccuracy +=
+									session.finalStats.accuracy;
+								sessionTypeBreakdown[type].averageScore +=
+									session.finalStats.score || 0;
+								sessionTypeBreakdown[type].totalTime +=
+									session.finalStats.totalTime;
 							}
 
 							// Calculate averages
@@ -399,7 +450,9 @@ const useSessionManager = create<SessionManagerStore>()(
 							}
 
 							// Learning patterns
-							const sessionTimes = history.map((session) => getTimeOfDay(session.startedAt));
+							const sessionTimes = history.map((session) =>
+								getTimeOfDay(session.startedAt)
+							);
 							const timeFrequency = sessionTimes.reduce(
 								(acc, time) => {
 									acc[time] = (acc[time] || 0) + 1;
@@ -408,17 +461,21 @@ const useSessionManager = create<SessionManagerStore>()(
 								{} as Record<number, number>
 							);
 
-							const mostProductiveTimeOfDay = Object.entries(timeFrequency).sort(
-								([, a], [, b]) => b - a
-							)[0]?.[0];
+							const mostProductiveTimeOfDay = Object.entries(
+								timeFrequency
+							).sort(([, a], [, b]) => b - a)[0]?.[0];
 
 							const sessionLengths = history
 								.filter((session) => session.completedAt)
 								.map((session) =>
-									calculateSessionLength(session.startedAt, session.completedAt as Date)
+									calculateSessionLength(
+										session.startedAt,
+										session.completedAt as Date
+									)
 								);
 							const preferredSessionLength =
-								sessionLengths.reduce((sum, length) => sum + length, 0) / sessionLengths.length;
+								sessionLengths.reduce((sum, length) => sum + length, 0) /
+								sessionLengths.length;
 
 							// Calculate improvement trend (simple linear regression on accuracy)
 							const accuracies = history.map((session, index) => ({
@@ -429,12 +486,25 @@ const useSessionManager = create<SessionManagerStore>()(
 
 							if (accuracies.length > 1) {
 								const n = accuracies.length;
-								const sumX = accuracies.reduce((sum, point) => sum + point.x, 0);
-								const sumY = accuracies.reduce((sum, point) => sum + point.y, 0);
-								const sumXY = accuracies.reduce((sum, point) => sum + point.x * point.y, 0);
-								const sumXX = accuracies.reduce((sum, point) => sum + point.x * point.x, 0);
+								const sumX = accuracies.reduce(
+									(sum, point) => sum + point.x,
+									0
+								);
+								const sumY = accuracies.reduce(
+									(sum, point) => sum + point.y,
+									0
+								);
+								const sumXY = accuracies.reduce(
+									(sum, point) => sum + point.x * point.y,
+									0
+								);
+								const sumXX = accuracies.reduce(
+									(sum, point) => sum + point.x * point.x,
+									0
+								);
 
-								improvementTrend = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+								improvementTrend =
+									(n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
 							}
 
 							// Goals and streaks
@@ -453,14 +523,17 @@ const useSessionManager = create<SessionManagerStore>()(
 								averageSessionLength,
 								sessionTypeBreakdown,
 								learningPatterns: {
-									mostProductiveTimeOfDay: Number.parseInt(mostProductiveTimeOfDay) || 14,
-									preferredSessionLength: Math.round(preferredSessionLength) || 20,
+									mostProductiveTimeOfDay:
+										Number.parseInt(mostProductiveTimeOfDay) || 14,
+									preferredSessionLength:
+										Math.round(preferredSessionLength) || 20,
 									strongestTopics: [], // Would be calculated from session results
 									weakestTopics: [], // Would be calculated from session results
 									improvementTrend,
 								},
 								goals: {
-									dailySessionTarget: state.preferences.reminderSettings.dailyGoal,
+									dailySessionTarget:
+										state.preferences.reminderSettings.dailyGoal,
 									currentStreak,
 									longestStreak,
 									weeklyProgress,
@@ -475,7 +548,10 @@ const useSessionManager = create<SessionManagerStore>()(
 							return analytics;
 						} catch (error) {
 							set({
-								error: error instanceof Error ? error.message : "Failed to calculate analytics",
+								error:
+									error instanceof Error
+										? error.message
+										: "Failed to calculate analytics",
 								isLoadingAnalytics: false,
 							});
 							throw error;
@@ -488,7 +564,9 @@ const useSessionManager = create<SessionManagerStore>()(
 							set({ isGeneratingRecommendations: true });
 
 							const state = get();
-							const recommendations = await generateSmartRecommendations(state.analytics);
+							const recommendations = await generateSmartRecommendations(
+								state.analytics
+							);
 
 							set({
 								recommendations,
@@ -499,7 +577,9 @@ const useSessionManager = create<SessionManagerStore>()(
 						} catch (error) {
 							set({
 								error:
-									error instanceof Error ? error.message : "Failed to generate recommendations",
+									error instanceof Error
+										? error.message
+										: "Failed to generate recommendations",
 								isGeneratingRecommendations: false,
 							});
 							return [];
@@ -512,7 +592,10 @@ const useSessionManager = create<SessionManagerStore>()(
 							const state = get();
 
 							// Check if there's an active session that wasn't properly completed
-							if (state.activeSession && state.activeSession.status !== "completed") {
+							if (
+								state.activeSession &&
+								state.activeSession.status !== "completed"
+							) {
 								// Session exists and is recoverable
 								return state.activeSession;
 							}
@@ -521,7 +604,10 @@ const useSessionManager = create<SessionManagerStore>()(
 							return null;
 						} catch (error) {
 							set({
-								error: error instanceof Error ? error.message : "Failed to recover session",
+								error:
+									error instanceof Error
+										? error.message
+										: "Failed to recover session",
 							});
 							return null;
 						}
@@ -536,11 +622,13 @@ const useSessionManager = create<SessionManagerStore>()(
 							set({ lastSyncedAt: now });
 
 							if (process.env.NODE_ENV === "development") {
-								console.log("Session manager synced with server at", now);
 							}
 						} catch (error) {
 							set({
-								error: error instanceof Error ? error.message : "Failed to sync with server",
+								error:
+									error instanceof Error
+										? error.message
+										: "Failed to sync with server",
 							});
 						}
 					},
@@ -554,11 +642,13 @@ const useSessionManager = create<SessionManagerStore>()(
 							// Individual stores would implement their own sync methods
 
 							if (process.env.NODE_ENV === "development") {
-								console.log("All stores synchronized");
 							}
 						} catch (error) {
 							set({
-								error: error instanceof Error ? error.message : "Failed to sync all stores",
+								error:
+									error instanceof Error
+										? error.message
+										: "Failed to sync all stores",
 							});
 						}
 					},
@@ -621,12 +711,14 @@ const useSessionManager = create<SessionManagerStore>()(
 
 						const todaySessions = state.sessionHistory.filter(
 							(session) =>
-								session.startedAt.toDateString() === todayStr && session.status === "completed"
+								session.startedAt.toDateString() === todayStr &&
+								session.status === "completed"
 						);
 
 						const completed = todaySessions.length;
 						const target = state.preferences.reminderSettings.dailyGoal;
-						const percentage = target > 0 ? Math.min((completed / target) * 100, 100) : 0;
+						const percentage =
+							target > 0 ? Math.min((completed / target) * 100, 100) : 0;
 
 						return { completed, target, percentage };
 					},
@@ -665,7 +757,10 @@ const useSessionManager = create<SessionManagerStore>()(
 );
 
 // Helper functions for streak calculations
-function calculateCurrentStreak(history: SessionHistoryEntry[], today: Date): number {
+function calculateCurrentStreak(
+	history: SessionHistoryEntry[],
+	today: Date
+): number {
 	const sortedSessions = history
 		.filter((session) => session.status === "completed")
 		.sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime());
@@ -705,7 +800,8 @@ function calculateLongestStreak(history: SessionHistoryEntry[]): number {
 		const sessionDate = new Date(completedSessions[i].startedAt);
 		sessionDate.setHours(0, 0, 0, 0);
 
-		const dayDifference = (sessionDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24);
+		const dayDifference =
+			(sessionDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24);
 
 		if (dayDifference === 1) {
 			currentStreak++;
@@ -741,7 +837,9 @@ function calculateWeeklyProgress(
 	);
 
 	const targetSessions = dailyGoal * 7;
-	return targetSessions > 0 ? Math.min((weekSessions.length / targetSessions) * 100, 100) : 0;
+	return targetSessions > 0
+		? Math.min((weekSessions.length / targetSessions) * 100, 100)
+		: 0;
 }
 
 export { useSessionManager };

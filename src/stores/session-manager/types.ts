@@ -137,8 +137,14 @@ export interface SessionManagerState {
 // Session manager actions
 export interface SessionManagerActions {
 	// Session coordination
-	startSession: (type: SessionType, config: BaseSessionConfig) => Promise<string>;
-	endSession: (sessionId: string, finalStats: SessionHistoryEntry["finalStats"]) => Promise<void>;
+	startSession: (
+		type: SessionType,
+		config: BaseSessionConfig
+	) => Promise<string>;
+	endSession: (
+		sessionId: string,
+		finalStats: SessionHistoryEntry["finalStats"]
+	) => Promise<void>;
 	pauseSession: (sessionId: string) => void;
 	resumeSession: (sessionId: string) => void;
 	switchSessionType: (newType: SessionType) => Promise<void>;
@@ -163,11 +169,16 @@ export interface SessionManagerActions {
 	syncAllStores: () => Promise<void>;
 
 	// Preferences
-	updatePreferences: (preferences: Partial<SessionManagerState["preferences"]>) => void;
+	updatePreferences: (
+		preferences: Partial<SessionManagerState["preferences"]>
+	) => void;
 	getPreferences: () => SessionManagerState["preferences"];
 
 	// Progress tracking
-	updateSessionProgress: (sessionId: string, progress: ActiveSessionInfo["progress"]) => void;
+	updateSessionProgress: (
+		sessionId: string,
+		progress: ActiveSessionInfo["progress"]
+	) => void;
 	getActiveSessionInfo: () => ActiveSessionInfo | null;
 
 	// Goal management

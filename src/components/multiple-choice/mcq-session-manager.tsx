@@ -1,9 +1,9 @@
 "use client";
 
 import { SessionProgressIndicator } from "@/components/session";
-import type { McqConfig } from "@/lib/stores/mcq-session/types";
-import { useMcqSession } from "@/lib/stores/mcq-session/use-mcq-session";
-import { useSessionManager } from "@/lib/stores/session-manager/use-session-manager";
+import type { McqConfig } from "@/stores/mcq-session/types";
+import { useMcqSession } from "@/stores/mcq-session/use-mcq-session";
+import { useSessionManager } from "@/stores/session-manager/use-session-manager";
 import { differenceInMinutes } from "date-fns";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -72,7 +72,10 @@ export function McqSessionManager({ courses }: McqSessionManagerProps) {
 		if (mcqSession.status !== "active") return;
 		submitAnswer(questionId, selectedAnswer, timeSpent);
 		// The store now handles correctness check, but moving to next is a UI concern here
-		if (mcqSession.progress.currentIndex < mcqSession.progress.totalQuestions - 1) {
+		if (
+			mcqSession.progress.currentIndex <
+			mcqSession.progress.totalQuestions - 1
+		) {
 			setTimeout(() => moveToNextQuestion(), 1000); // give user time to see feedback
 		} else {
 			setTimeout(() => mcqSession.actions.endSession(), 1000);
@@ -83,7 +86,8 @@ export function McqSessionManager({ courses }: McqSessionManagerProps) {
 	const handleEndSession = async () => {
 		if (sessionManager.activeSession) {
 			const finalStats = {
-				totalTime: Date.now() - sessionManager.activeSession.startedAt.getTime(),
+				totalTime:
+					Date.now() - sessionManager.activeSession.startedAt.getTime(),
 				itemsCompleted: mcqSession.progress.currentIndex + 1,
 				accuracy: mcqSession.performance.accuracy,
 			};
@@ -148,7 +152,8 @@ export function McqSessionManager({ courses }: McqSessionManagerProps) {
 			? differenceInMinutes(new Date(), sessionManager.activeSession.startedAt)
 			: 0;
 		const totalAnswered = progress.correctAnswers + progress.incorrectAnswers;
-		const avgTime = totalAnswered > 0 ? progress.timeSpent / totalAnswered / 1000 : 0;
+		const avgTime =
+			totalAnswered > 0 ? progress.timeSpent / totalAnswered / 1000 : 0;
 
 		const resultsData = {
 			score: mcqSession.performance.accuracy,
@@ -170,7 +175,9 @@ export function McqSessionManager({ courses }: McqSessionManagerProps) {
 			}),
 		};
 
-		return <McqResultsView results={resultsData} onRestart={handleEndSession} />;
+		return (
+			<McqResultsView results={resultsData} onRestart={handleEndSession} />
+		);
 	}
 
 	return null;

@@ -1,6 +1,6 @@
 "use client";
 
-import type { PlanId } from "@/lib/plans/types";
+import type { PlanId } from "@/lib/database/types";
 import { useRouter } from "next/navigation";
 import { useCallback } from "react";
 import { create } from "zustand";
@@ -124,7 +124,9 @@ export const useOnboardingStore = create<OnboardingStore>()(
 						slug: "completion",
 					},
 				};
-				return stepInfo[step] || { title: "Unknown Step", slug: "welcome-profile" };
+				return (
+					stepInfo[step] || { title: "Unknown Step", slug: "welcome-profile" }
+				);
 			},
 
 			markStepCompleted: (step) => {
@@ -186,5 +188,7 @@ export const useOnboardingNavigation = () => {
 };
 
 export const useOnboardingProgress = () => {
-	return useOnboardingStore((state) => (state.currentStep / state.totalSteps) * 100);
+	return useOnboardingStore(
+		(state) => (state.currentStep / state.totalSteps) * 100
+	);
 };

@@ -15,14 +15,17 @@ import {
 	DialogTrigger,
 } from "@/components/ui/dialog";
 import { createCourse } from "@/lib/actions/courses";
-import type { CourseCreationData } from "@/lib/validations/courses";
+import type { CourseCreationData } from "@/lib/validation/courses";
 
 interface CreateCourseDialogProps {
 	isOpen: boolean;
 	onOpenChange: (isOpen: boolean) => void;
 }
 
-export function CreateCourseDialog({ isOpen, onOpenChange }: CreateCourseDialogProps) {
+export function CreateCourseDialog({
+	isOpen,
+	onOpenChange,
+}: CreateCourseDialogProps) {
 	const queryClient = useQueryClient();
 	const [isPending, startTransition] = useTransition();
 
@@ -48,10 +51,14 @@ export function CreateCourseDialog({ isOpen, onOpenChange }: CreateCourseDialogP
 				<DialogHeader>
 					<DialogTitle>Create a New Course</DialogTitle>
 					<DialogDescription>
-						Set up a new course to organize your study materials. Click create when you're done.
+						Set up a new course to organize your study materials. Click create
+						when you're done.
 					</DialogDescription>
 				</DialogHeader>
-				<CourseCreationForm onSubmit={handleCreateCourse} isPending={isPending} />
+				<CourseCreationForm
+					onSubmit={handleCreateCourse}
+					isPending={isPending}
+				/>
 			</DialogContent>
 		</Dialog>
 	);

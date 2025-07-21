@@ -69,7 +69,11 @@ export function ActivityChart() {
 							tickFormatter={(value) => `${value}`}
 							domain={[0, 10]}
 						/>
-						<Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+						<Bar
+							dataKey="total"
+							fill="hsl(var(--primary))"
+							radius={[4, 4, 0, 0]}
+						/>
 					</BarChart>
 				</ResponsiveContainer>
 			</CardContent>

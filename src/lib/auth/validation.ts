@@ -11,8 +11,14 @@ export const magicLinkSchema = z.object({
 });
 
 export const onboardingProfileSchema = z.object({
-	firstName: z.string().min(2, "First name must be at least 2 characters").optional(),
-	lastName: z.string().min(2, "Last name must be at least 2 characters").optional(),
+	firstName: z
+		.string()
+		.min(2, "First name must be at least 2 characters")
+		.optional(),
+	lastName: z
+		.string()
+		.min(2, "Last name must be at least 2 characters")
+		.optional(),
 	country: z.string().min(1, "Please select your country").optional(),
 });
 
@@ -27,4 +33,6 @@ export type OnboardingProfileData = z.infer<typeof onboardingProfileSchema>;
 export type TermsData = z.infer<typeof termsSchema>;
 
 export type SignInFormData = MagicLinkFormData;
-export type SignUpFormData = MagicLinkFormData & OnboardingProfileData & TermsData;
+export type SignUpFormData = MagicLinkFormData &
+	OnboardingProfileData &
+	TermsData;

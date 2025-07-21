@@ -3,13 +3,26 @@
 
 export type DifficultyLevel = "easy" | "medium" | "hard" | "mixed";
 
-export type FocusType = "tailored-for-me" | "weak-areas" | "recent-content" | "comprehensive";
+export type FocusType =
+	| "tailored-for-me"
+	| "weak-areas"
+	| "recent-content"
+	| "comprehensive";
 
-export type SessionStatus = "idle" | "active" | "paused" | "completed" | "failed";
+export type SessionStatus =
+	| "idle"
+	| "active"
+	| "paused"
+	| "completed"
+	| "failed";
 
 export type PracticeMode = "practice" | "exam";
 
-export type EvaluationStatus = "pending" | "evaluating" | "completed" | "failed";
+export type EvaluationStatus =
+	| "pending"
+	| "evaluating"
+	| "completed"
+	| "failed";
 
 // Open question-specific configuration
 export interface OpenQuestionConfig {
@@ -150,7 +163,11 @@ export interface OpenQuestionSessionActions {
 
 	// Answer management
 	updateCurrentAnswer: (answer: string) => void;
-	submitAnswer: (questionId: string, answer: string, timeSpent: number) => Promise<void>;
+	submitAnswer: (
+		questionId: string,
+		answer: string,
+		timeSpent: number
+	) => Promise<void>;
 	editAnswer: (questionId: string, newAnswer: string) => Promise<void>;
 	skipQuestion: () => void;
 

@@ -73,7 +73,9 @@ const useCuecardSession = create<CuecardSessionStore>()(
 							const sessionCards = filteredCards.slice(0, config.cardCount);
 
 							if (sessionCards.length === 0) {
-								throw new Error("No cards found matching the specified criteria");
+								throw new Error(
+									"No cards found matching the specified criteria"
+								);
 							}
 
 							// Initialize progress
@@ -111,12 +113,16 @@ const useCuecardSession = create<CuecardSessionStore>()(
 								cards: sessionCards,
 								progress,
 								performance,
-								currentCard: sessionCards.find((c) => c.id === reviewQueue[0]) || null,
+								currentCard:
+									sessionCards.find((c) => c.id === reviewQueue[0]) || null,
 								isLoading: false,
 							});
 						} catch (error) {
 							set({
-								error: error instanceof Error ? error.message : "Failed to start session",
+								error:
+									error instanceof Error
+										? error.message
+										: "Failed to start session",
 								isLoading: false,
 								status: "failed",
 							});
@@ -149,7 +155,10 @@ const useCuecardSession = create<CuecardSessionStore>()(
 							});
 						} catch (error) {
 							set({
-								error: error instanceof Error ? error.message : "Failed to end session",
+								error:
+									error instanceof Error
+										? error.message
+										: "Failed to end session",
 								status: "failed",
 							});
 						}
@@ -213,14 +222,24 @@ const useCuecardSession = create<CuecardSessionStore>()(
 					},
 
 					// Feedback and learning
-					submitFeedback: (cardId: string, feedback: CuecardFeedback, timeSpent: number) => {
+					submitFeedback: (
+						cardId: string,
+						feedback: CuecardFeedback,
+						timeSpent: number
+					) => {
 						const state = get();
-						const cardIndex = state.cards.findIndex((card) => card.id === cardId);
+						const cardIndex = state.cards.findIndex(
+							(card) => card.id === cardId
+						);
 
 						if (cardIndex === -1) return;
 
 						// Update card with spaced repetition algorithm
-						const updatedCard = updateCardWithFeedback(state.cards[cardIndex], feedback, timeSpent);
+						const updatedCard = updateCardWithFeedback(
+							state.cards[cardIndex],
+							feedback,
+							timeSpent
+						);
 
 						// Update cards array
 						const updatedCards = [...state.cards];
@@ -232,16 +251,24 @@ const useCuecardSession = create<CuecardSessionStore>()(
 
 						const updatedProgress: CuecardProgress = {
 							...state.progress,
-							correctAnswers: state.progress.correctAnswers + (isCorrect ? 1 : 0),
+							correctAnswers:
+								state.progress.correctAnswers + (isCorrect ? 1 : 0),
 							incorrectAnswers:
-								state.progress.incorrectAnswers + (!isCorrect && !isPartial ? 1 : 0),
-							knewSomeAnswers: state.progress.knewSomeAnswers + (isPartial ? 1 : 0),
+								state.progress.incorrectAnswers +
+								(!isCorrect && !isPartial ? 1 : 0),
+							knewSomeAnswers:
+								state.progress.knewSomeAnswers + (isPartial ? 1 : 0),
 							timeSpent: state.progress.timeSpent + timeSpent,
 							lastUpdated: new Date(),
 							averageTimePerCard:
-								(state.progress.timeSpent + timeSpent) / (state.progress.currentIndex + 1),
-							masteredCards: identifyMasteredCards(updatedCards).map((card) => card.id),
-							strugglingCards: identifyStrugglingCards(updatedCards).map((card) => card.id),
+								(state.progress.timeSpent + timeSpent) /
+								(state.progress.currentIndex + 1),
+							masteredCards: identifyMasteredCards(updatedCards).map(
+								(card) => card.id
+							),
+							strugglingCards: identifyStrugglingCards(updatedCards).map(
+								(card) => card.id
+							),
 						};
 
 						set({
@@ -258,9 +285,12 @@ const useCuecardSession = create<CuecardSessionStore>()(
 						const state = get();
 						const cardsReviewed = state.progress.currentIndex;
 						const cardsRemaining = state.progress.totalCards - cardsReviewed;
-						const totalAttempts = state.progress.correctAnswers + state.progress.incorrectAnswers;
+						const totalAttempts =
+							state.progress.correctAnswers + state.progress.incorrectAnswers;
 						const accuracy =
-							totalAttempts > 0 ? (state.progress.correctAnswers / totalAttempts) * 100 : 0;
+							totalAttempts > 0
+								? (state.progress.correctAnswers / totalAttempts) * 100
+								: 0;
 
 						return {
 							totalTime: state.progress.timeSpent,

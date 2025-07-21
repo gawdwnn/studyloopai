@@ -1,9 +1,12 @@
 "use client";
 
 import { SessionProgressIndicator } from "@/components/session";
-import type { CuecardConfig, CuecardFeedback } from "@/lib/stores/cuecard-session/types";
-import { useCuecardSession } from "@/lib/stores/cuecard-session/use-cuecard-session";
-import { useSessionManager } from "@/lib/stores/session-manager/use-session-manager";
+import type {
+	CuecardConfig,
+	CuecardFeedback,
+} from "@/stores/cuecard-session/types";
+import { useCuecardSession } from "@/stores/cuecard-session/use-cuecard-session";
+import { useSessionManager } from "@/stores/session-manager/use-session-manager";
 import { differenceInMinutes } from "date-fns";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -73,7 +76,8 @@ export function CuecardSessionManager({ courses }: CuecardSessionManagerProps) {
 	const handleEndSession = async () => {
 		if (sessionManager.activeSession) {
 			const finalStats = {
-				totalTime: Date.now() - sessionManager.activeSession.startedAt.getTime(),
+				totalTime:
+					Date.now() - sessionManager.activeSession.startedAt.getTime(),
 				itemsCompleted: cuecardSession.progress.currentIndex + 1,
 				accuracy: cuecardSession.performance.accuracy,
 			};
@@ -139,10 +143,14 @@ export function CuecardSessionManager({ courses }: CuecardSessionManagerProps) {
 			? differenceInMinutes(new Date(), sessionManager.activeSession.startedAt)
 			: 0;
 		const totalResponses =
-			progress.correctAnswers + progress.incorrectAnswers + progress.knewSomeAnswers;
+			progress.correctAnswers +
+			progress.incorrectAnswers +
+			progress.knewSomeAnswers;
 		const avgTime =
 			totalResponses > 0 && sessionManager.activeSession
-				? (Date.now() - sessionManager.activeSession.startedAt.getTime()) / totalResponses / 1000
+				? (Date.now() - sessionManager.activeSession.startedAt.getTime()) /
+					totalResponses /
+					1000
 				: 0;
 
 		const resultsData = {
@@ -155,7 +163,12 @@ export function CuecardSessionManager({ courses }: CuecardSessionManagerProps) {
 			weekInfo: cuecardSession.cards[0]?.source || "Various Materials",
 		};
 
-		return <CuecardResultsView results={resultsData} onNewSession={handleEndSession} />;
+		return (
+			<CuecardResultsView
+				results={resultsData}
+				onNewSession={handleEndSession}
+			/>
+		);
 	}
 
 	return null; // Or a loading skeleton

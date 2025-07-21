@@ -84,7 +84,9 @@ function extractKeywordsFromSample(sampleAnswer: string): string[] {
 		"its",
 	]);
 
-	return words.filter((word) => word.length > 4 && !commonWords.has(word)).slice(0, 10); // Top 10 keywords
+	return words
+		.filter((word) => word.length > 4 && !commonWords.has(word))
+		.slice(0, 10); // Top 10 keywords
 }
 
 function shuffleArray<T>(array: T[]): T[] {
@@ -105,7 +107,9 @@ function filterQuestionsByConfig(
 	// Filter by weeks
 	if (config.weeks.length > 0 && !config.weeks.includes("all-weeks")) {
 		filtered = filtered.filter((q) =>
-			config.weeks.some((week) => q.week.toLowerCase().includes(week.toLowerCase()))
+			config.weeks.some((week) =>
+				q.week.toLowerCase().includes(week.toLowerCase())
+			)
 		);
 	}
 
@@ -129,8 +133,10 @@ function filterQuestionsByConfig(
 		case "tailored-for-me":
 			// Mix of challenging questions and those needing review
 			filtered.sort((a, b) => {
-				const aDifficultyScore = a.difficulty === "hard" ? 3 : a.difficulty === "medium" ? 2 : 1;
-				const bDifficultyScore = b.difficulty === "hard" ? 3 : b.difficulty === "medium" ? 2 : 1;
+				const aDifficultyScore =
+					a.difficulty === "hard" ? 3 : a.difficulty === "medium" ? 2 : 1;
+				const bDifficultyScore =
+					b.difficulty === "hard" ? 3 : b.difficulty === "medium" ? 2 : 1;
 
 				const aScore = aDifficultyScore + (1 - a.averageScore) * 2;
 				const bScore = bDifficultyScore + (1 - b.averageScore) * 2;
@@ -160,7 +166,9 @@ async function simulateAiEvaluation(
 	improvementSuggestions: string[];
 }> {
 	// Simulate API delay
-	await new Promise((resolve) => setTimeout(resolve, 1000 + Math.random() * 2000));
+	await new Promise((resolve) =>
+		setTimeout(resolve, 1000 + Math.random() * 2000)
+	);
 
 	const userWords = userAnswer.toLowerCase().split(/\W+/);
 	const keywordMatches =
@@ -189,7 +197,9 @@ async function simulateAiEvaluation(
 		);
 	}
 	if (lengthScore < 0.5) {
-		improvementSuggestions.push("Try to provide a more detailed explanation with examples.");
+		improvementSuggestions.push(
+			"Try to provide a more detailed explanation with examples."
+		);
 	}
 
 	return { score, keywordMatches, feedback, improvementSuggestions };
@@ -208,13 +218,20 @@ const useOpenQuestionSession = create<OpenQuestionSessionStore>()(
 							set({ isLoading: true, error: null });
 
 							const sessionId = `openq_${Date.now()}`;
-							const allQuestions = convertToEnhancedOpenQuestions(SAMPLE_OPEN_QUESTIONS);
+							const allQuestions = convertToEnhancedOpenQuestions(
+								SAMPLE_OPEN_QUESTIONS
+							);
 
 							// Filter questions based on config
-							const sessionQuestions = filterQuestionsByConfig(allQuestions, config);
+							const sessionQuestions = filterQuestionsByConfig(
+								allQuestions,
+								config
+							);
 
 							if (sessionQuestions.length === 0) {
-								throw new Error("No questions found matching the specified criteria");
+								throw new Error(
+									"No questions found matching the specified criteria"
+								);
 							}
 
 							// Initialize progress
@@ -231,7 +248,9 @@ const useOpenQuestionSession = create<OpenQuestionSessionStore>()(
 								averageScore: 0,
 								answers: [],
 								flaggedQuestions: [],
-								remainingTime: config.timeLimit ? config.timeLimit * 60 * 1000 : undefined,
+								remainingTime: config.timeLimit
+									? config.timeLimit * 60 * 1000
+									: undefined,
 							};
 
 							// Initialize performance
@@ -276,7 +295,10 @@ const useOpenQuestionSession = create<OpenQuestionSessionStore>()(
 							// Timer functionality would be implemented later for exam mode
 						} catch (error) {
 							set({
-								error: error instanceof Error ? error.message : "Failed to start session",
+								error:
+									error instanceof Error
+										? error.message
+										: "Failed to start session",
 								isLoading: false,
 								status: "failed",
 							});
@@ -315,7 +337,10 @@ const useOpenQuestionSession = create<OpenQuestionSessionStore>()(
 							});
 						} catch (error) {
 							set({
-								error: error instanceof Error ? error.message : "Failed to end session",
+								error:
+									error instanceof Error
+										? error.message
+										: "Failed to end session",
 								status: "failed",
 							});
 						}
@@ -357,7 +382,9 @@ const useOpenQuestionSession = create<OpenQuestionSessionStore>()(
 						const prevQuestion = state.questions[prevIndex];
 
 						// Load previous answer if it exists
-						const prevAnswer = state.progress.answers.find((a) => a.questionId === prevQuestion.id);
+						const prevAnswer = state.progress.answers.find(
+							(a) => a.questionId === prevQuestion.id
+						);
 
 						set({
 							progress: {
@@ -372,7 +399,10 @@ const useOpenQuestionSession = create<OpenQuestionSessionStore>()(
 
 					jumpToQuestion: (index: number) => {
 						const state = get();
-						const clampedIndex = Math.max(0, Math.min(index, state.questions.length - 1));
+						const clampedIndex = Math.max(
+							0,
+							Math.min(index, state.questions.length - 1)
+						);
 						const question = state.questions[clampedIndex];
 
 						if (question) {
@@ -395,7 +425,9 @@ const useOpenQuestionSession = create<OpenQuestionSessionStore>()(
 
 					flagQuestion: (questionId: string) => {
 						const state = get();
-						const flaggedQuestions = [...new Set([...state.progress.flaggedQuestions, questionId])];
+						const flaggedQuestions = [
+							...new Set([...state.progress.flaggedQuestions, questionId]),
+						];
 
 						set({
 							progress: {
@@ -426,7 +458,11 @@ const useOpenQuestionSession = create<OpenQuestionSessionStore>()(
 						set({ currentAnswer: answer });
 					},
 
-					submitAnswer: async (questionId: string, answer: string, timeSpent: number) => {
+					submitAnswer: async (
+						questionId: string,
+						answer: string,
+						timeSpent: number
+					) => {
 						const state = get();
 						const question = state.questions.find((q) => q.id === questionId);
 
@@ -453,11 +489,15 @@ const useOpenQuestionSession = create<OpenQuestionSessionStore>()(
 								answerObj.evaluationStatus = "evaluating";
 
 								try {
-									const evaluation = await simulateAiEvaluation(question, answer);
+									const evaluation = await simulateAiEvaluation(
+										question,
+										answer
+									);
 									answerObj.aiScore = evaluation.score;
 									answerObj.keywordMatches = evaluation.keywordMatches;
 									answerObj.feedback = evaluation.feedback;
-									answerObj.improvementSuggestions = evaluation.improvementSuggestions;
+									answerObj.improvementSuggestions =
+										evaluation.improvementSuggestions;
 									answerObj.evaluationStatus = "completed";
 								} catch {
 									answerObj.evaluationStatus = "failed";
@@ -476,10 +516,12 @@ const useOpenQuestionSession = create<OpenQuestionSessionStore>()(
 											timesSeen: q.timesSeen + 1,
 											timesAnswered: q.timesAnswered + (answer.trim() ? 1 : 0),
 											averageScore:
-												(q.averageScore * q.timesAnswered + (answerObj.aiScore || 0)) /
+												(q.averageScore * q.timesAnswered +
+													(answerObj.aiScore || 0)) /
 												(q.timesAnswered + 1),
 											averageWordCount:
-												(q.averageWordCount * q.timesAnswered + answerObj.wordCount) /
+												(q.averageWordCount * q.timesAnswered +
+													answerObj.wordCount) /
 												(q.timesAnswered + 1),
 											averageResponseTime:
 												(q.averageResponseTime * q.timesAnswered + timeSpent) /
@@ -501,10 +543,20 @@ const useOpenQuestionSession = create<OpenQuestionSessionStore>()(
 							}
 
 							// Calculate progress metrics
-							const answeredCount = updatedAnswers.filter((a) => a.userAnswer.trim()).length;
-							const skippedCount = updatedAnswers.filter((a) => !a.userAnswer.trim()).length;
-							const totalWordCount = updatedAnswers.reduce((sum, a) => sum + a.wordCount, 0);
-							const totalScore = updatedAnswers.reduce((sum, a) => sum + (a.aiScore || 0), 0);
+							const answeredCount = updatedAnswers.filter((a) =>
+								a.userAnswer.trim()
+							).length;
+							const skippedCount = updatedAnswers.filter(
+								(a) => !a.userAnswer.trim()
+							).length;
+							const totalWordCount = updatedAnswers.reduce(
+								(sum, a) => sum + a.wordCount,
+								0
+							);
+							const totalScore = updatedAnswers.reduce(
+								(sum, a) => sum + (a.aiScore || 0),
+								0
+							);
 
 							const updatedProgress: OpenQuestionProgress = {
 								...state.progress,
@@ -513,9 +565,13 @@ const useOpenQuestionSession = create<OpenQuestionSessionStore>()(
 								timeSpent: state.progress.timeSpent + timeSpent,
 								lastUpdated: new Date(),
 								averageTimePerQuestion:
-									answeredCount > 0 ? (state.progress.timeSpent + timeSpent) / answeredCount : 0,
-								averageWordCount: answeredCount > 0 ? totalWordCount / answeredCount : 0,
-								averageScore: answeredCount > 0 ? totalScore / answeredCount : 0,
+									answeredCount > 0
+										? (state.progress.timeSpent + timeSpent) / answeredCount
+										: 0,
+								averageWordCount:
+									answeredCount > 0 ? totalWordCount / answeredCount : 0,
+								averageScore:
+									answeredCount > 0 ? totalScore / answeredCount : 0,
 								answers: updatedAnswers,
 							};
 
@@ -526,7 +582,10 @@ const useOpenQuestionSession = create<OpenQuestionSessionStore>()(
 							});
 						} catch (error) {
 							set({
-								error: error instanceof Error ? error.message : "Failed to submit answer",
+								error:
+									error instanceof Error
+										? error.message
+										: "Failed to submit answer",
 								isEvaluating: false,
 							});
 						}
@@ -558,11 +617,15 @@ const useOpenQuestionSession = create<OpenQuestionSessionStore>()(
 
 								// Re-evaluate if AI evaluation is enabled
 								if (state.config.enableAiEvaluation && newAnswer.trim()) {
-									const evaluation = await simulateAiEvaluation(question, newAnswer);
+									const evaluation = await simulateAiEvaluation(
+										question,
+										newAnswer
+									);
 									updatedAnswer.aiScore = evaluation.score;
 									updatedAnswer.keywordMatches = evaluation.keywordMatches;
 									updatedAnswer.feedback = evaluation.feedback;
-									updatedAnswer.improvementSuggestions = evaluation.improvementSuggestions;
+									updatedAnswer.improvementSuggestions =
+										evaluation.improvementSuggestions;
 									updatedAnswer.evaluationStatus = "completed";
 								} else {
 									updatedAnswer.evaluationStatus = "completed";
@@ -573,23 +636,36 @@ const useOpenQuestionSession = create<OpenQuestionSessionStore>()(
 								updatedAnswers[answerIndex] = updatedAnswer;
 
 								// Recalculate progress metrics
-								const answeredCount = updatedAnswers.filter((a) => a.userAnswer.trim()).length;
-								const totalWordCount = updatedAnswers.reduce((sum, a) => sum + a.wordCount, 0);
-								const totalScore = updatedAnswers.reduce((sum, a) => sum + (a.aiScore || 0), 0);
+								const answeredCount = updatedAnswers.filter((a) =>
+									a.userAnswer.trim()
+								).length;
+								const totalWordCount = updatedAnswers.reduce(
+									(sum, a) => sum + a.wordCount,
+									0
+								);
+								const totalScore = updatedAnswers.reduce(
+									(sum, a) => sum + (a.aiScore || 0),
+									0
+								);
 
 								set({
 									progress: {
 										...state.progress,
 										answers: updatedAnswers,
-										averageWordCount: answeredCount > 0 ? totalWordCount / answeredCount : 0,
-										averageScore: answeredCount > 0 ? totalScore / answeredCount : 0,
+										averageWordCount:
+											answeredCount > 0 ? totalWordCount / answeredCount : 0,
+										averageScore:
+											answeredCount > 0 ? totalScore / answeredCount : 0,
 										lastUpdated: new Date(),
 									},
 									isEvaluating: false,
 								});
 							} catch (error) {
 								set({
-									error: error instanceof Error ? error.message : "Failed to update answer",
+									error:
+										error instanceof Error
+											? error.message
+											: "Failed to update answer",
 									isEvaluating: false,
 								});
 							}
@@ -607,7 +683,10 @@ const useOpenQuestionSession = create<OpenQuestionSessionStore>()(
 					// Evaluation
 					getEvaluationFeedback: (questionId: string) => {
 						const state = get();
-						return state.progress.answers.find((a) => a.questionId === questionId) || null;
+						return (
+							state.progress.answers.find((a) => a.questionId === questionId) ||
+							null
+						);
 					},
 
 					// Progress tracking
@@ -627,7 +706,8 @@ const useOpenQuestionSession = create<OpenQuestionSessionStore>()(
 
 						// Basic metrics
 						const overallScore =
-							answers.reduce((sum, a) => sum + (a.aiScore || 0), 0) / answers.length;
+							answers.reduce((sum, a) => sum + (a.aiScore || 0), 0) /
+							answers.length;
 						const averageResponseTime =
 							answers.reduce((sum, a) => sum + a.timeSpent, 0) / answers.length;
 						const averageWordCount =
@@ -641,12 +721,16 @@ const useOpenQuestionSession = create<OpenQuestionSessionStore>()(
 						};
 
 						for (const answer of answers) {
-							const question = questions.find((q) => q.id === answer.questionId);
+							const question = questions.find(
+								(q) => q.id === answer.questionId
+							);
 							if (question) {
 								const difficulty = question.difficulty;
 								difficultyBreakdown[difficulty].attempted++;
-								difficultyBreakdown[difficulty].averageScore += answer.aiScore || 0;
-								difficultyBreakdown[difficulty].averageWordCount += answer.wordCount;
+								difficultyBreakdown[difficulty].averageScore +=
+									answer.aiScore || 0;
+								difficultyBreakdown[difficulty].averageWordCount +=
+									answer.wordCount;
 							}
 						}
 
@@ -672,7 +756,9 @@ const useOpenQuestionSession = create<OpenQuestionSessionStore>()(
 						> = {};
 
 						for (const answer of answers) {
-							const question = questions.find((q) => q.id === answer.questionId);
+							const question = questions.find(
+								(q) => q.id === answer.questionId
+							);
 							if (question?.topic) {
 								if (!topicBreakdown[question.topic]) {
 									topicBreakdown[question.topic] = {
@@ -683,11 +769,14 @@ const useOpenQuestionSession = create<OpenQuestionSessionStore>()(
 									};
 								}
 								topicBreakdown[question.topic].attempted++;
-								topicBreakdown[question.topic].averageScore += answer.aiScore || 0;
+								topicBreakdown[question.topic].averageScore +=
+									answer.aiScore || 0;
 
 								// Add keyword matches as strengths
 								if (answer.keywordMatches) {
-									topicBreakdown[question.topic].keyStrengths.push(...answer.keywordMatches);
+									topicBreakdown[question.topic].keyStrengths.push(
+										...answer.keywordMatches
+									);
 								}
 							}
 						}
@@ -707,18 +796,25 @@ const useOpenQuestionSession = create<OpenQuestionSessionStore>()(
 							.split(/\W+/)
 							.filter((w) => w.length > 0);
 						const uniqueWords = new Set(words);
-						const vocabularyDiversity = words.length > 0 ? uniqueWords.size / words.length : 0;
+						const vocabularyDiversity =
+							words.length > 0 ? uniqueWords.size / words.length : 0;
 
-						const sentences = allText.split(/[.!?]+/).filter((s) => s.trim().length > 0);
+						const sentences = allText
+							.split(/[.!?]+/)
+							.filter((s) => s.trim().length > 0);
 						const averageSentenceLength =
 							sentences.length > 0 ? words.length / sentences.length : 0;
 
 						const allKeywords = questions.flatMap((q) => q.keywords || []);
 						const usedKeywords = words.filter((word) =>
-							allKeywords.some((keyword) => keyword.toLowerCase().includes(word))
+							allKeywords.some((keyword) =>
+								keyword.toLowerCase().includes(word)
+							)
 						);
 						const keywordUsage =
-							allKeywords.length > 0 ? usedKeywords.length / allKeywords.length : 0;
+							allKeywords.length > 0
+								? usedKeywords.length / allKeywords.length
+								: 0;
 
 						const writingMetrics = {
 							vocabularyDiversity,
@@ -729,12 +825,15 @@ const useOpenQuestionSession = create<OpenQuestionSessionStore>()(
 
 						// Time efficiency and consistency
 						const totalTimeMinutes = progress.timeSpent / (1000 * 60);
-						const timeEfficiency = totalTimeMinutes > 0 ? answers.length / totalTimeMinutes : 0;
+						const timeEfficiency =
+							totalTimeMinutes > 0 ? answers.length / totalTimeMinutes : 0;
 
 						const scores = answers.map((a) => a.aiScore || 0);
-						const mean = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+						const mean =
+							scores.reduce((sum, score) => sum + score, 0) / scores.length;
 						const variance =
-							scores.reduce((sum, score) => sum + (score - mean) ** 2, 0) / scores.length;
+							scores.reduce((sum, score) => sum + (score - mean) ** 2, 0) /
+							scores.length;
 						const consistencyScore = 1 - Math.sqrt(variance); // Higher consistency = lower variance
 
 						const performance: OpenQuestionPerformance = {
@@ -757,7 +856,8 @@ const useOpenQuestionSession = create<OpenQuestionSessionStore>()(
 					getSessionStats: () => {
 						const state = get();
 						const questionsAnswered = state.progress.answeredQuestions;
-						const questionsRemaining = state.progress.totalQuestions - questionsAnswered;
+						const questionsRemaining =
+							state.progress.totalQuestions - questionsAnswered;
 
 						return {
 							totalTime: state.progress.timeSpent,
@@ -776,7 +876,9 @@ const useOpenQuestionSession = create<OpenQuestionSessionStore>()(
 
 					getUnansweredQuestions: () => {
 						const state = get();
-						const answeredIds = new Set(state.progress.answers.map((a) => a.questionId));
+						const answeredIds = new Set(
+							state.progress.answers.map((a) => a.questionId)
+						);
 						return state.questions.filter((q) => !answeredIds.has(q.id));
 					},
 
@@ -788,7 +890,9 @@ const useOpenQuestionSession = create<OpenQuestionSessionStore>()(
 
 					getLowScoringAnswers: (threshold = 0.5) => {
 						const state = get();
-						return state.progress.answers.filter((a) => (a.aiScore || 0) < threshold);
+						return state.progress.answers.filter(
+							(a) => (a.aiScore || 0) < threshold
+						);
 					},
 
 					// Error handling

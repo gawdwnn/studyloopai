@@ -3,9 +3,18 @@
 
 export type DifficultyLevel = "easy" | "medium" | "hard" | "mixed";
 
-export type FocusType = "tailored-for-me" | "weak-areas" | "recent-content" | "comprehensive";
+export type FocusType =
+	| "tailored-for-me"
+	| "weak-areas"
+	| "recent-content"
+	| "comprehensive";
 
-export type SessionStatus = "idle" | "active" | "paused" | "completed" | "failed";
+export type SessionStatus =
+	| "idle"
+	| "active"
+	| "paused"
+	| "completed"
+	| "failed";
 
 export type PracticeMode = "practice" | "exam";
 

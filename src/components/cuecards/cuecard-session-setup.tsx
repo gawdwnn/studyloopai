@@ -35,7 +35,7 @@ import type {
 	DifficultyLevel,
 	FocusType,
 	PracticeMode,
-} from "@/lib/stores/cuecard-session/types";
+} from "@/stores/cuecard-session/types";
 import { AlertCircle, Loader2, PlayCircle, Sparkles, X } from "lucide-react";
 import { useEffect, useState } from "react";
 

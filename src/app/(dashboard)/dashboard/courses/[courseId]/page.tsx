@@ -1,8 +1,8 @@
-import { ActivityChart } from "@/components/dashboard/overview/activity-chart";
-import { ExamCountdownCard } from "@/components/dashboard/overview/exam-countdown-card";
-import { PerformanceList } from "@/components/dashboard/overview/performance-list";
-import { ScoreCard } from "@/components/dashboard/overview/score-card";
-import { StatCard } from "@/components/dashboard/overview/stat-card";
+import { ActivityChart } from "@/components/course/course-details/activity-chart";
+import { ExamCountdownCard } from "@/components/course/course-details/exam-countdown-card";
+import { PerformanceList } from "@/components/course/course-details/performance-list";
+import { ScoreCard } from "@/components/course/course-details/score-card";
+import { StatCard } from "@/components/course/course-details/stat-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -13,7 +13,9 @@ interface CourseOverviewPageProps {
 	}>;
 }
 
-export default async function CourseOverviewPage({ params }: CourseOverviewPageProps) {
+export default async function CourseOverviewPage({
+	params,
+}: CourseOverviewPageProps) {
 	const { courseId } = await params;
 
 	if (!courseId) {
@@ -69,10 +71,16 @@ export default async function CourseOverviewPage({ params }: CourseOverviewPageP
 				</div>
 				<div className="space-y-6 flex flex-col">
 					<Suspense fallback={<Skeleton className="h-[200px] w-full flex-1" />}>
-						<PerformanceList title="Top performing topics" courses={topCourses} />
+						<PerformanceList
+							title="Top performing topics"
+							courses={topCourses}
+						/>
 					</Suspense>
 					<Suspense fallback={<Skeleton className="h-[200px] w-full" />}>
-						<PerformanceList title="Low performing topics" courses={lowCourses} />
+						<PerformanceList
+							title="Low performing topics"
+							courses={lowCourses}
+						/>
 					</Suspense>
 				</div>
 			</div>

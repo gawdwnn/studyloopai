@@ -11,7 +11,10 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { type CourseCreationData, CourseCreationSchema } from "@/lib/validations/courses";
+import {
+	type CourseCreationData,
+	CourseCreationSchema,
+} from "@/lib/validation/courses";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
@@ -20,7 +23,10 @@ interface CourseCreationFormProps {
 	isPending: boolean;
 }
 
-export function CourseCreationForm({ onSubmit, isPending }: CourseCreationFormProps) {
+export function CourseCreationForm({
+	onSubmit,
+	isPending,
+}: CourseCreationFormProps) {
 	const form = useForm<CourseCreationData>({
 		resolver: zodResolver(CourseCreationSchema),
 		defaultValues: {
@@ -40,7 +46,10 @@ export function CourseCreationForm({ onSubmit, isPending }: CourseCreationFormPr
 						<FormItem>
 							<FormLabel>Course Name</FormLabel>
 							<FormControl>
-								<Input placeholder="e.g., Introduction to Psychology" {...field} />
+								<Input
+									placeholder="e.g., Introduction to Psychology"
+									{...field}
+								/>
 							</FormControl>
 							<FormMessage />
 						</FormItem>
@@ -53,7 +62,10 @@ export function CourseCreationForm({ onSubmit, isPending }: CourseCreationFormPr
 						<FormItem>
 							<FormLabel>Description (Optional)</FormLabel>
 							<FormControl>
-								<Textarea placeholder="A brief summary of the course content." {...field} />
+								<Textarea
+									placeholder="A brief summary of the course content."
+									{...field}
+								/>
 							</FormControl>
 							<FormMessage />
 						</FormItem>
@@ -69,7 +81,9 @@ export function CourseCreationForm({ onSubmit, isPending }: CourseCreationFormPr
 								<Input
 									type="number"
 									{...field}
-									onChange={(e) => field.onChange(Number.parseInt(e.target.value, 10))}
+									onChange={(e) =>
+										field.onChange(Number.parseInt(e.target.value, 10))
+									}
 								/>
 							</FormControl>
 							<FormMessage />

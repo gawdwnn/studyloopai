@@ -49,7 +49,11 @@ export function exportToPDF(data: ExportData) {
 	// Add header
 	addWrappedText(`Notes Export - ${data.courseName || "Course"}`, 16, true);
 	if (data.weekNumber) {
-		addWrappedText(`Week ${data.weekNumber}: ${data.materialTitle || ""}`, 14, true);
+		addWrappedText(
+			`Week ${data.weekNumber}: ${data.materialTitle || ""}`,
+			14,
+			true
+		);
 	}
 	addWrappedText(`Exported on: ${new Date().toLocaleDateString()}`, 10);
 	yPosition += 10;

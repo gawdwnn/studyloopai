@@ -11,8 +11,8 @@ import {
 	AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import type { SessionType } from "@/lib/stores/session-manager/types";
-import { useSessionManager } from "@/lib/stores/session-manager/use-session-manager";
+import type { SessionType } from "@/stores/session-manager/types";
+import { useSessionManager } from "@/stores/session-manager/use-session-manager";
 import { Clock, RotateCcw } from "lucide-react";
 import { useState } from "react";
 
@@ -73,7 +73,9 @@ export function SessionRecoveryDialog({
 	const getProgressPercentage = () => {
 		if (sessionToRecover.progress.totalItems === 0) return 0;
 		return Math.round(
-			(sessionToRecover.progress.currentIndex / sessionToRecover.progress.totalItems) * 100
+			(sessionToRecover.progress.currentIndex /
+				sessionToRecover.progress.totalItems) *
+				100
 		);
 	};
 
@@ -85,19 +87,23 @@ export function SessionRecoveryDialog({
 						<div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
 							<RotateCcw className="h-5 w-5 text-primary" />
 						</div>
-						<AlertDialogTitle className="text-left">Continue Previous Session?</AlertDialogTitle>
+						<AlertDialogTitle className="text-left">
+							Continue Previous Session?
+						</AlertDialogTitle>
 					</div>
 					<AlertDialogDescription className="text-left space-y-3">
 						<p>
-							You have an incomplete {getSessionTypeLabel(sessionToRecover.type).toLowerCase()}{" "}
-							session that you can continue.
+							You have an incomplete{" "}
+							{getSessionTypeLabel(sessionToRecover.type).toLowerCase()} session
+							that you can continue.
 						</p>
 
 						<div className="rounded-lg bg-muted/50 p-3 space-y-2">
 							<div className="flex items-center justify-between text-sm">
 								<span className="text-muted-foreground">Progress</span>
 								<span className="font-medium">
-									{sessionToRecover.progress.currentIndex} / {sessionToRecover.progress.totalItems}(
+									{sessionToRecover.progress.currentIndex} /{" "}
+									{sessionToRecover.progress.totalItems}(
 									{getProgressPercentage()}%)
 								</span>
 							</div>
@@ -108,7 +114,8 @@ export function SessionRecoveryDialog({
 									Time spent
 								</span>
 								<span className="font-medium">
-									{formatTimeSpent(0)} {/* TODO: Add timeSpent to session manager progress */}
+									{formatTimeSpent(0)}{" "}
+									{/* TODO: Add timeSpent to session manager progress */}
 								</span>
 							</div>
 

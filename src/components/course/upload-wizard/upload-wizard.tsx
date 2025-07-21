@@ -17,7 +17,7 @@ import {
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { getCourseWeeks } from "@/lib/actions/courses";
-import { COURSE_MATERIALS_BUCKET } from "@/lib/constants/storage";
+import { COURSE_MATERIALS_BUCKET } from "@/lib/config/storage";
 import {
 	completeUpload,
 	presignUpload,

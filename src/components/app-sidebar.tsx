@@ -1,6 +1,10 @@
 "use client";
 
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+	Collapsible,
+	CollapsibleContent,
+	CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
 	Sidebar,
 	SidebarContent,
@@ -24,7 +28,6 @@ import {
 	BookOpenCheck,
 	Brain,
 	BrainCog,
-	Calendar,
 	ChevronDown,
 	FileText,
 	HelpCircle,
@@ -56,11 +59,6 @@ const routes: RouteItem[] = [
 		label: "Overview",
 		icon: Home,
 		href: "/dashboard",
-	},
-	{
-		label: "Planner",
-		icon: Calendar,
-		href: "/dashboard/course-planner",
 	},
 	{
 		label: "Course Materials",
@@ -143,7 +141,9 @@ export function AppSidebar() {
 
 	const toggleItem = (href: string) => {
 		setOpenItems((prev) =>
-			prev.includes(href) ? prev.filter((item) => item !== href) : [...prev, href]
+			prev.includes(href)
+				? prev.filter((item) => item !== href)
+				: [...prev, href]
 		);
 	};
 
@@ -152,7 +152,9 @@ export function AppSidebar() {
 			<SidebarHeader>
 				<div className="flex h-14 items-center px-4">
 					<Link href="/dashboard" className="flex items-center gap-2">
-						<span className="font-semibold group-data-[collapsible=icon]:hidden">StudyLoop AI</span>
+						<span className="font-semibold group-data-[collapsible=icon]:hidden">
+							StudyLoop AI
+						</span>
 					</Link>
 				</div>
 			</SidebarHeader>
@@ -170,13 +172,17 @@ export function AppSidebar() {
 								return (
 									<SidebarMenuItem key={route.href}>
 										{route.subItems ? (
-											<Collapsible open={isOpen} onOpenChange={() => toggleItem(route.href)}>
+											<Collapsible
+												open={isOpen}
+												onOpenChange={() => toggleItem(route.href)}
+											>
 												<CollapsibleTrigger asChild>
 													<SidebarMenuButton
 														asChild
 														className={cn(
 															"w-full",
-															isActive && "bg-sidebar-accent text-sidebar-accent-foreground"
+															isActive &&
+																"bg-sidebar-accent text-sidebar-accent-foreground"
 														)}
 														tooltip={route.label}
 													>
@@ -233,7 +239,10 @@ export function AppSidebar() {
 																				"bg-sidebar-accent text-sidebar-accent-foreground"
 																		)}
 																	>
-																		<Link href={subItem.href} onClick={closeMobileSidebar}>
+																		<Link
+																			href={subItem.href}
+																			onClick={closeMobileSidebar}
+																		>
 																			<subItem.icon className="h-4 w-4" />
 																			<span className="group-data-[collapsible=icon]:hidden">
 																				{subItem.label}
@@ -251,7 +260,8 @@ export function AppSidebar() {
 												asChild
 												className={cn(
 													"w-full",
-													isActive && "bg-sidebar-accent text-sidebar-accent-foreground"
+													isActive &&
+														"bg-sidebar-accent text-sidebar-accent-foreground"
 												)}
 												tooltip={route.label}
 											>
@@ -285,7 +295,8 @@ export function AppSidebar() {
 											asChild
 											className={cn(
 												"w-full",
-												isActive && "bg-sidebar-accent text-sidebar-accent-foreground"
+												isActive &&
+													"bg-sidebar-accent text-sidebar-accent-foreground"
 											)}
 											tooltip={route.label}
 										>

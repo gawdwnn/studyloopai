@@ -1,6 +1,9 @@
 "use client";
 
-import { FILE_UPLOAD_DISPLAY, FILE_UPLOAD_LIMITS } from "@/lib/constants/file-upload";
+import {
+	FILE_UPLOAD_DISPLAY,
+	FILE_UPLOAD_LIMITS,
+} from "@/lib/config/file-upload";
 import { cn } from "@/lib/utils";
 import { FileIcon, UploadCloudIcon, XIcon } from "lucide-react";
 import { useCallback } from "react";
@@ -85,11 +88,14 @@ export function FileUploadDropzone({
 							"Drop the files here ..."
 						) : (
 							<>
-								<span className="font-semibold">Click to upload</span> or drag and drop
+								<span className="font-semibold">Click to upload</span> or drag
+								and drop
 							</>
 						)}
 					</p>
-					<p className="text-xs text-muted-foreground">{FILE_UPLOAD_DISPLAY.DROPZONE_TEXT}</p>
+					<p className="text-xs text-muted-foreground">
+						{FILE_UPLOAD_DISPLAY.DROPZONE_TEXT}
+					</p>
 				</div>
 			</div>
 			{files.length > 0 && (

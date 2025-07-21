@@ -1,8 +1,8 @@
 "use client";
 
-import type { OpenQuestionConfig } from "@/lib/stores/open-question-session/types";
-import { useOpenQuestionSession } from "@/lib/stores/open-question-session/use-open-question-session";
-import { useSessionManager } from "@/lib/stores/session-manager/use-session-manager";
+import type { OpenQuestionConfig } from "@/stores/open-question-session/types";
+import { useOpenQuestionSession } from "@/stores/open-question-session/use-open-question-session";
+import { useSessionManager } from "@/stores/session-manager/use-session-manager";
 import { differenceInMinutes } from "date-fns";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -22,7 +22,9 @@ interface OpenQuestionSessionManagerProps {
 	courses: Course[];
 }
 
-export function OpenQuestionSessionManager({ courses }: OpenQuestionSessionManagerProps) {
+export function OpenQuestionSessionManager({
+	courses,
+}: OpenQuestionSessionManagerProps) {
 	const sessionManager = useSessionManager((s) => s);
 	const openQuestionSession = useOpenQuestionSession((s) => s);
 	const {
@@ -85,7 +87,8 @@ export function OpenQuestionSessionManager({ courses }: OpenQuestionSessionManag
 	const handleEndSession = async () => {
 		if (sessionManager.activeSession) {
 			const finalStats = {
-				totalTime: Date.now() - sessionManager.activeSession.startedAt.getTime(),
+				totalTime:
+					Date.now() - sessionManager.activeSession.startedAt.getTime(),
 				itemsCompleted: openQuestionSession.progress.currentIndex + 1,
 				accuracy: openQuestionSession.performance.overallScore,
 			};
@@ -115,7 +118,10 @@ export function OpenQuestionSessionManager({ courses }: OpenQuestionSessionManag
 		);
 	}
 
-	if (openQuestionSession.status === "idle" || openQuestionSession.status === "failed") {
+	if (
+		openQuestionSession.status === "idle" ||
+		openQuestionSession.status === "failed"
+	) {
 		return (
 			<OpenQuestionSessionSetup
 				courses={courses}
@@ -127,7 +133,10 @@ export function OpenQuestionSessionManager({ courses }: OpenQuestionSessionManag
 		);
 	}
 
-	if (openQuestionSession.status === "active" && openQuestionSession.questions.length > 0) {
+	if (
+		openQuestionSession.status === "active" &&
+		openQuestionSession.questions.length > 0
+	) {
 		return (
 			<div className="relative flex h-full flex-1 flex-col">
 				{process.env.NODE_ENV === "development" && <SessionProgressIndicator />}
@@ -169,7 +178,12 @@ export function OpenQuestionSessionManager({ courses }: OpenQuestionSessionManag
 			}),
 		};
 
-		return <OpenQuestionResultsView results={resultsData} onRestart={handleEndSession} />;
+		return (
+			<OpenQuestionResultsView
+				results={resultsData}
+				onRestart={handleEndSession}
+			/>
+		);
 	}
 
 	return null;

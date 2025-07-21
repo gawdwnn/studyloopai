@@ -1,14 +1,15 @@
 "use client";
 
 import { signInWithOAuth } from "@/lib/actions/auth";
-import type { AuthErrorDetails } from "@/lib/errors/auth";
+import type { AuthErrorDetails } from "@/lib/auth/errors";
 import { useFormState, useFormStatus } from "react-dom";
 import { GoogleIcon } from "../icons/google-icon";
 import { Button } from "../ui/button";
 
 function SubmitButton({ variant }: { variant: "signin" | "signup" }) {
 	const { pending } = useFormStatus();
-	const buttonText = variant === "signin" ? "Sign in with Google" : "Sign up with Google";
+	const buttonText =
+		variant === "signin" ? "Sign in with Google" : "Sign up with Google";
 
 	return (
 		<Button
@@ -37,7 +38,10 @@ interface GoogleSignInButtonProps {
 
 const initialState = { error: null };
 
-export function GoogleSignInButton({ variant, onError }: GoogleSignInButtonProps) {
+export function GoogleSignInButton({
+	variant,
+	onError,
+}: GoogleSignInButtonProps) {
 	const [state, formAction] = useFormState(signInWithOAuth, initialState);
 
 	// Notify parent component of errors for consistent display

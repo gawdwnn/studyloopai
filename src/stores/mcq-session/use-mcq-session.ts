@@ -43,13 +43,18 @@ function shuffleArray<T>(array: T[]): T[] {
 	return shuffled;
 }
 
-function filterQuestionsByConfig(questions: McqQuestion[], config: McqConfig): McqQuestion[] {
+function filterQuestionsByConfig(
+	questions: McqQuestion[],
+	config: McqConfig
+): McqQuestion[] {
 	let filtered = [...questions];
 
 	// Filter by weeks
 	if (config.weeks.length > 0 && !config.weeks.includes("all-weeks")) {
 		filtered = filtered.filter((q) =>
-			config.weeks.some((week) => q.week.toLowerCase().includes(week.toLowerCase()))
+			config.weeks.some((week) =>
+				q.week.toLowerCase().includes(week.toLowerCase())
+			)
 		);
 	}
 
@@ -79,11 +84,17 @@ function filterQuestionsByConfig(questions: McqQuestion[], config: McqConfig): M
 		case "tailored-for-me":
 			// Mix of difficult questions and review of previous mistakes
 			filtered.sort((a, b) => {
-				const aDifficultyScore = a.difficulty === "hard" ? 3 : a.difficulty === "medium" ? 2 : 1;
-				const bDifficultyScore = b.difficulty === "hard" ? 3 : b.difficulty === "medium" ? 2 : 1;
+				const aDifficultyScore =
+					a.difficulty === "hard" ? 3 : a.difficulty === "medium" ? 2 : 1;
+				const bDifficultyScore =
+					b.difficulty === "hard" ? 3 : b.difficulty === "medium" ? 2 : 1;
 
 				// Prioritize difficult questions and those with mistakes
-				return bDifficultyScore + b.timesIncorrect - (aDifficultyScore + a.timesIncorrect);
+				return (
+					bDifficultyScore +
+					b.timesIncorrect -
+					(aDifficultyScore + a.timesIncorrect)
+				);
 			});
 			break;
 
@@ -110,13 +121,19 @@ const useMcqSession = create<McqSessionStore>()(
 							set({ isLoading: true, error: null });
 
 							const sessionId = `mcq_${Date.now()}`;
-							const allQuestions = convertToEnhancedMcqQuestions(SAMPLE_MCQ_QUESTIONS);
+							const allQuestions =
+								convertToEnhancedMcqQuestions(SAMPLE_MCQ_QUESTIONS);
 
 							// Filter questions based on config
-							const sessionQuestions = filterQuestionsByConfig(allQuestions, config);
+							const sessionQuestions = filterQuestionsByConfig(
+								allQuestions,
+								config
+							);
 
 							if (sessionQuestions.length === 0) {
-								throw new Error("No questions found matching the specified criteria");
+								throw new Error(
+									"No questions found matching the specified criteria"
+								);
 							}
 
 							// Initialize progress
@@ -132,7 +149,9 @@ const useMcqSession = create<McqSessionStore>()(
 								averageTimePerQuestion: 0,
 								answers: [],
 								flaggedQuestions: [],
-								remainingTime: config.timeLimit ? config.timeLimit * 60 * 1000 : undefined,
+								remainingTime: config.timeLimit
+									? config.timeLimit * 60 * 1000
+									: undefined,
 							};
 
 							// Initialize performance
@@ -171,7 +190,10 @@ const useMcqSession = create<McqSessionStore>()(
 							// Timer functionality would be implemented later for exam mode
 						} catch (error) {
 							set({
-								error: error instanceof Error ? error.message : "Failed to start session",
+								error:
+									error instanceof Error
+										? error.message
+										: "Failed to start session",
 								isLoading: false,
 								status: "failed",
 							});
@@ -210,7 +232,10 @@ const useMcqSession = create<McqSessionStore>()(
 							});
 						} catch (error) {
 							set({
-								error: error instanceof Error ? error.message : "Failed to end session",
+								error:
+									error instanceof Error
+										? error.message
+										: "Failed to end session",
 								status: "failed",
 							});
 						}
@@ -270,7 +295,10 @@ const useMcqSession = create<McqSessionStore>()(
 
 					jumpToQuestion: (index: number) => {
 						const state = get();
-						const clampedIndex = Math.max(0, Math.min(index, state.questions.length - 1));
+						const clampedIndex = Math.max(
+							0,
+							Math.min(index, state.questions.length - 1)
+						);
 						const question = state.questions[clampedIndex];
 
 						if (question) {
@@ -292,7 +320,9 @@ const useMcqSession = create<McqSessionStore>()(
 
 					flagQuestion: (questionId: string) => {
 						const state = get();
-						const flaggedQuestions = [...new Set([...state.progress.flaggedQuestions, questionId])];
+						const flaggedQuestions = [
+							...new Set([...state.progress.flaggedQuestions, questionId]),
+						];
 
 						set({
 							progress: {
@@ -350,9 +380,11 @@ const useMcqSession = create<McqSessionStore>()(
 										...q,
 										timesSeen: q.timesSeen + 1,
 										timesCorrect: q.timesCorrect + (isCorrect ? 1 : 0),
-										timesIncorrect: q.timesIncorrect + (!isCorrect && !isSkipped ? 1 : 0),
+										timesIncorrect:
+											q.timesIncorrect + (!isCorrect && !isSkipped ? 1 : 0),
 										averageResponseTime:
-											(q.averageResponseTime * q.timesSeen + timeSpent) / (q.timesSeen + 1),
+											(q.averageResponseTime * q.timesSeen + timeSpent) /
+											(q.timesSeen + 1),
 									}
 								: q
 						);
@@ -370,12 +402,18 @@ const useMcqSession = create<McqSessionStore>()(
 						}
 
 						// Update progress
-						const totalAttempts = updatedAnswers.filter((a) => a.selectedAnswer !== null).length;
-						const correctCount = updatedAnswers.filter((a) => a.isCorrect).length;
+						const totalAttempts = updatedAnswers.filter(
+							(a) => a.selectedAnswer !== null
+						).length;
+						const correctCount = updatedAnswers.filter(
+							(a) => a.isCorrect
+						).length;
 						const incorrectCount = updatedAnswers.filter(
 							(a) => !a.isCorrect && a.selectedAnswer !== null
 						).length;
-						const skippedCount = updatedAnswers.filter((a) => a.selectedAnswer === null).length;
+						const skippedCount = updatedAnswers.filter(
+							(a) => a.selectedAnswer === null
+						).length;
 
 						const updatedProgress: McqProgress = {
 							...state.progress,
@@ -385,7 +423,9 @@ const useMcqSession = create<McqSessionStore>()(
 							timeSpent: state.progress.timeSpent + timeSpent,
 							lastUpdated: new Date(),
 							averageTimePerQuestion:
-								totalAttempts > 0 ? (state.progress.timeSpent + timeSpent) / totalAttempts : 0,
+								totalAttempts > 0
+									? (state.progress.timeSpent + timeSpent) / totalAttempts
+									: 0,
 							answers: updatedAnswers,
 						};
 
@@ -416,11 +456,15 @@ const useMcqSession = create<McqSessionStore>()(
 							};
 
 							// Recalculate progress
-							const correctCount = updatedAnswers.filter((a) => a.isCorrect).length;
+							const correctCount = updatedAnswers.filter(
+								(a) => a.isCorrect
+							).length;
 							const incorrectCount = updatedAnswers.filter(
 								(a) => !a.isCorrect && a.selectedAnswer !== null
 							).length;
-							const skippedCount = updatedAnswers.filter((a) => a.selectedAnswer === null).length;
+							const skippedCount = updatedAnswers.filter(
+								(a) => a.selectedAnswer === null
+							).length;
 
 							set({
 								progress: {
@@ -452,14 +496,19 @@ const useMcqSession = create<McqSessionStore>()(
 					calculatePerformance: () => {
 						const state = get();
 						const { progress, questions } = state;
-						const answers = progress.answers.filter((a) => a.selectedAnswer !== null);
+						const answers = progress.answers.filter(
+							(a) => a.selectedAnswer !== null
+						);
 
 						// Basic metrics
 						const accuracy =
-							answers.length > 0 ? (progress.correctAnswers / answers.length) * 100 : 0;
+							answers.length > 0
+								? (progress.correctAnswers / answers.length) * 100
+								: 0;
 						const averageResponseTime =
 							answers.length > 0
-								? answers.reduce((sum, a) => sum + a.timeSpent, 0) / answers.length
+								? answers.reduce((sum, a) => sum + a.timeSpent, 0) /
+									answers.length
 								: 0;
 
 						// Difficulty breakdown
@@ -470,7 +519,9 @@ const useMcqSession = create<McqSessionStore>()(
 						};
 
 						for (const answer of answers) {
-							const question = questions.find((q) => q.id === answer.questionId);
+							const question = questions.find(
+								(q) => q.id === answer.questionId
+							);
 							if (question) {
 								const difficulty = question.difficulty;
 								difficultyBreakdown[difficulty].attempted++;
@@ -484,7 +535,8 @@ const useMcqSession = create<McqSessionStore>()(
 						for (const key of Object.keys(difficultyBreakdown)) {
 							const difficulty = key as keyof typeof difficultyBreakdown;
 							const data = difficultyBreakdown[difficulty];
-							data.accuracy = data.attempted > 0 ? (data.correct / data.attempted) * 100 : 0;
+							data.accuracy =
+								data.attempted > 0 ? (data.correct / data.attempted) * 100 : 0;
 						}
 
 						// Topic breakdown
@@ -494,7 +546,9 @@ const useMcqSession = create<McqSessionStore>()(
 						> = {};
 
 						for (const answer of answers) {
-							const question = questions.find((q) => q.id === answer.questionId);
+							const question = questions.find(
+								(q) => q.id === answer.questionId
+							);
 							if (question?.topic) {
 								if (!topicBreakdown[question.topic]) {
 									topicBreakdown[question.topic] = {
@@ -512,15 +566,19 @@ const useMcqSession = create<McqSessionStore>()(
 
 						for (const topic of Object.keys(topicBreakdown)) {
 							const data = topicBreakdown[topic];
-							data.accuracy = data.attempted > 0 ? (data.correct / data.attempted) * 100 : 0;
+							data.accuracy =
+								data.attempted > 0 ? (data.correct / data.attempted) * 100 : 0;
 						}
 
 						// Time efficiency (questions per minute)
 						const totalTimeMinutes = progress.timeSpent / (1000 * 60);
-						const timeEfficiency = totalTimeMinutes > 0 ? answers.length / totalTimeMinutes : 0;
+						const timeEfficiency =
+							totalTimeMinutes > 0 ? answers.length / totalTimeMinutes : 0;
 
 						// Confidence accuracy correlation
-						const confidenceAnswers = answers.filter((a) => a.confidenceLevel > 0);
+						const confidenceAnswers = answers.filter(
+							(a) => a.confidenceLevel > 0
+						);
 						let confidenceAccuracy = 0;
 
 						if (confidenceAnswers.length > 0) {
@@ -533,7 +591,9 @@ const useMcqSession = create<McqSessionStore>()(
 								.reduce((sum, a) => sum + a.confidenceLevel, 0);
 
 							confidenceAccuracy =
-								confidenceSum > 0 ? (correctConfidenceSum / confidenceSum) * 100 : 0;
+								confidenceSum > 0
+									? (correctConfidenceSum / confidenceSum) * 100
+									: 0;
 						}
 
 						// Improvement trend (placeholder - would need historical data)
@@ -558,10 +618,14 @@ const useMcqSession = create<McqSessionStore>()(
 						const questionsAnswered = state.progress.answers.filter(
 							(a) => a.selectedAnswer !== null
 						).length;
-						const questionsRemaining = state.progress.totalQuestions - questionsAnswered;
-						const totalAttempts = state.progress.correctAnswers + state.progress.incorrectAnswers;
+						const questionsRemaining =
+							state.progress.totalQuestions - questionsAnswered;
+						const totalAttempts =
+							state.progress.correctAnswers + state.progress.incorrectAnswers;
 						const accuracy =
-							totalAttempts > 0 ? (state.progress.correctAnswers / totalAttempts) * 100 : 0;
+							totalAttempts > 0
+								? (state.progress.correctAnswers / totalAttempts) * 100
+								: 0;
 
 						return {
 							totalTime: state.progress.timeSpent,
@@ -575,12 +639,16 @@ const useMcqSession = create<McqSessionStore>()(
 					// Review and navigation
 					getAnsweredQuestions: () => {
 						const state = get();
-						return state.progress.answers.filter((a) => a.selectedAnswer !== null);
+						return state.progress.answers.filter(
+							(a) => a.selectedAnswer !== null
+						);
 					},
 
 					getUnansweredQuestions: () => {
 						const state = get();
-						const answeredIds = new Set(state.progress.answers.map((a) => a.questionId));
+						const answeredIds = new Set(
+							state.progress.answers.map((a) => a.questionId)
+						);
 						return state.questions.filter((q) => !answeredIds.has(q.id));
 					},
 
@@ -592,7 +660,9 @@ const useMcqSession = create<McqSessionStore>()(
 
 					getIncorrectAnswers: () => {
 						const state = get();
-						return state.progress.answers.filter((a) => !a.isCorrect && a.selectedAnswer !== null);
+						return state.progress.answers.filter(
+							(a) => !a.isCorrect && a.selectedAnswer !== null
+						);
 					},
 
 					// Error handling

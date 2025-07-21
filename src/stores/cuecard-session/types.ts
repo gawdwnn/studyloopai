@@ -9,11 +9,20 @@ export type CuecardMode = "keywords" | "definitions" | "both";
 
 export type DifficultyLevel = "easy" | "medium" | "hard" | "mixed";
 
-export type FocusType = "tailored-for-me" | "weak-areas" | "recent-content" | "comprehensive";
+export type FocusType =
+	| "tailored-for-me"
+	| "weak-areas"
+	| "recent-content"
+	| "comprehensive";
 
 export type PracticeMode = "practice" | "exam";
 
-export type SessionStatus = "idle" | "active" | "paused" | "completed" | "failed";
+export type SessionStatus =
+	| "idle"
+	| "active"
+	| "paused"
+	| "completed"
+	| "failed";
 
 // Cuecard-specific configuration
 export interface CuecardConfig extends BaseSessionConfig {
@@ -96,7 +105,11 @@ export interface CuecardSessionActions {
 	skipCard: () => void;
 
 	// Feedback and learning
-	submitFeedback: (cardId: string, feedback: CuecardFeedback, timeSpent: number) => void;
+	submitFeedback: (
+		cardId: string,
+		feedback: CuecardFeedback,
+		timeSpent: number
+	) => void;
 
 	// Progress tracking
 	getSessionStats: () => {

@@ -1,7 +1,7 @@
 // Sample MCQ data for development and testing
 // In production, this would be replaced with data from the database
 
-import type { McqQuestion } from "@/lib/stores/mcq-session/types";
+import type { McqQuestion } from "@/stores/mcq-session/types";
 
 export const SAMPLE_MCQ_QUESTIONS: McqQuestion[] = [
 	{
@@ -49,7 +49,8 @@ export const SAMPLE_MCQ_QUESTIONS: McqQuestion[] = [
 	},
 	{
 		id: "3",
-		question: "What is the primary advantage of transformer architecture over RNNs?",
+		question:
+			"What is the primary advantage of transformer architecture over RNNs?",
 		options: [
 			"Lower computational complexity",
 			"Parallel processing capabilities",
@@ -140,7 +141,8 @@ export const SAMPLE_MCQ_QUESTIONS: McqQuestion[] = [
 			"A technique for data preprocessing",
 			"A method for network architecture design",
 		],
-		correctAnswer: "An algorithm for calculating gradients and updating weights",
+		correctAnswer:
+			"An algorithm for calculating gradients and updating weights",
 		explanation:
 			"Backpropagation is the algorithm used to train neural networks by calculating gradients of the loss function and propagating them backward through the network to update weights.",
 		difficulty: "hard",

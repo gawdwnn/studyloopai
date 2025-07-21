@@ -4,8 +4,8 @@ import type {
 	CrossSessionAnalytics,
 	SessionHistoryEntry,
 	SessionManagerState,
-} from "@/lib/stores/session-manager/types";
-import { useSessionManager } from "@/lib/stores/session-manager/use-session-manager";
+} from "@/stores/session-manager/types";
+import { useSessionManager } from "@/stores/session-manager/use-session-manager";
 import { useEffect } from "react";
 
 interface SessionInitializerProps {
@@ -20,7 +20,10 @@ interface SessionInitializerProps {
 /**
  * SessionInitializer component for hydrating the session manager store with server-fetched data.
  */
-export function SessionInitializer({ initialState, children }: SessionInitializerProps) {
+export function SessionInitializer({
+	initialState,
+	children,
+}: SessionInitializerProps) {
 	const { hydrate } = useSessionManager((s) => s.actions);
 
 	useEffect(() => {
