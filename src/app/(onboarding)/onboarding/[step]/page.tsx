@@ -4,7 +4,10 @@ import { CompletionStep } from "@/components/onboarding/steps/completion-step";
 import { PersonalizationStep } from "@/components/onboarding/steps/personalization-step";
 import { WelcomeProfileStep } from "@/components/onboarding/steps/welcome-profile-step";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ONBOARDING_STEPS, useOnboardingStore } from "@/lib/stores/onboarding-store";
+import {
+	ONBOARDING_STEPS,
+	useOnboardingStore,
+} from "@/stores/onboarding-store";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect } from "react";
 

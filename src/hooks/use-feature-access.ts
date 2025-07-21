@@ -1,5 +1,5 @@
-import { PLANS } from "@/lib/plans/config";
-import { FEATURE_IDS, type FeatureId, type PlanId } from "@/lib/plans/types";
+import { PLANS } from "@/lib/config/plans";
+import { FEATURE_IDS, type FeatureId, type PlanId } from "@/lib/database/types";
 
 export function useFeatureAccess(userPlan: PlanId) {
 	const plan = PLANS.find((p) => p.id === userPlan);

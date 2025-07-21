@@ -121,7 +121,8 @@ export async function generateAnswerFeedback(
 				improvements: ["Please try again later for detailed feedback."],
 			},
 			overallScore: 50,
-			overallFeedback: "Feedback generation temporarily unavailable. Please try again later.",
+			overallFeedback:
+				"Feedback generation temporarily unavailable. Please try again later.",
 		};
 	}
 }

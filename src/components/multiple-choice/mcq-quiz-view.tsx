@@ -3,8 +3,8 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import type { McqConfig } from "@/lib/stores/mcq-session/types";
 import { cn } from "@/lib/utils";
+import type { McqConfig } from "@/stores/mcq-session/types";
 import { CheckCircle2, XCircle, XIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -22,7 +22,11 @@ interface McqQuestion {
 type McqQuizViewProps = {
 	questions: McqQuestion[];
 	config: McqConfig;
-	onQuestionAnswer: (questionId: string, selectedAnswer: string | null, timeSpent: number) => void;
+	onQuestionAnswer: (
+		questionId: string,
+		selectedAnswer: string | null,
+		timeSpent: number
+	) => void;
 	onEndSession: (totalTime: number) => void;
 	onClose: () => void;
 };
@@ -136,7 +140,9 @@ export function McqQuizView({
 					</div>
 
 					<div className="text-center mb-8">
-						<h2 className="text-2xl font-semibold">{currentQuestion.question}</h2>
+						<h2 className="text-2xl font-semibold">
+							{currentQuestion.question}
+						</h2>
 					</div>
 
 					<div className="space-y-4">
@@ -151,7 +157,9 @@ export function McqQuizView({
 									aria-pressed={selectedAnswer === option}
 									className={cn(
 										"p-4 flex items-center w-full space-x-4 rounded-lg border text-left transition-all",
-										isAnswered ? "cursor-not-allowed" : "cursor-pointer hover:bg-muted/50",
+										isAnswered
+											? "cursor-not-allowed"
+											: "cursor-pointer hover:bg-muted/50",
 										state === "correct" && "border-green-500",
 										state === "incorrect" && "border-red-500"
 									)}
@@ -165,7 +173,9 @@ export function McqQuizView({
 										{state === "correct" && (
 											<CheckCircle2 className="text-green-500 w-full h-full" />
 										)}
-										{state === "incorrect" && <XCircle className="text-red-500 w-full h-full" />}
+										{state === "incorrect" && (
+											<XCircle className="text-red-500 w-full h-full" />
+										)}
 									</div>
 									<span>{option}</span>
 								</button>
@@ -174,11 +184,12 @@ export function McqQuizView({
 					</div>
 
 					<div className="flex justify-center space-x-4 mt-8">
-						{config.practiceMode === "practice" && currentQuestion.explanation && (
-							<Button variant="outline" disabled={!isAnswered}>
-								Get explanation
-							</Button>
-						)}
+						{config.practiceMode === "practice" &&
+							currentQuestion.explanation && (
+								<Button variant="outline" disabled={!isAnswered}>
+									Get explanation
+								</Button>
+							)}
 						<Button onClick={handleNextQuestion} disabled={!isAnswered}>
 							{isAnswered
 								? currentQuestionIndex < questions.length - 1

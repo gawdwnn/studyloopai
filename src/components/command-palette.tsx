@@ -9,7 +9,7 @@ import {
 	CommandList,
 	CommandSeparator,
 } from "@/components/ui/command";
-import { useCommandPalette } from "@/lib/stores/command-palette";
+import { useCommandPalette } from "@/stores/command-palette";
 import {
 	BookOpen,
 	Brain,

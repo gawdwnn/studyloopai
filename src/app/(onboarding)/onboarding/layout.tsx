@@ -2,12 +2,15 @@
 
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { completeOnboarding as completeOnboardingAction, skipOnboarding } from "@/lib/actions/user";
+import {
+	completeOnboarding as completeOnboardingAction,
+	skipOnboarding,
+} from "@/lib/actions/user";
 import {
 	TOTAL_STEPS,
 	useOnboardingProgress,
 	useOnboardingStore,
-} from "@/lib/stores/onboarding-store";
+} from "@/stores/onboarding-store";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import Link from "next/link";
@@ -24,7 +27,9 @@ export default function OnboardingLayout({
 	const [isPending, startTransition] = useTransition();
 
 	const currentStep = useOnboardingStore((state) => state.currentStep);
-	const completeOnboarding = useOnboardingStore((state) => state.completeOnboarding);
+	const completeOnboarding = useOnboardingStore(
+		(state) => state.completeOnboarding
+	);
 	const getStepInfo = useOnboardingStore((state) => state.getStepInfo);
 
 	const progress = useOnboardingProgress();

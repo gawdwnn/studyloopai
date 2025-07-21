@@ -7,7 +7,13 @@ import {
 	AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+	Card,
+	CardContent,
+	CardFooter,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
@@ -24,7 +30,7 @@ import type {
 	FocusType,
 	OpenQuestionConfig,
 	PracticeMode,
-} from "@/lib/stores/open-question-session/types";
+} from "@/stores/open-question-session/types";
 import { XIcon } from "lucide-react";
 import { useEffect } from "react";
 
@@ -48,14 +54,18 @@ export function OpenQuestionSessionSetup({
 	const { searchParams, setQueryState } = useQueryState();
 
 	// Initialize state from URL or defaults
-	const selectedCourse = searchParams.get("courseId") || (courses.length > 0 ? courses[0].id : "");
+	const selectedCourse =
+		searchParams.get("courseId") || (courses.length > 0 ? courses[0].id : "");
 	const selectedWeek = searchParams.get("week") || "all-weeks";
 	const numQuestions = searchParams.get("count") || "5";
-	const difficulty = (searchParams.get("difficulty") as DifficultyLevel) || "mixed";
+	const difficulty =
+		(searchParams.get("difficulty") as DifficultyLevel) || "mixed";
 	const focus = (searchParams.get("focus") as FocusType) || "tailored-for-me";
-	const practiceMode = (searchParams.get("practiceMode") as PracticeMode) || "practice";
+	const practiceMode =
+		(searchParams.get("practiceMode") as PracticeMode) || "practice";
 
-	const { data: weeks = [], isLoading: loadingWeeks } = useCourseWeeks(selectedCourse);
+	const { data: weeks = [], isLoading: loadingWeeks } =
+		useCourseWeeks(selectedCourse);
 
 	// When selectedCourse changes, if the selectedWeek is not in the new list of weeks, reset it.
 	useEffect(() => {
@@ -97,13 +107,16 @@ export function OpenQuestionSessionSetup({
 					<XIcon className="h-6 w-6 text-muted-foreground" />
 				</Button>
 				<CardHeader className="text-center pb-8">
-					<CardTitle className="text-lg">Start an Open-Ended Question Session</CardTitle>
+					<CardTitle className="text-lg">
+						Start an Open-Ended Question Session
+					</CardTitle>
 				</CardHeader>
 				<CardContent className="px-8 space-y-6">
 					{courses.length === 0 ? (
 						<div className="text-center py-8">
 							<p className="text-muted-foreground">
-								Please create a course first to start an open-ended question session.
+								Please create a course first to start an open-ended question
+								session.
 							</p>
 						</div>
 					) : (
@@ -144,7 +157,9 @@ export function OpenQuestionSessionSetup({
 										<SelectValue />
 									</SelectTrigger>
 									<SelectContent>
-										<SelectItem value="all-weeks">All weeks selected</SelectItem>
+										<SelectItem value="all-weeks">
+											All weeks selected
+										</SelectItem>
 										{weeks.map((week) => (
 											<SelectItem key={week.id} value={week.id}>
 												{week.title || `Week ${week.weekNumber}`}
@@ -152,7 +167,11 @@ export function OpenQuestionSessionSetup({
 										))}
 									</SelectContent>
 								</Select>
-								{loadingWeeks && <p className="text-xs text-muted-foreground">Loading weeks...</p>}
+								{loadingWeeks && (
+									<p className="text-xs text-muted-foreground">
+										Loading weeks...
+									</p>
+								)}
 							</div>
 						</>
 					)}
@@ -169,7 +188,9 @@ export function OpenQuestionSessionSetup({
 									<div className="space-y-2">
 										<Select
 											value={difficulty}
-											onValueChange={(value) => setQueryState({ difficulty: value })}
+											onValueChange={(value) =>
+												setQueryState({ difficulty: value })
+											}
 										>
 											<SelectTrigger className="h-12 w-full">
 												<SelectValue placeholder="Select difficulty of the questions" />
@@ -199,7 +220,9 @@ export function OpenQuestionSessionSetup({
 												<SelectItem value="20">20</SelectItem>
 											</SelectContent>
 										</Select>
-										<p className="text-xs text-muted-foreground">Select the number of questions</p>
+										<p className="text-xs text-muted-foreground">
+											Select the number of questions
+										</p>
 									</div>
 
 									{/* Focus Selection */}
@@ -212,16 +235,26 @@ export function OpenQuestionSessionSetup({
 												<SelectValue />
 											</SelectTrigger>
 											<SelectContent>
-												<SelectItem value="tailored-for-me">Tailored for me</SelectItem>
-												<SelectItem value="weak-areas">Focus on weak areas</SelectItem>
-												<SelectItem value="recent-content">Recent content</SelectItem>
-												<SelectItem value="comprehensive">Comprehensive review</SelectItem>
+												<SelectItem value="tailored-for-me">
+													Tailored for me
+												</SelectItem>
+												<SelectItem value="weak-areas">
+													Focus on weak areas
+												</SelectItem>
+												<SelectItem value="recent-content">
+													Recent content
+												</SelectItem>
+												<SelectItem value="comprehensive">
+													Comprehensive review
+												</SelectItem>
 											</SelectContent>
 										</Select>
-										<p className="text-xs text-muted-foreground">Select Focus</p>
 										<p className="text-xs text-muted-foreground">
-											"Tailored for me" includes unanswered exercises and ones you've struggled
-											with.
+											Select Focus
+										</p>
+										<p className="text-xs text-muted-foreground">
+											"Tailored for me" includes unanswered exercises and ones
+											you've struggled with.
 										</p>
 									</div>
 
@@ -229,11 +262,17 @@ export function OpenQuestionSessionSetup({
 									<div className="space-y-4">
 										<RadioGroup
 											value={practiceMode}
-											onValueChange={(value) => setQueryState({ practiceMode: value })}
+											onValueChange={(value) =>
+												setQueryState({ practiceMode: value })
+											}
 											className="grid grid-cols-2 gap-4"
 										>
 											<div>
-												<RadioGroupItem value="practice" id="practice" className="peer sr-only" />
+												<RadioGroupItem
+													value="practice"
+													id="practice"
+													className="peer sr-only"
+												/>
 												<Label
 													htmlFor="practice"
 													className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
@@ -245,7 +284,11 @@ export function OpenQuestionSessionSetup({
 												</p>
 											</div>
 											<div>
-												<RadioGroupItem value="exam" id="exam" className="peer sr-only" />
+												<RadioGroupItem
+													value="exam"
+													id="exam"
+													className="peer sr-only"
+												/>
 												<Label
 													htmlFor="exam"
 													className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"

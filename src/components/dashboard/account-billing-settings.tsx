@@ -2,9 +2,15 @@
 
 import { PlanSelector } from "@/components/billing/plan-selector";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { PLANS } from "@/lib/plans/config";
-import type { PlanId } from "@/lib/plans/types";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/card";
+import { PLANS } from "@/lib/config/plans";
+import type { PlanId } from "@/lib/database/types";
 import { useState } from "react";
 
 export function AccountBillingSettings() {

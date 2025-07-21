@@ -2,7 +2,7 @@
  * Supabase Storage Utilities
  */
 
-import { COURSE_MATERIALS_BUCKET } from "@/lib/constants/storage";
+import { COURSE_MATERIALS_BUCKET } from "@/lib/config/storage";
 import { getAdminClient, getServerClient } from "@/lib/supabase/server";
 
 export interface StorageUploadOptions {
@@ -44,11 +44,13 @@ export async function uploadFile(
 	try {
 		const supabase = await getServerClient();
 
-		const { data, error } = await supabase.storage.from(bucket).upload(filePath, file, {
-			upsert: options.upsert ?? false,
-			cacheControl: options.cacheControl ?? "3600",
-			contentType: options.contentType,
-		});
+		const { data, error } = await supabase.storage
+			.from(bucket)
+			.upload(filePath, file, {
+				upsert: options.upsert ?? false,
+				cacheControl: options.cacheControl ?? "3600",
+				contentType: options.contentType,
+			});
 
 		if (error) {
 			return {
@@ -62,7 +64,8 @@ export async function uploadFile(
 			filePath: data.path,
 		};
 	} catch (error) {
-		const errorMessage = error instanceof Error ? error.message : "Unknown upload error";
+		const errorMessage =
+			error instanceof Error ? error.message : "Unknown upload error";
 		return {
 			success: false,
 			error: errorMessage,
@@ -82,11 +85,13 @@ export async function uploadFileAdmin(
 	try {
 		const supabase = getAdminClient();
 
-		const { data, error } = await supabase.storage.from(bucket).upload(filePath, file, {
-			upsert: options.upsert ?? false,
-			cacheControl: options.cacheControl ?? "3600",
-			contentType: options.contentType,
-		});
+		const { data, error } = await supabase.storage
+			.from(bucket)
+			.upload(filePath, file, {
+				upsert: options.upsert ?? false,
+				cacheControl: options.cacheControl ?? "3600",
+				contentType: options.contentType,
+			});
 
 		if (error) {
 			return {
@@ -100,7 +105,8 @@ export async function uploadFileAdmin(
 			filePath: data.path,
 		};
 	} catch (error) {
-		const errorMessage = error instanceof Error ? error.message : "Unknown upload error";
+		const errorMessage =
+			error instanceof Error ? error.message : "Unknown upload error";
 		return {
 			success: false,
 			error: errorMessage,
@@ -118,7 +124,9 @@ export async function downloadFile(
 	try {
 		const supabase = await getServerClient();
 
-		const { data, error } = await supabase.storage.from(bucket).download(filePath);
+		const { data, error } = await supabase.storage
+			.from(bucket)
+			.download(filePath);
 
 		if (error) {
 			return {
@@ -142,7 +150,8 @@ export async function downloadFile(
 			buffer,
 		};
 	} catch (error) {
-		const errorMessage = error instanceof Error ? error.message : "Unknown download error";
+		const errorMessage =
+			error instanceof Error ? error.message : "Unknown download error";
 		return {
 			success: false,
 			error: errorMessage,
@@ -160,7 +169,9 @@ export async function downloadFileAdmin(
 	try {
 		const supabase = getAdminClient();
 
-		const { data, error } = await supabase.storage.from(bucket).download(filePath);
+		const { data, error } = await supabase.storage
+			.from(bucket)
+			.download(filePath);
 
 		if (error) {
 			return {
@@ -184,7 +195,8 @@ export async function downloadFileAdmin(
 			buffer,
 		};
 	} catch (error) {
-		const errorMessage = error instanceof Error ? error.message : "Unknown download error";
+		const errorMessage =
+			error instanceof Error ? error.message : "Unknown download error";
 		return {
 			success: false,
 			error: errorMessage,
@@ -195,7 +207,10 @@ export async function downloadFileAdmin(
 /**
  * Remove a file from Supabase storage
  */
-export async function removeFile(bucket: string, filePath: string): Promise<StorageRemoveResult> {
+export async function removeFile(
+	bucket: string,
+	filePath: string
+): Promise<StorageRemoveResult> {
 	try {
 		const supabase = await getServerClient();
 
@@ -212,7 +227,8 @@ export async function removeFile(bucket: string, filePath: string): Promise<Stor
 			success: true,
 		};
 	} catch (error) {
-		const errorMessage = error instanceof Error ? error.message : "Unknown removal error";
+		const errorMessage =
+			error instanceof Error ? error.message : "Unknown removal error";
 		return {
 			success: false,
 			error: errorMessage,
@@ -243,7 +259,8 @@ export async function removeFileAdmin(
 			success: true,
 		};
 	} catch (error) {
-		const errorMessage = error instanceof Error ? error.message : "Unknown removal error";
+		const errorMessage =
+			error instanceof Error ? error.message : "Unknown removal error";
 		return {
 			success: false,
 			error: errorMessage,
@@ -274,7 +291,8 @@ export async function removeFiles(
 			success: true,
 		};
 	} catch (error) {
-		const errorMessage = error instanceof Error ? error.message : "Unknown removal error";
+		const errorMessage =
+			error instanceof Error ? error.message : "Unknown removal error";
 		return {
 			success: false,
 			error: errorMessage,
@@ -305,7 +323,8 @@ export async function removeFilesAdmin(
 			success: true,
 		};
 	} catch (error) {
-		const errorMessage = error instanceof Error ? error.message : "Unknown removal error";
+		const errorMessage =
+			error instanceof Error ? error.message : "Unknown removal error";
 		return {
 			success: false,
 			error: errorMessage,
@@ -350,7 +369,8 @@ export async function getSignedUrl(
 			signedUrl: data.signedUrl,
 		};
 	} catch (error) {
-		const errorMessage = error instanceof Error ? error.message : "Unknown signed URL error";
+		const errorMessage =
+			error instanceof Error ? error.message : "Unknown signed URL error";
 		return {
 			success: false,
 			error: errorMessage,
@@ -377,21 +397,27 @@ export async function uploadCourseMaterial(
 /**
  * Download a course material file (admin access for background processing)
  */
-export async function downloadCourseMaterial(filePath: string): Promise<StorageDownloadResult> {
+export async function downloadCourseMaterial(
+	filePath: string
+): Promise<StorageDownloadResult> {
 	return downloadFileAdmin(COURSE_MATERIALS_BUCKET, filePath);
 }
 
 /**
  * Remove a course material file
  */
-export async function removeCourseMaterial(filePath: string): Promise<StorageRemoveResult> {
+export async function removeCourseMaterial(
+	filePath: string
+): Promise<StorageRemoveResult> {
 	return removeFileAdmin(COURSE_MATERIALS_BUCKET, filePath);
 }
 
 /**
  * Remove multiple course material files
  */
-export async function removeCourseMaterials(filePaths: string[]): Promise<StorageRemoveResult> {
+export async function removeCourseMaterials(
+	filePaths: string[]
+): Promise<StorageRemoveResult> {
 	return removeFilesAdmin(COURSE_MATERIALS_BUCKET, filePaths);
 }
 
@@ -409,7 +435,9 @@ export async function createSignedUploadUrl(
 }> {
 	try {
 		const supabase = getAdminClient();
-		const { data, error } = await supabase.storage.from(bucket).createSignedUploadUrl(filePath);
+		const { data, error } = await supabase.storage
+			.from(bucket)
+			.createSignedUploadUrl(filePath);
 
 		if (error) {
 			return { success: false, error: error.message };
@@ -421,7 +449,10 @@ export async function createSignedUploadUrl(
 	} catch (err) {
 		return {
 			success: false,
-			error: err instanceof Error ? err.message : "Unknown error while creating signed URL",
+			error:
+				err instanceof Error
+					? err.message
+					: "Unknown error while creating signed URL",
 		};
 	}
 }

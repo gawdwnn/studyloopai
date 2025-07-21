@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
-import type { OpenQuestionConfig } from "@/lib/stores/open-question-session/types";
+import type { OpenQuestionConfig } from "@/stores/open-question-session/types";
 import { XIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -20,7 +20,11 @@ interface OpenQuestion {
 type OpenQuestionQuizViewProps = {
 	questions: OpenQuestion[];
 	config: OpenQuestionConfig;
-	onQuestionAnswer: (questionId: string, userAnswer: string | null, timeSpent: number) => void;
+	onQuestionAnswer: (
+		questionId: string,
+		userAnswer: string | null,
+		timeSpent: number
+	) => void;
 	onEndSession: (totalTime: number) => void;
 	onClose: () => void;
 };
@@ -131,7 +135,9 @@ export function OpenQuestionQuizView({
 					</div>
 
 					<div className="text-center mb-8">
-						<h2 className="text-2xl font-semibold">{currentQuestion.question}</h2>
+						<h2 className="text-2xl font-semibold">
+							{currentQuestion.question}
+						</h2>
 					</div>
 
 					<div className="space-y-6">
@@ -155,7 +161,9 @@ export function OpenQuestionQuizView({
 						{showSampleAnswer && (
 							<div className="space-y-2 p-4 bg-muted/50 rounded-lg">
 								<h3 className="text-sm font-medium">Sample Answer:</h3>
-								<p className="text-sm text-muted-foreground">{currentQuestion.sampleAnswer}</p>
+								<p className="text-sm text-muted-foreground">
+									{currentQuestion.sampleAnswer}
+								</p>
 							</div>
 						)}
 					</div>
@@ -180,11 +188,13 @@ export function OpenQuestionQuizView({
 						)}
 
 						{/* Show Sample Answer Button (Practice Mode) */}
-						{config.practiceMode === "practice" && isAnswered && !showSampleAnswer && (
-							<Button variant="outline" onClick={handleShowSampleAnswer}>
-								Show Sample Answer
-							</Button>
-						)}
+						{config.practiceMode === "practice" &&
+							isAnswered &&
+							!showSampleAnswer && (
+								<Button variant="outline" onClick={handleShowSampleAnswer}>
+									Show Sample Answer
+								</Button>
+							)}
 
 						{/* Next Question Button */}
 						{isAnswered && (
@@ -192,7 +202,9 @@ export function OpenQuestionQuizView({
 								onClick={handleNextQuestion}
 								className="bg-primary text-primary-foreground hover:bg-primary/90"
 							>
-								{currentQuestionIndex < questions.length - 1 ? "Next Question" : "Finish Session"}
+								{currentQuestionIndex < questions.length - 1
+									? "Next Question"
+									: "Finish Session"}
 							</Button>
 						)}
 					</div>

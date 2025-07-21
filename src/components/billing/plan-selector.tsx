@@ -2,11 +2,17 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
-import { PLANS } from "@/lib/plans/config";
-import type { PlanId } from "@/lib/plans/types";
+import { PLANS } from "@/lib/config/plans";
+import type { PlanId } from "@/lib/database/types";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { Check, Crown, Star, Zap } from "lucide-react";
@@ -55,9 +61,15 @@ function PlanSkeleton() {
 	);
 }
 
-export function PlanSelector({ onPlanSelect, currentUserPlan, isLoading }: PlanSelectorProps) {
+export function PlanSelector({
+	onPlanSelect,
+	currentUserPlan,
+	isLoading,
+}: PlanSelectorProps) {
 	const [billingCycle, setBillingCycle] = useState<BillingCycle>("yearly");
-	const [selectedPlanId, setSelectedPlanId] = useState<PlanId | undefined>(currentUserPlan);
+	const [selectedPlanId, setSelectedPlanId] = useState<PlanId | undefined>(
+		currentUserPlan
+	);
 
 	const handlePlanSelect = (planId: PlanId) => {
 		setSelectedPlanId(planId);
@@ -95,20 +107,26 @@ export function PlanSelector({ onPlanSelect, currentUserPlan, isLoading }: PlanS
 				<span
 					className={cn(
 						"font-medium",
-						billingCycle === "monthly" ? "text-foreground" : "text-muted-foreground"
+						billingCycle === "monthly"
+							? "text-foreground"
+							: "text-muted-foreground"
 					)}
 				>
 					Monthly
 				</span>
 				<Switch
 					checked={billingCycle === "yearly"}
-					onCheckedChange={(checked) => setBillingCycle(checked ? "yearly" : "monthly")}
+					onCheckedChange={(checked) =>
+						setBillingCycle(checked ? "yearly" : "monthly")
+					}
 					aria-label="Toggle billing cycle"
 				/>
 				<span
 					className={cn(
 						"font-medium",
-						billingCycle === "yearly" ? "text-foreground" : "text-muted-foreground"
+						billingCycle === "yearly"
+							? "text-foreground"
+							: "text-muted-foreground"
 					)}
 				>
 					Yearly
@@ -164,7 +182,9 @@ export function PlanSelector({ onPlanSelect, currentUserPlan, isLoading }: PlanS
 									<Card
 										className={cn(
 											"flex flex-col h-full transition-all duration-300 relative overflow-hidden",
-											isSelected ? "border-primary ring-2 ring-primary" : "border-border/50",
+											isSelected
+												? "border-primary ring-2 ring-primary"
+												: "border-border/50",
 											isPopular ? "bg-primary/5" : "bg-background"
 										)}
 									>
@@ -185,7 +205,9 @@ export function PlanSelector({ onPlanSelect, currentUserPlan, isLoading }: PlanS
 											>
 												<IconComponent className="w-8 h-8" />
 											</div>
-											<CardTitle className="text-2xl font-bold">{plan.name}</CardTitle>
+											<CardTitle className="text-2xl font-bold">
+												{plan.name}
+											</CardTitle>
 											<CardDescription className="px-4 min-h-[40px]">
 												{plan.description}
 											</CardDescription>
@@ -210,11 +232,16 @@ export function PlanSelector({ onPlanSelect, currentUserPlan, isLoading }: PlanS
 
 											<ul className="space-y-3 text-sm flex-grow">
 												{plan.features.map((feature) => (
-													<li key={feature.id} className="flex items-start gap-3">
+													<li
+														key={feature.id}
+														className="flex items-start gap-3"
+													>
 														<Check className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
 														<span
 															className={cn(
-																feature.included ? "" : "text-muted-foreground line-through"
+																feature.included
+																	? ""
+																	: "text-muted-foreground line-through"
 															)}
 														>
 															{feature.name}
@@ -258,8 +285,8 @@ export function PlanSelector({ onPlanSelect, currentUserPlan, isLoading }: PlanS
 			{/* Help Text */}
 			<div className="text-center mt-10">
 				<p className="text-xs text-muted-foreground">
-					All plans include a 14-day money-back guarantee. You can upgrade, downgrade, or cancel
-					anytime.
+					All plans include a 14-day money-back guarantee. You can upgrade,
+					downgrade, or cancel anytime.
 				</p>
 			</div>
 		</div>

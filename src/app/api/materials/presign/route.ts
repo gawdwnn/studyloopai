@@ -6,7 +6,7 @@ import {
 	FILE_UPLOAD_LIMITS,
 	getContentTypeFromFilename,
 	getContentTypeFromMime,
-} from "@/lib/constants/file-upload";
+} from "@/lib/config/file-upload";
 import { getServerClient } from "@/lib/supabase/server";
 import { createSignedUploadUrlForCourseMaterial } from "@/lib/supabase/storage";
 import { getUserFriendlyErrorMessage } from "@/lib/utils/error-messages";
@@ -21,8 +21,16 @@ const BodySchema = z.object({
 		.string()
 		.min(1, "File name is required")
 		.max(255, "File name too long")
-		.refine((name) => name.toLowerCase().endsWith(".pdf"), "Only PDF files are supported"),
-	mimeType: z.string().refine((mime) => mime === "application/pdf", "Only PDF files are supported"),
+		.refine(
+			(name) => name.toLowerCase().endsWith(".pdf"),
+			"Only PDF files are supported"
+		),
+	mimeType: z
+		.string()
+		.refine(
+			(mime) => mime === "application/pdf",
+			"Only PDF files are supported"
+		),
 	fileSize: z
 		.number()
 		.min(1, "File cannot be empty")
@@ -44,7 +52,10 @@ export async function POST(req: NextRequest) {
 		} = await supabase.auth.getUser();
 
 		if (!user) {
-			return NextResponse.json({ error: "Session expired. Please refresh the page and try again." }, { status: 401 });
+			return NextResponse.json(
+				{ error: "Session expired. Please refresh the page and try again." },
+				{ status: 401 }
+			);
 		}
 
 		// Determine content type
@@ -72,7 +83,10 @@ export async function POST(req: NextRequest) {
 		const filePath = `${user.id}/${material.id}/${body.fileName}`;
 
 		// Update row with filePath
-		await db.update(courseMaterials).set({ filePath }).where(eq(courseMaterials.id, material.id));
+		await db
+			.update(courseMaterials)
+			.set({ filePath })
+			.where(eq(courseMaterials.id, material.id));
 
 		// Create signed upload URL (15-min TTL)
 		const { success, signedUrl, token, error } =
@@ -80,17 +94,24 @@ export async function POST(req: NextRequest) {
 
 		if (!success || !signedUrl) {
 			console.error("Failed to create signed URL:", error);
-			
+
 			// Mark the material as failed since signed URL creation failed
 			try {
-				await db.update(courseMaterials)
+				await db
+					.update(courseMaterials)
 					.set({ uploadStatus: "failed" })
 					.where(eq(courseMaterials.id, material.id));
 			} catch (updateErr) {
 				console.error("Failed to update material status to failed:", updateErr);
 			}
-			
-			return NextResponse.json({ error: "Service temporarily unavailable. Please try again in a few moments." }, { status: 500 });
+
+			return NextResponse.json(
+				{
+					error:
+						"Service temporarily unavailable. Please try again in a few moments.",
+				},
+				{ status: 500 }
+			);
 		}
 
 		return NextResponse.json({
@@ -101,14 +122,11 @@ export async function POST(req: NextRequest) {
 		});
 	} catch (err) {
 		console.error("Materials presign error:", err);
-		
+
 		const userMessage = getUserFriendlyErrorMessage(
 			err instanceof Error ? err : "Unknown error occurred"
 		);
-		
-		return NextResponse.json(
-			{ error: userMessage },
-			{ status: 400 }
-		);
+
+		return NextResponse.json({ error: userMessage }, { status: 400 });
 	}
 }

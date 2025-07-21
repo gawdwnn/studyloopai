@@ -3,11 +3,11 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { useCuecardSession } from "@/lib/stores/cuecard-session/use-cuecard-session";
-import { useMcqSession } from "@/lib/stores/mcq-session/use-mcq-session";
-import { useOpenQuestionSession } from "@/lib/stores/open-question-session/use-open-question-session";
-import type { SessionType } from "@/lib/stores/session-manager/types";
-import { useSessionManager } from "@/lib/stores/session-manager/use-session-manager";
+import { useCuecardSession } from "@/stores/cuecard-session/use-cuecard-session";
+import { useMcqSession } from "@/stores/mcq-session/use-mcq-session";
+import { useOpenQuestionSession } from "@/stores/open-question-session/use-open-question-session";
+import type { SessionType } from "@/stores/session-manager/types";
+import { useSessionManager } from "@/stores/session-manager/use-session-manager";
 import { Clock, Pause, Play, Target, TrendingUp } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Skeleton } from "../ui/skeleton";
@@ -57,7 +57,8 @@ function useActiveSessionDetails() {
 		switch (activeSessionInfo.type) {
 			case "multiple-choice": {
 				const { progress, config, isLoading } = mcqSession;
-				const totalAnswered = progress.correctAnswers + progress.incorrectAnswers;
+				const totalAnswered =
+					progress.correctAnswers + progress.incorrectAnswers;
 				return {
 					isLoading,
 					sessionType: "multiple-choice",
@@ -67,7 +68,9 @@ function useActiveSessionDetails() {
 						correctCount: progress.correctAnswers,
 						incorrectCount: progress.incorrectAnswers,
 						accuracy:
-							totalAnswered > 0 ? Math.round((progress.correctAnswers / totalAnswered) * 100) : 0,
+							totalAnswered > 0
+								? Math.round((progress.correctAnswers / totalAnswered) * 100)
+								: 0,
 						startedAt: progress.startedAt,
 					},
 					config: {
@@ -79,7 +82,8 @@ function useActiveSessionDetails() {
 			}
 			case "cuecards": {
 				const { progress, config, isLoading } = cuecardSession;
-				const totalAnswered = progress.correctAnswers + progress.incorrectAnswers;
+				const totalAnswered =
+					progress.correctAnswers + progress.incorrectAnswers;
 				return {
 					isLoading,
 					sessionType: "cuecards",
@@ -89,7 +93,9 @@ function useActiveSessionDetails() {
 						correctCount: progress.correctAnswers,
 						incorrectCount: progress.incorrectAnswers,
 						accuracy:
-							totalAnswered > 0 ? Math.round((progress.correctAnswers / totalAnswered) * 100) : 0,
+							totalAnswered > 0
+								? Math.round((progress.correctAnswers / totalAnswered) * 100)
+								: 0,
 						startedAt: progress.startedAt,
 					},
 					config: {
@@ -117,7 +123,10 @@ function useActiveSessionDetails() {
 						totalItems: progress.totalQuestions,
 						correctCount,
 						incorrectCount,
-						accuracy: progress.answeredQuestions > 0 ? Math.round(progress.averageScore * 100) : 0,
+						accuracy:
+							progress.answeredQuestions > 0
+								? Math.round(progress.averageScore * 100)
+								: 0,
 						startedAt: progress.startedAt,
 					},
 					config: {
@@ -154,11 +163,16 @@ function useActiveSessionDetails() {
 export function SessionProgressIndicator() {
 	const activeSessionInfo = useSessionManager((s) => s.activeSession);
 	const { pauseSession, resumeSession } = useSessionManager((s) => s.actions);
-	const { isLoading, progress, config, sessionType } = useActiveSessionDetails();
+	const { isLoading, progress, config, sessionType } =
+		useActiveSessionDetails();
 	const [timeSpent, setTimeSpent] = useState(0);
 
 	useEffect(() => {
-		if (!activeSessionInfo || activeSessionInfo.status !== "active" || !progress.startedAt) {
+		if (
+			!activeSessionInfo ||
+			activeSessionInfo.status !== "active" ||
+			!progress.startedAt
+		) {
 			return;
 		}
 

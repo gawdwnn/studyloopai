@@ -3,13 +3,14 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useOnboardingStore } from "@/lib/stores/onboarding-store";
+import { useOnboardingStore } from "@/stores/onboarding-store";
 import { motion } from "framer-motion";
 import { User, Users } from "lucide-react";
 import { useState } from "react";
 
 export function WelcomeProfileStep() {
-	const { profileData, updateProfileData, markStepCompleted, goToNextStep } = useOnboardingStore();
+	const { profileData, updateProfileData, markStepCompleted, goToNextStep } =
+		useOnboardingStore();
 
 	const [formData, setFormData] = useState({
 		firstName: profileData.firstName || "",
@@ -99,7 +100,10 @@ export function WelcomeProfileStep() {
 
 			{/* Action button */}
 			<motion.div variants={itemVariants} className="flex justify-center pt-4">
-				<Button onClick={handleContinue} disabled={!formData.firstName || !formData.lastName}>
+				<Button
+					onClick={handleContinue}
+					disabled={!formData.firstName || !formData.lastName}
+				>
 					Continue
 				</Button>
 			</motion.div>

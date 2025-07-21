@@ -64,7 +64,8 @@ export function updateCardWithFeedback(
 		}
 
 		// Update ease factor
-		newEaseFactor = newEaseFactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
+		newEaseFactor =
+			newEaseFactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
 		newEaseFactor = Math.max(MINIMUM_EASE_FACTOR, newEaseFactor);
 	} else {
 		// Incorrect response - reset interval
@@ -91,7 +92,9 @@ export function updateCardWithFeedback(
  * Sort cards by priority for optimal learning
  * Prioritizes cards that are due for review and user's weak areas
  */
-export function sortCardsByPriority(cards: SpacedRepetitionCard[]): SpacedRepetitionCard[] {
+export function sortCardsByPriority(
+	cards: SpacedRepetitionCard[]
+): SpacedRepetitionCard[] {
 	const now = new Date();
 
 	return [...cards].sort((a, b) => {
@@ -138,7 +141,9 @@ export function filterCardsByConfig(
 			hard: [7, 10],
 		};
 		const [min, max] = difficultyRanges[difficulty];
-		filtered = filtered.filter((card) => card.difficulty >= min && card.difficulty < max);
+		filtered = filtered.filter(
+			(card) => card.difficulty >= min && card.difficulty < max
+		);
 	}
 
 	// Apply focus strategy
@@ -146,9 +151,15 @@ export function filterCardsByConfig(
 		case "weak-areas":
 			// Prioritize cards with high difficulty or low success rate
 			filtered.sort((a, b) => {
-				const aSuccessRate = a.timesCorrect / (a.timesCorrect + a.timesIncorrect || 1);
-				const bSuccessRate = b.timesCorrect / (b.timesCorrect + b.timesIncorrect || 1);
-				return b.difficulty + (1 - bSuccessRate) * 5 - (a.difficulty + (1 - aSuccessRate) * 5);
+				const aSuccessRate =
+					a.timesCorrect / (a.timesCorrect + a.timesIncorrect || 1);
+				const bSuccessRate =
+					b.timesCorrect / (b.timesCorrect + b.timesIncorrect || 1);
+				return (
+					b.difficulty +
+					(1 - bSuccessRate) * 5 -
+					(a.difficulty + (1 - aSuccessRate) * 5)
+				);
 			});
 			break;
 
@@ -185,9 +196,13 @@ export function calculateOptimalSessionLength(userPerformance: {
 	const accuracyMultiplier = Math.max(0.5, userPerformance.accuracy / 100);
 
 	// Adjust based on speed - faster users can handle more cards
-	const speedMultiplier = Math.max(0.5, 5000 / (userPerformance.averageTimePerCard || 5000));
+	const speedMultiplier = Math.max(
+		0.5,
+		5000 / (userPerformance.averageTimePerCard || 5000)
+	);
 
-	const adjustedLength = baseSessionLength * accuracyMultiplier * speedMultiplier;
+	const adjustedLength =
+		baseSessionLength * accuracyMultiplier * speedMultiplier;
 
 	return Math.min(maxSessionLength, Math.max(5, adjustedLength));
 }

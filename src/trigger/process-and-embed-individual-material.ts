@@ -1,8 +1,8 @@
 import { db } from "@/db";
 import { courseMaterials, documentChunks } from "@/db/schema";
 import { generateEmbeddings } from "@/lib/ai/embeddings";
-import { CONTENT_TYPES } from "@/lib/constants/file-upload";
-import { PDF_PROCESSING_LIMITS } from "@/lib/constants/pdf-processing";
+import { CONTENT_TYPES } from "@/lib/config/file-upload";
+import { PDF_PROCESSING_LIMITS } from "@/lib/config/pdf-processing";
 import { parsePDF } from "@/lib/processing/pdf-parser";
 import { downloadCourseMaterial } from "@/lib/supabase/storage";
 import { logger, schemaTask, tags } from "@trigger.dev/sdk";
@@ -21,7 +21,9 @@ const ProcessAndEmbedIndividualOutput = z.object({
 	success: z.boolean(),
 });
 
-type ProcessAndEmbedIndividualPayloadType = z.infer<typeof ProcessAndEmbedIndividualPayload>;
+type ProcessAndEmbedIndividualPayloadType = z.infer<
+	typeof ProcessAndEmbedIndividualPayload
+>;
 
 export const processAndEmbedIndividualMaterial = schemaTask({
 	id: "process-and-embed-individual-material",
@@ -67,7 +69,9 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 			const downloadResult = await downloadCourseMaterial(filePath);
 
 			if (!downloadResult.success) {
-				throw new Error(downloadResult.error || `Failed to download ${filePath}`);
+				throw new Error(
+					downloadResult.error || `Failed to download ${filePath}`
+				);
 			}
 
 			if (!downloadResult.buffer) {
@@ -113,19 +117,23 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 			const chunks = await splitter.createDocuments([extractedText]);
 
 			// 4. Generate embeddings
-			const result = await generateEmbeddings(chunks.map((c: Document) => c.pageContent));
+			const result = await generateEmbeddings(
+				chunks.map((c: Document) => c.pageContent)
+			);
 			if (!result.success) {
 				throw new Error(`Embedding generation failed: ${result.error}`);
 			}
 
 			// 5. Save chunks to database
-			const chunksToInsert = result.embeddings.map((embedding: number[], i: number) => ({
-				materialId: materialId,
-				content: chunks[i].pageContent,
-				embedding: embedding,
-				chunkIndex: i,
-				tokenCount: Math.round(chunks[i].pageContent.length / 4),
-			}));
+			const chunksToInsert = result.embeddings.map(
+				(embedding: number[], i: number) => ({
+					materialId: materialId,
+					content: chunks[i].pageContent,
+					embedding: embedding,
+					chunkIndex: i,
+					tokenCount: Math.round(chunks[i].pageContent.length / 4),
+				})
+			);
 			await db.insert(documentChunks).values(chunksToInsert);
 
 			// 6. Update final status to 'completed'
@@ -145,8 +153,9 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 				success: true,
 			};
 		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
-			
+			const errorMessage =
+				error instanceof Error ? error.message : "An unknown error occurred";
+
 			logger.error("❌ Material processing failed", {
 				materialId,
 				filePath,

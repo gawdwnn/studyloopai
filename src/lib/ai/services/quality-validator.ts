@@ -1,5 +1,5 @@
+import { getTextGenerationModel } from "@/lib/ai/config";
 import { generateText } from "ai";
-import { getTextGenerationModel } from "./config";
 
 // Quality metrics for different content types
 export interface QualityMetrics {
@@ -220,7 +220,8 @@ export async function validateContentQuality(
 			? { autoApprove: 85, autoReject: 50, regenerate: 60 }
 			: QUALITY_THRESHOLDS;
 
-		const shouldRegenerate = overallQuality < thresholds.regenerate || assessment.shouldRegenerate;
+		const shouldRegenerate =
+			overallQuality < thresholds.regenerate || assessment.shouldRegenerate;
 
 		return {
 			...assessment,
@@ -245,7 +246,9 @@ export async function validateContentQuality(
 /**
  * Parse AI quality assessment response
  */
-function parseQualityAssessment(response: string): Omit<QualityMetrics, "overallQuality"> {
+function parseQualityAssessment(
+	response: string
+): Omit<QualityMetrics, "overallQuality"> {
 	try {
 		// Extract JSON from response
 		const jsonMatch = response.match(/\{[\s\S]*\}/);
@@ -261,7 +264,9 @@ function parseQualityAssessment(response: string): Omit<QualityMetrics, "overall
 			readability: clampScore(parsed.readability),
 			educationalValue: clampScore(parsed.educationalValue),
 			ageAppropriateness: clampScore(parsed.ageAppropriateness),
-			feedback: Array.isArray(parsed.feedback) ? parsed.feedback.slice(0, 5) : [], // Limit feedback
+			feedback: Array.isArray(parsed.feedback)
+				? parsed.feedback.slice(0, 5)
+				: [], // Limit feedback
 			shouldRegenerate: Boolean(parsed.shouldRegenerate),
 		};
 	} catch (error) {
@@ -305,7 +310,11 @@ export async function validateContentQualityBatch(
 	for (let i = 0; i < contentItems.length; i += BATCH_SIZE) {
 		const batch = contentItems.slice(i, i + BATCH_SIZE);
 		const batchPromises = batch.map(async (item) => {
-			const metrics = await validateContentQuality(item.content, item.type, options);
+			const metrics = await validateContentQuality(
+				item.content,
+				item.type,
+				options
+			);
 			return { ...metrics, id: item.id };
 		});
 

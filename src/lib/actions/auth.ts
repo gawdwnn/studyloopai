@@ -1,14 +1,16 @@
 "use server";
 
-import { getSiteUrl } from "@/lib/get-site-url";
+import { type AuthErrorDetails, getAuthErrorMessage } from "@/lib/auth/errors";
+import type { MagicLinkFormData } from "@/lib/auth/validation";
 import { RateLimitError, rateLimiter } from "@/lib/rate-limit";
 import { getServerClient } from "@/lib/supabase/server";
-import type { MagicLinkFormData } from "@/lib/validations/auth";
+import { getSiteUrl } from "@/lib/utils/site-url";
 import { redirect } from "next/navigation";
-import { type AuthErrorDetails, getAuthErrorMessage } from "../errors/auth";
 
 export async function sendMagicLink(formData: MagicLinkFormData) {
-	const rateLimitResult = await rateLimiter.checkMagicLinkRateLimit(formData.email);
+	const rateLimitResult = await rateLimiter.checkMagicLinkRateLimit(
+		formData.email
+	);
 
 	if (!rateLimitResult.isAllowed) {
 		const resetMinutes = rateLimitResult.resetTime

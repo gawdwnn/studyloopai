@@ -2,7 +2,7 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { ReactQueryProvider } from "@/components/providers/react-query-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
-import { getSiteUrl } from "@/lib/get-site-url";
+import { getSiteUrl } from "@/lib/utils/site-url";
 import type { Metadata } from "next";
 import { Geist_Mono, Montserrat } from "next/font/google";
 import "./globals.css";
@@ -33,7 +33,9 @@ export default function RootLayout({
 }>) {
 	return (
 		<html lang="en" suppressHydrationWarning>
-			<body className={`${montserrat.variable} ${geistMono.variable} antialiased`}>
+			<body
+				className={`${montserrat.variable} ${geistMono.variable} antialiased`}
+			>
 				<ReactQueryProvider>
 					<ThemeProvider
 						attribute="class"

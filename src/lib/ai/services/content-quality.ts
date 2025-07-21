@@ -14,9 +14,16 @@ export interface QualityValidationResult<T = Record<string, unknown>> {
 /**
  * Validate and filter content based on quality metrics
  */
-export async function validateAndFilterContent<T extends Record<string, unknown>>(
+export async function validateAndFilterContent<
+	T extends Record<string, unknown>,
+>(
 	content: T[],
-	contentType: "goldenNotes" | "cuecards" | "mcqs" | "openQuestions" | "summaries",
+	contentType:
+		| "goldenNotes"
+		| "cuecards"
+		| "mcqs"
+		| "openQuestions"
+		| "summaries",
 	config: { difficulty?: string; subject?: string } = {}
 ): Promise<QualityValidationResult<T>> {
 	if (content.length === 0) {
@@ -37,7 +44,11 @@ export async function validateAndFilterContent<T extends Record<string, unknown>
 	// Validate each piece of content
 	const validationPromises = content.map(async (item, index) => {
 		const contentText = formatContentForValidation(item, contentType);
-		const quality = await validateContentQuality(contentText, contentType, qualityOptions);
+		const quality = await validateContentQuality(
+			contentText,
+			contentType,
+			qualityOptions
+		);
 		return { item, quality, index };
 	});
 
@@ -57,16 +68,22 @@ export async function validateAndFilterContent<T extends Record<string, unknown>
 			totalQuality += quality.overallQuality;
 		} else {
 			rejectedCount++;
-			issues.push(`Item ${index + 1}: ${reason} (Score: ${quality.overallQuality})`);
+			issues.push(
+				`Item ${index + 1}: ${reason} (Score: ${quality.overallQuality})`
+			);
 
 			// Log quality feedback for debugging
 			if (quality.feedback.length > 0) {
-				console.warn(`Quality issues for ${contentType} item ${index + 1}:`, quality.feedback);
+				console.warn(
+					`Quality issues for ${contentType} item ${index + 1}:`,
+					quality.feedback
+				);
 			}
 		}
 	}
 
-	const averageQuality = validItems.length > 0 ? totalQuality / validItems.length : 0;
+	const averageQuality =
+		validItems.length > 0 ? totalQuality / validItems.length : 0;
 
 	return {
 		validContent: validItems,
@@ -79,7 +96,10 @@ export async function validateAndFilterContent<T extends Record<string, unknown>
 /**
  * Format content for quality validation based on content type
  */
-function formatContentForValidation(item: Record<string, unknown>, contentType: string): string {
+function formatContentForValidation(
+	item: Record<string, unknown>,
+	contentType: string
+): string {
 	switch (contentType) {
 		case "goldenNotes": {
 			return `Title: ${String(item.title)}\nContent: ${String(item.content)}`;
@@ -98,9 +118,17 @@ function formatContentForValidation(item: Record<string, unknown>, contentType: 
 				question?: unknown;
 			}
 			const mcq = item as MCQItem;
-			const formattedOptions = [mcq.optionA, mcq.optionB, mcq.optionC, mcq.optionD]
+			const formattedOptions = [
+				mcq.optionA,
+				mcq.optionB,
+				mcq.optionC,
+				mcq.optionD,
+			]
 				.filter(Boolean)
-				.map((opt: unknown, i: number) => `${String.fromCharCode(65 + i)}) ${String(opt)}`)
+				.map(
+					(opt: unknown, i: number) =>
+						`${String.fromCharCode(65 + i)}) ${String(opt)}`
+				)
 				.join("\n");
 			return `Question: ${String(mcq.question)}\nOptions:\n${formattedOptions}\nCorrect Answer: ${String(mcq.correctAnswer)}\nExplanation: ${String(mcq.explanation)}`;
 		}
@@ -133,7 +161,9 @@ function formatContentForValidation(item: Record<string, unknown>, contentType: 
 /**
  * Map difficulty levels to grade levels for quality assessment
  */
-function mapDifficultyToGradeLevel(difficulty?: string): QualityValidationOptions["gradeLevel"] {
+function mapDifficultyToGradeLevel(
+	difficulty?: string
+): QualityValidationOptions["gradeLevel"] {
 	switch (difficulty) {
 		case "beginner":
 			return "elementary";
@@ -149,12 +179,21 @@ function mapDifficultyToGradeLevel(difficulty?: string): QualityValidationOption
 /**
  * Generate quality report for content generation results
  */
-export function generateQualityReport(results: QualityValidationResult[]): string {
-	const totalItems = results.reduce((sum, r) => sum + r.validContent.length + r.rejectedCount, 0);
+export function generateQualityReport(
+	results: QualityValidationResult[]
+): string {
+	const totalItems = results.reduce(
+		(sum, r) => sum + r.validContent.length + r.rejectedCount,
+		0
+	);
 	const totalRejected = results.reduce((sum, r) => sum + r.rejectedCount, 0);
-	const avgQuality = results.reduce((sum, r) => sum + r.averageQuality, 0) / results.length;
+	const avgQuality =
+		results.reduce((sum, r) => sum + r.averageQuality, 0) / results.length;
 
-	const successRate = (((totalItems - totalRejected) / totalItems) * 100).toFixed(1);
+	const successRate = (
+		((totalItems - totalRejected) / totalItems) *
+		100
+	).toFixed(1);
 
 	return `Quality Report: ${totalItems - totalRejected}/${totalItems} items passed (${successRate}%), Average Quality: ${avgQuality.toFixed(1)}`;
 }

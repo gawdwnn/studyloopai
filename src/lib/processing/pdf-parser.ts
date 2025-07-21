@@ -3,7 +3,7 @@ import {
 	PDF_PROCESSING_DEFAULTS,
 	PDF_PROCESSING_LIMITS,
 	PDF_VALIDATION,
-} from "@/lib/constants/pdf-processing";
+} from "@/lib/config/pdf-processing";
 import type { TextItem } from "pdfjs-dist/types/src/display/api";
 import { extractText } from "unpdf";
 
@@ -15,7 +15,9 @@ let pdfjsLib: PDFJS | null = null;
 async function loadPDFJS(): Promise<PDFJS> {
 	if (!pdfjsLib) {
 		// Use legacy build for Node.js compatibility on Node.js
-		pdfjsLib = (await import("pdfjs-dist/legacy/build/pdf.mjs")) as unknown as PDFJS;
+		pdfjsLib = (await import(
+			"pdfjs-dist/legacy/build/pdf.mjs"
+		)) as unknown as PDFJS;
 		// Disable worker in Node.js environment
 		if (typeof window === "undefined") {
 			pdfjsLib.GlobalWorkerOptions.workerSrc = "";
@@ -61,7 +63,9 @@ async function extractWithPDFJS(buffer: Buffer): Promise<PDFParseResult> {
 		for (let i = 1; i <= totalPages; i++) {
 			const page = await pdf.getPage(i);
 			const textContent = await page.getTextContent();
-			const pageText = (textContent.items as TextItem[]).map((item) => item.str).join(" ");
+			const pageText = (textContent.items as TextItem[])
+				.map((item) => item.str)
+				.join(" ");
 			fullText += `${pageText} `;
 		}
 
@@ -109,17 +113,24 @@ export async function parsePDF(
 			const result = await Promise.race([
 				extractionPromise,
 				new Promise<never>((_, reject) =>
-					setTimeout(() => reject(new Error(PDF_ERROR_MESSAGES.PROCESSING_TIMEOUT)), timeout)
+					setTimeout(
+						() => reject(new Error(PDF_ERROR_MESSAGES.PROCESSING_TIMEOUT)),
+						timeout
+					)
 				),
 			]);
 
-			let text = Array.isArray(result.text) ? result.text.join(" ") : result.text;
+			let text = Array.isArray(result.text)
+				? result.text.join(" ")
+				: result.text;
 
 			if (text && text.trim().length > 0) {
 				// Success with unpdf
-				const shouldCleanText = options.cleanText ?? PDF_PROCESSING_DEFAULTS.CLEAN_TEXT;
+				const shouldCleanText =
+					options.cleanText ?? PDF_PROCESSING_DEFAULTS.CLEAN_TEXT;
 				const shouldPreservePageBreaks =
-					options.preservePageBreaks ?? PDF_PROCESSING_DEFAULTS.PRESERVE_PAGE_BREAKS;
+					options.preservePageBreaks ??
+					PDF_PROCESSING_DEFAULTS.PRESERVE_PAGE_BREAKS;
 
 				if (shouldPreservePageBreaks) {
 					text = text.replace(/\f/g, "\n--- PAGE BREAK ---\n");
@@ -153,7 +164,10 @@ export async function parsePDF(
 			const pdfJsResult = await Promise.race([
 				extractWithPDFJS(buffer),
 				new Promise<never>((_, reject) =>
-					setTimeout(() => reject(new Error(PDF_ERROR_MESSAGES.PROCESSING_TIMEOUT)), timeout)
+					setTimeout(
+						() => reject(new Error(PDF_ERROR_MESSAGES.PROCESSING_TIMEOUT)),
+						timeout
+					)
 				),
 			]);
 
@@ -161,9 +175,11 @@ export async function parsePDF(
 				let text = pdfJsResult.text;
 
 				// Apply text processing options
-				const shouldCleanText = options.cleanText ?? PDF_PROCESSING_DEFAULTS.CLEAN_TEXT;
+				const shouldCleanText =
+					options.cleanText ?? PDF_PROCESSING_DEFAULTS.CLEAN_TEXT;
 				const shouldPreservePageBreaks =
-					options.preservePageBreaks ?? PDF_PROCESSING_DEFAULTS.PRESERVE_PAGE_BREAKS;
+					options.preservePageBreaks ??
+					PDF_PROCESSING_DEFAULTS.PRESERVE_PAGE_BREAKS;
 
 				if (shouldPreservePageBreaks) {
 					text = text.replace(/\f/g, "\n--- PAGE BREAK ---\n");
@@ -200,7 +216,8 @@ export async function parsePDF(
 	} catch (error) {
 		return {
 			success: false,
-			error: error instanceof Error ? error.message : "Unknown PDF parsing error",
+			error:
+				error instanceof Error ? error.message : "Unknown PDF parsing error",
 		};
 	}
 }
@@ -238,7 +255,10 @@ export function validatePDFBuffer(buffer: Buffer): {
 		};
 	}
 
-	if (buffer.toString("utf8", 0, PDF_VALIDATION.PDF_HEADER.length) !== PDF_VALIDATION.PDF_HEADER) {
+	if (
+		buffer.toString("utf8", 0, PDF_VALIDATION.PDF_HEADER.length) !==
+		PDF_VALIDATION.PDF_HEADER
+	) {
 		return { isValid: false, error: PDF_ERROR_MESSAGES.INVALID_HEADER };
 	}
 

@@ -26,9 +26,13 @@ export function PerformanceList({ title, courses }: PerformanceListProps) {
 				<div className="space-y-4">
 					{courses.map((course) => (
 						<div key={course.name} className="flex items-center">
-							<p className="text-sm text-muted-foreground flex-1">{course.name}</p>
+							<p className="text-sm text-muted-foreground flex-1">
+								{course.name}
+							</p>
 							<Progress value={course.performance} className="w-24" />
-							<span className="text-sm font-medium w-12 text-right">{course.performance}%</span>
+							<span className="text-sm font-medium w-12 text-right">
+								{course.performance}%
+							</span>
 						</div>
 					))}
 				</div>

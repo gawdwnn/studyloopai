@@ -1,16 +1,19 @@
 "use client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { STUDY_GOALS, useOnboardingStore } from "@/lib/stores/onboarding-store";
 import { cn } from "@/lib/utils";
+import { STUDY_GOALS, useOnboardingStore } from "@/stores/onboarding-store";
 import { motion } from "framer-motion";
 import { Check, Target } from "lucide-react";
 import { useState } from "react";
 
 export function PersonalizationStep() {
-	const { profileData, updateProfileData, markStepCompleted, goToNextStep } = useOnboardingStore();
+	const { profileData, updateProfileData, markStepCompleted, goToNextStep } =
+		useOnboardingStore();
 
-	const [selectedGoals, setSelectedGoals] = useState<string[]>(profileData.studyGoals || []);
+	const [selectedGoals, setSelectedGoals] = useState<string[]>(
+		profileData.studyGoals || []
+	);
 
 	const toggleGoal = (goalId: string) => {
 		const newGoals = selectedGoals.includes(goalId)
@@ -59,12 +62,16 @@ export function PersonalizationStep() {
 				</div>
 				<h2 className="text-2xl font-bold">What are your study goals?</h2>
 				<p className="text-sm text-muted-foreground">
-					Select all that apply. We'll customize your content and study materials accordingly.
+					Select all that apply. We'll customize your content and study
+					materials accordingly.
 				</p>
 			</motion.div>
 
 			{/* Goals grid */}
-			<motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 gap-3">
+			<motion.div
+				variants={itemVariants}
+				className="grid grid-cols-1 md:grid-cols-2 gap-3"
+			>
 				{STUDY_GOALS.map((goal) => {
 					const isSelected = selectedGoals.includes(goal.id);
 
@@ -78,13 +85,19 @@ export function PersonalizationStep() {
 							<Card
 								className={cn(
 									"cursor-pointer transition-all duration-200 hover:shadow-md",
-									isSelected ? "ring-2 ring-primary shadow-md bg-primary/5" : "hover:bg-muted/50"
+									isSelected
+										? "ring-2 ring-primary shadow-md bg-primary/5"
+										: "hover:bg-muted/50"
 								)}
 								onClick={() => toggleGoal(goal.id)}
 							>
 								<CardContent className="p-4">
 									<div className="flex items-center gap-3">
-										<div className="text-2xl" role="img" aria-label={goal.label}>
+										<div
+											className="text-2xl"
+											role="img"
+											aria-label={goal.label}
+										>
 											{goal.icon}
 										</div>
 										<div className="flex-1">

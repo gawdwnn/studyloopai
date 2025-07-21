@@ -13,11 +13,12 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import {
-	CONTENT_TYPES,
-	CONTENT_TYPE_LABELS,
-} from "@/lib/constants/file-upload";
-import type { Course, CourseMaterial, CourseWeek } from "@/types/database-types";
+import { CONTENT_TYPES, CONTENT_TYPE_LABELS } from "@/lib/config/file-upload";
+import type {
+	Course,
+	CourseMaterial,
+	CourseWeek,
+} from "@/types/database-types";
 import {
 	AudioLines,
 	File,

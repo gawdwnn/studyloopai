@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { GoldenNote, Summary } from "@/hooks/use-notes";
 import { formatErrorForToast } from "@/lib/utils/error-handling";
-import { type ExportType, exportNotes } from "@/lib/utils/export-utils";
+import { type ExportType, exportNotes } from "@/lib/utils/export";
 import { Cloud, List, Menu } from "lucide-react";
 
 interface NotesToolbarProps {
@@ -45,14 +45,19 @@ export function NotesToolbar({
 
 			// Check if there's data to export
 			if (goldenNotes.length === 0 && summaries.length === 0) {
-				toast.error("No data to export. Please select a course and week with content.");
+				toast.error(
+					"No data to export. Please select a course and week with content."
+				);
 				return;
 			}
 
 			exportNotes(type, exportData);
 			toast.success(`Notes exported as ${type.toUpperCase()} successfully!`);
 		} catch (error) {
-			const message = formatErrorForToast(error, `export notes as ${type.toUpperCase()}`);
+			const message = formatErrorForToast(
+				error,
+				`export notes as ${type.toUpperCase()}`
+			);
 			toast.error(message);
 		}
 	};

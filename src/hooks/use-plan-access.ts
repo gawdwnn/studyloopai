@@ -1,5 +1,5 @@
 import { hasFeatureAccess, isPlanActive } from "@/lib/actions/plans";
-import type { FeatureId } from "@/lib/plans/types";
+import type { FeatureId } from "@/lib/database/types";
 import { useCallback, useEffect, useState } from "react";
 
 export function usePlanAccess() {

@@ -1,8 +1,8 @@
 "use server";
 
-import { PLANS } from "@/lib/plans/config";
-import type { PlanId } from "@/lib/plans/types";
-import { FEATURE_IDS } from "@/lib/plans/types";
+import { PLANS } from "@/lib/config/plans";
+import type { PlanId } from "@/lib/database/types";
+import { FEATURE_IDS } from "@/lib/database/types";
 import { getServerClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
@@ -118,7 +118,9 @@ export async function hasFeatureAccess(featureId: keyof typeof FEATURE_IDS) {
 		if (!planConfig) return false;
 
 		// Check if feature is included in plan
-		const feature = planConfig.features.find((f) => f.id === FEATURE_IDS[featureId]);
+		const feature = planConfig.features.find(
+			(f) => f.id === FEATURE_IDS[featureId]
+		);
 		return feature?.included ?? false;
 	} catch (_error) {
 		return false;
@@ -139,7 +141,9 @@ export async function getFeatureLimit(featureId: keyof typeof FEATURE_IDS) {
 		if (!planConfig) return null;
 
 		// Find feature and extract limit from name
-		const feature = planConfig.features.find((f) => f.id === FEATURE_IDS[featureId]);
+		const feature = planConfig.features.find(
+			(f) => f.id === FEATURE_IDS[featureId]
+		);
 		if (!feature?.included) return null;
 
 		// Extract numeric limit from feature name (e.g., "Up to 3 document uploads" -> 3)

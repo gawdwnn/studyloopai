@@ -1,4 +1,4 @@
-import { FEATURE_IDS, type Plan } from "./types";
+import { FEATURE_IDS, type Plan } from "@/lib/database/types";
 
 export const PLANS: Plan[] = [
 	{
