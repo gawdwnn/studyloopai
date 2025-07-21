@@ -3,17 +3,55 @@
  * Optimized prompts for different educational content types
  */
 
-export interface PromptContext {
+// Flexible prompt contexts - standalone types that can evolve independently
+export interface GoldenNotesPromptContext {
+	content: string;
+	difficulty: "beginner" | "intermediate" | "advanced";
+	count: number;
+	focus?: "conceptual" | "practical" | "mixed";
+	language?: string;
+}
+
+export interface CuecardsPromptContext {
 	content: string;
 	difficulty: "beginner" | "intermediate" | "advanced";
 	count: number;
 	language?: string;
+}
+
+export interface MultipleChoicePromptContext {
+	content: string;
+	difficulty: "beginner" | "intermediate" | "advanced";
+	count: number;
+	language?: string;
+}
+
+export interface OpenQuestionsPromptContext {
+	content: string;
+	difficulty: "beginner" | "intermediate" | "advanced";
+	count: number;
+	language?: string;
+}
+
+export interface SummariesPromptContext {
+	content: string;
+	difficulty: "beginner" | "intermediate" | "advanced";
+	count: number;
 	focus?: "conceptual" | "practical" | "mixed";
+	language?: string;
+}
+
+export interface ConceptMapPromptContext {
+	content: string;
+	difficulty: "beginner" | "intermediate" | "advanced";
+	style?: string;
+	focus?: "conceptual" | "practical" | "mixed";
+	language?: string;
 }
 
 export interface ContentGenerationPrompt {
 	systemPrompt: string;
-	userPrompt: (context: PromptContext) => string;
+	userPrompt: (context: Record<string, unknown>) => string;
 	outputSchema: object;
 }
 
@@ -170,7 +208,13 @@ Output as a JSON array with this structure:
 				explanation: { type: "string" },
 				difficulty: { type: "string" },
 			},
-			required: ["question", "options", "correctAnswer", "explanation", "difficulty"],
+			required: [
+				"question",
+				"options",
+				"correctAnswer",
+				"explanation",
+				"difficulty",
+			],
 		},
 	},
 };
@@ -256,7 +300,7 @@ Content to analyze:
 ${content}
 
 Requirements:
-- Target word count: approximately ${count * 50} words
+- Target word count: approximately ${(count as number) * 50} words
 - Difficulty level: ${difficulty}
 - Include clear title and structure
 - Organize information logically
@@ -283,8 +327,155 @@ Output as a JSON object with this structure:
 	},
 };
 
+// Concept Maps Generation
+export const conceptMapsPrompt: ContentGenerationPrompt = {
+	systemPrompt: `You are an expert in creating detailed and visually intuitive concept maps from educational content. Your concept maps should clearly illustrate the relationships between key concepts, topics, and ideas.
+
+Guidelines:
+- Identify the central concept and build the map around it
+- Use a clear hierarchical or relational structure
+- Define nodes for key concepts, topics, and examples
+- Create meaningful edges to show relationships (e.g., "leads to," "part of")
+- Use a consistent visual style and labeling system
+- Ensure the map is comprehensive yet easy to follow`,
+
+	userPrompt: ({
+		content,
+		difficulty,
+		style = "hierarchical",
+		focus = "conceptual",
+	}) => `
+Create a comprehensive concept map from the following educational content. The map should visually represent the key concepts and their relationships.
+
+Content to analyze:
+${content}
+
+Requirements:
+- Style: ${style} (organize concepts accordingly)
+- Difficulty level: ${difficulty}
+- Focus: ${focus}
+- Create meaningful nodes and connections
+- Include metadata about the central concept
+- Ensure the map is educational and clear
+
+Output as a JSON object with this structure:
+{
+  "title": "Descriptive title for the concept map",
+  "content": {
+    "nodes": [
+      {
+        "id": "unique_id",
+        "label": "Node label",
+        "type": "concept|topic|subtopic|example",
+        "level": 0-5,
+        "x": optional_x_coordinate,
+        "y": optional_y_coordinate
+      }
+    ],
+    "edges": [
+      {
+        "source": "source_node_id",
+        "target": "target_node_id",
+        "label": "descriptive label for the relationship (e.g., 'is an example of')",
+        "type": "relationship type (e.g., 'related', 'part_of')",
+        "strength": 0.8
+      }
+    ],
+    "metadata": {
+      "central_concept": "Main concept of the map",
+      "complexity_level": "${difficulty}",
+      "focus_area": "${focus}",
+      "style": "${style}"
+    }
+  },
+  "style": "${style}"
+}`,
+
+	outputSchema: {
+		type: "object",
+		properties: {
+			title: { type: "string" },
+			content: {
+				type: "object",
+				properties: {
+					nodes: {
+						type: "array",
+						items: {
+							type: "object",
+							properties: {
+								id: { type: "string" },
+								label: { type: "string" },
+								type: {
+									type: "string",
+									enum: ["concept", "topic", "subtopic", "example"],
+								},
+								level: { type: "number", minimum: 0, maximum: 5 },
+								x: { type: "number" },
+								y: { type: "number" },
+							},
+							required: ["id", "label", "type", "level"],
+						},
+					},
+					edges: {
+						type: "array",
+						items: {
+							type: "object",
+							properties: {
+								source: { type: "string" },
+								target: { type: "string" },
+								label: { type: "string" },
+								type: {
+									type: "string",
+									enum: [
+										"related",
+										"causes",
+										"leads_to",
+										"part_of",
+										"example_of",
+									],
+								},
+								strength: { type: "number", minimum: 0, maximum: 1 },
+							},
+							required: ["source", "target", "type"],
+						},
+					},
+					metadata: {
+						type: "object",
+						properties: {
+							central_concept: { type: "string" },
+							complexity_level: {
+								type: "string",
+								enum: ["beginner", "intermediate", "advanced"],
+							},
+							focus_area: {
+								type: "string",
+								enum: ["conceptual", "practical", "mixed"],
+							},
+							style: {
+								type: "string",
+								enum: ["hierarchical", "radial", "network"],
+							},
+						},
+						required: [
+							"central_concept",
+							"complexity_level",
+							"focus_area",
+							"style",
+						],
+					},
+				},
+				required: ["nodes", "edges", "metadata"],
+			},
+			style: { type: "string", enum: ["hierarchical", "radial", "network"] },
+		},
+		required: ["title", "content", "style"],
+	},
+};
+
 // Helper function to get prompt by content type
-export function getPromptByType(contentType: string): ContentGenerationPrompt | null {
+export function getPromptByType(
+	contentType: string
+): ContentGenerationPrompt | null {
 	switch (contentType) {
 		case "goldenNotes":
 			return goldenNotesPrompt;
@@ -296,6 +487,8 @@ export function getPromptByType(contentType: string): ContentGenerationPrompt | 
 			return openQuestionsPrompt;
 		case "summaries":
 			return summariesPrompt;
+		case "conceptMaps":
+			return conceptMapsPrompt;
 		default:
 			return null;
 	}
@@ -308,6 +501,7 @@ export const SUPPORTED_CONTENT_TYPES = [
 	"multipleChoice",
 	"openQuestions",
 	"summaries",
+	"conceptMaps",
 ] as const;
 
 export type SupportedContentType = (typeof SUPPORTED_CONTENT_TYPES)[number];

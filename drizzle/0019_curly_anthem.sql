@@ -1,0 +1,1 @@
+CREATE INDEX "idx_generation_configs_status" ON "generation_configs" USING btree ("generation_status");

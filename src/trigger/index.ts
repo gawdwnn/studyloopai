@@ -2,7 +2,7 @@
 // It should export all of your tasks.
 
 // Export core orchestration tasks
-export { generateAiContent } from "./generate-ai-content";
+export { aiContentOrchestrator } from "./ai-content-orchestrator";
 export { ingestCourseMaterials } from "./ingest-course-materials";
 export { processAndEmbedIndividualMaterial } from "./process-and-embed-individual-material";
 
@@ -12,3 +12,4 @@ export { generateCuecards } from "./generate-cuecards";
 export { generateMCQs } from "./generate-mcqs";
 export { generateOpenQuestions } from "./generate-open-questions";
 export { generateSummaries } from "./generate-summaries";
+export { generateConceptMaps } from "./generate-concept-maps";

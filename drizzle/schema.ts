@@ -1,3 +1,4 @@
+import type { GenerationTemplate, SelectiveGenerationConfig } from "@/types/generation-types";
 import {
 	boolean,
 	foreignKey,
@@ -34,91 +35,8 @@ export const configurationSource = pgEnum("configuration_source", [
 	"course_week_override",
 	"adaptive_algorithm",
 	"system_default",
-	"institution_default", // Future: institution-level defaults
+	"institution_default",
 ]);
-
-// Processing metadata type for course materials - DOCUMENT PROCESSING ONLY
-export type ProcessingMetadata = {
-	processingStatus?: "pending" | "processing" | "completed" | "failed";
-	error?: string;
-	processingTimeMs?: number;
-	extractedText?: boolean;
-	chunkingCompleted?: boolean;
-	embeddingCompleted?: boolean;
-
-	// Future content type processing metadata
-	videoDurationMs?: number; // For videos
-	audioTranscribed?: boolean; // For audio
-	thumbnailGenerated?: boolean; // For videos/images
-	contentExtracted?: boolean; // For weblinks
-};
-
-// Week-level content generation metadata type - AI CONTENT GENERATION TRACKING
-export type WeekContentGenerationMetadata = {
-	// Batch trigger information
-	batchInfo?: {
-		goldenNotes: { batchId: string; status?: string };
-		cuecards: { batchId: string; status?: string };
-		mcqs: { batchId: string; status?: string };
-		openQuestions: { batchId: string; status?: string };
-		summaries: { batchId: string; status?: string };
-	};
-
-	// Content generation results
-	totalMaterialsProcessed?: number;
-	generationResults?: {
-		totalGenerated: number;
-		contentCounts: {
-			goldenNotes: number;
-			cuecards: number;
-			mcqs: number;
-			openQuestions: number;
-			summaries: number;
-		};
-		generatedAt: string;
-	};
-
-	// Timing information
-	startedAt?: string;
-	completedAt?: string;
-	durationMs?: number;
-
-	// Error handling
-	errors?: string[];
-	partialSuccess?: boolean;
-};
-
-// Content metadata type for different content types
-export type ContentMetadata = {
-	// PDF-specific
-	pageCount?: number;
-	pdfVersion?: string;
-	hasImages?: boolean;
-
-	// Video-specific (future)
-	duration?: number;
-	resolution?: string;
-	format?: string;
-	frameRate?: number;
-
-	// Audio-specific (future)
-	sampleRate?: number;
-	bitrate?: number;
-
-	// Image-specific (future)
-	width?: number;
-	height?: number;
-
-	// Weblink-specific (future)
-	url?: string;
-	title?: string;
-	domain?: string;
-	scrapedAt?: string;
-
-	// Common
-	language?: string;
-	encoding?: string;
-};
 
 // This is a minimal definition of the auth.users table from Supabase.
 // It's used to establish a foreign key relationship with the public.users table.
@@ -140,13 +58,12 @@ export const courseMaterials = pgTable(
 		fileSize: integer("file_size"),
 		mimeType: varchar("mime_type", { length: 100 }),
 		uploadStatus: varchar("upload_status", { length: 50 }).default("pending"),
-		processingMetadata: jsonb("processing_metadata"),
-		runId: text("run_id"),
 		uploadedBy: uuid("uploaded_by").notNull(),
 		createdAt: timestamp("created_at").defaultNow().notNull(),
 		updatedAt: timestamp("updated_at").defaultNow().notNull(),
-		embeddingStatus: varchar("embedding_status", { length: 50 }).default("pending"),
-		embeddingMetadata: jsonb("embedding_metadata").default({}),
+		embeddingStatus: varchar("embedding_status", { length: 50 }).default(
+			"pending"
+		),
 		totalChunks: integer("total_chunks").default(0),
 		embeddedChunks: integer("embedded_chunks").default(0),
 
@@ -155,15 +72,24 @@ export const courseMaterials = pgTable(
 		originalFilename: varchar("original_filename", { length: 255 }),
 		processingStartedAt: timestamp("processing_started_at"),
 		processingCompletedAt: timestamp("processing_completed_at"),
-		contentMetadata: jsonb("content_metadata").default({}),
-		sourceUrl: text("source_url"), // For weblinks in future
-		transcriptPath: varchar("transcript_path", { length: 500 }), // For video/audio in future
-		thumbnailPath: varchar("thumbnail_path", { length: 500 }), // For videos/images in future
+		sourceUrl: text("source_url"),
+		transcriptPath: varchar("transcript_path", { length: 500 }),
+		thumbnailPath: varchar("thumbnail_path", { length: 500 }),
 	},
 	(table) => [
 		index("idx_course_materials_course_id").using("btree", table.courseId),
-		index("idx_course_materials_content_type").using("btree", table.contentType),
-		index("idx_course_materials_processing_status").using("btree", table.processingMetadata),
+		index("idx_course_materials_content_type").using(
+			"btree",
+			table.contentType
+		),
+		index("idx_course_materials_embedding_status").using(
+			"btree",
+			table.embeddingStatus
+		),
+		index("idx_course_materials_upload_status").using(
+			"btree",
+			table.uploadStatus
+		),
 	]
 );
 
@@ -175,28 +101,19 @@ export const courseWeeks = pgTable(
 		courseId: uuid("course_id").notNull(),
 		weekNumber: integer("week_number").notNull(),
 		title: varchar({ length: 255 }),
-		startDate: timestamp("start_date"),
-		endDate: timestamp("end_date"),
 		isActive: boolean("is_active").default(true),
-
-		// Content generation tracking
-		contentGenerationStatus: varchar("content_generation_status", { length: 50 }).default(
-			"pending"
-		),
-		contentGenerationMetadata: jsonb("content_generation_metadata").default({}),
-		contentGenerationTriggeredAt: timestamp("content_generation_triggered_at"),
-		contentGenerationCompletedAt: timestamp("content_generation_completed_at"),
+		hasMaterials: boolean("has_materials").default(false),
 
 		createdAt: timestamp("created_at").defaultNow().notNull(),
 		updatedAt: timestamp("updated_at").defaultNow().notNull(),
 	},
 	(table) => [
 		index("idx_course_weeks_course_id").using("btree", table.courseId),
-		index("idx_course_weeks_content_generation_status").using(
-			"btree",
-			table.contentGenerationStatus
+		index("idx_course_weeks_has_materials").using("btree", table.hasMaterials),
+		unique("course_weeks_course_id_week_number_unique").on(
+			table.courseId,
+			table.weekNumber
 		),
-		unique("course_weeks_course_id_week_number_unique").on(table.courseId, table.weekNumber),
 	]
 );
 
@@ -266,7 +183,11 @@ export const cuecards = pgTable(
 		index("idx_cuecards_course_id").using("btree", table.courseId),
 		index("idx_cuecards_week_id").using("btree", table.weekId),
 		index("idx_cuecards_difficulty").using("btree", table.difficulty),
-		index("idx_cuecards_course_week").using("btree", table.courseId, table.weekId),
+		index("idx_cuecards_course_week").using(
+			"btree",
+			table.courseId,
+			table.weekId
+		),
 		foreignKey({
 			columns: [table.courseId],
 			foreignColumns: [courses.id],
@@ -282,36 +203,36 @@ export const cuecards = pgTable(
 
 // Multiple choice questions table - AI generated MCQs
 export const multipleChoiceQuestions = pgTable(
-	"multiple_choice_questions",
-	{
-		id: uuid().defaultRandom().primaryKey().notNull(),
-		courseId: uuid("course_id").notNull(),
-		weekId: uuid("week_id").notNull(),
-		question: text().notNull(),
-		options: jsonb().notNull(), // Array of strings ['A', 'B', 'C', 'D']
-		correctAnswer: varchar("correct_answer", { length: 5 }).notNull(),
-		explanation: text(),
-		difficulty: varchar({ length: 20 }).default("intermediate"),
-		metadata: jsonb().default({}),
-		createdAt: timestamp("created_at").defaultNow().notNull(),
-		updatedAt: timestamp("updated_at").defaultNow().notNull(),
-	},
-	(table) => [
-		index("idx_mcq_course_id").using("btree", table.courseId),
-		index("idx_mcq_week_id").using("btree", table.weekId),
-		index("idx_mcq_difficulty").using("btree", table.difficulty),
-		index("idx_mcq_course_week").using("btree", table.courseId, table.weekId),
-		foreignKey({
-			columns: [table.courseId],
-			foreignColumns: [courses.id],
-			name: "multiple_choice_questions_course_id_fkey",
-		}).onDelete("cascade"),
-		foreignKey({
-			columns: [table.weekId],
-			foreignColumns: [courseWeeks.id],
-			name: "multiple_choice_questions_week_id_fkey",
-		}).onDelete("cascade"),
-	]
+  "multiple_choice_questions",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    courseId: uuid("course_id").notNull(),
+    weekId: uuid("week_id").notNull(),
+    question: text().notNull(),
+    options: jsonb().$type<string[]>().notNull(), // Array of strings ['A', 'B', 'C', 'D']
+    correctAnswer: varchar("correct_answer", { length: 5 }).notNull(),
+    explanation: text(),
+    difficulty: varchar({ length: 20 }).default("intermediate"),
+    metadata: jsonb().default({}),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("idx_mcq_course_id").using("btree", table.courseId),
+    index("idx_mcq_week_id").using("btree", table.weekId),
+    index("idx_mcq_difficulty").using("btree", table.difficulty),
+    index("idx_mcq_course_week").using("btree", table.courseId, table.weekId),
+    foreignKey({
+      columns: [table.courseId],
+      foreignColumns: [courses.id],
+      name: "multiple_choice_questions_course_id_fkey",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.weekId],
+      foreignColumns: [courseWeeks.id],
+      name: "multiple_choice_questions_week_id_fkey",
+    }).onDelete("cascade"),
+  ]
 );
 
 // Open questions table - AI generated essay/discussion questions
@@ -333,7 +254,11 @@ export const openQuestions = pgTable(
 		index("idx_open_questions_course_id").using("btree", table.courseId),
 		index("idx_open_questions_week_id").using("btree", table.weekId),
 		index("idx_open_questions_difficulty").using("btree", table.difficulty),
-		index("idx_open_questions_course_week").using("btree", table.courseId, table.weekId),
+		index("idx_open_questions_course_week").using(
+			"btree",
+			table.courseId,
+			table.weekId
+		),
 		foreignKey({
 			columns: [table.courseId],
 			foreignColumns: [courses.id],
@@ -366,7 +291,11 @@ export const summaries = pgTable(
 		index("idx_summaries_course_id").using("btree", table.courseId),
 		index("idx_summaries_week_id").using("btree", table.weekId),
 		index("idx_summaries_type").using("btree", table.summaryType),
-		index("idx_summaries_course_week").using("btree", table.courseId, table.weekId),
+		index("idx_summaries_course_week").using(
+			"btree",
+			table.courseId,
+			table.weekId
+		),
 		foreignKey({
 			columns: [table.courseId],
 			foreignColumns: [courses.id],
@@ -391,8 +320,8 @@ export const goldenNotes = pgTable(
 		content: text().notNull(),
 		priority: integer().default(1),
 		category: varchar({ length: 100 }),
-		metadata: jsonb().default({}),
 		version: integer().default(1).notNull(),
+		metadata: jsonb().default({}),
 		createdAt: timestamp("created_at").defaultNow().notNull(),
 		updatedAt: timestamp("updated_at").defaultNow().notNull(),
 	},
@@ -401,7 +330,11 @@ export const goldenNotes = pgTable(
 		index("idx_golden_notes_week_id").using("btree", table.weekId),
 		index("idx_golden_notes_priority").using("btree", table.priority),
 		index("idx_golden_notes_category").using("btree", table.category),
-		index("idx_golden_notes_course_week").using("btree", table.courseId, table.weekId),
+		index("idx_golden_notes_course_week").using(
+			"btree",
+			table.courseId,
+			table.weekId
+		),
 		foreignKey({
 			columns: [table.courseId],
 			foreignColumns: [courses.id],
@@ -415,53 +348,97 @@ export const goldenNotes = pgTable(
 	]
 );
 
-// Own notes table - User-created notes and annotations
-export const ownNotes = pgTable(
-	"own_notes",
+// Concept maps table - AI generated visual concept maps and mind maps
+export const conceptMaps = pgTable(
+	"concept_maps",
 	{
 		id: uuid().defaultRandom().primaryKey().notNull(),
-		userId: uuid("user_id").notNull(),
-		weekId: uuid("week_id").notNull(),
 		courseId: uuid("course_id").notNull(),
+		weekId: uuid("week_id").notNull(),
 		title: varchar({ length: 255 }).notNull(),
-		content: text().notNull(),
-		noteType: varchar("note_type", { length: 50 }).default("general"),
-		tags: jsonb().default([]),
-		isPrivate: boolean("is_private").default(true),
-		color: varchar({ length: 20 }).default("#ffffff"),
-		metadata: jsonb().default({}),
+		content: text().notNull(), // JSON string containing the concept map data
+		style: varchar({ length: 50 }).default("hierarchical").notNull(), // hierarchical, radial, network
 		version: integer().default(1).notNull(),
+		metadata: jsonb().default({}),
 		createdAt: timestamp("created_at").defaultNow().notNull(),
 		updatedAt: timestamp("updated_at").defaultNow().notNull(),
 	},
 	(table) => [
-		index("idx_own_notes_user_id").using("btree", table.userId),
-		index("idx_own_notes_week_id").using("btree", table.weekId),
-		index("idx_own_notes_course_id").using("btree", table.courseId),
-		index("idx_own_notes_note_type").using("btree", table.noteType),
-		index("idx_own_notes_created_at").using("btree", table.createdAt),
-		index("idx_own_notes_course_week").using("btree", table.courseId, table.weekId),
-		index("idx_own_notes_user_course").using("btree", table.userId, table.courseId),
+		index("idx_concept_maps_course_id").using("btree", table.courseId),
+		index("idx_concept_maps_week_id").using("btree", table.weekId),
+		index("idx_concept_maps_style").using("btree", table.style),
+		index("idx_concept_maps_course_week").using(
+			"btree",
+			table.courseId,
+			table.weekId
+		),
 		foreignKey({
-			columns: [table.userId],
-			foreignColumns: [usersInAuth.id],
-			name: "own_notes_user_id_fkey",
+			columns: [table.courseId],
+			foreignColumns: [courses.id],
+			name: "concept_maps_course_id_fkey",
 		}).onDelete("cascade"),
 		foreignKey({
 			columns: [table.weekId],
 			foreignColumns: [courseWeeks.id],
-			name: "own_notes_week_id_fkey",
-		}).onDelete("cascade"),
-		foreignKey({
-			columns: [table.courseId],
-			foreignColumns: [courses.id],
-			name: "own_notes_course_id_fkey",
+			name: "concept_maps_week_id_fkey",
 		}).onDelete("cascade"),
 	]
 );
 
+// Own notes table - User-created notes and annotations
+export const ownNotes = pgTable(
+  "own_notes",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    userId: uuid("user_id").notNull(),
+    weekId: uuid("week_id").notNull(),
+    courseId: uuid("course_id").notNull(),
+    title: varchar({ length: 255 }).notNull(),
+    content: text().notNull(),
+    noteType: varchar("note_type", { length: 50 }).default("general"),
+    tags: jsonb().$type<string[]>().default([]),
+    isPrivate: boolean("is_private").default(true),
+    color: varchar({ length: 20 }).default("#ffffff"),
+    metadata: jsonb().default({}),
+    version: integer().default(1).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("idx_own_notes_user_id").using("btree", table.userId),
+    index("idx_own_notes_week_id").using("btree", table.weekId),
+    index("idx_own_notes_course_id").using("btree", table.courseId),
+    index("idx_own_notes_note_type").using("btree", table.noteType),
+    index("idx_own_notes_created_at").using("btree", table.createdAt),
+    index("idx_own_notes_course_week").using(
+      "btree",
+      table.courseId,
+      table.weekId
+    ),
+    index("idx_own_notes_user_course").using(
+      "btree",
+      table.userId,
+      table.courseId
+    ),
+    foreignKey({
+      columns: [table.userId],
+      foreignColumns: [usersInAuth.id],
+      name: "own_notes_user_id_fkey",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.weekId],
+      foreignColumns: [courseWeeks.id],
+      name: "own_notes_week_id_fkey",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.courseId],
+      foreignColumns: [courses.id],
+      name: "own_notes_course_id_fkey",
+    }).onDelete("cascade"),
+  ]
+);
+
 // Generation configurations table
-// Generation configurations table - Unified scope-based design
 export const generationConfigs = pgTable(
 	"generation_configs",
 	{
@@ -471,19 +448,21 @@ export const generationConfigs = pgTable(
 		configSource: configurationSource("config_source").notNull(),
 
 		// Flexible scope associations (nullable for different scopes)
-		userId: uuid("user_id"), // For USER_PREFERENCE
-		courseId: uuid("course_id"), // For COURSE_DEFAULT, COURSE_WEEK_OVERRIDE
-		weekId: uuid("week_id"), // For COURSE_WEEK_OVERRIDE
-		institutionId: uuid("institution_id"), // Future: For INSTITUTION_DEFAULT
+		userId: uuid("user_id"),
+		courseId: uuid("course_id"),
+		weekId: uuid("week_id"),
+		institutionId: uuid("institution_id"),
 
 		// Configuration data stored as JSONB for flexibility
-		configData: jsonb("config_data").notNull(), // Full GenerationConfig object
+		configData: jsonb("config_data")
+			.$type<SelectiveGenerationConfig>()
+			.notNull(),
 
 		// Adaptive learning metadata (only for ADAPTIVE_ALGORITHM)
 		adaptationReason: text("adaptation_reason"),
 		userPerformanceLevel: varchar("user_performance_level", { length: 20 }),
 		learningGaps: jsonb("learning_gaps"),
-		adaptiveFactors: jsonb("adaptive_factors"), // Full AdaptiveFactors object
+		adaptiveFactors: jsonb("adaptive_factors"),
 
 		// Tracking and lifecycle
 		isActive: boolean("is_active").default(true),
@@ -491,21 +470,40 @@ export const generationConfigs = pgTable(
 		createdAt: timestamp("created_at").defaultNow().notNull(),
 		updatedAt: timestamp("updated_at").defaultNow().notNull(),
 
+		// Generation status tracking (added in status tracking cleanup)
+		generationStatus: varchar("generation_status", { length: 20 }).default("pending"), // 'pending', 'processing', 'completed', 'failed'
+		generationStartedAt: timestamp("generation_started_at"),
+		generationCompletedAt: timestamp("generation_completed_at"),
+		failedFeatures: jsonb("failed_features").default("[]"),
+
 		// Metadata for auditing and debugging
-		createdBy: uuid("created_by"), // Who created this config
-		metadata: jsonb("metadata"), // Additional context/debugging info
+		createdBy: uuid("created_by"),
+		metadata: jsonb("metadata"),
 	},
 	(table) => [
 		// Composite indexes for efficient queries
-		index("idx_generation_configs_user_scope").using("btree", table.userId, table.configSource),
-		index("idx_generation_configs_course_scope").using("btree", table.courseId, table.configSource),
-		index("idx_generation_configs_week_scope").using("btree", table.weekId, table.configSource),
+		index("idx_generation_configs_user_scope").using(
+			"btree",
+			table.userId,
+			table.configSource
+		),
+		index("idx_generation_configs_course_scope").using(
+			"btree",
+			table.courseId,
+			table.configSource
+		),
+		index("idx_generation_configs_week_scope").using(
+			"btree",
+			table.weekId,
+			table.configSource
+		),
 		index("idx_generation_configs_source_active").using(
 			"btree",
 			table.configSource,
 			table.isActive
 		),
 		index("idx_generation_configs_applied_at").using("btree", table.appliedAt),
+		index("idx_generation_configs_status").using("btree", table.generationStatus),
 
 		// Foreign key constraints with proper cascade behavior
 		foreignKey({
@@ -538,6 +536,49 @@ export const generationConfigs = pgTable(
 		unique("unique_user_preference").on(table.userId, table.configSource),
 		unique("unique_course_default").on(table.courseId, table.configSource),
 		unique("unique_week_override").on(table.weekId, table.configSource),
+	]
+);
+
+// User prompt templates for selective generation
+export const userPromptTemplates = pgTable(
+	"user_prompt_templates",
+	{
+		id: uuid().defaultRandom().primaryKey().notNull(),
+		userId: uuid("user_id").notNull(),
+		featureType: varchar("feature_type", { length: 50 }).notNull(), // 'cuecards', 'mcqs', 'openQuestions', etc.
+		name: varchar("name", { length: 255 }).notNull(),
+		config: jsonb("config")
+			.$type<GenerationTemplate["config"]>()
+			.notNull(), // Uses existing GenerationTemplate type
+		isDefault: boolean("is_default").default(false),
+		createdAt: timestamp("created_at").defaultNow().notNull(),
+		updatedAt: timestamp("updated_at").defaultNow().notNull(),
+	},
+	(table) => [
+		// Indexes
+		index("idx_user_prompt_templates_user_id").using("btree", table.userId),
+		index("idx_user_prompt_templates_feature_type").using(
+			"btree",
+			table.featureType
+		),
+		index("idx_user_prompt_templates_is_default").using(
+			"btree",
+			table.isDefault
+		),
+
+		// Foreign key constraints
+		foreignKey({
+			columns: [table.userId],
+			foreignColumns: [usersInAuth.id],
+			name: "user_prompt_templates_user_id_fkey",
+		}).onDelete("cascade"),
+
+		// Unique constraint - only one template with same name per user per feature type
+		unique("unique_user_template_name").on(
+			table.userId,
+			table.name,
+			table.featureType
+		),
 	]
 );
 
@@ -579,8 +620,6 @@ export const institutions = pgTable(
 	]
 );
 
-// Add exams esque table called revisions
-
 // User progress tracking table
 export const userProgress = pgTable(
 	"user_progress",
@@ -597,9 +636,17 @@ export const userProgress = pgTable(
 		updatedAt: timestamp("updated_at").defaultNow().notNull(),
 	},
 	(table) => [
-		unique("user_progress_unique").on(table.userId, table.contentType, table.contentId),
+		unique("user_progress_unique").on(
+			table.userId,
+			table.contentType,
+			table.contentId
+		),
 		index("idx_user_progress_user_id").using("btree", table.userId),
-		index("idx_user_progress_content").using("btree", table.contentType, table.contentId),
+		index("idx_user_progress_content").using(
+			"btree",
+			table.contentType,
+			table.contentId
+		),
 		index("idx_user_progress_status").using("btree", table.status),
 	]
 );
@@ -620,7 +667,11 @@ export const userPlans = pgTable(
 		subscriptionStatus: subscriptionStatus("subscription_status"),
 		currentPeriodEnd: timestamp("current_period_end"),
 	},
-	(table) => [unique("user_plans_stripe_subscription_id_unique").on(table.stripeSubscriptionId)]
+	(table) => [
+		unique("user_plans_stripe_subscription_id_unique").on(
+			table.stripeSubscriptionId
+		),
+	]
 );
 
 // Users table
@@ -641,7 +692,9 @@ export const users = pgTable(
 		updatedAt: timestamp("updated_at").defaultNow().notNull(),
 		stripeCustomerId: varchar("stripe_customer_id", { length: 255 }),
 		country: varchar({ length: 100 }),
-		onboardingCompleted: boolean("onboarding_completed").default(false).notNull(),
+		onboardingCompleted: boolean("onboarding_completed")
+			.default(false)
+			.notNull(),
 		onboardingSkipped: boolean("onboarding_skipped").default(false).notNull(),
 		institutionId: uuid("institution_id"),
 	},

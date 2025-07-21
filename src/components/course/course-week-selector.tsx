@@ -8,11 +8,11 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import type { courseWeeks, courses } from "@/db/schema";
+import type { Course, CourseWeek } from "@/types/database-types";
 
 interface CourseWeekSelectorProps {
-	courses: (typeof courses.$inferSelect)[];
-	courseWeeks: (typeof courseWeeks.$inferSelect)[];
+	courses: Course[];
+	courseWeeks: CourseWeek[];
 	selectedCourseId: string | null;
 	onCourseChange: (courseId: string) => void;
 	selectedWeek: number | null;
@@ -23,6 +23,7 @@ interface CourseWeekSelectorProps {
 	coursePlaceholder?: string;
 	weekPlaceholder?: string;
 	required?: boolean;
+	showOnlyWeeksWithoutMaterials?: boolean;
 }
 
 export function CourseWeekSelector({
@@ -38,8 +39,19 @@ export function CourseWeekSelector({
 	coursePlaceholder = "Select a course...",
 	weekPlaceholder = "Select a week...",
 	required = false,
+	showOnlyWeeksWithoutMaterials = false,
 }: CourseWeekSelectorProps) {
-	const availableWeeks = courseWeeks.filter((week) => week.courseId === selectedCourseId);
+	const availableWeeks = courseWeeks.filter(
+		(week) => {
+			if (week.courseId !== selectedCourseId) return false;
+			
+			if (showOnlyWeeksWithoutMaterials) {
+				return !week.hasMaterials;
+			}
+			
+			return true;
+		}
+	);
 
 	return (
 		<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -96,6 +108,11 @@ export function CourseWeekSelector({
 				</Select>
 				{!selectedCourseId && (
 					<p className="text-xs text-muted-foreground">Select a course first to choose a week</p>
+				)}
+				{selectedCourseId && availableWeeks.length === 0 && (
+					<p className="text-xs text-muted-foreground">
+						All weeks for this course already have materials uploaded
+					</p>
 				)}
 			</div>
 		</div>

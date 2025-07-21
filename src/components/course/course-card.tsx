@@ -4,14 +4,12 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import type { courses } from "@/db/schema";
 import { updateCourse } from "@/lib/actions/courses";
 import { addWeeks, format } from "date-fns";
 import { Edit2, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
-
-type Course = typeof courses.$inferSelect;
+import type { Course } from "@/types/database-types";
 
 interface CourseCardProps {
 	course: Course;
@@ -60,7 +58,7 @@ export function CourseCard({
 				} catch (error) {
 					console.error("Failed to update course:", error);
 					alert("Failed to update course. Please try again.");
-					setTitle(course.name); // Revert on error
+					setTitle(course.name);
 				}
 			});
 		}

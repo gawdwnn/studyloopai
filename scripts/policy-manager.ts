@@ -35,14 +35,22 @@ const POLICIES_DIR = resolve(join(process.cwd(), "drizzle", "policies"));
 
 const MANAGED_TABLES = [
 	"users",
-	"golden_notes",
-	"own_notes",
-	"generation_configs",
-	"user_progress",
+	"user_plans", 
+	"courses",
+	"course_weeks",
+	"course_materials",
+	"document_chunks",
+	"cuecards",
 	"multiple_choice_questions",
 	"open_questions",
 	"summaries",
-	"cuecards",
+	"golden_notes",
+	"concept_maps",
+	"own_notes",
+	"generation_configs",
+	"user_prompt_templates",
+	"institutions",
+	"user_progress",
 ] as const;
 
 type ManagedTable = (typeof MANAGED_TABLES)[number];

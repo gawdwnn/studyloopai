@@ -91,22 +91,20 @@ export default function DashboardPage() {
 					You haven't created any courses yet
 				</h2>
 				<p className="text-muted-foreground mb-6 max-w-md">
-					Get started by creating your first course to organize your study materials and track your
-					progress.
+					Get started by creating your first course to organize your study
+					materials and track your progress.
 				</p>
-				<CreateCourseDialog isOpen={isCreateDialogOpen} onOpenChange={setCreateDialogOpen} />
+				<CreateCourseDialog
+					isOpen={isCreateDialogOpen}
+					onOpenChange={setCreateDialogOpen}
+				/>
 			</div>
 		);
 	}
 
 	return (
 		<div className="space-y-12">
-			<div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-				<div>
-					{/* //TODO: Add user name*/}
-					<h1 className="text-2xl font-bold tracking-tight md:text-3xl">Welcome back Smart, 👋</h1>
-					<p className="text-muted-foreground">Here's an overview of your courses and progress.</p>
-				</div>
+			<div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-end">
 				<div className="w-full md:w-auto">
 					<CreateCourseDialog isOpen={isCreateDialogOpen} onOpenChange={setCreateDialogOpen} />
 				</div>

@@ -3,12 +3,17 @@
 import { db } from "@/db";
 import { courseMaterials, courseWeeks, courses } from "@/db/schema";
 import { deleteContentForCourse } from "@/lib/services/content-deletion-service";
-import { cancelMultipleJobs, extractRunIds } from "@/lib/services/job-cancellation-service";
-import { cleanupStorageFiles, extractFilePaths } from "@/lib/services/storage-cleanup-service";
+import {
+	cleanupStorageFiles,
+	extractFilePaths,
+} from "@/lib/services/storage-cleanup-service";
 import { getServerClient } from "@/lib/supabase/server";
 import { withErrorHandling } from "@/lib/utils/error-handling";
-import { type CourseCreationData, CourseCreationSchema } from "@/lib/validations/courses";
-import { asc, desc, eq } from "drizzle-orm";
+import {
+	type CourseCreationData,
+	CourseCreationSchema,
+} from "@/lib/validations/courses";
+import { asc, desc, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 export async function createCourse(formData: CourseCreationData) {
@@ -33,11 +38,14 @@ export async function createCourse(formData: CourseCreationData) {
 			.returning();
 
 		// Create course weeks based on durationWeeks
-		const weeks = Array.from({ length: newCourse.durationWeeks || 12 }, (_, i) => ({
-			courseId: newCourse.id,
-			weekNumber: i + 1,
-			title: `Week ${i + 1}`,
-		}));
+		const weeks = Array.from(
+			{ length: newCourse.durationWeeks || 12 },
+			(_, i) => ({
+				courseId: newCourse.id,
+				weekNumber: i + 1,
+				title: `Week ${i + 1}`,
+			})
+		);
 
 		await db.insert(courseWeeks).values(weeks);
 
@@ -56,9 +64,13 @@ export async function createCourse(formData: CourseCreationData) {
 }
 
 export async function getUserCourses() {
+	const { data: { user } } = await (await getServerClient()).auth.getUser();
+	if (!user) throw new Error("Authentication required");
+	
 	return await withErrorHandling(
 		async () => {
 			const userCourses = await db.query.courses.findMany({
+				where: eq(courses.userId, user.id),
 				orderBy: desc(courses.createdAt),
 			});
 			return userCourses;
@@ -82,14 +94,29 @@ export async function getCourseById(courseId: string) {
 }
 
 export async function getAllUserMaterials() {
+	const { data: { user } } = await (await getServerClient()).auth.getUser();
+	if (!user) throw new Error("Authentication required");
+	
 	return await withErrorHandling(
 		async () => {
+			// Get user's course IDs first
+			const userCourses = await db.select({ id: courses.id })
+				.from(courses)
+				.where(eq(courses.userId, user.id));
+			
+			const courseIds = userCourses.map(c => c.id);
+			
+			if (courseIds.length === 0) {
+				return [];
+			}
+			
+			// Query materials for user's courses only
 			const materials = await db.query.courseMaterials.findMany({
+				where: inArray(courseMaterials.courseId, courseIds),
 				with: {
 					courseWeek: {
 						columns: {
 							weekNumber: true,
-							contentGenerationMetadata: true,
 						},
 					},
 					course: {
@@ -100,6 +127,7 @@ export async function getAllUserMaterials() {
 				},
 				orderBy: desc(courseMaterials.createdAt),
 			});
+			
 			return materials;
 		},
 		"getAllUserMaterials",
@@ -121,7 +149,11 @@ export async function getCourseWeeks(courseId: string) {
 	);
 }
 
-export async function updateCourse(courseId: string, data: Partial<CourseCreationData>) {
+
+export async function updateCourse(
+	courseId: string,
+	data: Partial<CourseCreationData>
+) {
 	try {
 		const supabase = await getServerClient();
 		const {
@@ -168,11 +200,7 @@ export async function deleteCourse(courseId: string) {
 	}
 
 	let course: { id: string; name: string; userId: string } | undefined;
-	let materialsData: Array<{
-		id: string;
-		filePath: string | null;
-		runId: string | null;
-	}> = [];
+
 
 	try {
 		// Step 1: Fetch course with ownership verification and get all related data
@@ -182,7 +210,9 @@ export async function deleteCourse(courseId: string) {
 		});
 
 		if (!course) {
-			throw new Error("Course not found or you don't have permission to delete it.");
+			throw new Error(
+				"Course not found or you don't have permission to delete it."
+			);
 		}
 
 		// Verify ownership
@@ -190,32 +220,31 @@ export async function deleteCourse(courseId: string) {
 			throw new Error("You don't have permission to delete this course.");
 		}
 
-		// Get all materials for this course with file paths and runIds
-		materialsData = await db
-			.select({
-				id: courseMaterials.id,
-				filePath: courseMaterials.filePath,
-				runId: courseMaterials.runId,
-			})
-			.from(courseMaterials)
-			.where(eq(courseMaterials.courseId, courseId));
-
-		// Step 2: Cancel running background jobs for all materials
-		const runIds = extractRunIds(materialsData);
-		const jobCancellationResult = await cancelMultipleJobs(runIds);
+		// Step 2: Get all course materials for file cleanup
+		const materialsData = await db.query.courseMaterials.findMany({
+			where: eq(courseMaterials.courseId, courseId),
+			columns: { id: true, filePath: true },
+		});
 
 		// Step 3: Execute comprehensive deletion in transaction
-		const deletionResult = await db.transaction(async (tx) => {
+		await db.transaction(async (tx) => {
 			const materialIds = materialsData.map((m) => m.id);
 
 			// Delete all content for the course (AI content, materials, weeks, configs, chunks)
-			const contentResult = await deleteContentForCourse(tx, courseId, materialIds);
+			const contentResult = await deleteContentForCourse(
+				tx,
+				courseId,
+				materialIds
+			);
 
 			// Delete the main course record
-			const [deletedCourse] = await tx.delete(courses).where(eq(courses.id, courseId)).returning({
-				id: courses.id,
-				name: courses.name,
-			});
+			const [deletedCourse] = await tx
+				.delete(courses)
+				.where(eq(courses.id, courseId))
+				.returning({
+					id: courses.id,
+					name: courses.name,
+				});
 
 			if (!deletedCourse) {
 				throw new Error("Failed to delete course from database.");
@@ -229,7 +258,7 @@ export async function deleteCourse(courseId: string) {
 
 		// Step 4: Clean up storage files (after successful DB deletion)
 		const allFilePaths = extractFilePaths(materialsData);
-		const storageResult = await cleanupStorageFiles(allFilePaths);
+		await cleanupStorageFiles(allFilePaths);
 
 		// Step 5: Revalidate related pages
 		revalidatePath("/dashboard");
@@ -238,27 +267,17 @@ export async function deleteCourse(courseId: string) {
 		// Return comprehensive deletion summary
 		return {
 			success: true,
-			courseId,
-			courseName: deletionResult.name,
-			materialsDeleted: deletionResult.materialsDeleted,
-			configsDeleted: deletionResult.configsDeleted,
-			aiContentDeleted: deletionResult.aiContentDeleted,
-			chunksDeleted: deletionResult.chunksDeleted,
-			weeksDeleted: deletionResult.weeksDeleted,
-			filesDeleted: storageResult.filesDeleted,
-			jobsCancelled: jobCancellationResult.jobsCancelled,
-			storageErrors: storageResult.hasErrors ? storageResult.storageErrors : undefined,
 		};
 	} catch (error) {
 		// Comprehensive error logging
-		const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+		const errorMessage =
+			error instanceof Error ? error.message : "Unknown error occurred";
 
 		console.error(`Failed to delete course ${courseId}:`, {
 			error: errorMessage,
 			courseId,
 			userId: user.id,
 			courseExists: !!course,
-			materialsCount: materialsData.length,
 		});
 
 		// Re-throw with user-friendly message

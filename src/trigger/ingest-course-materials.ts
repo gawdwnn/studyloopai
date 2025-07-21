@@ -3,7 +3,7 @@ import { courseMaterials } from "@/db/schema";
 import { logger, schemaTask, tags } from "@trigger.dev/sdk";
 import { inArray } from "drizzle-orm";
 import { z } from "zod";
-import { generateAiContent } from "./generate-ai-content";
+import { aiContentOrchestrator } from "./ai-content-orchestrator";
 import { processAndEmbedIndividualMaterial } from "./process-and-embed-individual-material";
 
 const IngestBatchPayload = z.object({
@@ -15,6 +15,7 @@ const IngestBatchPayload = z.object({
 			contentType: z.string(),
 		})
 	),
+	configId: z.string().uuid().optional(),
 });
 
 type IngestBatchPayloadType = z.infer<typeof IngestBatchPayload>;
@@ -66,12 +67,12 @@ export const ingestCourseMaterials = schemaTask({
 			},
 		}));
 
-		const embeddingResult = await processAndEmbedIndividualMaterial.batchTriggerAndWait(
-			embeddingItems,
-			{}
-		);
-
-		// Type the runs properly - batchTriggerAndWait returns runs with this structure
+		const embeddingResult =
+			await processAndEmbedIndividualMaterial.batchTriggerAndWait(
+				embeddingItems,
+				{}
+			);
+			
 		const embeddingRuns = embeddingResult.runs as EmbeddingRun[];
 
 		for (const run of embeddingRuns) {
@@ -88,21 +89,34 @@ export const ingestCourseMaterials = schemaTask({
 		// Extract material IDs from successful runs
 		const materialIds = embeddingRuns
 			.filter(
-				(r): r is EmbeddingRun & { output: EmbeddingTaskOutput } => r.ok && r.output !== undefined
+				(r): r is EmbeddingRun & { output: EmbeddingTaskOutput } =>
+					r.ok && r.output !== undefined
 			)
 			.map((r) => r.output.materialId);
 
-		// Get the weekId - all materials in a batch should belong to the same week
-		const rows = await db
-			.select({ weekId: courseMaterials.weekId })
-			.from(courseMaterials)
-			.where(inArray(courseMaterials.id, materialIds));
+		// Get the weekId and courseId - all materials in a batch should belong to the same week and course
+		const courseMaterialsRows = await db
+      .select({
+        weekId: courseMaterials.weekId,
+        courseId: courseMaterials.courseId,
+      })
+      .from(courseMaterials)
+      .where(inArray(courseMaterials.id, materialIds));
 
-		// Validate that all materials belong to the same week
-		const weekIds = Array.from(new Set(rows.map((r) => r.weekId).filter(Boolean))) as string[];
+		// Validate that all materials belong to the same week and course
+		const weekIds = Array.from(
+			new Set(courseMaterialsRows.map((r) => r.weekId).filter(Boolean))
+		) as string[];
+		const courseIds = Array.from(
+			new Set(courseMaterialsRows.map((r) => r.courseId).filter(Boolean))
+		) as string[];
 
 		if (weekIds.length === 0) {
 			throw new Error("No weekId associated with processed materials");
+		}
+
+		if (courseIds.length === 0) {
+			throw new Error("No courseId associated with processed materials");
 		}
 
 		if (weekIds.length > 1) {
@@ -111,22 +125,33 @@ export const ingestCourseMaterials = schemaTask({
 			);
 		}
 
+		if (courseIds.length > 1) {
+			throw new Error(
+				`Materials belong to multiple courses: ${courseIds.join(", ")}. Expected single course.`
+			);
+		}
+
 		const weekId = weekIds[0];
+		const courseId = courseIds[0];
 
 		logger.info("🧩 All embeddings complete, triggering AI generation", {
 			userId,
 			materialIds,
-			rows,
-			weekIds,
 			weekId,
+			courseId,
+			configId: payload.configId,
 		});
 
-		// Trigger AI content generation for the single week
-		await generateAiContent.trigger({ weekId });
+		// Trigger AI content generation for the course week with validated material IDs
+		await aiContentOrchestrator.trigger({
+			weekId,
+			courseId,
+			materialIds,
+			configId: payload.configId,
+		});
 
 		return {
 			success: true,
-			materialCount: materials.length,
 		};
 	},
 });

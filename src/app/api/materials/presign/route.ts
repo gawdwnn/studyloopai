@@ -9,6 +9,7 @@ import {
 } from "@/lib/constants/file-upload";
 import { getServerClient } from "@/lib/supabase/server";
 import { createSignedUploadUrlForCourseMaterial } from "@/lib/supabase/storage";
+import { getUserFriendlyErrorMessage } from "@/lib/utils/error-messages";
 import { eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -43,7 +44,7 @@ export async function POST(req: NextRequest) {
 		} = await supabase.auth.getUser();
 
 		if (!user) {
-			return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
+			return NextResponse.json({ error: "Session expired. Please refresh the page and try again." }, { status: 401 });
 		}
 
 		// Determine content type
@@ -64,7 +65,6 @@ export async function POST(req: NextRequest) {
 				mimeType: body.mimeType,
 				contentType: detectedContentType,
 				uploadStatus: "pending",
-				processingMetadata: { processingStatus: "pending" },
 				uploadedBy: user.id,
 			})
 			.returning();
@@ -74,14 +74,23 @@ export async function POST(req: NextRequest) {
 		// Update row with filePath
 		await db.update(courseMaterials).set({ filePath }).where(eq(courseMaterials.id, material.id));
 
-		// Generation config will be saved in completeUpload after successful upload
-
 		// Create signed upload URL (15-min TTL)
 		const { success, signedUrl, token, error } =
 			await createSignedUploadUrlForCourseMaterial(filePath);
 
 		if (!success || !signedUrl) {
-			return NextResponse.json({ error: error || "Failed to create signed URL" }, { status: 500 });
+			console.error("Failed to create signed URL:", error);
+			
+			// Mark the material as failed since signed URL creation failed
+			try {
+				await db.update(courseMaterials)
+					.set({ uploadStatus: "failed" })
+					.where(eq(courseMaterials.id, material.id));
+			} catch (updateErr) {
+				console.error("Failed to update material status to failed:", updateErr);
+			}
+			
+			return NextResponse.json({ error: "Service temporarily unavailable. Please try again in a few moments." }, { status: 500 });
 		}
 
 		return NextResponse.json({
@@ -91,8 +100,14 @@ export async function POST(req: NextRequest) {
 			filePath,
 		});
 	} catch (err) {
+		console.error("Materials presign error:", err);
+		
+		const userMessage = getUserFriendlyErrorMessage(
+			err instanceof Error ? err : "Unknown error occurred"
+		);
+		
 		return NextResponse.json(
-			{ error: err instanceof Error ? err.message : "Unknown error" },
+			{ error: userMessage },
 			{ status: 400 }
 		);
 	}
