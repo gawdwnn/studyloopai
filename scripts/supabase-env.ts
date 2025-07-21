@@ -21,25 +21,25 @@
  *   bun scripts/supabase-env.ts prod              # Switch to production
  *   bun scripts/supabase-env.ts switch            # Environment switcher
  *   bun scripts/supabase-env.ts status            # Show current status
+ *   bun scripts/supabase-env.ts unlink            # Unlink current project
  */
 
 import { env } from "@/env";
-import { confirm, input, select } from "@inquirer/prompts";
+import { confirm, input, password, select } from "@inquirer/prompts";
 import chalk from "chalk";
 import { execa } from "execa";
 import ora from "ora";
 
-// Project configurations
 const PROJECTS = {
 	dev: {
-		ref: env.SUPABASE_DEV_PROJECT_REF || "iyoalhewbrqbncceziec",
-		name: "studyloopai-dev",
+		ref: env.SUPABASE_DEV_PROJECT_REF,
+		name: "studyloopai-development",
 		environment: "development",
 		color: chalk.blue,
 	},
 	prod: {
-		ref: env.SUPABASE_PROD_PROJECT_REF || "anitoreuxwosqotmscub",
-		name: "studyloopai-prod",
+		ref: env.SUPABASE_PROD_PROJECT_REF,
+		name: "studyloopai-production",
 		environment: "production",
 		color: chalk.red,
 	},
@@ -50,7 +50,13 @@ type ProjectKey = keyof typeof PROJECTS;
 class SupabaseEnvManager {
 	private async getCurrentProject(): Promise<ProjectKey | null> {
 		try {
-			const { stdout } = await execa("npx", ["supabase", "projects", "list", "--output", "json"]);
+			const { stdout } = await execa("npx", [
+				"supabase",
+				"projects",
+				"list",
+				"--output",
+				"json",
+			]);
 			const projects = JSON.parse(stdout);
 			const linkedProject = projects.find(
 				(p: { linked: boolean; id: string }) => p.linked === true
@@ -79,10 +85,39 @@ class SupabaseEnvManager {
 
 	private async linkProject(projectKey: ProjectKey): Promise<void> {
 		const project = PROJECTS[projectKey];
+
+		// Check if project ref is available
+		if (!project.ref) {
+			throw new Error(
+				`Project reference not found for ${project.name}. Please check your environment variables.`
+			);
+		}
+
+		// Prompt for database password
+		const dbPassword = await password({
+			message: `Enter database password for ${project.name}:`,
+			mask: "*",
+		});
+
 		const spinner = ora(`Linking to ${project.name}...`).start();
 
 		try {
-			await execa("npx", ["supabase", "link", "--project-ref", project.ref]);
+			// Use --password flag with the provided password
+			await execa(
+				"npx",
+				[
+					"supabase",
+					"link",
+					"--project-ref",
+					project.ref,
+					"--password",
+					dbPassword,
+				],
+				{
+					stdio: ["inherit", "pipe", "pipe"],
+				}
+			);
+
 			spinner.succeed(`Successfully linked to ${project.color(project.name)}`);
 		} catch (error) {
 			spinner.fail(`Failed to link to ${project.name}`);
@@ -90,12 +125,32 @@ class SupabaseEnvManager {
 		}
 	}
 
-	private async runCommand(command: string, args: string[], description: string): Promise<void> {
+	private async runCommand(
+		command: string,
+		args: string[],
+		description: string
+	): Promise<void> {
 		const spinner = ora(description).start();
 
 		try {
-			await execa(command, args, { stdio: "inherit" });
-			spinner.succeed(`${description} completed`);
+			// Special handling for policy-manager script which needs clean stdio
+			if (args.includes("scripts/policy-manager.ts")) {
+				spinner.stop();
+				// Use spawn with stdio inheritance for better terminal control
+				const { stdout, stderr } = await execa(command, args, {
+					stdio: ["inherit", "pipe", "pipe"],
+					env: { ...process.env, FORCE_COLOR: "1" }
+				});
+				
+				// Output the results
+				if (stdout) process.stdout.write(stdout);
+				if (stderr) process.stderr.write(stderr);
+				
+				console.log(chalk.green(`✔ ${description} completed`));
+			} else {
+				await execa(command, args, { stdio: "inherit" });
+				spinner.succeed(`${description} completed`);
+			}
 		} catch (error) {
 			spinner.fail(`${description} failed`);
 			throw error;
@@ -105,13 +160,18 @@ class SupabaseEnvManager {
 	private async confirmProduction(): Promise<boolean> {
 		process.stdout.write(chalk.red.bold("\n🚨 PRODUCTION ENVIRONMENT\n"));
 		process.stdout.write(
-			chalk.yellow("You are about to perform operations on the PRODUCTION database.\n")
+			chalk.yellow(
+				"You are about to perform operations on the PRODUCTION database.\n"
+			)
 		);
-		process.stdout.write(chalk.yellow("This can affect live users and data.\n\n"));
+		process.stdout.write(
+			chalk.yellow("This can affect live users and data.\n\n")
+		);
 
 		const confirmation = await input({
 			message: 'Type "PRODUCTION" to confirm:',
-			validate: (value) => value === "PRODUCTION" || 'You must type "PRODUCTION" to continue',
+			validate: (value) =>
+				value === "PRODUCTION" || 'You must type "PRODUCTION" to continue',
 		});
 
 		return confirmation === "PRODUCTION";
@@ -123,7 +183,9 @@ class SupabaseEnvManager {
 		let selectedProject = targetProject;
 		if (!selectedProject) {
 			const currentDisplay = current ? PROJECTS[current].name : "None";
-			process.stdout.write(chalk.blue("\n📊 Current Supabase Project Status\n"));
+			process.stdout.write(
+				chalk.blue("\n📊 Current Supabase Project Status\n")
+			);
 			process.stdout.write(`Current: ${currentDisplay}\n\n`);
 
 			selectedProject = await select({
@@ -137,7 +199,9 @@ class SupabaseEnvManager {
 
 		if (current === selectedProject) {
 			process.stdout.write(
-				chalk.green(`✓ Already connected to ${PROJECTS[selectedProject].name}\n`)
+				chalk.green(
+					`✓ Already connected to ${PROJECTS[selectedProject].name}\n`
+				)
 			);
 			return;
 		}
@@ -160,7 +224,9 @@ class SupabaseEnvManager {
 		const project = PROJECTS[projectKey];
 		const isProduction = projectKey === "prod";
 
-		process.stdout.write(project.color(`\n🔧 ${project.name} Environment (Remote)\n`));
+		process.stdout.write(
+			project.color(`\n🔧 ${project.name} Environment (Remote)\n`)
+		);
 
 		const operations = [
 			{ name: "Generate migrations", value: "generate", safe: true },
@@ -170,7 +236,9 @@ class SupabaseEnvManager {
 			{ name: "Generate TypeScript types", value: "types", safe: true },
 			{ name: "Open Drizzle Studio", value: "studio", safe: true },
 			{ name: "View recent logs", value: "logs", safe: true },
-			...(isProduction ? [{ name: "Create backup", value: "backup", safe: true }] : []),
+			...(isProduction
+				? [{ name: "Create backup", value: "backup", safe: true }]
+				: []),
 			{ name: "Run complete setup", value: "setup", safe: false },
 		];
 
@@ -196,12 +264,19 @@ class SupabaseEnvManager {
 		await this.executeOperation(selectedOps, isProduction);
 	}
 
-	private async executeOperation(operation: string, isProduction: boolean): Promise<void> {
+	private async executeOperation(
+		operation: string,
+		isProduction: boolean
+	): Promise<void> {
 		const backupFile = `backup-${new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19)}.sql`;
 
 		switch (operation) {
 			case "generate": {
-				await this.runCommand("bun", ["run", "db:generate"], "Generating migrations");
+				await this.runCommand(
+					"bun",
+					["run", "db:generate"],
+					"Generating migrations"
+				);
 				break;
 			}
 
@@ -213,7 +288,11 @@ class SupabaseEnvManager {
 						"Creating backup"
 					);
 				}
-				await this.runCommand("bun", ["run", "db:migrate"], "Applying migrations");
+				await this.runCommand(
+					"bun",
+					["run", "db:migrate"],
+					"Applying migrations"
+				);
 				break;
 			}
 
@@ -236,7 +315,9 @@ class SupabaseEnvManager {
 			}
 
 			case "types": {
-				const typeFile = isProduction ? "src/types/supabase-prod.ts" : "src/types/supabase.ts";
+				const typeFile = isProduction
+					? "src/types/supabase-prod.ts"
+					: "src/types/supabase.ts";
 				await this.runCommand(
 					"sh",
 					["-c", `npx supabase gen types typescript --linked > ${typeFile}`],
@@ -246,7 +327,11 @@ class SupabaseEnvManager {
 			}
 
 			case "studio": {
-				await this.runCommand("bun", ["run", "db:studio"], "Opening Drizzle Studio");
+				await this.runCommand(
+					"bun",
+					["run", "db:studio"],
+					"Opening Drizzle Studio"
+				);
 				break;
 			}
 
@@ -276,17 +361,30 @@ class SupabaseEnvManager {
 						"Creating backup"
 					);
 				}
-				await this.runCommand("bun", ["run", "db:generate"], "Generating migrations");
-				await this.runCommand("bun", ["run", "db:migrate"], "Applying migrations");
+				await this.runCommand(
+					"bun",
+					["run", "db:generate"],
+					"Generating migrations"
+				);
+				await this.runCommand(
+					"bun",
+					["run", "db:migrate"],
+					"Applying migrations"
+				);
 				await this.runCommand(
 					"bun",
 					["scripts/policy-manager.ts", "apply-all", "--exec"],
 					"Applying RLS policies"
 				);
-				const setupTypeFile = isProduction ? "src/types/supabase-prod.ts" : "src/types/supabase.ts";
+				const setupTypeFile = isProduction
+					? "src/types/supabase-prod.ts"
+					: "src/types/supabase.ts";
 				await this.runCommand(
 					"sh",
-					["-c", `npx supabase gen types typescript --linked > ${setupTypeFile}`],
+					[
+						"-c",
+						`npx supabase gen types typescript --linked > ${setupTypeFile}`,
+					],
 					"Generating TypeScript types"
 				);
 				break;
@@ -301,11 +399,15 @@ class SupabaseEnvManager {
 	async status(): Promise<void> {
 		const current = await this.getCurrentProject();
 
-		process.stdout.write(chalk.blue("\n📊 Current Supabase Project Status (Remote)\n"));
+		process.stdout.write(
+			chalk.blue("\n📊 Current Supabase Project Status (Remote)\n")
+		);
 
 		if (current) {
 			const project = PROJECTS[current];
-			process.stdout.write(`Environment: ${project.color(project.environment)}\n`);
+			process.stdout.write(
+				`Environment: ${project.color(project.environment)}\n`
+			);
 			process.stdout.write(`Project: ${project.name}\n`);
 			process.stdout.write(`Reference: ${project.ref}\n`);
 			process.stdout.write(chalk.green("✓ Remote project linked\n"));
@@ -314,16 +416,54 @@ class SupabaseEnvManager {
 				process.stdout.write(chalk.yellow("⚠️  You are in production mode\n"));
 			}
 		} else {
-			process.stdout.write(chalk.yellow("No remote project currently linked\n"));
 			process.stdout.write(
-				chalk.gray("Use 'bun scripts/supabase-env.ts switch' to link a project\n")
+				chalk.yellow("No remote project currently linked\n")
+			);
+			process.stdout.write(
+				chalk.gray(
+					"Use 'bun scripts/supabase-env.ts switch' to link a project\n"
+				)
 			);
 		}
 
 		process.stdout.write(chalk.blue("\nAvailable Projects:\n"));
 		for (const [key, project] of Object.entries(PROJECTS)) {
 			const indicator = current === key ? "●" : "○";
-			process.stdout.write(`${indicator} ${project.name} (${project.environment})\n`);
+			process.stdout.write(
+				`${indicator} ${project.name} (${project.environment})\n`
+			);
+		}
+	}
+
+	async unlink(): Promise<void> {
+		const current = await this.getCurrentProject();
+
+		if (!current) {
+			process.stdout.write(chalk.yellow("No project is currently linked\n"));
+			return;
+		}
+
+		const project = PROJECTS[current];
+		const confirmed = await confirm({
+			message: `Are you sure you want to unlink from ${project.color(project.name)}?`,
+			default: false,
+		});
+
+		if (!confirmed) {
+			process.stdout.write(chalk.yellow("Operation cancelled\n"));
+			return;
+		}
+
+		const spinner = ora("Unlinking project...").start();
+
+		try {
+			await execa("npx", ["supabase", "unlink"]);
+			spinner.succeed(
+				`Successfully unlinked from ${project.color(project.name)}`
+			);
+		} catch (error) {
+			spinner.fail("Failed to unlink project");
+			throw error;
 		}
 	}
 }
@@ -362,6 +502,11 @@ async function main() {
 				break;
 			}
 
+			case "unlink": {
+				await manager.unlink();
+				break;
+			}
+
 			default: {
 				const action = await select({
 					message: "What would you like to do?",
@@ -370,6 +515,7 @@ async function main() {
 						{ name: "Run development operations", value: "dev" },
 						{ name: "Run production operations", value: "prod" },
 						{ name: "Show status", value: "status" },
+						{ name: "Unlink current project", value: "unlink" },
 					],
 				});
 
@@ -392,11 +538,17 @@ async function main() {
 						await manager.status();
 						break;
 					}
+					case "unlink": {
+						await manager.unlink();
+						break;
+					}
 				}
 			}
 		}
 	} catch (error) {
-		process.stderr.write(chalk.red(`\n❌ Operation failed: ${String(error)}\n`));
+		process.stderr.write(
+			chalk.red(`\n❌ Operation failed: ${String(error)}\n`)
+		);
 		process.exit(1);
 	}
 }
