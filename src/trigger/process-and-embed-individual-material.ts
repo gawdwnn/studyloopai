@@ -19,6 +19,10 @@ const ProcessAndEmbedIndividualPayload = z.object({
 
 const ProcessAndEmbedIndividualOutput = z.object({
 	success: z.boolean(),
+	materialId: z.string(),
+	chunksCreated: z.number().optional(),
+	textLength: z.number().optional(),
+	contentType: z.string().optional(),
 });
 
 type ProcessAndEmbedIndividualPayloadType = z.infer<
@@ -151,6 +155,10 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 
 			return {
 				success: true,
+				materialId,
+				chunksCreated: chunks.length,
+				textLength: extractedText.length,
+				contentType,
 			};
 		} catch (error) {
 			const errorMessage =
