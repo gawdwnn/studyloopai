@@ -1,6 +1,6 @@
 import { logger, schemaTask, tags } from "@trigger.dev/sdk";
 import { z } from "zod";
-import { db } from "@/db";
+import { getAdminDatabaseAccess } from "@/db";
 import { generationConfigs } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { generateConceptMaps } from "./generate-concept-maps";
@@ -52,6 +52,9 @@ export const aiContentOrchestrator = schemaTask({
 	run: async (payload: AiContentOrchestratorPayloadType, { ctx: _ctx }) => {
 		const { weekId, courseId, materialIds, configId } = payload;
 
+		// Using admin database client to bypass RLS policies for background processing
+		const adminDb = getAdminDatabaseAccess();
+
 		await tags.add([
 			`weekId:${payload.weekId}`,
 			`courseId:${payload.courseId}`,
@@ -71,7 +74,7 @@ export const aiContentOrchestrator = schemaTask({
 				throw new Error("Configuration ID is required for content generation");
 			}
 
-			await db
+			await adminDb
 				.update(generationConfigs)
 				.set({
 					generationStatus: "processing",
@@ -169,7 +172,7 @@ export const aiContentOrchestrator = schemaTask({
 
 			const successfulTriggers = results.filter((r) => r.success).length;
 
-			await db
+			await adminDb
 				.update(generationConfigs)
 				.set({
 					generationStatus: "completed",
@@ -193,7 +196,7 @@ export const aiContentOrchestrator = schemaTask({
 
 			if (configId) {
 				try {
-					await db
+					await adminDb
 						.update(generationConfigs)
 						.set({
 							generationStatus: "failed",

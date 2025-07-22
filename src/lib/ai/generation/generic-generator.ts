@@ -1,3 +1,4 @@
+import type { DatabaseClient } from "@/db";
 import type {
 	ConceptMapsConfig,
 	CuecardsConfig,
@@ -42,6 +43,7 @@ interface GenericGeneratorOptions<T> {
 	maxTokens?: number;
 	temperature?: number;
 	responseType: "array" | "object";
+	database: DatabaseClient;
 }
 
 export async function generateContent<T>(
@@ -58,10 +60,11 @@ export async function generateContent<T>(
 		maxTokens = 3500,
 		temperature = 0.7,
 		responseType,
+		database,
 	} = options;
 
 	try {
-		const chunks = await getCombinedChunks(materialIds);
+		const chunks = await getCombinedChunks(materialIds, database);
 		if (chunks.length === 0) {
 			return {
 				success: false,

@@ -50,12 +50,15 @@ export const generateOpenQuestions = schemaTask({
 			const { generateOpenQuestionsForWeek } = await import(
 				"@/lib/ai/content-generators"
 			);
+			const { getAdminDatabaseAccess } = await import("@/db");
 
+			const adminDb = getAdminDatabaseAccess();
 			const result = await generateOpenQuestionsForWeek(
 				courseId,
 				weekId,
 				materialIds,
-				openQuestionsConfig
+				openQuestionsConfig,
+				adminDb
 			);
 
 			if (!result.success) {

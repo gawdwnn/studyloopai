@@ -51,12 +51,15 @@ export const generateGoldenNotes = schemaTask({
 			const { generateGoldenNotesForCourseWeek } = await import(
 				"@/lib/ai/content-generators"
 			);
+			const { getAdminDatabaseAccess } = await import("@/db");
 
+			const adminDb = getAdminDatabaseAccess();
 			const result = await generateGoldenNotesForCourseWeek(
 				courseId,
 				weekId,
 				materialIds,
-				goldenNotesConfig
+				goldenNotesConfig,
+				adminDb
 			);
 
 			if (!result.success) {
