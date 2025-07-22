@@ -1,4 +1,4 @@
-import { db } from "@/db";
+import { getAdminDatabaseAccess } from "@/db";
 import { courseMaterials } from "@/db/schema";
 import { logger, schemaTask, tags } from "@trigger.dev/sdk";
 import { inArray } from "drizzle-orm";
@@ -95,13 +95,14 @@ export const ingestCourseMaterials = schemaTask({
 			.map((r) => r.output.materialId);
 
 		// Get the weekId and courseId - all materials in a batch should belong to the same week and course
-		const courseMaterialsRows = await db
-      .select({
-        weekId: courseMaterials.weekId,
-        courseId: courseMaterials.courseId,
-      })
-      .from(courseMaterials)
-      .where(inArray(courseMaterials.id, materialIds));
+		const adminDb = getAdminDatabaseAccess();
+		const courseMaterialsRows = await adminDb
+			.select({
+				weekId: courseMaterials.weekId,
+				courseId: courseMaterials.courseId,
+			})
+			.from(courseMaterials)
+			.where(inArray(courseMaterials.id, materialIds));
 
 		// Validate that all materials belong to the same week and course
 		const weekIds = Array.from(

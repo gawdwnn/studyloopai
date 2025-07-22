@@ -1,4 +1,4 @@
-import { db } from "@/db";
+import type { DatabaseClient } from "@/db";
 import { documentChunks } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import type { z } from "zod";
@@ -6,8 +6,11 @@ import type { z } from "zod";
 /**
  * Get document chunks for a material
  */
-export async function getMaterialChunks(materialId: string): Promise<string[]> {
-	const chunks = await db
+export async function getMaterialChunks(
+	materialId: string,
+	database: DatabaseClient
+): Promise<string[]> {
+	const chunks = await database
 		.select({ content: documentChunks.content })
 		.from(documentChunks)
 		.where(eq(documentChunks.materialId, materialId))
@@ -88,11 +91,12 @@ export function parseJsonObjectResponse<T>(
  * Aggregate chunks from multiple materials
  */
 export async function getCombinedChunks(
-	materialIds: string[]
+	materialIds: string[],
+	database: DatabaseClient
 ): Promise<string[]> {
 	const allChunks: string[] = [];
 	for (const id of materialIds) {
-		const materialChunks = await getMaterialChunks(id);
+		const materialChunks = await getMaterialChunks(id, database);
 		allChunks.push(...materialChunks);
 	}
 	return allChunks;

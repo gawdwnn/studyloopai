@@ -48,12 +48,15 @@ export const generateSummaries = schemaTask({
 			const { generateSummariesForWeek } = await import(
 				"@/lib/ai/content-generators"
 			);
+			const { getAdminDatabaseAccess } = await import("@/db");
 
+			const adminDb = getAdminDatabaseAccess();
 			const result = await generateSummariesForWeek(
 				courseId,
 				weekId,
 				materialIds,
-				summariesConfig
+				summariesConfig,
+				adminDb
 			);
 
 			if (!result.success) {

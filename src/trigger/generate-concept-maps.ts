@@ -50,12 +50,15 @@ export const generateConceptMaps = schemaTask({
 			const { generateConceptMapsForWeek } = await import(
 				"@/lib/ai/content-generators"
 			);
+			const { getAdminDatabaseAccess } = await import("@/db");
 
+			const adminDb = getAdminDatabaseAccess();
 			const result = await generateConceptMapsForWeek(
 				courseId,
 				weekId,
 				materialIds,
-				conceptMapsConfig
+				conceptMapsConfig,
+				adminDb
 			);
 
 			if (!result.success) {

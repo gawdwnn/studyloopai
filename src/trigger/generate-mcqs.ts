@@ -43,12 +43,15 @@ export const generateMCQs = schemaTask({
 			const { generateMCQsForWeek } = await import(
 				"@/lib/ai/content-generators"
 			);
+			const { getAdminDatabaseAccess } = await import("@/db");
 
+			const adminDb = getAdminDatabaseAccess();
 			const result = await generateMCQsForWeek(
 				courseId,
 				weekId,
 				materialIds,
-				mcqConfig
+				mcqConfig,
+				adminDb
 			);
 
 			if (!result.success) {

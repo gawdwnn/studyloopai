@@ -48,12 +48,15 @@ export const generateCuecards = schemaTask({
 			const { generateCuecardsForWeek } = await import(
 				"@/lib/ai/content-generators"
 			);
+			const { getAdminDatabaseAccess } = await import("@/db");
 
+			const adminDb = getAdminDatabaseAccess();
 			const result = await generateCuecardsForWeek(
 				courseId,
 				weekId,
 				materialIds,
-				cuecardsConfig
+				cuecardsConfig,
+				adminDb
 			);
 
 			if (!result.success) {

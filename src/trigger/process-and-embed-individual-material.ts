@@ -1,4 +1,4 @@
-import { db } from "@/db";
+import { getAdminDatabaseAccess } from "@/db";
 import { courseMaterials, documentChunks } from "@/db/schema";
 import { generateEmbeddings } from "@/lib/ai/embeddings";
 import { CONTENT_TYPES } from "@/lib/config/file-upload";
@@ -52,7 +52,8 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 		});
 
 		// Update material status to indicate processing has started
-		await db
+		const adminDb = getAdminDatabaseAccess();
+		await adminDb
 			.update(courseMaterials)
 			.set({
 				embeddingStatus: "processing",
@@ -138,12 +139,14 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 					tokenCount: Math.round(chunks[i].pageContent.length / 4),
 				})
 			);
-			await db.insert(documentChunks).values(chunksToInsert);
+			// Using admin database client to bypass RLS policies for background processing
+			const adminDb = getAdminDatabaseAccess();
+			await adminDb.insert(documentChunks).values(chunksToInsert);
 
 			// 6. Update final status to 'completed'
 			const completedAt = new Date();
 
-			await db
+			await adminDb
 				.update(courseMaterials)
 				.set({
 					embeddingStatus: "completed",
@@ -171,7 +174,9 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 				error: errorMessage,
 			});
 
-			await db
+			// Update failure status using admin database access for background job
+			const adminDb = getAdminDatabaseAccess();
+			await adminDb
 				.update(courseMaterials)
 				.set({
 					embeddingStatus: "failed",
@@ -211,8 +216,9 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 			error: errorMessage,
 		});
 
-		// Update final failure status in database
-		await db
+		// Update final failure status in database using admin access for background job
+		const adminDb = getAdminDatabaseAccess();
+		await adminDb
 			.update(courseMaterials)
 			.set({
 				embeddingStatus: "failed",
