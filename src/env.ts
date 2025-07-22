@@ -12,7 +12,9 @@ export const env = createEnv({
 	 */
 	server: {
 		DATABASE_URL: sanitizeString(z.string().url()),
-		NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+		NODE_ENV: z
+			.enum(["development", "test", "production"])
+			.default("development"),
 		SUPABASE_SERVICE_ROLE_KEY: sanitizeString(z.string().min(1)),
 		OPENAI_API_KEY: sanitizeString(z.string().min(1)).optional(),
 		XAI_API_KEY: sanitizeString(z.string().min(1)).optional(),
@@ -35,8 +37,9 @@ export const env = createEnv({
 		NEXT_PUBLIC_SITE_URL: sanitizeString(z.string().url()),
 		NEXT_PUBLIC_SUPABASE_URL: sanitizeString(z.string().url()),
 		NEXT_PUBLIC_SUPABASE_ANON_KEY: sanitizeString(z.string().min(1)),
-		NEXT_PUBLIC_TRIGGER_PROJECT_ID: sanitizeString(z.string().min(1)).optional(),
-		NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: sanitizeString(z.string().min(1)).optional(),
+		NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: sanitizeString(
+			z.string().min(1)
+		).optional(),
 	},
 
 	/**
@@ -61,24 +64,34 @@ export const env = createEnv({
 		NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
 		NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
 		NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-		NEXT_PUBLIC_TRIGGER_PROJECT_ID: process.env.NEXT_PUBLIC_TRIGGER_PROJECT_ID,
-		NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
+		NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:
+			process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
 	},
 
 	/**
-	 * Skip validation during build time and Edge Runtime
+	 * Skip validation during build time, Edge Runtime, and Trigger.dev runtime
 	 * This prevents build failures when environment variables aren't available
 	 */
-	skipValidation: !!process.env.SKIP_ENV_VALIDATION || process.env.NODE_ENV === undefined,
+	skipValidation:
+		!!process.env.SKIP_ENV_VALIDATION ||
+		process.env.NODE_ENV === undefined ||
+		// Skip validation in Trigger.dev runtime environment
+		(typeof process !== "undefined" &&
+			!!process.env.TRIGGER_SECRET_KEY &&
+			!process.env.NEXT_PUBLIC_SITE_URL),
 });
 
 // Export types for convenience
 export type Env = typeof env;
 
 export type ServerEnv = {
-	[K in keyof typeof env as K extends `NEXT_PUBLIC_${string}` ? never : K]: (typeof env)[K];
+	[K in keyof typeof env as K extends `NEXT_PUBLIC_${string}`
+		? never
+		: K]: (typeof env)[K];
 };
 
 export type ClientEnv = {
-	[K in keyof typeof env as K extends `NEXT_PUBLIC_${string}` ? K : never]: (typeof env)[K];
+	[K in keyof typeof env as K extends `NEXT_PUBLIC_${string}`
+		? K
+		: never]: (typeof env)[K];
 };
