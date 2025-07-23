@@ -1,3 +1,6 @@
+import { generateContent } from "@/lib/ai/generation";
+import { OpenQuestionsArraySchema } from "@/lib/ai/generation/schemas";
+import { insertOpenQuestions } from "@/lib/services/persist-generated-content-service";
 import { logger, schemaTask, tags } from "@trigger.dev/sdk";
 import { z } from "zod";
 
@@ -47,19 +50,16 @@ export const generateOpenQuestions = schemaTask({
 				openQuestionsConfig,
 			});
 
-			const { generateOpenQuestionsForWeek } = await import(
-				"@/lib/ai/content-generators"
-			);
-			const { getAdminDatabaseAccess } = await import("@/db");
-
-			const adminDb = getAdminDatabaseAccess();
-			const result = await generateOpenQuestionsForWeek(
+			const result = await generateContent({
 				courseId,
 				weekId,
 				materialIds,
-				openQuestionsConfig,
-				adminDb
-			);
+				config: openQuestionsConfig,
+				contentType: "openQuestions",
+				schema: OpenQuestionsArraySchema,
+				insertFunction: insertOpenQuestions,
+				responseType: "array",
+			});
 
 			if (!result.success) {
 				throw new Error(result.error || "Open questions generation failed");
@@ -89,11 +89,7 @@ export const generateOpenQuestions = schemaTask({
 			success: output.success,
 		});
 	},
-	onFailure: async ({
-		error,
-	}: {
-		error: unknown;
-	}) => {
+	onFailure: async ({ error }: { error: unknown }) => {
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		logger.error("❌ Open questions generation failed permanently", {
 			error: errorMessage,

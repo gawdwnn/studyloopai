@@ -1,8 +1,6 @@
+import { updateGenerationConfigStatus } from "@/lib/services/background-job-db-service";
 import { logger, schemaTask, tags } from "@trigger.dev/sdk";
 import { z } from "zod";
-import { getAdminDatabaseAccess } from "@/db";
-import { generationConfigs } from "@/db/schema";
-import { eq } from "drizzle-orm";
 import { generateConceptMaps } from "./generate-concept-maps";
 import { generateCuecards } from "./generate-cuecards";
 import { generateGoldenNotes } from "./generate-golden-notes";
@@ -13,7 +11,9 @@ import { generateSummaries } from "./generate-summaries";
 const AiContentOrchestratorPayload = z.object({
 	weekId: z.string().min(1, "Week ID is required"),
 	courseId: z.string().min(1, "Course ID is required"),
-	materialIds: z.array(z.string().uuid()).min(1, "At least one material ID is required"),
+	materialIds: z
+		.array(z.string().uuid())
+		.min(1, "At least one material ID is required"),
 	configId: z.string().uuid().optional(),
 });
 
@@ -52,9 +52,6 @@ export const aiContentOrchestrator = schemaTask({
 	run: async (payload: AiContentOrchestratorPayloadType, { ctx: _ctx }) => {
 		const { weekId, courseId, materialIds, configId } = payload;
 
-		// Using admin database client to bypass RLS policies for background processing
-		const adminDb = getAdminDatabaseAccess();
-
 		await tags.add([
 			`weekId:${payload.weekId}`,
 			`courseId:${payload.courseId}`,
@@ -62,25 +59,24 @@ export const aiContentOrchestrator = schemaTask({
 		]);
 
 		try {
-			logger.info("🎯 Triggering parallel content generation with validated materials", {
-				weekId,
-				courseId,
-				materialIds,
-				materialCount: materialIds.length,
-				configId,
-			});
+			logger.info(
+				"🎯 Triggering parallel content generation with validated materials",
+				{
+					weekId,
+					courseId,
+					materialIds,
+					materialCount: materialIds.length,
+					configId,
+				}
+			);
 
 			if (!configId) {
 				throw new Error("Configuration ID is required for content generation");
 			}
 
-			await adminDb
-				.update(generationConfigs)
-				.set({
-					generationStatus: "processing",
-					generationStartedAt: new Date(),
-				})
-				.where(eq(generationConfigs.id, configId));
+			await updateGenerationConfigStatus(configId, "processing", {
+				generationStartedAt: new Date(),
+			});
 
 			logger.info("🔄 Updated generation config status to processing", {
 				configId,
@@ -172,13 +168,9 @@ export const aiContentOrchestrator = schemaTask({
 
 			const successfulTriggers = results.filter((r) => r.success).length;
 
-			await adminDb
-				.update(generationConfigs)
-				.set({
-					generationStatus: "completed",
-					generationCompletedAt: new Date(),
-				})
-				.where(eq(generationConfigs.id, configId));
+			await updateGenerationConfigStatus(configId, "completed", {
+				generationCompletedAt: new Date(),
+			});
 
 			logger.info("✅ Updated generation config status to completed", {
 				configId,
@@ -196,14 +188,10 @@ export const aiContentOrchestrator = schemaTask({
 
 			if (configId) {
 				try {
-					await adminDb
-						.update(generationConfigs)
-						.set({
-							generationStatus: "failed",
-							generationCompletedAt: new Date(),
-							failedFeatures: [],
-						})
-						.where(eq(generationConfigs.id, configId));
+					await updateGenerationConfigStatus(configId, "failed", {
+						generationCompletedAt: new Date(),
+						failedFeatures: [],
+					});
 
 					logger.error("❌ Updated generation config status to failed", {
 						configId,
@@ -214,7 +202,8 @@ export const aiContentOrchestrator = schemaTask({
 					logger.error("Failed to update generation config status", {
 						configId,
 						originalError: errorMessage,
-						updateError: updateErr instanceof Error ? updateErr.message : "Unknown",
+						updateError:
+							updateErr instanceof Error ? updateErr.message : "Unknown",
 					});
 				}
 			}
@@ -251,10 +240,10 @@ export const aiContentOrchestrator = schemaTask({
 	}) => {
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		logger.error("❌ AI content generation orchestration failed", {
-      weekId: payload.weekId,
-      courseId: payload.courseId,
+			weekId: payload.weekId,
+			courseId: payload.courseId,
 			configId: payload.configId,
-      error: errorMessage,
-    });
+			error: errorMessage,
+		});
 	},
 });

@@ -1,4 +1,4 @@
-import type { DatabaseClient } from "@/db";
+import { getCombinedChunks } from "@/lib/services/background-job-db-service";
 import type {
 	ConceptMapsConfig,
 	CuecardsConfig,
@@ -15,7 +15,6 @@ import { getPromptByType } from "../prompts";
 import type { ContentGenerationResult } from "./types";
 import {
 	combineChunksForGeneration,
-	getCombinedChunks,
 	parseJsonArrayResponse,
 	parseJsonObjectResponse,
 } from "./utils";
@@ -43,7 +42,6 @@ interface GenericGeneratorOptions<T> {
 	maxTokens?: number;
 	temperature?: number;
 	responseType: "array" | "object";
-	database: DatabaseClient;
 }
 
 export async function generateContent<T>(
@@ -60,11 +58,10 @@ export async function generateContent<T>(
 		maxTokens = 3500,
 		temperature = 0.7,
 		responseType,
-		database,
 	} = options;
 
 	try {
-		const chunks = await getCombinedChunks(materialIds, database);
+		const chunks = await getCombinedChunks(materialIds);
 		if (chunks.length === 0) {
 			return {
 				success: false,

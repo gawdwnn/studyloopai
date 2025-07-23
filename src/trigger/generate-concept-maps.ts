@@ -1,3 +1,6 @@
+import { ConceptMapSchema } from "@/lib/ai/generation";
+import { generateContent } from "@/lib/ai/generation/generic-generator";
+import { insertConceptMaps } from "@/lib/services/persist-generated-content-service";
 import { logger, schemaTask, tags } from "@trigger.dev/sdk";
 import { z } from "zod";
 
@@ -47,19 +50,17 @@ export const generateConceptMaps = schemaTask({
 				conceptMapsConfig,
 			});
 
-			const { generateConceptMapsForWeek } = await import(
-				"@/lib/ai/content-generators"
-			);
-			const { getAdminDatabaseAccess } = await import("@/db");
-
-			const adminDb = getAdminDatabaseAccess();
-			const result = await generateConceptMapsForWeek(
+			const result = await generateContent({
 				courseId,
 				weekId,
 				materialIds,
-				conceptMapsConfig,
-				adminDb
-			);
+				config: conceptMapsConfig,
+				contentType: "conceptMaps",
+				schema: ConceptMapSchema,
+				insertFunction: insertConceptMaps,
+				responseType: "object",
+				maxTokens: 4000,
+			});
 
 			if (!result.success) {
 				throw new Error(result.error || "Concept maps generation failed");

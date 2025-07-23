@@ -1,7 +1,5 @@
-import { getAdminDatabaseAccess } from "@/db";
-import { courseMaterials } from "@/db/schema";
+import { getCourseMaterialsByIds } from "@/lib/services/background-job-db-service";
 import { logger, schemaTask, tags } from "@trigger.dev/sdk";
-import { inArray } from "drizzle-orm";
 import { z } from "zod";
 import { aiContentOrchestrator } from "./ai-content-orchestrator";
 import { processAndEmbedIndividualMaterial } from "./process-and-embed-individual-material";
@@ -20,23 +18,6 @@ const IngestBatchPayload = z.object({
 
 type IngestBatchPayloadType = z.infer<typeof IngestBatchPayload>;
 
-// Type for the task's return value
-type EmbeddingTaskOutput = {
-	success: boolean;
-	materialId: string;
-	chunksCreated?: number;
-	textLength?: number;
-	contentType?: string;
-};
-
-// Type for batch run results from batchTriggerAndWait
-type EmbeddingRun = {
-	ok: boolean;
-	id: string;
-	output?: EmbeddingTaskOutput;
-	error?: string;
-};
-
 export const ingestCourseMaterials = schemaTask({
 	id: "ingest-course-materials",
 	schema: IngestBatchPayload,
@@ -53,11 +34,6 @@ export const ingestCourseMaterials = schemaTask({
 
 		const { userId, materials } = payload;
 
-		logger.info("📥 Ingest batch started", {
-			userId,
-			materialCount: materials.length,
-		});
-
 		// Fan-out: process & embed each material in parallel (queue limited inside the task definition)
 		const embeddingItems = materials.map((m) => ({
 			payload: {
@@ -72,63 +48,36 @@ export const ingestCourseMaterials = schemaTask({
 				embeddingItems,
 				{}
 			);
-			
-		const embeddingRuns = embeddingResult.runs as EmbeddingRun[];
-
-		for (const run of embeddingRuns) {
-			if (!run.ok) {
-				throw new Error(`Embedding failed for run ${run.id}: ${run.error}`);
-			}
-		}
 
 		logger.info("🧩 All embeddings complete, triggering AI generation", {
-			userId,
-			completedCount: embeddingResult.runs.length,
+			embeddingResult,
 		});
 
 		// Extract material IDs from successful runs
-		const materialIds = embeddingRuns
-			.filter(
-				(r): r is EmbeddingRun & { output: EmbeddingTaskOutput } =>
-					r.ok && r.output !== undefined
-			)
-			.map((r) => r.output.materialId);
+		const materialIds: string[] = [];
+		for (const run of embeddingResult.runs) {
+			if (run.ok && run.output.success && run.output.materialId) {
+				materialIds.push(run.output.materialId);
+			}
+		}
 
-		// Get the weekId and courseId - all materials in a batch should belong to the same week and course
-		const adminDb = getAdminDatabaseAccess();
-		const courseMaterialsRows = await adminDb
-			.select({
-				weekId: courseMaterials.weekId,
-				courseId: courseMaterials.courseId,
-			})
-			.from(courseMaterials)
-			.where(inArray(courseMaterials.id, materialIds));
+		const courseMaterialsRows = await getCourseMaterialsByIds(materialIds);
 
 		// Validate that all materials belong to the same week and course
-		const weekIds = Array.from(
-			new Set(courseMaterialsRows.map((r) => r.weekId).filter(Boolean))
-		) as string[];
-		const courseIds = Array.from(
-			new Set(courseMaterialsRows.map((r) => r.courseId).filter(Boolean))
-		) as string[];
+		const weekIds = [
+			...new Set(courseMaterialsRows.map((r) => r.week_id).filter(Boolean)),
+		];
+		const courseIds = [
+			...new Set(courseMaterialsRows.map((r) => r.course_id).filter(Boolean)),
+		];
 
-		if (weekIds.length === 0) {
-			throw new Error("No weekId associated with processed materials");
+		if (!weekIds[0] || !courseIds[0]) {
+			throw new Error("Missing weekId or courseId in processed materials");
 		}
 
-		if (courseIds.length === 0) {
-			throw new Error("No courseId associated with processed materials");
-		}
-
-		if (weekIds.length > 1) {
+		if (weekIds.length > 1 || courseIds.length > 1) {
 			throw new Error(
-				`Materials belong to multiple weeks: ${weekIds.join(", ")}. Expected single week.`
-			);
-		}
-
-		if (courseIds.length > 1) {
-			throw new Error(
-				`Materials belong to multiple courses: ${courseIds.join(", ")}. Expected single course.`
+				`Materials must belong to single week/course. Found: weeks=${weekIds}, courses=${courseIds}`
 			);
 		}
 

@@ -20,8 +20,8 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
 	metadataBase: new URL(getSiteUrl()),
 	title: {
-		default: "StudyLoop AI",
-		template: "%s | StudyLoop AI",
+		default: "StudyLoopAI",
+		template: "%s | StudyLoopAI",
 	},
 	description: "AI-powered learning platform for students.",
 };

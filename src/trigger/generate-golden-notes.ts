@@ -1,3 +1,6 @@
+import { generateContent } from "@/lib/ai/generation";
+import { GoldenNotesArraySchema } from "@/lib/ai/generation/schemas";
+import { insertGoldenNotes } from "@/lib/services/persist-generated-content-service";
 import { logger, schemaTask, tags } from "@trigger.dev/sdk";
 import { z } from "zod";
 
@@ -48,19 +51,16 @@ export const generateGoldenNotes = schemaTask({
 				materialCount: materialIds.length,
 			});
 
-			const { generateGoldenNotesForCourseWeek } = await import(
-				"@/lib/ai/content-generators"
-			);
-			const { getAdminDatabaseAccess } = await import("@/db");
-
-			const adminDb = getAdminDatabaseAccess();
-			const result = await generateGoldenNotesForCourseWeek(
+			const result = await generateContent({
 				courseId,
 				weekId,
 				materialIds,
-				goldenNotesConfig,
-				adminDb
-			);
+				config: goldenNotesConfig,
+				contentType: "goldenNotes",
+				schema: GoldenNotesArraySchema,
+				insertFunction: insertGoldenNotes,
+				responseType: "array",
+			});
 
 			if (!result.success) {
 				throw new Error(result.error || "Golden notes generation failed");
@@ -88,7 +88,6 @@ export const generateGoldenNotes = schemaTask({
 		output: z.infer<typeof GenerateGoldenNotesOutput>;
 	}) => {
 		logger.info("✅ Golden notes generation completed successfully", {
-
 			success: output.success,
 		});
 	},

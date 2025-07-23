@@ -33,7 +33,6 @@ export async function persistSelectiveConfig(
 		.values({
 			weekId,
 			courseId,
-			userId,
 			configSource: "course_week_override",
 			configData: config,
 			createdBy: userId,
@@ -77,9 +76,7 @@ export async function getGenerationConfigById(
  * Get generation config with full status information
  * Used for status tracking and monitoring
  */
-export async function getGenerationConfigWithStatus(
-	configId: string
-): Promise<{
+export async function getGenerationConfigWithStatus(configId: string): Promise<{
 	configData: SelectiveGenerationConfig;
 	isActive: boolean;
 	generationStatus: string;
@@ -122,12 +119,14 @@ export async function getGenerationConfigWithStatus(
 export async function getActiveGenerationConfigsForWeek(
 	courseId: string,
 	weekId: string
-): Promise<Array<{
-	id: string;
-	generationStatus: string;
-	generationStartedAt: Date | null;
-	selectedFeatures: SelectiveGenerationConfig["selectedFeatures"];
-}>> {
+): Promise<
+	Array<{
+		id: string;
+		generationStatus: string;
+		generationStartedAt: Date | null;
+		selectedFeatures: SelectiveGenerationConfig["selectedFeatures"];
+	}>
+> {
 	const result = await db
 		.select({
 			id: generationConfigs.id,
@@ -148,7 +147,8 @@ export async function getActiveGenerationConfigsForWeek(
 		id: config.id,
 		generationStatus: config.generationStatus || "pending",
 		generationStartedAt: config.generationStartedAt,
-		selectedFeatures: (config.configData as SelectiveGenerationConfig)?.selectedFeatures || {},
+		selectedFeatures:
+			(config.configData as SelectiveGenerationConfig)?.selectedFeatures || {},
 	}));
 }
 
