@@ -63,8 +63,12 @@ export function FAQSection() {
 							Frequently Asked Questions
 						</h2>
 						<p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-							Everything you need to know about StudyLoop. Can't find the answer you're looking for?
-							<a href="/contact" className="text-[var(--homepage-primary)] hover:underline ml-1">
+							Everything you need to know about StudyLoop. Can't find the answer
+							you're looking for?
+							<a
+								href="/contact"
+								className="text-[var(--homepage-primary)] hover:underline ml-1"
+							>
 								Contact our support team
 							</a>
 							.
@@ -105,10 +109,11 @@ export function FAQSection() {
 							The AI learning revolution was waiting for you.
 						</h3>
 						<p className="text-lg text-muted-foreground mb-8">
-							Get exclusive study tips, AI insights, and early access to new features.
+							Get exclusive study tips, AI insights, and early access to new
+							features.
 						</p>
 
-						<form className="flex gap-3 max-w-md mx-auto">
+						<form className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
 							<input
 								type="email"
 								placeholder="your.email@university.edu"
@@ -117,7 +122,7 @@ export function FAQSection() {
 							/>
 							<button
 								type="submit"
-								className="h-12 px-6 bg-gradient-to-r from-[var(--homepage-primary)] to-[var(--homepage-ai-primary)] hover:opacity-90 text-white rounded-lg font-medium transition-opacity"
+								className="h-12 px-6 bg-gradient-to-r from-[var(--homepage-primary)] to-[var(--homepage-ai-primary)] hover:opacity-90 text-white rounded-lg font-medium transition-opacity whitespace-nowrap"
 							>
 								Join the waitlist
 							</button>

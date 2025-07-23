@@ -37,18 +37,18 @@ export function AnimatedSection({
 		// Wait for DOM to be ready
 		const timeout = setTimeout(() => {
 			// Find different types of elements to animate
-			const headings = Array.from(content.querySelectorAll("h1, h2, h3, h4, h5, h6")).filter(
-				(el) => el instanceof Element
-			);
+			const headings = Array.from(
+				content.querySelectorAll("h1, h2, h3, h4, h5, h6")
+			).filter((el) => el instanceof Element);
 			const paragraphs = Array.from(content.querySelectorAll("p")).filter(
 				(el) => el instanceof Element
 			);
-			const buttons = Array.from(content.querySelectorAll("button, a[role='button'], .btn")).filter(
-				(el) => el instanceof Element
-			);
-			const cards = Array.from(content.querySelectorAll("[class*='card'], [class*='Card']")).filter(
-				(el) => el instanceof Element
-			);
+			const buttons = Array.from(
+				content.querySelectorAll("button, a[role='button'], .btn")
+			).filter((el) => el instanceof Element);
+			const cards = Array.from(
+				content.querySelectorAll("[class*='card'], [class*='Card']")
+			).filter((el) => el instanceof Element);
 			const images = Array.from(content.querySelectorAll("img, svg")).filter(
 				(el) => el instanceof Element
 			);
@@ -57,14 +57,21 @@ export function AnimatedSection({
 			);
 
 			// Only proceed if we have valid elements
-			const allElements = [...headings, ...paragraphs, ...buttons, ...cards, ...images, ...lists];
+			const allElements = [
+				...headings,
+				...paragraphs,
+				...buttons,
+				...cards,
+				...images,
+				...lists,
+			];
 			if (allElements.length === 0) return;
 
 			// Create timeline for section animations
 			const tl = gsap.timeline({
 				scrollTrigger: {
 					trigger: section,
-					start: "top 85%",
+					start: window.innerWidth < 768 ? "top 70%" : "top 85%", // More conservative on mobile
 					end: "bottom 15%",
 					once: true,
 					// markers: process.env.NODE_ENV === "development"
@@ -187,7 +194,7 @@ export function AnimatedSection({
 	return (
 		<section
 			ref={sectionRef}
-			className={`py-20 ${backgroundClasses[background]} ${className}`}
+			className={`py-12 md:py-20 ${backgroundClasses[background]} ${className}`}
 			id={id}
 		>
 			<div className="container mx-auto px-4">
@@ -215,10 +222,14 @@ export function HomepageSection({
 	return (
 		<AnimatedSection background={background} className={className} {...props}>
 			{(title || subtitle) && (
-				<div className="text-center mb-16">
-					{title && <h2 className="text-3xl lg:text-4xl font-bold mb-4">{title}</h2>}
+				<div className="text-center mb-8 md:mb-16">
+					{title && (
+						<h2 className="text-3xl lg:text-4xl font-bold mb-4">{title}</h2>
+					)}
 					{subtitle && (
-						<p className="text-xl text-muted-foreground max-w-2xl mx-auto">{subtitle}</p>
+						<p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto px-4">
+							{subtitle}
+						</p>
 					)}
 				</div>
 			)}
