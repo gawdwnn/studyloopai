@@ -153,7 +153,7 @@ export function AppSidebar() {
 				<div className="flex h-14 items-center px-4">
 					<Link href="/dashboard" className="flex items-center gap-2">
 						<span className="font-semibold group-data-[collapsible=icon]:hidden">
-							StudyLoop AI
+							StudyLoopAI
 						</span>
 					</Link>
 				</div>

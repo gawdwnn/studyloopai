@@ -125,6 +125,7 @@ export async function POST(req: NextRequest) {
 		await tasks.trigger(aiContentOrchestrator.id, {
 			weekId: body.weekId,
 			courseId: body.courseId,
+			materialIds: readyMaterials.map((m) => m.id),
 			configId,
 		});
 

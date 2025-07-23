@@ -1,6 +1,7 @@
 import * as schema from "@/db/schema";
-import { databaseUrl } from "@/lib/database/db";
 import { env } from "@/env";
+import { databaseUrl } from "@/lib/database/db";
+import { type SupabaseClient, createClient } from "@supabase/supabase-js";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
@@ -18,65 +19,89 @@ export const migrationDb = drizzle(migrationClient, { schema });
 export type DatabaseClient = typeof db;
 
 /**
- * Admin database connection instances
- * Singleton pattern to reuse connections and prevent connection pool abuse
+ * Supabase admin client instance
  */
-let adminDbInstance: DatabaseClient | null = null;
-let adminClientInstance: postgres.Sql | null = null;
+let supabaseAdminInstance: ReturnType<typeof createClient> | null = null;
 
 /**
- * Admin Drizzle client that bypasses RLS policies
- * 
- * Creates a singleton Drizzle client with service role credentials for background jobs.
- * This allows Trigger.dev jobs to access RLS-protected tables.
- * 
- * Uses singleton pattern to:
- * - Prevent connection pool abuse
- * - Reuse existing connections
- * - Ensure proper resource management
- * 
+ * Admin Supabase client that bypasses RLS policies
+ *
+ * Creates a singleton Supabase client with service role authentication
+ * for background jobs. This client automatically bypasses all RLS policies.
+ 
  * ONLY use for:
  * - Background jobs (Trigger.dev tasks)
  * - System operations without user context
- * 
+ *
  * NEVER use in user-facing operations
  */
-export const getAdminDatabaseAccess = (): DatabaseClient => {
-	if (!adminDbInstance) {
-		// Extract database components from Supabase URL
-		const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL;
-		const projectRef = supabaseUrl.match(/https:\/\/([^.]+)\.supabase\.co/)?.[1];
-		
-		if (!projectRef) {
-			throw new Error("Invalid Supabase URL format");
-		}
-		
-		// Build proper connection string with service role credentials
-		const adminConnectionString = `postgresql://postgres:${env.SUPABASE_SERVICE_ROLE_KEY}@db.${projectRef}.supabase.co:5432/postgres`;
-		
-		adminClientInstance = postgres(adminConnectionString, {
-			prepare: false,
-			max: 5, // Limit connections for background jobs
-			onnotice: () => {}, // Suppress PostgreSQL notices
-			connect_timeout: 10, // 10 second connection timeout
-			idle_timeout: 30, // 30 second idle timeout
-		});
-		
-		adminDbInstance = drizzle(adminClientInstance, { schema });
+export const getAdminDatabaseAccess = (): SupabaseClient => {
+	if (!supabaseAdminInstance) {
+		supabaseAdminInstance = createClient(
+			env.NEXT_PUBLIC_SUPABASE_URL,
+			env.SUPABASE_SERVICE_ROLE_KEY,
+			{
+				auth: {
+					autoRefreshToken: false,
+					persistSession: false,
+					detectSessionInUrl: false,
+				},
+			}
+		);
 	}
-	
-	return adminDbInstance;
+
+	return supabaseAdminInstance;
 };
+
+// USAGE
 
 /**
- * Cleanup function for graceful shutdown
- * Call this when shutting down the application to properly close connections
+ * Execute a database operation with admin privileges
+ * Wrapper function for cleaner usage
+ *
+ * @example
+ * await executeAsSupabaseAdmin(async (admin) => {
+ *   return admin
+ *     .from('course_materials')
+ *     .update({
+ *       embedding_status: 'processing',
+ *       processing_started_at: new Date().toISOString()
+ *     })
+ *     .eq('id', materialId);
+ * });
  */
-export const closeAdminDatabaseAccess = async () => {
-	if (adminClientInstance) {
-		await adminClientInstance.end();
-		adminClientInstance = null;
-		adminDbInstance = null;
+export async function executeAsSupabaseAdmin<T>(
+	callback: (admin: SupabaseClient) => Promise<{ data: T; error: Error }>
+): Promise<T> {
+	const admin = getAdminDatabaseAccess();
+	const { data, error } = await callback(admin);
+	if (error) {
+		console.error("Supabase admin operation failed:", error);
+		throw new Error(`Admin operation failed: ${error.message}`);
 	}
-};
+	return data;
+}
 
+/**
+ * Example usage in Trigger.dev tasks
+ */
+export const updateCourseMaterialStatus = async (
+	materialId: string,
+	status: string
+) => {
+	const admin = getAdminDatabaseAccess();
+	const { data, error } = await admin
+		.from("course_materials")
+		.update({
+			embedding_status: status,
+			processing_started_at: new Date().toISOString(),
+		})
+		.eq("id", materialId)
+		.select()
+		.single();
+
+	if (error) {
+		throw new Error(`Failed to update course material: ${error.message}`);
+	}
+	return data;
+};

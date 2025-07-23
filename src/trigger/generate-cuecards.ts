@@ -1,3 +1,5 @@
+import { CuecardsArraySchema, generateContent } from "@/lib/ai/generation";
+import { insertCuecards } from "@/lib/services/persist-generated-content-service";
 import { logger, schemaTask, tags } from "@trigger.dev/sdk";
 import { z } from "zod";
 
@@ -40,31 +42,28 @@ export const generateCuecards = schemaTask({
 				);
 			}
 			logger.info("🃏 Using selective configuration for cuecards", {
-        weekId,
-        courseId,
-        cuecardsConfig,
-      });
+				weekId,
+				courseId,
+				cuecardsConfig,
+			});
 
-			const { generateCuecardsForWeek } = await import(
-				"@/lib/ai/content-generators"
-			);
-			const { getAdminDatabaseAccess } = await import("@/db");
-
-			const adminDb = getAdminDatabaseAccess();
-			const result = await generateCuecardsForWeek(
+			const result = await generateContent({
 				courseId,
 				weekId,
 				materialIds,
-				cuecardsConfig,
-				adminDb
-			);
+				config: cuecardsConfig,
+				contentType: "cuecards",
+				schema: CuecardsArraySchema,
+				insertFunction: insertCuecards,
+				responseType: "array",
+			});
 
 			if (!result.success) {
 				throw new Error(result.error || "Cuecards generation failed");
 			}
 
 			return {
-				success: true
+				success: true,
 			};
 		} catch (error) {
 			const errorMessage =

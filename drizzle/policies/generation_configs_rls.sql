@@ -1,172 +1,154 @@
--- RLS Policies for generation_configs table
--- Scope-based access control for different configuration sources
-
 -- Enable RLS
 ALTER TABLE "generation_configs" ENABLE ROW LEVEL SECURITY;
 
--- Policy: Users can select configurations they have access to
--- This covers user_preference, course ownership, week access, and institution membership
-CREATE POLICY "generation_configs_select_accessible"
+-- Drop existing policies
+DROP POLICY IF EXISTS "generation_configs_select_accessible" ON "generation_configs";
+DROP POLICY IF EXISTS "generation_configs_insert_own_scope" ON "generation_configs";
+DROP POLICY IF EXISTS "generation_configs_update_own_scope" ON "generation_configs";
+DROP POLICY IF EXISTS "generation_configs_delete_own_scope" ON "generation_configs";
+
+-- Create a function to check if user owns a course (for performance)
+CREATE OR REPLACE FUNCTION user_owns_course(course_uuid UUID)
+RETURNS BOOLEAN AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM courses 
+    WHERE id = course_uuid AND user_id = auth.uid()
+  );
+$$ LANGUAGE SQL SECURITY DEFINER STABLE;
+
+-- Create a function to check if user owns a week through course ownership
+CREATE OR REPLACE FUNCTION user_owns_week(week_uuid UUID)
+RETURNS BOOLEAN AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM course_weeks cw
+    JOIN courses c ON c.id = cw.course_id
+    WHERE cw.id = week_uuid AND c.user_id = auth.uid()
+  );
+$$ LANGUAGE SQL SECURITY DEFINER STABLE;
+
+-- Create a function to check if user is in an institution
+CREATE OR REPLACE FUNCTION user_in_institution(institution_uuid UUID)
+RETURNS BOOLEAN AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM users 
+    WHERE user_id = auth.uid() AND institution_id = institution_uuid
+  );
+$$ LANGUAGE SQL SECURITY DEFINER STABLE;
+
+-- Create a function to check if user is institution admin
+CREATE OR REPLACE FUNCTION user_is_institution_admin(institution_uuid UUID)
+RETURNS BOOLEAN AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM users 
+    WHERE user_id = auth.uid() 
+    AND institution_id = institution_uuid 
+    AND role = 'admin'
+  );
+$$ LANGUAGE SQL SECURITY DEFINER STABLE;
+
+-- Simplified SELECT policy - Users can view configs they have access to
+CREATE POLICY "configs_select"
   ON "generation_configs" FOR SELECT 
   TO authenticated 
   USING (
-    -- User preference configs: user owns them
-    (config_source = 'user_preference' AND user_id = auth.uid()) OR
-    
-    -- Course default configs: user owns the course
-    (config_source = 'course_default' AND course_id IN (
-      SELECT id FROM courses WHERE user_id = auth.uid()
-    )) OR
-    
-    -- Course week override configs: user owns the course
-    (config_source = 'course_week_override' AND course_id IN (
-      SELECT id FROM courses WHERE user_id = auth.uid()
-    )) OR
-    
-    -- Adaptive algorithm configs: user owns them
-    (config_source = 'adaptive_algorithm' AND user_id = auth.uid()) OR
-    
-    -- System default configs: accessible to all authenticated users
-    (config_source = 'system_default') OR
-    
-    -- Institution default configs: user belongs to the institution
-    (config_source = 'institution_default' AND institution_id IN (
-      SELECT institution_id FROM users WHERE user_id = auth.uid() AND institution_id IS NOT NULL
-    ))
+    CASE config_source
+      WHEN 'user_preference' THEN user_id = auth.uid()
+      WHEN 'course_default' THEN user_owns_course(course_id)
+      WHEN 'course_week_override' THEN user_owns_week(week_id)
+      WHEN 'adaptive_algorithm' THEN user_id = auth.uid()
+      WHEN 'system_default' THEN true  -- Everyone can see system defaults
+      WHEN 'institution_default' THEN user_in_institution(institution_id)
+      ELSE false
+    END
   );
 
--- Policy: Users can insert configurations for their own scope
-CREATE POLICY "generation_configs_insert_own_scope"
+-- Simplified INSERT policy - Users can create configs in their scope
+CREATE POLICY "configs_insert"
   ON "generation_configs" FOR INSERT 
   TO authenticated 
   WITH CHECK (
-    -- User preference configs: user must own them
-    (config_source = 'user_preference' AND user_id = auth.uid()) OR
-    
-    -- Course default configs: user must own the course and be the creator
-    (config_source = 'course_default' AND course_id IN (
-      SELECT id FROM courses WHERE user_id = auth.uid()
-    ) AND created_by = auth.uid()) OR
-    
-    -- Course week override configs: user must own the course and be the creator
-    (config_source = 'course_week_override' AND course_id IN (
-      SELECT id FROM courses WHERE user_id = auth.uid()
-    ) AND created_by = auth.uid()) OR
-    
-    -- Adaptive algorithm configs: user must own them
-    (config_source = 'adaptive_algorithm' AND user_id = auth.uid()) OR
-    
-    -- System default configs: only system can create (restricted)
-    (config_source = 'system_default' AND FALSE) OR
-    
-    -- Institution default configs: user must be admin of the institution
-    (config_source = 'institution_default' AND institution_id IN (
-      SELECT institution_id FROM users 
-      WHERE user_id = auth.uid() 
-      AND institution_id IS NOT NULL 
-      AND role = 'admin'
-    ) AND created_by = auth.uid())
+    -- Ensure created_by is set to current user
+    created_by = auth.uid() AND
+    -- Check permissions based on config source
+    CASE config_source
+      WHEN 'user_preference' THEN user_id = auth.uid()
+      WHEN 'course_default' THEN user_owns_course(course_id)
+      WHEN 'course_week_override' THEN 
+        user_owns_course(course_id) AND user_owns_week(week_id)
+      WHEN 'adaptive_algorithm' THEN user_id = auth.uid()
+      WHEN 'system_default' THEN false  -- Only service role can create
+      WHEN 'institution_default' THEN user_is_institution_admin(institution_id)
+      ELSE false
+    END
   );
 
--- Policy: Users can update configurations they have access to
-CREATE POLICY "generation_configs_update_own_scope"
+-- Simplified UPDATE policy - Users can update configs they own
+CREATE POLICY "configs_update"
   ON "generation_configs" FOR UPDATE 
   TO authenticated 
   USING (
-    -- User preference configs: user owns them
-    (config_source = 'user_preference' AND user_id = auth.uid()) OR
-    
-    -- Course default configs: user owns the course
-    (config_source = 'course_default' AND course_id IN (
-      SELECT id FROM courses WHERE user_id = auth.uid()
-    )) OR
-    
-    -- Course week override configs: user owns the course
-    (config_source = 'course_week_override' AND course_id IN (
-      SELECT id FROM courses WHERE user_id = auth.uid()
-    )) OR
-    
-    -- Adaptive algorithm configs: user owns them
-    (config_source = 'adaptive_algorithm' AND user_id = auth.uid()) OR
-    
-    -- System default configs: restricted
-    (config_source = 'system_default' AND FALSE) OR
-    
-    -- Institution default configs: user is admin of the institution
-    (config_source = 'institution_default' AND institution_id IN (
-      SELECT institution_id FROM users 
-      WHERE user_id = auth.uid() 
-      AND institution_id IS NOT NULL 
-      AND role = 'admin'
-    ))
+    CASE config_source
+      WHEN 'user_preference' THEN user_id = auth.uid()
+      WHEN 'course_default' THEN user_owns_course(course_id)
+      WHEN 'course_week_override' THEN user_owns_week(week_id)
+      WHEN 'adaptive_algorithm' THEN user_id = auth.uid()
+      WHEN 'system_default' THEN false  -- Only service role can update
+      WHEN 'institution_default' THEN user_is_institution_admin(institution_id)
+      ELSE false
+    END
   )
   WITH CHECK (
-    -- Same conditions as USING clause
-    (config_source = 'user_preference' AND user_id = auth.uid()) OR
-    (config_source = 'course_default' AND course_id IN (
-      SELECT id FROM courses WHERE user_id = auth.uid()
-    )) OR
-    (config_source = 'course_week_override' AND course_id IN (
-      SELECT id FROM courses WHERE user_id = auth.uid()
-    )) OR
-    (config_source = 'adaptive_algorithm' AND user_id = auth.uid()) OR
-    (config_source = 'system_default' AND FALSE) OR
-    (config_source = 'institution_default' AND institution_id IN (
-      SELECT institution_id FROM users 
-      WHERE user_id = auth.uid() 
-      AND institution_id IS NOT NULL 
-      AND role = 'admin'
-    ))
+    -- Same permission check as USING clause
+    CASE config_source
+      WHEN 'user_preference' THEN user_id = auth.uid()
+      WHEN 'course_default' THEN user_owns_course(course_id)
+      WHEN 'course_week_override' THEN user_owns_week(week_id)
+      WHEN 'adaptive_algorithm' THEN user_id = auth.uid()
+      WHEN 'system_default' THEN false
+      WHEN 'institution_default' THEN user_is_institution_admin(institution_id)
+      ELSE false
+    END
   );
 
--- Policy: Users can delete configurations they have access to
-CREATE POLICY "generation_configs_delete_own_scope"
+-- Simplified DELETE policy - Users can delete configs they own
+CREATE POLICY "configs_delete"
   ON "generation_configs" FOR DELETE 
   TO authenticated 
   USING (
-    -- User preference configs: user owns them
-    (config_source = 'user_preference' AND user_id = auth.uid()) OR
-    
-    -- Course default configs: user owns the course
-    (config_source = 'course_default' AND course_id IN (
-      SELECT id FROM courses WHERE user_id = auth.uid()
-    )) OR
-    
-    -- Course week override configs: user owns the course
-    (config_source = 'course_week_override' AND course_id IN (
-      SELECT id FROM courses WHERE user_id = auth.uid()
-    )) OR
-    
-    -- Adaptive algorithm configs: user owns them
-    (config_source = 'adaptive_algorithm' AND user_id = auth.uid()) OR
-    
-    -- System default configs: restricted
-    (config_source = 'system_default' AND FALSE) OR
-    
-    -- Institution default configs: user is admin of the institution
-    (config_source = 'institution_default' AND institution_id IN (
-      SELECT institution_id FROM users 
-      WHERE user_id = auth.uid() 
-      AND institution_id IS NOT NULL 
-      AND role = 'admin'
-    ))
+    CASE config_source
+      WHEN 'user_preference' THEN user_id = auth.uid()
+      WHEN 'course_default' THEN user_owns_course(course_id)
+      WHEN 'course_week_override' THEN user_owns_week(week_id)
+      WHEN 'adaptive_algorithm' THEN user_id = auth.uid()
+      WHEN 'system_default' THEN false  -- Only service role can delete
+      WHEN 'institution_default' THEN user_is_institution_admin(institution_id)
+      ELSE false
+    END
   );
 
--- Performance indexes for RLS filtering
-CREATE INDEX IF NOT EXISTS "idx_generation_configs_user_id_rls" ON "generation_configs" USING btree ("user_id");
-CREATE INDEX IF NOT EXISTS "idx_generation_configs_course_id_rls" ON "generation_configs" USING btree ("course_id");
-CREATE INDEX IF NOT EXISTS "idx_generation_configs_week_id_rls" ON "generation_configs" USING btree ("week_id");
-CREATE INDEX IF NOT EXISTS "idx_generation_configs_institution_id_rls" ON "generation_configs" USING btree ("institution_id");
-CREATE INDEX IF NOT EXISTS "idx_generation_configs_config_source_rls" ON "generation_configs" USING btree ("config_source");
-CREATE INDEX IF NOT EXISTS "idx_generation_configs_created_by_rls" ON "generation_configs" USING btree ("created_by");
+-- Create indexes for performance (if not already exist)
+CREATE INDEX IF NOT EXISTS "idx_generation_configs_user_id" ON "generation_configs" (user_id);
+CREATE INDEX IF NOT EXISTS "idx_generation_configs_course_id" ON "generation_configs" (course_id);
+CREATE INDEX IF NOT EXISTS "idx_generation_configs_week_id" ON "generation_configs" (week_id);
+CREATE INDEX IF NOT EXISTS "idx_generation_configs_institution_id" ON "generation_configs" (institution_id);
+CREATE INDEX IF NOT EXISTS "idx_generation_configs_config_source" ON "generation_configs" (config_source);
+CREATE INDEX IF NOT EXISTS "idx_generation_configs_created_by" ON "generation_configs" (created_by);
 
--- Composite indexes for efficient scope-based queries
-CREATE INDEX IF NOT EXISTS "idx_generation_configs_user_source_rls" ON "generation_configs" USING btree ("user_id", "config_source");
-CREATE INDEX IF NOT EXISTS "idx_generation_configs_course_source_rls" ON "generation_configs" USING btree ("course_id", "config_source");
-CREATE INDEX IF NOT EXISTS "idx_generation_configs_week_source_rls" ON "generation_configs" USING btree ("week_id", "config_source");
-CREATE INDEX IF NOT EXISTS "idx_generation_configs_institution_source_rls" ON "generation_configs" USING btree ("institution_id", "config_source");
-
--- Indexes for related tables (if they don't already exist)
-CREATE INDEX IF NOT EXISTS "idx_courses_user_id_rls" ON "courses" USING btree ("user_id");
-CREATE INDEX IF NOT EXISTS "idx_users_institution_id_rls" ON "users" USING btree ("institution_id");
-CREATE INDEX IF NOT EXISTS "idx_users_role_rls" ON "users" USING btree ("role");
+-- Add CHECK constraint to ensure proper field population based on config_source
+ALTER TABLE generation_configs ADD CONSTRAINT check_config_scope_fields CHECK (
+  CASE config_source
+    WHEN 'user_preference' THEN 
+      user_id IS NOT NULL AND course_id IS NULL AND week_id IS NULL AND institution_id IS NULL
+    WHEN 'course_default' THEN 
+      course_id IS NOT NULL AND user_id IS NULL AND week_id IS NULL AND institution_id IS NULL
+    WHEN 'course_week_override' THEN 
+      course_id IS NOT NULL AND week_id IS NOT NULL AND user_id IS NULL AND institution_id IS NULL
+    WHEN 'adaptive_algorithm' THEN 
+      user_id IS NOT NULL  -- Can have other fields populated
+    WHEN 'system_default' THEN 
+      user_id IS NULL AND course_id IS NULL AND week_id IS NULL AND institution_id IS NULL
+    WHEN 'institution_default' THEN 
+      institution_id IS NOT NULL AND user_id IS NULL AND course_id IS NULL AND week_id IS NULL
+    ELSE false
+  END
+);

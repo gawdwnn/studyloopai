@@ -1,3 +1,5 @@
+import { MCQsArraySchema, generateContent } from "@/lib/ai/generation";
+import { insertMCQs } from "@/lib/services/persist-generated-content-service";
 import { logger, schemaTask, tags } from "@trigger.dev/sdk";
 import { z } from "zod";
 
@@ -40,19 +42,16 @@ export const generateMCQs = schemaTask({
 				mcqConfig,
 			});
 
-			const { generateMCQsForWeek } = await import(
-				"@/lib/ai/content-generators"
-			);
-			const { getAdminDatabaseAccess } = await import("@/db");
-
-			const adminDb = getAdminDatabaseAccess();
-			const result = await generateMCQsForWeek(
+			const result = await generateContent({
 				courseId,
 				weekId,
 				materialIds,
-				mcqConfig,
-				adminDb
-			);
+				config: mcqConfig,
+				contentType: "multipleChoice",
+				schema: MCQsArraySchema,
+				insertFunction: insertMCQs,
+				responseType: "array",
+			});
 
 			if (!result.success) {
 				throw new Error(result.error || "MCQs generation failed");
@@ -82,11 +81,7 @@ export const generateMCQs = schemaTask({
 			success: output.success,
 		});
 	},
-	onFailure: async ({
-		error,
-	}: {
-		error: unknown;
-	}) => {
+	onFailure: async ({ error }: { error: unknown }) => {
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		logger.error("❌ MCQs generation failed permanently", {
 			error: errorMessage,

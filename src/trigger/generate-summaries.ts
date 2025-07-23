@@ -1,3 +1,6 @@
+import { generateContent } from "@/lib/ai/generation/generic-generator";
+import { SummarySchema } from "@/lib/ai/generation/schemas";
+import { insertSummaries } from "@/lib/services/persist-generated-content-service";
 import { logger, schemaTask, tags } from "@trigger.dev/sdk";
 import { z } from "zod";
 
@@ -45,19 +48,16 @@ export const generateSummaries = schemaTask({
 				summariesConfig,
 			});
 
-			const { generateSummariesForWeek } = await import(
-				"@/lib/ai/content-generators"
-			);
-			const { getAdminDatabaseAccess } = await import("@/db");
-
-			const adminDb = getAdminDatabaseAccess();
-			const result = await generateSummariesForWeek(
+			const result = await generateContent({
 				courseId,
 				weekId,
 				materialIds,
-				summariesConfig,
-				adminDb
-			);
+				config: summariesConfig,
+				contentType: "summaries",
+				schema: SummarySchema,
+				insertFunction: insertSummaries,
+				responseType: "object",
+			});
 
 			if (!result.success) {
 				throw new Error(result.error || "Summaries generation failed");
@@ -87,11 +87,7 @@ export const generateSummaries = schemaTask({
 			success: output.success,
 		});
 	},
-	onFailure: async ({
-		error,
-	}: {
-		error: unknown;
-	}) => {
+	onFailure: async ({ error }: { error: unknown }) => {
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		logger.error("❌ Summaries generation failed permanently", {
 			error: errorMessage,

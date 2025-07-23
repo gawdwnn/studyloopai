@@ -1,12 +1,13 @@
-import { getAdminDatabaseAccess } from "@/db";
-import { courseMaterials, documentChunks } from "@/db/schema";
 import { generateEmbeddings } from "@/lib/ai/embeddings";
 import { CONTENT_TYPES } from "@/lib/config/file-upload";
 import { PDF_PROCESSING_LIMITS } from "@/lib/config/pdf-processing";
 import { parsePDF } from "@/lib/processing/pdf-parser";
+import {
+	insertDocumentChunks,
+	updateCourseMaterialStatus,
+} from "@/lib/services/background-job-db-service";
 import { downloadCourseMaterial } from "@/lib/supabase/storage";
 import { logger, schemaTask, tags } from "@trigger.dev/sdk";
-import { eq } from "drizzle-orm";
 import type { Document } from "langchain/document";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import { z } from "zod";
@@ -20,8 +21,6 @@ const ProcessAndEmbedIndividualPayload = z.object({
 const ProcessAndEmbedIndividualOutput = z.object({
 	success: z.boolean(),
 	materialId: z.string(),
-	chunksCreated: z.number().optional(),
-	textLength: z.number().optional(),
 	contentType: z.string().optional(),
 });
 
@@ -34,7 +33,7 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 	schema: ProcessAndEmbedIndividualPayload,
 	maxDuration: 900, // Allow up to 15 minutes for processing & embedding very large materials
 	retry: {
-		maxAttempts: 3,
+		maxAttempts: 1,
 		factor: 2,
 		minTimeoutInMs: 1000,
 		maxTimeoutInMs: 10000,
@@ -51,15 +50,9 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 			contentType: payload.contentType,
 		});
 
-		// Update material status to indicate processing has started
-		const adminDb = getAdminDatabaseAccess();
-		await adminDb
-			.update(courseMaterials)
-			.set({
-				embeddingStatus: "processing",
-				processingStartedAt: new Date(),
-			})
-			.where(eq(courseMaterials.id, payload.materialId));
+		await updateCourseMaterialStatus(payload.materialId, "processing", {
+			processingStartedAt: new Date(),
+		});
 	},
 	run: async (payload: ProcessAndEmbedIndividualPayloadType) => {
 		const { materialId, filePath, contentType } = payload;
@@ -68,18 +61,27 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 		await tags.add([`materialId:${payload.materialId}`, "phase:embedding"]);
 
 		try {
-			// Status already updated to 'processing' in onStart
-
 			// 1. Download and parse single file
 			const downloadResult = await downloadCourseMaterial(filePath);
 
 			if (!downloadResult.success) {
+				logger.error("❌ Download failed", {
+					materialId,
+					filePath,
+					error: downloadResult.error,
+					step: "download",
+				});
 				throw new Error(
 					downloadResult.error || `Failed to download ${filePath}`
 				);
 			}
 
 			if (!downloadResult.buffer) {
+				logger.error("❌ No buffer data received", {
+					materialId,
+					filePath,
+					step: "download",
+				});
 				throw new Error(`No data received for file: ${filePath}`);
 			}
 
@@ -97,11 +99,24 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 				if (pdfResult.success && pdfResult.text && pdfResult.text.trim()) {
 					extractedText = pdfResult.text;
 				} else {
+					logger.error("❌ PDF text extraction failed", {
+						materialId,
+						filePath,
+						error: pdfResult.error,
+						step: "text_extraction",
+					});
 					throw new Error(
 						`Failed to extract text from PDF: ${filePath}. Error: ${pdfResult.error}`
 					);
 				}
 			} else {
+				logger.error("❌ Unsupported content type", {
+					materialId,
+					filePath,
+					contentType,
+					supportedTypes: [CONTENT_TYPES.PDF],
+					step: "text_extraction",
+				});
 				// Future: Handle other content types (video, audio, image, weblink)
 				throw new Error(
 					`Content type '${contentType}' is not yet supported. Currently only PDF processing is implemented.`
@@ -109,6 +124,12 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 			}
 
 			if (!extractedText.trim()) {
+				logger.error("❌ No extractable text found", {
+					materialId,
+					filePath,
+					textLength: extractedText.length,
+					step: "text_extraction",
+				});
 				throw new Error(
 					`No text could be extracted from file: ${filePath}. Please ensure the file contains readable text content.`
 				);
@@ -125,64 +146,55 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 			const result = await generateEmbeddings(
 				chunks.map((c: Document) => c.pageContent)
 			);
+
 			if (!result.success) {
+				logger.error("❌ Embedding generation failed", {
+					materialId,
+					chunksCount: chunks.length,
+					error: result.error,
+					step: "embedding",
+				});
 				throw new Error(`Embedding generation failed: ${result.error}`);
 			}
 
 			// 5. Save chunks to database
 			const chunksToInsert = result.embeddings.map(
 				(embedding: number[], i: number) => ({
-					materialId: materialId,
+					material_id: materialId,
 					content: chunks[i].pageContent,
 					embedding: embedding,
-					chunkIndex: i,
-					tokenCount: Math.round(chunks[i].pageContent.length / 4),
+					chunk_index: i,
+					token_count: Math.round(chunks[i].pageContent.length / 4),
 				})
 			);
+
 			// Using admin database client to bypass RLS policies for background processing
-			const adminDb = getAdminDatabaseAccess();
-			await adminDb.insert(documentChunks).values(chunksToInsert);
+			await insertDocumentChunks(chunksToInsert);
 
 			// 6. Update final status to 'completed'
-			const completedAt = new Date();
+			await updateCourseMaterialStatus(materialId, "completed", {
+				processingCompletedAt: new Date(),
+			});
 
-			await adminDb
-				.update(courseMaterials)
-				.set({
-					embeddingStatus: "completed",
-					totalChunks: chunks.length,
-					embeddedChunks: chunks.length,
-					processingCompletedAt: completedAt,
-				})
-				.where(eq(courseMaterials.id, materialId));
+			logger.info("✅ Material processing pipeline completed successfully", {
+				materialId,
+				filePath,
+				contentType,
+			});
 
 			return {
 				success: true,
 				materialId,
-				chunksCreated: chunks.length,
-				textLength: extractedText.length,
 				contentType,
 			};
 		} catch (error) {
-			const errorMessage =
-				error instanceof Error ? error.message : "An unknown error occurred";
+			// log error as it
 
-			logger.error("❌ Material processing failed", {
-				materialId,
-				filePath,
-				contentType,
-				error: errorMessage,
+			logger.error("❌ Material processing failed", {});
+
+			await updateCourseMaterialStatus(payload.materialId, "failed", {
+				processingCompletedAt: new Date(),
 			});
-
-			// Update failure status using admin database access for background job
-			const adminDb = getAdminDatabaseAccess();
-			await adminDb
-				.update(courseMaterials)
-				.set({
-					embeddingStatus: "failed",
-					processingCompletedAt: new Date(),
-				})
-				.where(eq(courseMaterials.id, materialId));
 
 			throw error;
 		}
@@ -203,27 +215,19 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 	},
 	onFailure: async ({
 		payload,
-		error,
 	}: {
 		payload: ProcessAndEmbedIndividualPayloadType;
-		error: unknown;
 	}) => {
-		const errorMessage = error instanceof Error ? error.message : String(error);
+		//log error as is
+
 		logger.error("❌ Material processing failed permanently", {
 			materialId: payload.materialId,
 			filePath: payload.filePath,
 			contentType: payload.contentType,
-			error: errorMessage,
 		});
 
-		// Update final failure status in database using admin access for background job
-		const adminDb = getAdminDatabaseAccess();
-		await adminDb
-			.update(courseMaterials)
-			.set({
-				embeddingStatus: "failed",
-				processingCompletedAt: new Date(),
-			})
-			.where(eq(courseMaterials.id, payload.materialId));
+		await updateCourseMaterialStatus(payload.materialId, "failed", {
+			processingCompletedAt: new Date(),
+		});
 	},
 });
