@@ -22,7 +22,10 @@ interface CuecardResultsViewProps {
 	onNewSession: () => void;
 }
 
-export function CuecardResultsView({ results, onNewSession }: CuecardResultsViewProps) {
+export function CuecardResultsView({
+	results,
+	onNewSession,
+}: CuecardResultsViewProps) {
 	useEffect(() => {
 		// Trigger confetti animation when component mounts
 		const timer = setTimeout(() => {
@@ -46,11 +49,20 @@ export function CuecardResultsView({ results, onNewSession }: CuecardResultsView
 	// Prepare chart data
 	const chartData = [
 		{ name: "Too easy", value: results.tooEasy, color: "hsl(var(--chart-1))" },
-		{ name: "I knew some of it", value: results.showAnswer, color: "hsl(var(--chart-2))" },
-		{ name: "I answered incorrectly", value: results.incorrect, color: "hsl(var(--chart-3))" },
+		{
+			name: "I knew some of it",
+			value: results.showAnswer,
+			color: "hsl(var(--chart-2))",
+		},
+		{
+			name: "I answered incorrectly",
+			value: results.incorrect,
+			color: "hsl(var(--chart-3))",
+		},
 	];
 
-	const totalResponses = results.tooEasy + results.showAnswer + results.incorrect;
+	const totalResponses =
+		results.tooEasy + results.showAnswer + results.incorrect;
 
 	return (
 		<div className="bg-background flex justify-center mt-10">
@@ -66,7 +78,9 @@ export function CuecardResultsView({ results, onNewSession }: CuecardResultsView
 
 				<CardHeader className="text-center pb-2">
 					<div className="flex justify-between items-center mb-4 pr-12">
-						<div className="text-sm text-muted-foreground">{results.weekInfo}</div>
+						<div className="text-sm text-muted-foreground">
+							{results.weekInfo}
+						</div>
 						<Button
 							onClick={onNewSession}
 							className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-2 rounded-lg"
@@ -109,7 +123,9 @@ export function CuecardResultsView({ results, onNewSession }: CuecardResultsView
 									</PieChart>
 								</ResponsiveContainer>
 								<div className="absolute inset-0 flex flex-col justify-center items-center pointer-events-none">
-									<span className="text-6xl font-bold text-foreground">{totalResponses}</span>
+									<span className="text-6xl font-bold text-foreground">
+										{totalResponses}
+									</span>
 									<span className="text-muted-foreground text-sm font-medium tracking-wider">
 										FLASHCARDS
 									</span>
@@ -125,8 +141,12 @@ export function CuecardResultsView({ results, onNewSession }: CuecardResultsView
 									style={{ backgroundColor: "hsl(var(--chart-1))" }}
 								/>
 								<div className="flex flex-col">
-									<span className="text-2xl font-bold text-foreground">{results.tooEasy}</span>
-									<span className="text-sm text-muted-foreground">Too easy</span>
+									<span className="text-2xl font-bold text-foreground">
+										{results.tooEasy}
+									</span>
+									<span className="text-sm text-muted-foreground">
+										Too easy
+									</span>
 								</div>
 							</div>
 
@@ -136,8 +156,12 @@ export function CuecardResultsView({ results, onNewSession }: CuecardResultsView
 									style={{ backgroundColor: "hsl(var(--chart-2))" }}
 								/>
 								<div className="flex flex-col">
-									<span className="text-2xl font-bold text-foreground">{results.showAnswer}</span>
-									<span className="text-sm text-muted-foreground">I knew some of it</span>
+									<span className="text-2xl font-bold text-foreground">
+										{results.showAnswer}
+									</span>
+									<span className="text-sm text-muted-foreground">
+										I knew some of it
+									</span>
 								</div>
 							</div>
 
@@ -147,8 +171,12 @@ export function CuecardResultsView({ results, onNewSession }: CuecardResultsView
 									style={{ backgroundColor: "hsl(var(--chart-3))" }}
 								/>
 								<div className="flex flex-col">
-									<span className="text-2xl font-bold text-foreground">{results.incorrect}</span>
-									<span className="text-sm text-muted-foreground">I answered incorrectly</span>
+									<span className="text-2xl font-bold text-foreground">
+										{results.incorrect}
+									</span>
+									<span className="text-sm text-muted-foreground">
+										I answered incorrectly
+									</span>
 								</div>
 							</div>
 						</div>
@@ -158,21 +186,27 @@ export function CuecardResultsView({ results, onNewSession }: CuecardResultsView
 					<div className="border-t pt-6">
 						<div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
 							<div className="space-y-2">
-								<p className="text-2xl font-bold text-foreground">{results.sessionTime}</p>
+								<p className="text-2xl font-bold text-foreground">
+									{results.sessionTime}
+								</p>
 								<p className="text-xs text-muted-foreground uppercase tracking-wider">
 									Total Session Time
 								</p>
 							</div>
 
 							<div className="space-y-2">
-								<p className="text-2xl font-bold text-foreground">{results.avgPerCard}</p>
+								<p className="text-2xl font-bold text-foreground">
+									{results.avgPerCard}
+								</p>
 								<p className="text-xs text-muted-foreground uppercase tracking-wider">
 									Average Per Card
 								</p>
 							</div>
 
 							<div className="space-y-2">
-								<p className="text-2xl font-bold text-foreground">{results.totalCards}</p>
+								<p className="text-2xl font-bold text-foreground">
+									{results.totalCards}
+								</p>
 								<p className="text-xs text-muted-foreground uppercase tracking-wider">
 									Total Cards Reviewed
 								</p>
@@ -183,8 +217,8 @@ export function CuecardResultsView({ results, onNewSession }: CuecardResultsView
 					{/* Performance Message */}
 					<div className="text-center pt-4">
 						<p className="text-sm text-muted-foreground">
-							Based on your performance, difficult cards will appear more frequently in future
-							sessions
+							Based on your performance, difficult cards will appear more
+							frequently in future sessions
 						</p>
 					</div>
 				</CardContent>

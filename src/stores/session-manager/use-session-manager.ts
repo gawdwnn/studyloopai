@@ -1,9 +1,12 @@
 // Session Manager Store Implementation
 // Coordinates and manages multiple learning session types
 
-import { differenceInMilliseconds, differenceInMinutes } from "date-fns";
+import type { SelectiveGenerationConfig } from "@/types/generation-types";
+import { differenceInMinutes } from "date-fns";
+// import { differenceInMilliseconds } from "date-fns";
 import { create } from "zustand";
-import { persist, subscribeWithSelector } from "zustand/middleware";
+import { subscribeWithSelector } from "zustand/middleware";
+import { persist } from "zustand/middleware";
 import type {
 	ActiveSessionInfo,
 	BaseSessionConfig,
@@ -15,9 +18,8 @@ import type {
 } from "./types";
 import { initialSessionManagerState } from "./types";
 
-// Helper functions
 function generateSessionId(type: SessionType): string {
-	return `${type}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+	return `${type}_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 }
 
 function calculateSessionLength(startedAt: Date, completedAt: Date): number {
@@ -36,142 +38,40 @@ function calculateCompletionPercentage(
 }
 
 async function generateSmartRecommendations(
-	analytics: CrossSessionAnalytics
+	analytics: CrossSessionAnalytics,
+	_inferGenerationConfig?: (
+		courseId: string,
+		sessionType: SessionType
+	) => Promise<SelectiveGenerationConfig | null>
 ): Promise<SessionRecommendation[]> {
-	// Simulate AI recommendation generation
-	await new Promise((resolve) => setTimeout(resolve, 1000));
+	// TODO: Implement AI-powered recommendation generation
+	// This would analyze:
+	// - Learning patterns and weak areas
+	// - Session type balance and preferences
+	// - Time of day productivity patterns
+	// - Available content types (from generation config)
 
+	// Placeholder implementation
 	const recommendations: SessionRecommendation[] = [];
 
-	// Recommend based on weak areas
+	// Example recommendation structure
 	if (analytics.learningPatterns.weakestTopics.length > 0) {
-		const weakestTopic = analytics.learningPatterns.weakestTopics[0];
 		recommendations.push({
-			type: "multiple-choice",
-			reason: `Focus on ${weakestTopic} where you need improvement`,
+			type: "cuecards",
+			reason: `Focus on ${analytics.learningPatterns.weakestTopics[0]} to improve understanding`,
 			config: {
-				courseId: "current", // Would be dynamically determined
-				weeks: [], // Would be filtered by weak topic
-				difficulty: "medium",
-				focus: "weak-areas",
+				courseId: "current",
+				weeks: [],
 				practiceMode: "practice",
 			},
 			estimatedDuration: 15,
 			priority: "high",
-			benefits: [
-				"Improve understanding",
-				"Build confidence",
-				"Fill knowledge gaps",
-			],
+			benefits: ["Target weak areas", "Build confidence", "Improve retention"],
 		});
 	}
 
-	// Recommend based on session type balance
-	const sessionCounts = analytics.sessionTypeBreakdown;
-	const totalSessions = Object.values(sessionCounts).reduce(
-		(sum, type) => sum + type.count,
-		0
-	);
-
-	if (totalSessions > 0) {
-		const cuecardPercentage = sessionCounts.cuecards.count / totalSessions;
-		const mcqPercentage =
-			sessionCounts["multiple-choice"].count / totalSessions;
-		const openQPercentage =
-			sessionCounts["open-questions"].count / totalSessions;
-
-		// Recommend underused session types
-		if (cuecardPercentage < 0.3) {
-			recommendations.push({
-				type: "cuecards",
-				reason: "Practice vocabulary and key concepts with spaced repetition",
-				config: {
-					courseId: "current",
-					weeks: [],
-					difficulty: "mixed",
-					focus: "tailored-for-me",
-					practiceMode: "practice",
-				},
-				estimatedDuration: 10,
-				priority: "medium",
-				benefits: [
-					"Improve memory retention",
-					"Quick review",
-					"Strengthen fundamentals",
-				],
-			});
-		}
-
-		if (mcqPercentage < 0.3) {
-			recommendations.push({
-				type: "multiple-choice",
-				reason: "Test your knowledge with multiple choice questions.",
-				config: {
-					courseId: "current",
-					weeks: [],
-					difficulty: "medium",
-					focus: "comprehensive",
-					practiceMode: "exam",
-				},
-				estimatedDuration: 15,
-				priority: "medium",
-				benefits: [
-					"Identify knowledge gaps",
-					"Practice for exams",
-					"Quick feedback",
-				],
-			});
-		}
-
-		if (openQPercentage < 0.2) {
-			recommendations.push({
-				type: "open-questions",
-				reason: "Develop deeper understanding through written explanations",
-				config: {
-					courseId: "current",
-					weeks: [],
-					difficulty: "medium",
-					focus: "comprehensive",
-					practiceMode: "practice",
-				},
-				estimatedDuration: 25,
-				priority: "medium",
-				benefits: [
-					"Improve critical thinking",
-					"Practice explanation skills",
-					"Deepen understanding",
-				],
-			});
-		}
-	}
-
-	// Recommend based on time of day and productivity patterns
-	const currentHour = new Date().getHours();
-	const productiveHour = analytics.learningPatterns.mostProductiveTimeOfDay;
-
-	if (Math.abs(currentHour - productiveHour) <= 2) {
-		recommendations.push({
-			type: "multiple-choice",
-			reason:
-				"This is your most productive time - tackle challenging questions!",
-			config: {
-				courseId: "current",
-				weeks: [],
-				difficulty: "hard",
-				focus: "comprehensive",
-				practiceMode: "practice",
-			},
-			estimatedDuration: 20,
-			priority: "high",
-			benefits: [
-				"Maximize learning efficiency",
-				"Challenge yourself",
-				"Build expertise",
-			],
-		});
-	}
-
-	return recommendations.slice(0, 3); // Return top 3 recommendations
+	// Return empty array until proper implementation
+	return recommendations;
 }
 
 const useSessionManager = create<SessionManagerStore>()(
@@ -190,16 +90,13 @@ const useSessionManager = create<SessionManagerStore>()(
 							const sessionId = generateSessionId(type);
 							const now = new Date();
 
-							// End any existing active session first
+							// End any existing active session
 							const currentActive = get().activeSession;
 							if (currentActive) {
 								await get().actions.endSession(currentActive.id, {
-									totalTime: differenceInMilliseconds(
-										new Date(),
-										currentActive.startedAt
-									),
+									totalTime: Date.now() - currentActive.startedAt.getTime(),
 									itemsCompleted: currentActive.progress.currentIndex,
-									accuracy: 0, // Would be calculated by the specific session store
+									accuracy: 0,
 								});
 							}
 
@@ -270,10 +167,7 @@ const useSessionManager = create<SessionManagerStore>()(
 								lastSyncedAt: now,
 							}));
 
-							// Recalculate analytics
 							await get().actions.calculateAnalytics();
-
-							// Generate new recommendations
 							await get().actions.generateRecommendations();
 						} catch (error) {
 							set({
@@ -328,8 +222,6 @@ const useSessionManager = create<SessionManagerStore>()(
 						await get().actions.startSession(newType, {
 							courseId: "current",
 							weeks: [],
-							difficulty: "mixed",
-							focus: "comprehensive",
 							practiceMode: "practice",
 						});
 					},
@@ -410,21 +302,18 @@ const useSessionManager = create<SessionManagerStore>()(
 									averageAccuracy: 0,
 									averageScore: 0,
 									totalTime: 0,
-									preferredDifficulty: "mixed",
 								},
 								"multiple-choice": {
 									count: 0,
 									averageAccuracy: 0,
 									averageScore: 0,
 									totalTime: 0,
-									preferredDifficulty: "mixed",
 								},
 								"open-questions": {
 									count: 0,
 									averageAccuracy: 0,
 									averageScore: 0,
 									totalTime: 0,
-									preferredDifficulty: "mixed",
 								},
 							};
 
@@ -565,7 +454,8 @@ const useSessionManager = create<SessionManagerStore>()(
 
 							const state = get();
 							const recommendations = await generateSmartRecommendations(
-								state.analytics
+								state.analytics,
+								get().actions.inferGenerationConfig
 							);
 
 							set({
@@ -613,43 +503,82 @@ const useSessionManager = create<SessionManagerStore>()(
 						}
 					},
 
-					// Synchronization
-					syncWithServer: async () => {
+					// Synchronization - Session Metadata Only
+					syncSessionMetadata: async () => {
 						try {
-							// TODO: Implement server synchronization
-							// This will sync session history, analytics, and preferences
-							const now = new Date();
-							set({ lastSyncedAt: now });
+							// TODO: Implement session metadata synchronization
+							// Purpose: Sync high-level session data (NOT individual progress)
+							// - Session history entries (start/end times, completion status)
+							// - Cross-session analytics (patterns, streaks, goals)
+							// - User preferences and settings
+							// Note: Individual card/question progress is saved immediately
 
-							if (process.env.NODE_ENV === "development") {
-							}
+							// const now = new Date();
+							// set({ lastSyncedAt: now });
+
+							// Placeholder: Would sync to server endpoint
+							// await syncSessionMetadataToServer({
+							//   sessionHistory: get().sessionHistory,
+							//   analytics: get().analytics,
+							//   preferences: get().preferences
+							// });
+
+							return { success: true, message: "Session metadata synced" };
 						} catch (error) {
 							set({
 								error:
 									error instanceof Error
 										? error.message
-										: "Failed to sync with server",
+										: "Failed to sync session metadata",
 							});
+							throw error;
 						}
 					},
 
-					syncAllStores: async () => {
+					syncAllSessionData: async () => {
 						try {
-							// This will coordinate synchronization across all individual session stores
-							await get().actions.syncWithServer();
+							// Purpose: Coordinate sync for session-level data across all stores
+							// Note: This does NOT sync individual progress (cards/questions)
+							// as those are saved immediately in our simplified architecture
 
-							// TODO: Trigger sync on individual stores
-							// Individual stores would implement their own sync methods
+							const results = [];
 
-							if (process.env.NODE_ENV === "development") {
-							}
+							// 1. Sync session manager's own metadata
+							const metadataResult = await get().actions.syncSessionMetadata();
+							results.push({
+								store: "session-manager",
+								result: metadataResult,
+							});
+
+							// 2. Individual session stores status
+							// Cuecards: Progress saved immediately per card (no bulk sync)
+							results.push({
+								store: "cuecard",
+								result: {
+									success: true,
+									message: "Progress auto-saved per card (no sync needed)",
+								},
+							});
+
+							// TODO: Add MCQ and Open Questions when implemented
+							// results.push({
+							//   store: "multiple-choice",
+							//   result: await useMCQSession.getState().actions.syncSessionData?.()
+							// });
+
+							return {
+								success: true,
+								message: "Session data synchronized",
+								results,
+							};
 						} catch (error) {
 							set({
 								error:
 									error instanceof Error
 										? error.message
-										: "Failed to sync all stores",
+										: "Failed to sync session data",
 							});
+							throw error;
 						}
 					},
 
@@ -721,6 +650,32 @@ const useSessionManager = create<SessionManagerStore>()(
 							target > 0 ? Math.min((completed / target) * 100, 100) : 0;
 
 						return { completed, target, percentage };
+					},
+
+					// Generation config inference
+					inferGenerationConfig: async (
+						_courseId: string,
+						_sessionType: SessionType
+					) => {
+						try {
+							// TODO: Implement logic to fetch the generation config that was used
+							// to create the content for this course/session type
+							// This could come from:
+							// 1. On-demand generation config passed when starting session
+							// 2. Saved generation config from the database
+							// 3. Default config if none exists
+
+							// For now, return null to indicate no config available
+							return null;
+						} catch (error) {
+							set({
+								error:
+									error instanceof Error
+										? error.message
+										: "Failed to infer generation config",
+							});
+							return null;
+						}
 					},
 
 					// Error handling

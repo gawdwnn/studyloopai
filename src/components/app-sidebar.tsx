@@ -35,6 +35,7 @@ import {
 	LogOut,
 	MessageSquare,
 	PenTool,
+	Route,
 	Settings,
 	User,
 } from "lucide-react";
@@ -91,9 +92,9 @@ const routes: RouteItem[] = [
 				icon: BookOpenCheck,
 			},
 			{
-				label: "Gap Assessment",
-				href: "/dashboard/adaptive-learning/gap-assessment",
-				icon: BookOpenCheck,
+				label: "Concept Maps",
+				href: "/dashboard/adaptive-learning/concept-maps",
+				icon: Route,
 			},
 		],
 	},

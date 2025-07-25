@@ -1,6 +1,7 @@
 // Session Manager Types
 // Coordinates and manages multiple session types
 
+import type { SelectiveGenerationConfig } from "@/types/generation-types";
 import type { SessionStatus } from "../cuecard-session/types";
 
 export type SessionType = "cuecards" | "multiple-choice" | "open-questions";
@@ -13,8 +14,6 @@ export type PracticeMode = "practice" | "exam";
 export interface BaseSessionConfig {
 	courseId: string;
 	weeks: string[];
-	difficulty: "easy" | "medium" | "hard" | "mixed";
-	focus: "tailored-for-me" | "weak-areas" | "recent-content" | "comprehensive";
 	practiceMode: PracticeMode;
 }
 
@@ -54,7 +53,6 @@ export interface CrossSessionAnalytics {
 			averageAccuracy: number;
 			averageScore: number;
 			totalTime: number;
-			preferredDifficulty: string;
 		}
 	>;
 
@@ -164,9 +162,16 @@ export interface SessionManagerActions {
 	// Recommendations
 	generateRecommendations: () => Promise<SessionRecommendation[]>;
 
-	// Synchronization
-	syncWithServer: () => Promise<void>;
-	syncAllStores: () => Promise<void>;
+	// Synchronization - Session Metadata Only
+	syncSessionMetadata: () => Promise<{ success: boolean; message: string }>;
+	syncAllSessionData: () => Promise<{
+		success: boolean;
+		message: string;
+		results: Array<{
+			store: string;
+			result: { success: boolean; message: string };
+		}>;
+	}>;
 
 	// Preferences
 	updatePreferences: (
@@ -189,6 +194,11 @@ export interface SessionManagerActions {
 		percentage: number;
 	};
 
+	// Generation config inference
+	inferGenerationConfig: (
+		courseId: string,
+		sessionType: SessionType
+	) => Promise<SelectiveGenerationConfig | null>;
 	// Error handling
 	setError: (error: string | null) => void;
 	clearError: () => void;
@@ -217,21 +227,18 @@ export const initialCrossSessionAnalytics: CrossSessionAnalytics = {
 			averageAccuracy: 0,
 			averageScore: 0,
 			totalTime: 0,
-			preferredDifficulty: "mixed",
 		},
 		"multiple-choice": {
 			count: 0,
 			averageAccuracy: 0,
 			averageScore: 0,
 			totalTime: 0,
-			preferredDifficulty: "mixed",
 		},
 		"open-questions": {
 			count: 0,
 			averageAccuracy: 0,
 			averageScore: 0,
 			totalTime: 0,
-			preferredDifficulty: "mixed",
 		},
 	},
 	learningPatterns: {

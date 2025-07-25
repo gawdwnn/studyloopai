@@ -1,127 +1,105 @@
 // Cuecard Session Store Types
-// Focused on cuecard-specific functionality with strong typing
 
+import type { UserCuecard } from "@/lib/actions/cuecard";
+import type { SelectiveGenerationConfig } from "@/types/generation-types";
 import type { BaseSessionConfig } from "../session-manager/types";
 
 export type CuecardFeedback = "too_easy" | "knew_some" | "incorrect";
 
-export type CuecardMode = "keywords" | "definitions" | "both";
-
-export type DifficultyLevel = "easy" | "medium" | "hard" | "mixed";
-
-export type FocusType =
-	| "tailored-for-me"
-	| "weak-areas"
-	| "recent-content"
-	| "comprehensive";
+export type CuecardMode = "both" | "term_first" | "definition_first";
 
 export type PracticeMode = "practice" | "exam";
 
 export type SessionStatus =
 	| "idle"
 	| "active"
-	| "paused"
 	| "completed"
-	| "failed";
+	| "failed"
+	| "needs_generation"
+	| "no_content_for_weeks"
+	| "loading"
+	| "generating";
 
-// Cuecard-specific configuration
+// Cuecard-specific configuration for an active session
 export interface CuecardConfig extends BaseSessionConfig {
-	cardCount: number;
 	mode: CuecardMode;
 }
 
-// Spaced repetition card with all necessary data
-export interface SpacedRepetitionCard {
-	id: string;
-	keyword: string;
-	definition: string;
-	source: string;
+// Configuration used on the setup screen
+export interface CuecardSetupConfig {
+	courseId: string;
 	week: string;
-	difficulty: number; // 0-10, higher means more difficult for user
-	lastSeen: Date;
-	timesCorrect: number;
-	timesIncorrect: number;
-	easeFactor: number; // SM-2 algorithm ease factor
-	nextReviewDate: Date;
-	interval: number; // Days until next review
+	mode: CuecardMode;
+	practiceMode: PracticeMode;
 }
 
-// Progress tracking specific to cuecards
-export interface CuecardProgress {
-	currentIndex: number;
-	totalCards: number;
-	correctAnswers: number;
-	incorrectAnswers: number;
-	knewSomeAnswers: number;
-	skippedCards: number;
-	timeSpent: number; // milliseconds
-	startedAt: Date;
-	lastUpdated: Date;
-
-	// Cuecard-specific metrics
-	averageTimePerCard: number;
-	reviewQueue: string[]; // card IDs in optimal review order
-	masteredCards: string[]; // cards that no longer need frequent review
-	strugglingCards: string[]; // cards user finds difficult
+// Simple card response tracking
+export interface CardResponse {
+	cardId: string;
+	feedback: CuecardFeedback;
+	timeSpent: number;
+	attemptedAt: Date;
 }
 
-// Performance analytics for cuecards
-export interface CuecardPerformance {
-	accuracy: number; // percentage
-	averageResponseTime: number; // milliseconds
-	improvementRate: number; // how difficulty is decreasing over time
-	retentionRate: number; // how well user remembers previously seen cards
-	strongTopics: string[]; // topics user excels at
-	weakTopics: string[]; // topics needing more practice
-}
-
-// Session state for cuecard sessions
+// Simplified session state
 export interface CuecardSessionState {
 	id: string;
 	status: SessionStatus;
-	config: CuecardConfig;
-	cards: SpacedRepetitionCard[];
-	progress: CuecardProgress;
-	performance: CuecardPerformance;
-	currentCard: SpacedRepetitionCard | null;
+	config: CuecardConfig; // Config for the active session
+	setupConfig: CuecardSetupConfig; // Config for the setup screen
+
+	// Direct database mapping
+	cards: UserCuecard[];
+
+	// progress tracking
+	currentIndex: number;
+	responses: CardResponse[];
+	startTime: Date; // Track when session started
+	cardStartTime: Date | null; // Track when current card was started
+
+	// UI state
 	error: string | null;
 	isLoading: boolean;
-	lastSyncedAt: Date | null;
 }
 
-// Store actions interface
+// Session statistics for results display
+export interface SessionStats {
+	totalCards: number;
+	tooEasy: number;
+	knewSome: number;
+	incorrect: number;
+	totalTime: number;
+	averageTimePerCard: number;
+	accuracy: number;
+}
+
+// Simplified store actions
 export interface CuecardSessionActions {
 	// Session lifecycle
 	startSession: (config: CuecardConfig) => Promise<void>;
-	pauseSession: () => void;
-	resumeSession: () => void;
 	endSession: () => Promise<void>;
 	resetSession: () => void;
 
-	// Card management
-	getCurrentCard: () => SpacedRepetitionCard | null;
-	moveToNextCard: () => void;
-	moveToPreviousCard: () => void;
-	skipCard: () => void;
-
-	// Feedback and learning
-	submitFeedback: (
-		cardId: string,
-		feedback: CuecardFeedback,
-		timeSpent: number
+	// Setup configuration
+	setSetupConfig: (config: Partial<CuecardSetupConfig>) => void;
+	initSetupConfig: (
+		courses: { id: string }[],
+		initialParams: Partial<CuecardSetupConfig>
 	) => void;
 
-	// Progress tracking
-	getSessionStats: () => {
-		totalTime: number;
-		cardsReviewed: number;
-		accuracy: number;
-		cardsRemaining: number;
-	};
+	// Card navigation
+	getCurrentCard: () => UserCuecard | null;
+	submitFeedback: (feedback: CuecardFeedback) => Promise<void>;
+
+	// Content generation
+	triggerGeneration: (
+		courseId: string,
+		weekIds?: string[],
+		generationConfig?: SelectiveGenerationConfig
+	) => Promise<boolean>;
 
 	// Error handling
 	setError: (error: string | null) => void;
-	clearError: () => void;
 }
 
 // Complete store interface
@@ -130,48 +108,26 @@ export interface CuecardSessionStore extends CuecardSessionState {
 }
 
 // Initial state
-export const initialCuecardProgress: CuecardProgress = {
-	currentIndex: 0,
-	totalCards: 0,
-	correctAnswers: 0,
-	incorrectAnswers: 0,
-	knewSomeAnswers: 0,
-	skippedCards: 0,
-	timeSpent: 0,
-	startedAt: new Date(),
-	lastUpdated: new Date(),
-	averageTimePerCard: 0,
-	reviewQueue: [],
-	masteredCards: [],
-	strugglingCards: [],
-};
-
-export const initialCuecardPerformance: CuecardPerformance = {
-	accuracy: 0,
-	averageResponseTime: 0,
-	improvementRate: 0,
-	retentionRate: 0.7, // Default assumption
-	strongTopics: [],
-	weakTopics: [],
-};
-
 export const initialCuecardState: CuecardSessionState = {
 	id: "",
 	status: "idle",
 	config: {
 		courseId: "",
 		weeks: [],
-		cardCount: 10,
 		mode: "both",
-		difficulty: "mixed",
-		focus: "comprehensive",
+		practiceMode: "practice",
+	},
+	setupConfig: {
+		courseId: "",
+		week: "all-weeks",
+		mode: "both",
 		practiceMode: "practice",
 	},
 	cards: [],
-	progress: initialCuecardProgress,
-	performance: initialCuecardPerformance,
-	currentCard: null,
+	currentIndex: 0,
+	responses: [],
+	startTime: new Date(),
+	cardStartTime: null,
 	error: null,
 	isLoading: false,
-	lastSyncedAt: null,
 };

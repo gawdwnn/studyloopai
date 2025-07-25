@@ -9,7 +9,6 @@ interface UseContentAvailabilityOptions {
 	courseId: string;
 	weekId: string;
 	enabled?: boolean;
-	pollingInterval?: number;
 }
 
 interface UseContentAvailabilityReturn {
@@ -32,7 +31,6 @@ export function useContentAvailability({
 	courseId,
 	weekId,
 	enabled = true,
-	pollingInterval = 5000, // 5 seconds
 }: UseContentAvailabilityOptions): UseContentAvailabilityReturn {
 	const [data, setData] = useState<ContentAvailabilityStatus | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
@@ -60,18 +58,10 @@ export function useContentAvailability({
 		}
 	}, [courseId, weekId, enabled]);
 
-	// Initial fetch
+	// Fetch on page load and when courseId or weekId changes
 	useEffect(() => {
 		fetchAvailability();
 	}, [fetchAvailability]);
-
-	// Polling for real-time updates
-	useEffect(() => {
-		if (!enabled || !courseId || !weekId) return;
-
-		const interval = setInterval(fetchAvailability, pollingInterval);
-		return () => clearInterval(interval);
-	}, [fetchAvailability, enabled, courseId, weekId, pollingInterval]);
 
 	// Helper function to get content type status
 	const getContentTypeStatus = useCallback(
