@@ -100,7 +100,7 @@ function useActiveSessionDetails() {
 					},
 					config: {
 						difficulty: String(config.difficulty),
-						focus: config.focus,
+						focus: config.focus || "general",
 						mode: "Practice",
 					},
 				};
