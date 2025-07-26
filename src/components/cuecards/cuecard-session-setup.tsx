@@ -97,8 +97,15 @@ export function CuecardSessionSetup({
 			},
 		});
 
-	const { data: weeks = [], isLoading: loadingWeeks } =
-		useCourseWeeks(selectedCourse);
+	// Use pre-fetched initialData.weeks when available, otherwise fetch with hook
+	const shouldUseInitialData = initialData?.courseId === selectedCourse;
+	const { data: fetchedWeeks = [], isLoading: loadingWeeks } =
+		useCourseWeeks(selectedCourse, { 
+			onlyWithMaterials: true,
+			enabled: !shouldUseInitialData 
+		});
+	
+	const weeks = shouldUseInitialData ? initialData?.weeks || [] : fetchedWeeks;
 
 	const sessionData = useCuecardSessionData({
 		courseId: selectedCourse,
@@ -139,9 +146,15 @@ export function CuecardSessionSetup({
 		}
 
 		if (!sessionData.isAvailable && selectedWeek === "all-weeks") {
-			toast.error(
-				"No cuecards found. Please select a specific week to generate content."
-			);
+			if (weeks.length === 0) {
+				toast.error(
+					"No course materials found. Please upload materials first."
+				);
+			} else {
+				toast.error(
+					"No cuecards found. Please select a specific week to generate content."
+				);
+			}
 			return;
 		}
 
@@ -244,8 +257,10 @@ export function CuecardSessionSetup({
 						<Alert variant="destructive">
 							<AlertTriangle className="h-4 w-4" />
 							<AlertDescription>
-								No cuecards found for the selected weeks. Try other weeks or
-								generate new content.
+								{weeks.length === 0 
+									? "No course materials found. Please upload materials first before generating cuecards."
+									: "No cuecards found for the selected weeks. Try other weeks or generate new content."
+								}
 							</AlertDescription>
 						</Alert>
 					)}
@@ -314,6 +329,20 @@ export function CuecardSessionSetup({
 									<Loader2 className="h-4 w-4 animate-spin" />
 									<span>Checking content...</span>
 								</div>
+							) : weeks.length === 0 ? (
+								<Alert variant="destructive">
+									<AlertTriangle className="h-4 w-4" />
+									<AlertDescription>
+										No course materials found. Please{" "}
+										<a 
+											href={`/dashboard/course-materials/${selectedCourse}`} 
+											className="underline font-medium hover:text-destructive-foreground"
+										>
+											upload course materials
+										</a>{" "}
+										first to generate cuecards.
+									</AlertDescription>
+								</Alert>
 							) : sessionData.isAvailable ? (
 								<div className="flex items-center gap-2 text-sm text-green-600">
 									<PlayCircle className="h-4 w-4" />
@@ -330,8 +359,8 @@ export function CuecardSessionSetup({
 									<AlertCircle className="h-4 w-4" />
 									<AlertDescription>
 										{selectedWeek === "all-weeks"
-											? "No cuecards found in any week."
-											: "No cuecards found for this week. We'll generate them for you."}
+											? "No cuecards found. Materials are available - we can generate cuecards for you."
+											: "No cuecards found for this week. We'll generate them from your uploaded materials."}
 									</AlertDescription>
 								</Alert>
 							)}

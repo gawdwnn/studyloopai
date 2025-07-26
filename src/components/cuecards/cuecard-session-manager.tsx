@@ -68,18 +68,16 @@ export function CuecardSessionManager({
 
 	const handleTriggerGeneration = useCallback(
 		async (
-			_courseId: string,
-			_weekIds: string[],
-			_generationConfig: SelectiveGenerationConfig
+			courseId: string,
+			weekIds: string[],
+			generationConfig: SelectiveGenerationConfig
 		) => {
 			try {
-				const success = true;
-				// COMMENTED OUT FOR TESTING!
-				// const success = await cuecardActions.triggerGeneration(
-				// 	courseId,
-				// 	weekIds,
-				// 	generationConfig
-				// );
+				const success = await cuecardActions.triggerGeneration(
+					courseId,
+					weekIds,
+					generationConfig
+				);
 
 				if (success) {
 					toast.success(
@@ -93,7 +91,7 @@ export function CuecardSessionManager({
 				toast.error("Failed to start cuecard generation. Please try again.");
 			}
 		},
-		[]
+		[cuecardActions]
 	);
 
 	const handleCardFeedback = useCallback(

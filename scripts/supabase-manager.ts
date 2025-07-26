@@ -18,15 +18,15 @@
  * ```
  */
 
-import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { join, resolve } from "node:path";
 import { env } from "@/env";
 import { databaseUrl } from "@/lib/database/db";
-import { Separator, confirm, input, password, select } from "@inquirer/prompts";
+import { Separator, confirm, input, select } from "@inquirer/prompts";
 import chalk from "chalk";
 import { Command } from "commander";
 import { execa } from "execa";
 import { Listr } from "listr2";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { join, resolve } from "node:path";
 import pMap from "p-map";
 import pRetry from "p-retry";
 import pino from "pino";
@@ -95,25 +95,24 @@ const PROJECTS: Record<ProjectKey, ProjectConfig> = {
 	},
 };
 
-const MANAGED_TABLES = [
-	"users",
-	"user_plans",
-	"courses",
-	"course_weeks",
-	"course_materials",
-	"document_chunks",
-	"cuecards",
-	"multiple_choice_questions",
-	"open_questions",
-	"summaries",
-	"golden_notes",
-	"concept_maps",
-	"own_notes",
-	"generation_configs",
-	"user_prompt_templates",
-	"institutions",
-	"user_progress",
-] as const;
+// Automated table discovery
+const getManagedTables = async (): Promise<string[]> => {
+	const schemaPath = resolve(join(process.cwd(), "drizzle", "schema.ts"));
+	if (!existsSync(schemaPath)) {
+		logger.warn("drizzle/schema.ts not found. RLS validation will be skipped.");
+		return [];
+	}
+	const schemaContent = readFileSync(schemaPath, "utf-8");
+	const tableRegex = /export const \w+ = pgTable\(\s*["']([^"]+)["']/g;
+	const tables = new Set<string>();
+	const matches = schemaContent.matchAll(tableRegex);
+	for (const match of matches) {
+		tables.add(match[1]);
+	}
+	const discoveredTables = Array.from(tables).sort();
+	logger.info(`Discovered ${discoveredTables.length} tables from schema.ts`);
+	return discoveredTables;
+};
 
 const POLICIES_DIR = resolve(join(process.cwd(), "drizzle", "policies"));
 
@@ -275,7 +274,11 @@ const getPolicyFiles = async (): Promise<string[]> => {
 	return files;
 };
 
-const checkRLSStatus = async (client: DatabaseClient) => {
+const checkRLSStatus = async (
+	client: DatabaseClient,
+	managedTables: string[]
+) => {
+	if (managedTables.length === 0) return { rlsStatus: [], policies: [] };
 	const [rlsStatus, policies] = await Promise.all([
 		client<RLSStatus[]>`
       SELECT 
@@ -283,7 +286,7 @@ const checkRLSStatus = async (client: DatabaseClient) => {
         tablename,
         rowsecurity as rls_enabled
       FROM pg_tables 
-      WHERE tablename = ANY(${MANAGED_TABLES})
+      WHERE tablename = ANY(${managedTables})
       AND schemaname = 'public'
       ORDER BY tablename
     `,
@@ -295,7 +298,7 @@ const checkRLSStatus = async (client: DatabaseClient) => {
         cmd,
         roles
       FROM pg_policies 
-      WHERE tablename = ANY(${MANAGED_TABLES})
+      WHERE tablename = ANY(${managedTables})
       ORDER BY tablename, policyname
     `,
 	]);
@@ -459,7 +462,11 @@ const executeOperation = async (
 
 		case "policies": {
 			await withDatabase(projectKey, async (client) => {
-				const { rlsStatus, policies } = await checkRLSStatus(client);
+				const managedTables = await getManagedTables();
+				const { rlsStatus, policies } = await checkRLSStatus(
+					client,
+					managedTables
+				);
 
 				process.stdout.write(chalk.blue("\n📋 RLS Status:\n"));
 				for (const table of rlsStatus) {
@@ -514,9 +521,10 @@ const executeOperation = async (
 
 		case "validate-rls": {
 			await withDatabase(projectKey, async (client) => {
-				const { rlsStatus } = await checkRLSStatus(client);
+				const managedTables = await getManagedTables();
+				const { rlsStatus } = await checkRLSStatus(client, managedTables);
 
-				const missingRLS = MANAGED_TABLES.filter(
+				const missingRLS = managedTables.filter(
 					(table) =>
 						!rlsStatus.some(
 							(status) => status.tablename === table && status.rls_enabled
@@ -525,10 +533,16 @@ const executeOperation = async (
 
 				if (missingRLS.length === 0) {
 					process.stdout.write(
-						chalk.green("\n✅ All managed tables have RLS enabled\n")
+						chalk.green(
+							`\n✅ All ${managedTables.length} discovered tables have RLS enabled\n`
+						)
 					);
 				} else {
-					process.stdout.write(chalk.red("\n❌ Tables without RLS:\n"));
+					process.stdout.write(
+						chalk.red(
+							`\n❌ ${missingRLS.length} of ${managedTables.length} tables are missing RLS:\n`
+						)
+					);
 					for (const table of missingRLS) {
 						process.stdout.write(`   - ${table}\n`);
 					}
@@ -798,10 +812,16 @@ program
 				return;
 			}
 
-			const dbPassword = await password({
-				message: `Enter database password for ${PROJECTS[targetProject].name}:`,
-				mask: "*",
-			});
+			const dbPassword =
+				targetProject === "dev"
+					? env.DEV_DATABASE_PASSWORD
+					: env.PROD_DATABASE_PASSWORD;
+
+			if (!dbPassword) {
+				throw new Error(
+					`Database password for ${targetProject} not found in environment variables. Please set DEV_DATABASE_PASSWORD and PROD_DATABASE_PASSWORD.`
+				);
+			}
 
 			const tasks = new Listr([
 				{
@@ -878,11 +898,12 @@ program
 					chalk.blue("🔧 Switching to Development Environment\n")
 				);
 
-				const dbPassword = await password({
-					message: "Enter development database password:",
-					mask: "*",
-				});
-
+				const dbPassword = env.DEV_DATABASE_PASSWORD;
+				if (!dbPassword) {
+					throw new Error(
+						"DEV_DATABASE_PASSWORD not found in environment variables."
+					);
+				}
 				await linkProject("dev", dbPassword);
 				process.stdout.write(
 					chalk.green("✅ Linked to development environment\n")
@@ -918,11 +939,12 @@ program
 					if (!confirmed) return;
 				}
 
-				const dbPassword = await password({
-					message: "Enter production database password:",
-					mask: "*",
-				});
-
+				const dbPassword = env.PROD_DATABASE_PASSWORD;
+				if (!dbPassword) {
+					throw new Error(
+						"PROD_DATABASE_PASSWORD not found in environment variables."
+					);
+				}
 				await linkProject("prod", dbPassword);
 				process.stdout.write(
 					chalk.red("✅ Linked to production environment\n")
