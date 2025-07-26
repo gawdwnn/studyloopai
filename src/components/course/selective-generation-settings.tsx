@@ -43,6 +43,7 @@ import {
 interface SelectiveGenerationSettingsProps {
 	config: SelectiveGenerationConfig;
 	onConfigChange: (config: SelectiveGenerationConfig) => void;
+	featuresFilter?: (keyof SelectiveGenerationConfig["selectedFeatures"])[];
 }
 
 const DIFFICULTY_OPTIONS = [
@@ -97,8 +98,7 @@ const FEATURE_INFO = {
 	cuecards: {
 		label: "Cuecards",
 		description: "Interactive flashcards for memorization and quick review",
-		tooltip:
-			"Flashcards with Q&A format, perfect for spaced repetition and active recall",
+		tooltip: "Cuecards with Q&A format for memorization and quick review",
 	},
 	mcqs: {
 		label: "Multiple Choice Questions",
@@ -122,11 +122,35 @@ const FEATURE_INFO = {
 export function SelectiveGenerationSettings({
 	config,
 	onConfigChange,
+	featuresFilter,
 }: SelectiveGenerationSettingsProps) {
 	const [activeTab, setActiveTab] = useState("features");
 
 	const updateConfig = (updates: Partial<SelectiveGenerationConfig>) => {
-		onConfigChange({ ...config, ...updates });
+		const mergedConfig = { ...config, ...updates };
+
+		// If featuresFilter is provided, filter the config to only include filtered features
+		if (featuresFilter && featuresFilter.length > 0) {
+			const filteredConfig: SelectiveGenerationConfig = {
+				selectedFeatures: Object.fromEntries(
+					featuresFilter
+						.filter((feature) => mergedConfig.selectedFeatures[feature])
+						.map((feature) => [feature, true])
+				) as SelectiveGenerationConfig["selectedFeatures"],
+				featureConfigs: Object.fromEntries(
+					featuresFilter
+						.filter(
+							(feature) =>
+								mergedConfig.selectedFeatures[feature] &&
+								mergedConfig.featureConfigs[feature]
+						)
+						.map((feature) => [feature, mergedConfig.featureConfigs[feature]])
+				) as SelectiveGenerationConfig["featureConfigs"],
+			};
+			onConfigChange(filteredConfig);
+		} else {
+			onConfigChange(mergedConfig);
+		}
 	};
 
 	const toggleFeature = (feature: keyof typeof config.selectedFeatures) => {
@@ -248,13 +272,33 @@ export function SelectiveGenerationSettings({
 		</div>
 	);
 
-	const selectedCount = Object.values(config.selectedFeatures).filter(
-		Boolean
+	// Filter features based on featuresFilter prop
+	const availableFeatures = featuresFilter
+		? Object.fromEntries(
+				Object.entries(FEATURE_INFO).filter(([key]) =>
+					featuresFilter.includes(
+						key as keyof SelectiveGenerationConfig["selectedFeatures"]
+					)
+				)
+			)
+		: FEATURE_INFO;
+
+	const selectedCount = Object.entries(config.selectedFeatures).filter(
+		([key, selected]) => {
+			if (!featuresFilter) return selected;
+			return (
+				selected &&
+				featuresFilter.includes(
+					key as keyof SelectiveGenerationConfig["selectedFeatures"]
+				)
+			);
+		}
 	).length;
 
 	return (
 		<TooltipProvider>
 			<div className="space-y-6">
+				{/* #TODO: when featuresFilter is provided, show a different message */}
 				<div>
 					<h3 className="text-lg font-semibold mb-2">
 						Selective Content Generation
@@ -283,15 +327,25 @@ export function SelectiveGenerationSettings({
 						) : (
 							<div className="flex flex-wrap gap-2">
 								{Object.entries(config.selectedFeatures).map(
-									([feature, selected]) =>
-										selected && (
-											<Badge key={feature} variant="outline">
-												{
-													FEATURE_INFO[feature as keyof typeof FEATURE_INFO]
-														.label
-												}
-											</Badge>
-										)
+									([feature, selected]) => {
+										// Only show if feature is in availableFeatures and selected
+										const isAvailable =
+											!featuresFilter ||
+											featuresFilter.includes(
+												feature as keyof SelectiveGenerationConfig["selectedFeatures"]
+											);
+										return (
+											selected &&
+											isAvailable && (
+												<Badge key={feature} variant="outline">
+													{
+														FEATURE_INFO[feature as keyof typeof FEATURE_INFO]
+															.label
+													}
+												</Badge>
+											)
+										);
+									}
 								)}
 							</div>
 						)}
@@ -308,7 +362,7 @@ export function SelectiveGenerationSettings({
 
 					<TabsContent value="features" className="space-y-4">
 						<div className="grid gap-4">
-							{Object.entries(FEATURE_INFO).map(([feature, info]) => {
+							{Object.entries(availableFeatures).map(([feature, info]) => {
 								const isSelected =
 									config.selectedFeatures[
 										feature as keyof typeof config.selectedFeatures
@@ -413,8 +467,14 @@ export function SelectiveGenerationSettings({
 						) : (
 							Object.entries(config.selectedFeatures).map(
 								([feature, selected]) => {
+									const isAvailable =
+										!featuresFilter ||
+										featuresFilter.includes(
+											feature as keyof SelectiveGenerationConfig["selectedFeatures"]
+										);
 									if (
 										!selected ||
+										!isAvailable ||
 										!config.featureConfigs[
 											feature as keyof typeof config.featureConfigs
 										]

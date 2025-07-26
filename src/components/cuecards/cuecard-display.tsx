@@ -4,26 +4,19 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import type { UserCuecard } from "@/lib/actions/cuecard";
+import type { CuecardFeedback } from "@/stores/cuecard-session/types";
 import { X } from "lucide-react";
 import { useState } from "react";
 
 interface CuecardDisplayProps {
-	card: CuecardData;
+	card: UserCuecard;
 	onFeedback: (feedback: CuecardFeedback) => void;
 	onClose: () => void;
 	currentIndex: number;
 	totalCards: number;
 	weekInfo: string;
 }
-
-interface CuecardData {
-	id: string;
-	keyword: string;
-	definition: string;
-	source: string;
-}
-
-type CuecardFeedback = "too_easy" | "knew_some" | "incorrect";
 
 export function CuecardDisplay({
 	card,
@@ -34,7 +27,7 @@ export function CuecardDisplay({
 	weekInfo,
 }: CuecardDisplayProps) {
 	const [showAnswer, setShowAnswer] = useState(false);
-	const [viewMode, setViewMode] = useState<"definition" | "keyword">("definition");
+	const [viewMode, setViewMode] = useState<"answer" | "question">("answer");
 	const [showUserInput, setShowUserInput] = useState(false);
 	const [userAnswer, setUserAnswer] = useState("");
 
@@ -45,7 +38,7 @@ export function CuecardDisplay({
 	const handleFeedback = (feedback: CuecardFeedback) => {
 		onFeedback(feedback);
 		setShowAnswer(false);
-		setViewMode("definition");
+		setViewMode("answer");
 		setUserAnswer("");
 	};
 
@@ -74,12 +67,12 @@ export function CuecardDisplay({
 					{/* Toggle between Definition and Keyword views */}
 					<div className="text-center">
 						<CardTitle className="text-2xl font-semibold mb-6">
-							{viewMode === "definition" ? "Definition" : "Keyword"}
+							{viewMode === "answer" ? "Answer" : "Question"}
 						</CardTitle>
 
 						<div className="min-h-[200px] flex items-center justify-center">
 							<p className="text-lg text-center leading-relaxed max-w-3xl">
-								{viewMode === "definition" ? card.definition : card.keyword}
+								{viewMode === "answer" ? card.answer : card.question}
 							</p>
 						</div>
 					</div>
@@ -87,7 +80,11 @@ export function CuecardDisplay({
 					{/* User answer input toggle */}
 					{!showAnswer && (
 						<div className="flex items-center justify-center space-x-3">
-							<Switch id="user-input" checked={showUserInput} onCheckedChange={setShowUserInput} />
+							<Switch
+								id="user-input"
+								checked={showUserInput}
+								onCheckedChange={setShowUserInput}
+							/>
 							<label htmlFor="user-input" className="text-sm font-medium">
 								Enter your answer (optional)
 							</label>
@@ -116,10 +113,12 @@ export function CuecardDisplay({
 							<>
 								<div className="text-center mb-4">
 									<p className="text-sm font-medium mb-2">
-										{viewMode === "definition" ? "Correct keyword" : "Correct definition"}
+										{viewMode === "answer"
+											? "Correct question"
+											: "Correct answer"}
 									</p>
 									<p className="text-muted-foreground">
-										{viewMode === "definition" ? card.keyword : card.definition}
+										{viewMode === "answer" ? card.question : card.answer}
 									</p>
 								</div>
 
@@ -158,7 +157,7 @@ export function CuecardDisplay({
 						) : (
 							<Button
 								onClick={handleShowAnswer}
-								// variant="secondary"
+								disabled={showAnswer}
 								className="px-8 py-3 text-base font-medium"
 							>
 								Show answer

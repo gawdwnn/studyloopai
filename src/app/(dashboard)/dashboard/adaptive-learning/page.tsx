@@ -1,12 +1,28 @@
 "use client";
 
-import { ArrowRight, BookOpen, CheckCircle, Clipboard } from "lucide-react";
+import {
+	ArrowRight,
+	BookOpen,
+	CheckCircle,
+	Clipboard,
+	Route,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Line, LineChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/card";
+import {
+	ChartContainer,
+	ChartTooltip,
+	ChartTooltipContent,
+} from "@/components/ui/chart";
 import {
 	Select,
 	SelectContent,
@@ -56,6 +72,13 @@ const features = [
 		iconColor: "text-teal-600 dark:text-teal-400",
 	},
 	{
+		id: "concept-maps",
+		title: "Concept Maps",
+		description: "Visualize your learning journey",
+		icon: Route,
+		iconColor: "text-indigo-600 dark:text-indigo-400",
+	},
+	{
 		id: "gap-assessment",
 		title: "Gap Assessment",
 		description: "Identify and bridge your learning gaps",
@@ -93,7 +116,9 @@ export default function AdaptiveLearningPage() {
 							</CardHeader>
 							<CardContent className="pt-0 flex flex-col flex-1 justify-between">
 								<div className="flex-1">
-									<CardTitle className="text-base font-semibold mb-2">{feature.title}</CardTitle>
+									<CardTitle className="text-base font-semibold mb-2">
+										{feature.title}
+									</CardTitle>
 									<CardDescription className="text-sm text-muted-foreground mb-4">
 										{feature.description}
 									</CardDescription>
@@ -119,7 +144,9 @@ export default function AdaptiveLearningPage() {
 			<Card>
 				<CardHeader className="pb-4 sm:pb-6">
 					<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-						<CardTitle className="text-lg sm:text-xl font-semibold">Activity</CardTitle>
+						<CardTitle className="text-lg sm:text-xl font-semibold">
+							Activity
+						</CardTitle>
 						<Select defaultValue="May">
 							<SelectTrigger className="w-full sm:w-[120px]">
 								<SelectValue placeholder="Month" />
@@ -135,9 +162,15 @@ export default function AdaptiveLearningPage() {
 					</div>
 				</CardHeader>
 				<CardContent className="pt-0">
-					<ChartContainer config={chartConfig} className="h-[250px] sm:h-[300px] lg:h-[350px]">
+					<ChartContainer
+						config={chartConfig}
+						className="h-[250px] sm:h-[300px] lg:h-[350px]"
+					>
 						<ResponsiveContainer width="100%" height="100%">
-							<LineChart data={activityData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+							<LineChart
+								data={activityData}
+								margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
+							>
 								<XAxis
 									dataKey="month"
 									tickLine={false}

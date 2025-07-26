@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { courseMaterials, courseWeeks } from "@/db/schema";
+import { configurationSource, courseMaterials, courseWeeks } from "@/db/schema";
 import { persistSelectiveConfig } from "@/lib/actions/generation-config";
 import { getServerClient } from "@/lib/supabase/server";
 import { getUserFriendlyErrorMessage } from "@/lib/utils/error-messages";
@@ -13,132 +13,107 @@ import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 const BodySchema = z.object({
-	materialIds: z
-		.array(z.string().uuid("Invalid material ID"))
-		.min(1, "At least one material ID is required")
-		.max(5, "Maximum 5 materials allowed per batch"),
-	weekId: z.string().uuid("Invalid week ID"),
-	courseId: z.string().uuid("Invalid course ID"),
-	selectiveConfig: SelectiveGenerationConfigSchema,
+  materialIds: z
+    .array(z.string().uuid("Invalid material ID"))
+    .min(1, "At least one material ID is required")
+    .max(5, "Maximum 5 materials allowed per batch"),
+  weekId: z.string().uuid("Invalid week ID"),
+  courseId: z.string().uuid("Invalid course ID"),
+  selectiveConfig: SelectiveGenerationConfigSchema,
+  configSource: z.enum(configurationSource.enumValues),
 });
 
 export async function POST(req: NextRequest) {
-	try {
-		const json = await req.json();
-		const body = BodySchema.parse(json);
+  try {
+    const json = await req.json();
+    const body = BodySchema.parse(json);
 
-		const supabase = await getServerClient();
-		const {
-			data: { user },
-		} = await supabase.auth.getUser();
+    const supabase = await getServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-		if (!user)
-			return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
+    if (!user)
+      return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
 
-		const materials = await db
-			.select()
-			.from(courseMaterials)
-			.where(
-				and(
-					inArray(courseMaterials.id, body.materialIds),
-					eq(courseMaterials.uploadedBy, user.id)
-				)
-			);
+    // Ownership validation
+    // Mark materials upload status as completed
+    const updatedMaterials = await db
+      .update(courseMaterials)
+      .set({
+        uploadStatus: "completed",
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          inArray(courseMaterials.id, body.materialIds),
+          eq(courseMaterials.uploadedBy, user.id),
+          eq(courseMaterials.courseId, body.courseId),
+          eq(courseMaterials.weekId, body.weekId)
+        )
+      )
+      .returning({
+        id: courseMaterials.id,
+        filePath: courseMaterials.filePath,
+        contentType: courseMaterials.contentType,
+      });
 
-		if (materials.length === 0) {
-			return NextResponse.json(
-				{ error: "No matching materials found" },
-				{ status: 404 }
-			);
-		}
+    if (updatedMaterials.length === 0) {
+      return NextResponse.json(
+        { error: "No matching materials found or already completed" },
+        { status: 404 }
+      );
+    }
 
-		// Check if some materials were filtered out (could be due to RLS or non-existence)
-		if (materials.length < body.materialIds.length) {
-			return NextResponse.json(
-				{ error: "Some materials not found or access denied" },
-				{ status: 404 }
-			);
-		}
+    // Mark course week as having materials
+    await db
+      .update(courseWeeks)
+      .set({ hasMaterials: true })
+      .where(
+        and(
+          eq(courseWeeks.id, body.weekId),
+          eq(courseWeeks.courseId, body.courseId)
+        )
+      );
 
-		// Materials are ready for processing (upload is synchronous)
-		const ingestMaterials = materials.filter((m) => m.filePath);
+    // Persist the user's selected config to database
+    const savedConfigId = await persistSelectiveConfig(
+      body.selectiveConfig,
+      body.weekId,
+      body.courseId,
+      user.id,
+      body.configSource,
+      {
+        source: "material_upload_completion",
+        trigger: "course_material_upload_wizard",
+        userAgent: "material-upload-api",
+      }
+    );
 
-		if (ingestMaterials.length === 0) {
-			return NextResponse.json(
-				{ error: "No materials are ready for processing" },
-				{ status: 400 }
-			);
-		}
+    // Trigger ingest task for those materials
+    await tasks.trigger<typeof ingestCourseMaterials>(
+      "ingest-course-materials",
+      {
+        userId: user.id,
+        materials: updatedMaterials.map((m) => ({
+          materialId: m.id,
+          filePath: m.filePath as string,
+          contentType: m.contentType as string,
+        })),
+        configId: savedConfigId,
+      }
+    );
 
-		// Update uploadStatus to completed
-		await db
-			.update(courseMaterials)
-			.set({ uploadStatus: "completed" })
-			.where(
-				inArray(
-					courseMaterials.id,
-					ingestMaterials.map((m) => m.id)
-				)
-			);
+    return NextResponse.json({
+      success: true,
+    });
+  } catch (err) {
+    console.error("Materials completion error:", err);
 
-		// Handle selective generation config
-		// Validate that enabled features have corresponding configs
-		const { validateSelectiveGenerationConfig } = await import(
-			"@/lib/validation/generation-config"
-		);
-		const configErrors = validateSelectiveGenerationConfig(
-			body.selectiveConfig
-		);
-		if (configErrors.length > 0) {
-			return NextResponse.json(
-				{
-					error: "Please check your generation settings and try again.",
-				},
-				{ status: 400 }
-			);
-		}
+    const userMessage = getUserFriendlyErrorMessage(
+      err instanceof Error ? err : "Unknown error occurred"
+    );
 
-		// Persist the user's selected config to database
-		const savedConfigId = await persistSelectiveConfig(
-			body.selectiveConfig,
-			body.weekId,
-			body.courseId,
-			user.id
-		);
-
-		// Mark the week as having materials
-		await db
-			.update(courseWeeks)
-			.set({ hasMaterials: true })
-			.where(eq(courseWeeks.id, body.weekId));
-
-		// Trigger ingest task for those materials
-		await tasks.trigger<typeof ingestCourseMaterials>(
-			"ingest-course-materials",
-			{
-				userId: user.id,
-				materials: ingestMaterials.map((m) => ({
-					materialId: m.id,
-					filePath: m.filePath as string,
-					contentType: m.contentType as string,
-				})),
-				configId: savedConfigId,
-			}
-		);
-
-		return NextResponse.json({
-			success: true,
-		});
-	} catch (err) {
-		console.error("Materials completion error:", err);
-		
-		const userMessage = getUserFriendlyErrorMessage(
-			err instanceof Error ? err : "Unknown error occurred"
-		);
-		
-		return NextResponse.json(
-			{ error: userMessage },
-			{ status: 400 }
-		);
-	}
+    return NextResponse.json({ error: userMessage }, { status: 400 });
+  }
 }

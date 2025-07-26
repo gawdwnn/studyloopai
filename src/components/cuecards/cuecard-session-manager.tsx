@@ -1,51 +1,62 @@
 "use client";
 
-import { SessionProgressIndicator } from "@/components/session";
-import type {
-	CuecardConfig,
-	CuecardFeedback,
-} from "@/stores/cuecard-session/types";
+import type { CuecardAvailability, UserCuecard } from "@/lib/actions/cuecard";
 import { useCuecardSession } from "@/stores/cuecard-session/use-cuecard-session";
 import { useSessionManager } from "@/stores/session-manager/use-session-manager";
-import { differenceInMinutes } from "date-fns";
-import { useEffect, useState } from "react";
+import type { Course, CourseWeek } from "@/types/database-types";
+import type { SelectiveGenerationConfig } from "@/types/generation-types";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { useShallow } from "zustand/react/shallow";
 import { SessionRecoveryDialog } from "../session/session-recovery-dialog";
 import { CuecardDisplay } from "./cuecard-display";
 import { CuecardResultsView } from "./cuecard-results-view";
 import { CuecardSessionSetup } from "./cuecard-session-setup";
-
-type Course = {
-	id: string;
-	name: string;
-	description: string | null;
-};
+import type { CuecardFeedback } from "./types";
+import {
+	formatSessionResultsForDisplay,
+	hasNoContentForWeeks,
+	isActiveState,
+	isCompletedState,
+	isGenerating,
+	isSetupState,
+} from "./utils";
 
 interface CuecardSessionManagerProps {
 	courses: Course[];
+	initialData?: {
+		courseId: string;
+		weeks: CourseWeek[];
+		cuecards: UserCuecard[];
+		availability: CuecardAvailability;
+	} | null;
 }
 
-export function CuecardSessionManager({ courses }: CuecardSessionManagerProps) {
-	const sessionManager = useSessionManager((s) => s);
-	const cuecardSession = useCuecardSession((s) => s);
-	const {
-		startSession: startCuecardSession,
-		resetSession: resetCuecardSession,
-		submitFeedback,
-	} = cuecardSession.actions;
-	const {
-		startSession: startManagerSession,
-		endSession: endManagerSession,
-		recoverSession,
-	} = sessionManager.actions;
+export function CuecardSessionManager({
+	courses,
+	initialData,
+}: CuecardSessionManagerProps) {
+	// Use shallow equality check to prevent unnecessary re-renders
+	const cuecardState = useCuecardSession(
+		useShallow((s) => ({
+			status: s.status,
+			currentIndex: s.currentIndex,
+			cards: s.cards,
+			responses: s.responses,
+			startTime: s.startTime,
+		}))
+	);
+	const cuecardActions = useCuecardSession((s) => s.actions);
+	const sessionManagerActions = useSessionManager((s) => s.actions);
 
-	const [showRecoveryDialog, setShowRecoveryDialog] = useState(false);
 	const [hasCheckedRecovery, setHasCheckedRecovery] = useState(false);
+	const [showRecoveryDialog, setShowRecoveryDialog] = useState(false);
 
+	// Recovery effect
 	useEffect(() => {
 		if (!hasCheckedRecovery) {
 			const check = async () => {
-				const recoverable = await recoverSession();
+				const recoverable = await sessionManagerActions.recoverSession();
 				if (recoverable && recoverable.type === "cuecards") {
 					setShowRecoveryDialog(true);
 				}
@@ -53,38 +64,56 @@ export function CuecardSessionManager({ courses }: CuecardSessionManagerProps) {
 			};
 			check();
 		}
-	}, [hasCheckedRecovery, recoverSession]);
+	}, [hasCheckedRecovery, sessionManagerActions]);
 
-	const handleStartSession = async (config: CuecardConfig) => {
-		try {
-			await startManagerSession("cuecards", config);
-			await startCuecardSession(config);
-			toast.success("Cuecard session started!");
-		} catch (error) {
-			console.error(error);
-			toast.error("Failed to start session. Please try again.");
-		}
-	};
+	const handleTriggerGeneration = useCallback(
+		async (
+			_courseId: string,
+			_weekIds: string[],
+			_generationConfig: SelectiveGenerationConfig
+		) => {
+			try {
+				const success = true;
+				// COMMENTED OUT FOR TESTING!
+				// const success = await cuecardActions.triggerGeneration(
+				// 	courseId,
+				// 	weekIds,
+				// 	generationConfig
+				// );
 
-	const handleCardFeedback = (feedback: CuecardFeedback) => {
-		if (cuecardSession.status !== "active") return;
-		const card = cuecardSession.currentCard;
-		if (!card) return;
-		submitFeedback(card.id, feedback, 1000); // timeSpent is not tracked per card yet
-	};
+				if (success) {
+					toast.success(
+						"Cuecard generation started! This may take a few minutes."
+					);
+				} else {
+					toast.error("Failed to start cuecard generation. Please try again.");
+				}
+			} catch (error) {
+				console.error("Cuecard generation error:", error);
+				toast.error("Failed to start cuecard generation. Please try again.");
+			}
+		},
+		[]
+	);
 
-	const handleEndSession = async () => {
-		if (sessionManager.activeSession) {
-			const finalStats = {
-				totalTime:
-					Date.now() - sessionManager.activeSession.startedAt.getTime(),
-				itemsCompleted: cuecardSession.progress.currentIndex + 1,
-				accuracy: cuecardSession.performance.accuracy,
-			};
-			await endManagerSession(sessionManager.activeSession.id, finalStats);
-		}
-		resetCuecardSession();
-	};
+	const handleCardFeedback = useCallback(
+		async (feedback: CuecardFeedback) => {
+			await cuecardActions.submitFeedback(feedback);
+		},
+		[cuecardActions]
+	);
+
+	const handleEndSession = useCallback(async () => {
+		await cuecardActions.endSession();
+		cuecardActions.resetSession();
+	}, [cuecardActions]);
+
+	const handleClose = useCallback(() => {
+		// Reset any active session state
+		cuecardActions.resetSession();
+		// Navigate back to the adaptive learning dashboard
+		window.location.href = "/dashboard/adaptive-learning";
+	}, [cuecardActions]);
 
 	const handleRecover = () => {
 		setShowRecoveryDialog(false);
@@ -107,61 +136,50 @@ export function CuecardSessionManager({ courses }: CuecardSessionManagerProps) {
 		);
 	}
 
-	if (cuecardSession.status === "idle" || cuecardSession.status === "failed") {
+	// Handle setup states (idle, failed, needs_generation, etc.)
+	if (isSetupState(cuecardState.status)) {
 		return (
 			<CuecardSessionSetup
 				courses={courses}
-				onStartSession={handleStartSession}
-				onClose={() => {
-					/* no-op */
-				}}
+				initialData={initialData}
+				onClose={handleClose}
+				showWeekSelectionError={hasNoContentForWeeks(cuecardState.status)}
+				showGenerationProgress={isGenerating(cuecardState.status)}
+				onTriggerGeneration={handleTriggerGeneration}
 			/>
 		);
 	}
 
-	if (cuecardSession.status === "active" && cuecardSession.currentCard) {
+	if (isActiveState(cuecardState.status)) {
+		const currentCard = cuecardActions.getCurrentCard();
+		if (!currentCard) {
+			// This shouldn't happen, but handle gracefully
+			handleEndSession();
+			return null;
+		}
+
 		return (
 			<div className="relative flex h-full flex-1 flex-col">
-				{process.env.NODE_ENV === "development" && <SessionProgressIndicator />}
 				<div className="flex-1 overflow-y-auto">
 					<CuecardDisplay
-						card={cuecardSession.currentCard}
+						card={currentCard}
 						onFeedback={handleCardFeedback}
 						onClose={handleEndSession}
-						currentIndex={cuecardSession.progress.currentIndex}
-						totalCards={cuecardSession.progress.totalCards}
-						weekInfo={cuecardSession.currentCard.source}
+						currentIndex={cuecardState.currentIndex}
+						totalCards={cuecardState.cards.length}
+						weekInfo={`Week ${currentCard.weekNumber}`}
 					/>
 				</div>
 			</div>
 		);
 	}
 
-	if (cuecardSession.status === "completed") {
-		const { progress } = cuecardSession;
-		const sessionTime = sessionManager.activeSession
-			? differenceInMinutes(new Date(), sessionManager.activeSession.startedAt)
-			: 0;
-		const totalResponses =
-			progress.correctAnswers +
-			progress.incorrectAnswers +
-			progress.knewSomeAnswers;
-		const avgTime =
-			totalResponses > 0 && sessionManager.activeSession
-				? (Date.now() - sessionManager.activeSession.startedAt.getTime()) /
-					totalResponses /
-					1000
-				: 0;
-
-		const resultsData = {
-			totalCards: progress.totalCards,
-			tooEasy: progress.correctAnswers,
-			showAnswer: progress.knewSomeAnswers,
-			incorrect: progress.incorrectAnswers,
-			sessionTime: sessionTime < 1 ? "< 1 min" : `${sessionTime} min`,
-			avgPerCard: `${Math.round(avgTime)} sec`,
-			weekInfo: cuecardSession.cards[0]?.source || "Various Materials",
-		};
+	if (isCompletedState(cuecardState.status)) {
+		const resultsData = formatSessionResultsForDisplay(
+			cuecardState.cards,
+			cuecardState.responses,
+			cuecardState.startTime
+		);
 
 		return (
 			<CuecardResultsView

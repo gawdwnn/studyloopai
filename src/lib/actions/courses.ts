@@ -13,7 +13,7 @@ import {
 	type CourseCreationData,
 	CourseCreationSchema,
 } from "@/lib/validation/courses";
-import { asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 export async function createCourse(formData: CourseCreationData) {
@@ -140,13 +140,25 @@ export async function getAllUserMaterials() {
 	);
 }
 
-export async function getCourseWeeks(courseId: string) {
+export async function getCourseWeeks(
+	courseId: string,
+	options?: {
+		onlyWithMaterials?: boolean;
+	}
+) {
 	return await withErrorHandling(
 		async () => {
+			const conditions = [eq(courseWeeks.courseId, courseId)];
+
+			if (options?.onlyWithMaterials) {
+				conditions.push(eq(courseWeeks.hasMaterials, true));
+			}
+
 			const weeks = await db.query.courseWeeks.findMany({
-				where: eq(courseWeeks.courseId, courseId),
+				where: and(...conditions),
 				orderBy: asc(courseWeeks.weekNumber),
 			});
+
 			return weeks;
 		},
 		"getCourseWeeks",

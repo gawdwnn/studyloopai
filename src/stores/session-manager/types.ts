@@ -1,6 +1,7 @@
 // Session Manager Types
 // Coordinates and manages multiple session types
 
+import type { SelectiveGenerationConfig } from "@/types/generation-types";
 import type { SessionStatus } from "../cuecard-session/types";
 
 export type SessionType = "cuecards" | "multiple-choice" | "open-questions";
@@ -9,12 +10,20 @@ export type { SessionStatus };
 
 export type PracticeMode = "practice" | "exam";
 
+// Callback interface for child stores to register with Session Manager
+export interface SessionCallbacks {
+	onStart?: (sessionId: string, config: BaseSessionConfig) => void;
+	onEnd?: (sessionId: string, stats: SessionHistoryEntry["finalStats"]) => void;
+	onProgress?: (
+		sessionId: string,
+		progress: ActiveSessionInfo["progress"]
+	) => void;
+}
+
 // Common configuration interface for all session types
 export interface BaseSessionConfig {
 	courseId: string;
 	weeks: string[];
-	difficulty: "easy" | "medium" | "hard" | "mixed";
-	focus: "tailored-for-me" | "weak-areas" | "recent-content" | "comprehensive";
 	practiceMode: PracticeMode;
 }
 
@@ -54,7 +63,6 @@ export interface CrossSessionAnalytics {
 			averageAccuracy: number;
 			averageScore: number;
 			totalTime: number;
-			preferredDifficulty: string;
 		}
 	>;
 
@@ -136,6 +144,12 @@ export interface SessionManagerState {
 
 // Session manager actions
 export interface SessionManagerActions {
+	// Callback registration API
+	registerSessionCallbacks: (
+		sessionType: SessionType,
+		callbacks: SessionCallbacks
+	) => () => void; // Returns unregister function
+
 	// Session coordination
 	startSession: (
 		type: SessionType,
@@ -164,9 +178,16 @@ export interface SessionManagerActions {
 	// Recommendations
 	generateRecommendations: () => Promise<SessionRecommendation[]>;
 
-	// Synchronization
-	syncWithServer: () => Promise<void>;
-	syncAllStores: () => Promise<void>;
+	// Synchronization - Session Metadata Only
+	syncSessionMetadata: () => Promise<{ success: boolean; message: string }>;
+	syncAllSessionData: () => Promise<{
+		success: boolean;
+		message: string;
+		results: Array<{
+			store: string;
+			result: { success: boolean; message: string };
+		}>;
+	}>;
 
 	// Preferences
 	updatePreferences: (
@@ -189,6 +210,11 @@ export interface SessionManagerActions {
 		percentage: number;
 	};
 
+	// Generation config inference
+	inferGenerationConfig: (
+		courseId: string,
+		sessionType: SessionType
+	) => Promise<SelectiveGenerationConfig | null>;
 	// Error handling
 	setError: (error: string | null) => void;
 	clearError: () => void;
@@ -217,21 +243,18 @@ export const initialCrossSessionAnalytics: CrossSessionAnalytics = {
 			averageAccuracy: 0,
 			averageScore: 0,
 			totalTime: 0,
-			preferredDifficulty: "mixed",
 		},
 		"multiple-choice": {
 			count: 0,
 			averageAccuracy: 0,
 			averageScore: 0,
 			totalTime: 0,
-			preferredDifficulty: "mixed",
 		},
 		"open-questions": {
 			count: 0,
 			averageAccuracy: 0,
 			averageScore: 0,
 			totalTime: 0,
-			preferredDifficulty: "mixed",
 		},
 	},
 	learningPatterns: {

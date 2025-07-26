@@ -172,7 +172,8 @@ export function UploadWizard({ courses, onUploadSuccess }: UploadWizardProps) {
 				uploadedMaterialIds,
 				selectedWeekId,
 				selectedCourseId,
-				selectiveConfig
+				selectiveConfig,
+				"course_week_override"
 			);
 
 			const successMessage =
