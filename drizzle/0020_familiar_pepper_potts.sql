@@ -1,0 +1,1 @@
+CREATE INDEX "idx_course_weeks_course_materials_filter" ON "course_weeks" USING btree ("course_id","has_materials","week_number");

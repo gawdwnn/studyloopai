@@ -30,34 +30,28 @@ export function CuecardResultsView({
 		// Trigger confetti animation when component mounts
 		const timer = setTimeout(() => {
 			confetti({
-				particleCount: 100,
-				spread: 70,
+				particleCount: 500,
+				spread: 200,
 				origin: { y: 0.6 },
-				colors: [
-					"hsl(var(--chart-1))",
-					"hsl(var(--chart-2))",
-					"hsl(var(--chart-3))",
-					"hsl(var(--chart-4))",
-					"hsl(var(--chart-5))",
-				],
+				colors: ["#10b981", "#f59e0b", "#ef4444", "#3b82f6", "#8b5cf6"],
 			});
 		}, 500);
 
 		return () => clearTimeout(timer);
 	}, []);
 
-	// Prepare chart data
+	// Prepare chart data with consistent colors
 	const chartData = [
-		{ name: "Too easy", value: results.tooEasy, color: "hsl(var(--chart-1))" },
+		{ name: "Too easy", value: results.tooEasy, color: "#10b981" }, // green-500
 		{
 			name: "I knew some of it",
 			value: results.showAnswer,
-			color: "hsl(var(--chart-2))",
+			color: "#f59e0b", // amber-500
 		},
 		{
 			name: "I answered incorrectly",
 			value: results.incorrect,
-			color: "hsl(var(--chart-3))",
+			color: "#ef4444", // red-500
 		},
 	];
 
@@ -138,7 +132,7 @@ export function CuecardResultsView({
 							<div className="flex items-center gap-4">
 								<div
 									className="w-4 h-4 rounded-full"
-									style={{ backgroundColor: "hsl(var(--chart-1))" }}
+									style={{ backgroundColor: "#10b981" }}
 								/>
 								<div className="flex flex-col">
 									<span className="text-2xl font-bold text-foreground">
@@ -153,7 +147,7 @@ export function CuecardResultsView({
 							<div className="flex items-center gap-4">
 								<div
 									className="w-4 h-4 rounded-full"
-									style={{ backgroundColor: "hsl(var(--chart-2))" }}
+									style={{ backgroundColor: "#f59e0b" }}
 								/>
 								<div className="flex flex-col">
 									<span className="text-2xl font-bold text-foreground">
@@ -168,7 +162,7 @@ export function CuecardResultsView({
 							<div className="flex items-center gap-4">
 								<div
 									className="w-4 h-4 rounded-full"
-									style={{ backgroundColor: "hsl(var(--chart-3))" }}
+									style={{ backgroundColor: "#ef4444" }}
 								/>
 								<div className="flex flex-col">
 									<span className="text-2xl font-bold text-foreground">

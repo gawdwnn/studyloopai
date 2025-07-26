@@ -8,11 +8,19 @@ import { and, eq, inArray } from "drizzle-orm";
 
 // Import types from centralized database types
 import type { Cuecard } from "@/types/database-types";
-import type { SelectiveGenerationConfig } from "@/types/generation-types";
 
 // Types for cuecards data - extended with week information
 export type UserCuecard = Cuecard & {
 	weekNumber: number;
+};
+
+// Extended availability type with optimization data
+export type CuecardAvailability = {
+	available: boolean;
+	count: number;
+	hasWeeksWithContent: boolean;
+	availableWeeks: Array<{ id: string; weekNumber: number }>;
+	cuecardsByWeek: Record<string, number>;
 };
 
 /**
@@ -71,6 +79,7 @@ export async function getUserCuecards(
 	);
 }
 
+// TODO: fix this code!
 /**
  * Check if cuecards are available for a course/weeks combination
  */
@@ -100,99 +109,105 @@ export async function checkCuecardsAvailability(
 	);
 }
 
-// Generation result type
-type GenerationResult =
-	| { success: true; message: string }
-	| { success: false; message: string };
-
 /**
- * Trigger on-demand cuecard generation
- * Integrates with existing generation API
+ * OPTIMIZED: Check cuecards availability with hasMaterials pre-filtering
+ * This eliminates the double-query issue in the original function
  */
-export async function triggerCuecardsGeneration(
+export async function checkCuecardsAvailabilityOptimized(
 	courseId: string,
-	weekIds?: string[],
-	generationConfig?: SelectiveGenerationConfig
-): Promise<GenerationResult> {
-	try {
-		const supabase = await getServerClient();
-		const {
-			data: { user },
-		} = await supabase.auth.getUser();
+	weekIds?: string[]
+): Promise<CuecardAvailability> {
+	return await withErrorHandling(
+		async () => {
+			const supabase = await getServerClient();
+			const {
+				data: { user },
+			} = await supabase.auth.getUser();
 
-		if (!user) {
-			return { success: false, message: "Authentication required" };
-		}
+			if (!user) {
+				throw new Error("Authentication required");
+			}
 
-		// Get course information for generation
-		const course = await db
-			.select()
-			.from(courses)
-			.where(and(eq(courses.id, courseId), eq(courses.userId, user.id)))
-			.limit(1);
-
-		if (course.length === 0) {
-			return { success: false, message: "Course not found or access denied" };
-		}
-
-		// Get weeks if specific weeks requested
-		let targetWeeks: string[] = [];
-		if (weekIds && weekIds.length > 0 && !weekIds.includes("all-weeks")) {
-			const weeks = await db
-				.select()
+			// PRE-FILTER: Only query weeks that have materials
+			const weeksWithMaterialsQuery = db
+				.select({
+					id: courseWeeks.id,
+					weekNumber: courseWeeks.weekNumber,
+				})
 				.from(courseWeeks)
+				.innerJoin(courses, eq(courseWeeks.courseId, courses.id))
 				.where(
 					and(
+						eq(courses.userId, user.id),
 						eq(courseWeeks.courseId, courseId),
-						inArray(courseWeeks.id, weekIds)
+						eq(courseWeeks.hasMaterials, true), // 🎯 KEY OPTIMIZATION
+						weekIds?.length && !weekIds.includes("all-weeks")
+							? inArray(courseWeeks.id, weekIds)
+							: undefined
 					)
 				);
-			targetWeeks = weeks.map((w) => w.id);
-		}
 
-		// Call existing generation API
-		const response = await fetch("/api/generation/trigger", {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-			},
-			body: JSON.stringify({
-				courseId,
-				weekIds: targetWeeks.length > 0 ? targetWeeks : undefined,
-				features: ["cuecards"], // Only generate cuecards
-				priority: "high",
-				config: generationConfig, // Pass through the generation config
-			}),
-		});
+			const weeksWithMaterials = await weeksWithMaterialsQuery;
 
-		if (!response.ok) {
+			if (weeksWithMaterials.length === 0) {
+				return {
+					available: false,
+					count: 0,
+					hasWeeksWithContent: false,
+					availableWeeks: [],
+					cuecardsByWeek: {},
+				};
+			}
+
+			// Query cuecards only for weeks with materials
+			const cuecardsQuery = db
+				.select({
+					id: cuecards.id,
+					weekId: cuecards.weekId,
+					weekNumber: courseWeeks.weekNumber,
+				})
+				.from(cuecards)
+				.innerJoin(courseWeeks, eq(cuecards.weekId, courseWeeks.id))
+				.innerJoin(courses, eq(cuecards.courseId, courses.id))
+				.where(
+					and(
+						eq(courses.userId, user.id),
+						eq(cuecards.courseId, courseId),
+						inArray(
+							cuecards.weekId,
+							weeksWithMaterials.map((w) => w.id)
+						)
+					)
+				);
+
+			const cuecardsResult = await cuecardsQuery;
+
+			// Build cuecards-by-week map
+			const cuecardsByWeek = cuecardsResult.reduce(
+				(acc, card) => {
+					acc[card.weekId] = (acc[card.weekId] || 0) + 1;
+					return acc;
+				},
+				{} as Record<string, number>
+			);
+
 			return {
-				success: false,
-				message: "Failed to trigger cuecard generation",
+				available: cuecardsResult.length > 0,
+				count: cuecardsResult.length,
+				hasWeeksWithContent: true, // We know this is true from pre-filter
+				availableWeeks: weeksWithMaterials,
+				cuecardsByWeek,
 			};
+		},
+		"checkCuecardsAvailabilityOptimized",
+		{
+			available: false,
+			count: 0,
+			hasWeeksWithContent: false,
+			availableWeeks: [],
+			cuecardsByWeek: {},
 		}
-
-		return {
-			success: true,
-			message: "Cuecard generation started successfully",
-		};
-	} catch (error) {
-		if (process.env.NODE_ENV === "development") {
-			console.error("Cuecard generation failed:", {
-				error: error instanceof Error ? error.message : String(error),
-				courseId,
-				weekIds,
-			});
-		}
-
-		return {
-			success: false,
-			message:
-				error instanceof Error
-					? error.message
-					: "Failed to trigger cuecard generation",
-		};
-	}
+	);
 }
 
 /**

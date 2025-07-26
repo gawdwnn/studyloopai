@@ -10,6 +10,16 @@ export type { SessionStatus };
 
 export type PracticeMode = "practice" | "exam";
 
+// Callback interface for child stores to register with Session Manager
+export interface SessionCallbacks {
+	onStart?: (sessionId: string, config: BaseSessionConfig) => void;
+	onEnd?: (sessionId: string, stats: SessionHistoryEntry["finalStats"]) => void;
+	onProgress?: (
+		sessionId: string,
+		progress: ActiveSessionInfo["progress"]
+	) => void;
+}
+
 // Common configuration interface for all session types
 export interface BaseSessionConfig {
 	courseId: string;
@@ -134,6 +144,12 @@ export interface SessionManagerState {
 
 // Session manager actions
 export interface SessionManagerActions {
+	// Callback registration API
+	registerSessionCallbacks: (
+		sessionType: SessionType,
+		callbacks: SessionCallbacks
+	) => () => void; // Returns unregister function
+
 	// Session coordination
 	startSession: (
 		type: SessionType,

@@ -12,21 +12,31 @@ export interface SessionCard {
 export function formatSessionResultsForDisplay(
 	cards: SessionCard[],
 	responses: SessionResponse[],
-	startTime: Date
+	startTime: Date | null
 ): SessionResults {
 	// Calculate feedback counts
 	const tooEasy = responses.filter((r) => r.feedback === "too_easy").length;
 	const knewSome = responses.filter((r) => r.feedback === "knew_some").length;
 	const incorrect = responses.filter((r) => r.feedback === "incorrect").length;
 
-	// Calculate timing
-	const sessionTime = differenceInMinutes(new Date(), startTime);
-	const sessionTimeString = sessionTime < 1 ? "< 1 min" : `${sessionTime} min`;
+	// Calculate timing - handle invalid/null startTime
+	let sessionTime = 0;
+	let sessionTimeString = "0 min";
+	let avgTime = 0;
 
-	const avgTime =
-		responses.length > 0
-			? Math.round((Date.now() - startTime.getTime()) / responses.length / 1000)
-			: 0;
+	if (startTime && responses.length > 0) {
+		const now = new Date();
+		const timeDiff = Math.abs(differenceInMinutes(now, startTime));
+
+		// Only use the time if it's reasonable (less than 24 hours)
+		if (timeDiff < 1440) {
+			sessionTime = timeDiff;
+			sessionTimeString = sessionTime < 1 ? "< 1 min" : `${sessionTime} min`;
+			avgTime = Math.round(
+				(now.getTime() - startTime.getTime()) / responses.length / 1000
+			);
+		}
+	}
 
 	// Determine week info
 	const weekInfo =

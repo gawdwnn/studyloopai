@@ -1,4 +1,4 @@
-// Legacy GenerationConfig removed - using SelectiveGenerationConfig only
+import type { configurationSource } from "@/db/schema";
 import type { SelectiveGenerationConfig } from "@/types/generation-types";
 
 /** Payload returned by the /api/materials/presign endpoint */
@@ -37,13 +37,20 @@ export async function completeUpload(
 	materialIds: string[],
 	weekId: string,
 	courseId: string,
-	selectiveConfig: SelectiveGenerationConfig
+	selectiveConfig: SelectiveGenerationConfig,
+	configSource: (typeof configurationSource.enumValues)[number]
 ): Promise<CompleteUploadResponse> {
 	const res = await fetch("/api/materials/complete", {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		credentials: "include",
-		body: JSON.stringify({ materialIds, weekId, courseId, selectiveConfig }),
+		body: JSON.stringify({
+			materialIds,
+			weekId,
+			courseId,
+			selectiveConfig,
+			configSource,
+		}),
 	});
 
 	if (!res.ok) {

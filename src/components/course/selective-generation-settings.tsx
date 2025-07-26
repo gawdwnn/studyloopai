@@ -98,8 +98,7 @@ const FEATURE_INFO = {
 	cuecards: {
 		label: "Cuecards",
 		description: "Interactive flashcards for memorization and quick review",
-		tooltip:
-			"Flashcards with Q&A format, perfect for spaced repetition and active recall",
+		tooltip: "Cuecards with Q&A format for memorization and quick review",
 	},
 	mcqs: {
 		label: "Multiple Choice Questions",
@@ -128,7 +127,30 @@ export function SelectiveGenerationSettings({
 	const [activeTab, setActiveTab] = useState("features");
 
 	const updateConfig = (updates: Partial<SelectiveGenerationConfig>) => {
-		onConfigChange({ ...config, ...updates });
+		const mergedConfig = { ...config, ...updates };
+
+		// If featuresFilter is provided, filter the config to only include filtered features
+		if (featuresFilter && featuresFilter.length > 0) {
+			const filteredConfig: SelectiveGenerationConfig = {
+				selectedFeatures: Object.fromEntries(
+					featuresFilter
+						.filter((feature) => mergedConfig.selectedFeatures[feature])
+						.map((feature) => [feature, true])
+				) as SelectiveGenerationConfig["selectedFeatures"],
+				featureConfigs: Object.fromEntries(
+					featuresFilter
+						.filter(
+							(feature) =>
+								mergedConfig.selectedFeatures[feature] &&
+								mergedConfig.featureConfigs[feature]
+						)
+						.map((feature) => [feature, mergedConfig.featureConfigs[feature]])
+				) as SelectiveGenerationConfig["featureConfigs"],
+			};
+			onConfigChange(filteredConfig);
+		} else {
+			onConfigChange(mergedConfig);
+		}
 	};
 
 	const toggleFeature = (feature: keyof typeof config.selectedFeatures) => {

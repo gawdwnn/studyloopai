@@ -28,14 +28,13 @@ import {
 } from "@/components/ui/select";
 import { useCourseWeeks } from "@/hooks/use-course-week";
 import { useQueryState } from "@/hooks/use-query-state";
-import { useCuecardSession } from "@/stores/cuecard-session/use-cuecard-session";
-import type { Course } from "@/types/database-types";
+import type { CuecardAvailability, UserCuecard } from "@/lib/actions/cuecard";
+import type { Course, CourseWeek } from "@/types/database-types";
 import type { SelectiveGenerationConfig } from "@/types/generation-types";
 import { getDefaultCuecardsConfig } from "@/types/generation-types";
 import {
 	AlertCircle,
 	AlertTriangle,
-	Info as InfoIcon,
 	Loader2,
 	PlayCircle,
 	Sparkles,
@@ -43,43 +42,46 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { useCuecardAvailability } from "./hooks/use-cuecard-availability";
+import { useCuecardSessionData } from "./hooks/use-cuecard-session-data";
 import type { CuecardConfig, CuecardMode, PracticeMode } from "./types";
 
 interface CuecardSessionSetupProps {
 	courses: Course[];
-	onStartSession: (config: CuecardConfig) => void;
+	initialData?: {
+		courseId: string;
+		weeks: CourseWeek[];
+		cuecards: UserCuecard[];
+		availability: CuecardAvailability;
+	} | null;
 	onClose: () => void;
-	showGenerationPrompt?: boolean;
 	showWeekSelectionError?: boolean;
 	showGenerationProgress?: boolean;
 	onTriggerGeneration?: (
 		courseId: string,
-		weekIds?: string[],
-		generationConfig?: SelectiveGenerationConfig
+		weekIds: string[],
+		generationConfig: SelectiveGenerationConfig
 	) => Promise<void>;
 }
 
 export function CuecardSessionSetup({
 	courses,
-	onStartSession,
+	initialData,
 	onClose,
-	showGenerationPrompt = false,
 	showWeekSelectionError = false,
 	showGenerationProgress = false,
 	onTriggerGeneration,
 }: CuecardSessionSetupProps) {
 	const { searchParams, setQueryState } = useQueryState();
 
-	// Initialize state from URL or defaults (similar to MCQ pattern)
 	const selectedCourse =
-		searchParams.get("courseId") || (courses.length > 0 ? courses[0].id : "");
+		searchParams.get("courseId") ||
+		initialData?.courseId ||
+		(courses.length > 0 ? courses[0].id : "");
 	const selectedWeek = searchParams.get("week") || "all-weeks";
 	const selectedMode = (searchParams.get("mode") as CuecardMode) || "both";
 	const practiceMode =
 		(searchParams.get("practiceMode") as PracticeMode) || "practice";
 
-	// Generation configuration state (local to this component)
 	const [generationConfig, setGenerationConfig] =
 		useState<SelectiveGenerationConfig>({
 			selectedFeatures: {
@@ -98,16 +100,14 @@ export function CuecardSessionSetup({
 	const { data: weeks = [], isLoading: loadingWeeks } =
 		useCourseWeeks(selectedCourse);
 
-	// Clean cuecard availability detection
-	const cuecardsStatus = useCuecardAvailability({
+	const sessionData = useCuecardSessionData({
 		courseId: selectedCourse,
 		weekIds: selectedWeek === "all-weeks" ? [] : [selectedWeek],
-		enabled: Boolean(selectedCourse),
+		enabled: Boolean(selectedCourse) && !loadingWeeks,
 	});
 
-	const { isLoading: loadingAvailability } = cuecardsStatus;
+	const { isLoading: loadingAvailability } = sessionData;
 
-	// When selectedCourse changes, if the selectedWeek is not in the new list of weeks, reset it.
 	useEffect(() => {
 		if (
 			!loadingWeeks &&
@@ -122,7 +122,7 @@ export function CuecardSessionSetup({
 	const handleStartSession = async () => {
 		if (!selectedCourse) return;
 
-		if (!cuecardsStatus.isAvailable && selectedWeek !== "all-weeks") {
+		if (!sessionData.isAvailable && selectedWeek !== "all-weeks") {
 			if (onTriggerGeneration) {
 				try {
 					await onTriggerGeneration(
@@ -138,7 +138,7 @@ export function CuecardSessionSetup({
 			return;
 		}
 
-		if (!cuecardsStatus.isAvailable && selectedWeek === "all-weeks") {
+		if (!sessionData.isAvailable && selectedWeek === "all-weeks") {
 			toast.error(
 				"No cuecards found. Please select a specific week to generate content."
 			);
@@ -151,7 +151,19 @@ export function CuecardSessionSetup({
 			practiceMode: practiceMode,
 			mode: selectedMode,
 		};
-		onStartSession(config);
+
+		if (!sessionData.cards.length) {
+			toast.error("No cuecards available. Please generate content first.");
+			return;
+		}
+
+		try {
+			await sessionData.startSessionInstantly(config);
+			toast.success("Cuecard session started!");
+		} catch (error) {
+			console.error("Failed to start session:", error);
+			toast.error("Failed to start session. Please try again.");
+		}
 	};
 
 	const buttonState = useMemo(() => {
@@ -168,14 +180,14 @@ export function CuecardSessionSetup({
 				icon: <Loader2 className="mr-2 h-4 w-4 animate-spin" />,
 			};
 		}
-		if (!cuecardsStatus.isAvailable && selectedWeek !== "all-weeks") {
+		if (!sessionData.isAvailable && selectedWeek !== "all-weeks") {
 			return {
 				disabled: false,
 				text: "Generate & Start Session",
 				icon: <Sparkles className="mr-2 h-4 w-4" />,
 			};
 		}
-		if (!cuecardsStatus.isAvailable && selectedWeek === "all-weeks") {
+		if (!sessionData.isAvailable && selectedWeek === "all-weeks") {
 			return {
 				disabled: true,
 				text: "No Content Available",
@@ -187,16 +199,11 @@ export function CuecardSessionSetup({
 			text: "Start Session",
 			icon: <PlayCircle className="mr-2 h-4 w-4" />,
 		};
-	}, [
-		selectedCourse,
-		loadingAvailability,
-		cuecardsStatus,
-		selectedWeek,
-	]);
+	}, [selectedCourse, loadingAvailability, sessionData, selectedWeek]);
 
 	const showGenerationSettings =
 		selectedWeek !== "all-weeks" &&
-		!cuecardsStatus.isAvailable &&
+		!sessionData.isAvailable &&
 		!loadingAvailability;
 
 	if (courses.length === 0) {
@@ -222,7 +229,7 @@ export function CuecardSessionSetup({
 				<Button
 					variant="ghost"
 					size="icon"
-					className="absolute top-4 right-4 z-10 bg-muted hover:bg-muted/80 rounded-full"
+					className="absolute top-4 right-4 bg-muted hover:bg-muted/80 rounded-full"
 					onClick={onClose}
 				>
 					<X className="h-6 w-6 text-muted-foreground" />
@@ -233,32 +240,6 @@ export function CuecardSessionSetup({
 				</CardHeader>
 
 				<CardContent className="px-8 space-y-6">
-					{showGenerationPrompt && (
-						<Alert className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
-							<InfoIcon className="h-4 w-4" />
-							<AlertDescription>
-								No cuecards found. Generate some from your materials?
-								{onTriggerGeneration && (
-									<Button
-										className="ml-2"
-										size="sm"
-										onClick={() =>
-											onTriggerGeneration(
-												selectedCourse,
-												selectedWeek !== "all-weeks"
-													? [selectedWeek]
-													: undefined,
-												generationConfig
-											)
-										}
-									>
-										Generate
-									</Button>
-								)}
-							</AlertDescription>
-						</Alert>
-					)}
-
 					{showWeekSelectionError && (
 						<Alert variant="destructive">
 							<AlertTriangle className="h-4 w-4" />
@@ -333,12 +314,12 @@ export function CuecardSessionSetup({
 									<Loader2 className="h-4 w-4 animate-spin" />
 									<span>Checking content...</span>
 								</div>
-							) : cuecardsStatus.isAvailable ? (
+							) : sessionData.isAvailable ? (
 								<div className="flex items-center gap-2 text-sm text-green-600">
 									<PlayCircle className="h-4 w-4" />
 									<span>
-										{cuecardsStatus.count} cuecard
-										{cuecardsStatus.count !== 1 ? "s" : ""} available
+										{sessionData.count} cuecard
+										{sessionData.count !== 1 ? "s" : ""} available
 									</span>
 									<Badge variant="secondary" className="text-xs">
 										Ready
@@ -358,21 +339,21 @@ export function CuecardSessionSetup({
 					</div>
 
 					{showGenerationSettings && (
-							<Accordion type="single" collapsible className="w-full">
-								<AccordionItem value="settings" className="border rounded-lg">
-									<AccordionTrigger className="px-4 py-3 hover:no-underline">
-										<span className="font-medium">Generation Settings</span>
-									</AccordionTrigger>
-									<AccordionContent className="px-4 pb-4">
-										<SelectiveGenerationSettings
-											config={generationConfig}
-											onConfigChange={setGenerationConfig}
-											featuresFilter={["cuecards"]}
-										/>
-									</AccordionContent>
-								</AccordionItem>
-							</Accordion>
-						)}
+						<Accordion type="single" collapsible className="w-full">
+							<AccordionItem value="settings" className="border rounded-lg">
+								<AccordionTrigger className="px-4 py-3 hover:no-underline">
+									<span className="font-medium">Generation Settings</span>
+								</AccordionTrigger>
+								<AccordionContent className="px-4 pb-4">
+									<SelectiveGenerationSettings
+										config={generationConfig}
+										onConfigChange={setGenerationConfig}
+										featuresFilter={["cuecards"]}
+									/>
+								</AccordionContent>
+							</AccordionItem>
+						</Accordion>
+					)}
 
 					<Accordion type="single" collapsible className="w-full">
 						<AccordionItem

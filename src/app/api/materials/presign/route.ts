@@ -16,7 +16,7 @@ import { z } from "zod";
 
 const BodySchema = z.object({
 	courseId: z.string().uuid("Invalid course ID"),
-	weekId: z.string().uuid("Invalid week ID").optional(),
+	weekId: z.string().uuid("Invalid week ID"),
 	fileName: z
 		.string()
 		.min(1, "File name is required")

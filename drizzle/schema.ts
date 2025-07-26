@@ -1,4 +1,7 @@
-import type { GenerationTemplate, SelectiveGenerationConfig } from "@/types/generation-types";
+import type {
+	GenerationTemplate,
+	SelectiveGenerationConfig,
+} from "@/types/generation-types";
 import {
 	boolean,
 	foreignKey,
@@ -110,6 +113,13 @@ export const courseWeeks = pgTable(
 	(table) => [
 		index("idx_course_weeks_course_id").using("btree", table.courseId),
 		index("idx_course_weeks_has_materials").using("btree", table.hasMaterials),
+		// Composite index for optimized hasMaterials filtering with course filtering
+		index("idx_course_weeks_course_materials_filter").using(
+			"btree",
+			table.courseId,
+			table.hasMaterials,
+			table.weekNumber
+		),
 		unique("course_weeks_course_id_week_number_unique").on(
 			table.courseId,
 			table.weekNumber
@@ -203,36 +213,36 @@ export const cuecards = pgTable(
 
 // Multiple choice questions table - AI generated MCQs
 export const multipleChoiceQuestions = pgTable(
-  "multiple_choice_questions",
-  {
-    id: uuid().defaultRandom().primaryKey().notNull(),
-    courseId: uuid("course_id").notNull(),
-    weekId: uuid("week_id").notNull(),
-    question: text().notNull(),
-    options: jsonb().$type<string[]>().notNull(), // Array of strings ['A', 'B', 'C', 'D']
-    correctAnswer: varchar("correct_answer", { length: 5 }).notNull(),
-    explanation: text(),
-    difficulty: varchar({ length: 20 }).default("intermediate"),
-    metadata: jsonb().default({}),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at").defaultNow().notNull(),
-  },
-  (table) => [
-    index("idx_mcq_course_id").using("btree", table.courseId),
-    index("idx_mcq_week_id").using("btree", table.weekId),
-    index("idx_mcq_difficulty").using("btree", table.difficulty),
-    index("idx_mcq_course_week").using("btree", table.courseId, table.weekId),
-    foreignKey({
-      columns: [table.courseId],
-      foreignColumns: [courses.id],
-      name: "multiple_choice_questions_course_id_fkey",
-    }).onDelete("cascade"),
-    foreignKey({
-      columns: [table.weekId],
-      foreignColumns: [courseWeeks.id],
-      name: "multiple_choice_questions_week_id_fkey",
-    }).onDelete("cascade"),
-  ]
+	"multiple_choice_questions",
+	{
+		id: uuid().defaultRandom().primaryKey().notNull(),
+		courseId: uuid("course_id").notNull(),
+		weekId: uuid("week_id").notNull(),
+		question: text().notNull(),
+		options: jsonb().$type<string[]>().notNull(), // Array of strings ['A', 'B', 'C', 'D']
+		correctAnswer: varchar("correct_answer", { length: 5 }).notNull(),
+		explanation: text(),
+		difficulty: varchar({ length: 20 }).default("intermediate"),
+		metadata: jsonb().default({}),
+		createdAt: timestamp("created_at").defaultNow().notNull(),
+		updatedAt: timestamp("updated_at").defaultNow().notNull(),
+	},
+	(table) => [
+		index("idx_mcq_course_id").using("btree", table.courseId),
+		index("idx_mcq_week_id").using("btree", table.weekId),
+		index("idx_mcq_difficulty").using("btree", table.difficulty),
+		index("idx_mcq_course_week").using("btree", table.courseId, table.weekId),
+		foreignKey({
+			columns: [table.courseId],
+			foreignColumns: [courses.id],
+			name: "multiple_choice_questions_course_id_fkey",
+		}).onDelete("cascade"),
+		foreignKey({
+			columns: [table.weekId],
+			foreignColumns: [courseWeeks.id],
+			name: "multiple_choice_questions_week_id_fkey",
+		}).onDelete("cascade"),
+	]
 );
 
 // Open questions table - AI generated essay/discussion questions
@@ -387,55 +397,55 @@ export const conceptMaps = pgTable(
 
 // Own notes table - User-created notes and annotations
 export const ownNotes = pgTable(
-  "own_notes",
-  {
-    id: uuid().defaultRandom().primaryKey().notNull(),
-    userId: uuid("user_id").notNull(),
-    weekId: uuid("week_id").notNull(),
-    courseId: uuid("course_id").notNull(),
-    title: varchar({ length: 255 }).notNull(),
-    content: text().notNull(),
-    noteType: varchar("note_type", { length: 50 }).default("general"),
-    tags: jsonb().$type<string[]>().default([]),
-    isPrivate: boolean("is_private").default(true),
-    color: varchar({ length: 20 }).default("#ffffff"),
-    metadata: jsonb().default({}),
-    version: integer().default(1).notNull(),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at").defaultNow().notNull(),
-  },
-  (table) => [
-    index("idx_own_notes_user_id").using("btree", table.userId),
-    index("idx_own_notes_week_id").using("btree", table.weekId),
-    index("idx_own_notes_course_id").using("btree", table.courseId),
-    index("idx_own_notes_note_type").using("btree", table.noteType),
-    index("idx_own_notes_created_at").using("btree", table.createdAt),
-    index("idx_own_notes_course_week").using(
-      "btree",
-      table.courseId,
-      table.weekId
-    ),
-    index("idx_own_notes_user_course").using(
-      "btree",
-      table.userId,
-      table.courseId
-    ),
-    foreignKey({
-      columns: [table.userId],
-      foreignColumns: [usersInAuth.id],
-      name: "own_notes_user_id_fkey",
-    }).onDelete("cascade"),
-    foreignKey({
-      columns: [table.weekId],
-      foreignColumns: [courseWeeks.id],
-      name: "own_notes_week_id_fkey",
-    }).onDelete("cascade"),
-    foreignKey({
-      columns: [table.courseId],
-      foreignColumns: [courses.id],
-      name: "own_notes_course_id_fkey",
-    }).onDelete("cascade"),
-  ]
+	"own_notes",
+	{
+		id: uuid().defaultRandom().primaryKey().notNull(),
+		userId: uuid("user_id").notNull(),
+		weekId: uuid("week_id").notNull(),
+		courseId: uuid("course_id").notNull(),
+		title: varchar({ length: 255 }).notNull(),
+		content: text().notNull(),
+		noteType: varchar("note_type", { length: 50 }).default("general"),
+		tags: jsonb().$type<string[]>().default([]),
+		isPrivate: boolean("is_private").default(true),
+		color: varchar({ length: 20 }).default("#ffffff"),
+		metadata: jsonb().default({}),
+		version: integer().default(1).notNull(),
+		createdAt: timestamp("created_at").defaultNow().notNull(),
+		updatedAt: timestamp("updated_at").defaultNow().notNull(),
+	},
+	(table) => [
+		index("idx_own_notes_user_id").using("btree", table.userId),
+		index("idx_own_notes_week_id").using("btree", table.weekId),
+		index("idx_own_notes_course_id").using("btree", table.courseId),
+		index("idx_own_notes_note_type").using("btree", table.noteType),
+		index("idx_own_notes_created_at").using("btree", table.createdAt),
+		index("idx_own_notes_course_week").using(
+			"btree",
+			table.courseId,
+			table.weekId
+		),
+		index("idx_own_notes_user_course").using(
+			"btree",
+			table.userId,
+			table.courseId
+		),
+		foreignKey({
+			columns: [table.userId],
+			foreignColumns: [usersInAuth.id],
+			name: "own_notes_user_id_fkey",
+		}).onDelete("cascade"),
+		foreignKey({
+			columns: [table.weekId],
+			foreignColumns: [courseWeeks.id],
+			name: "own_notes_week_id_fkey",
+		}).onDelete("cascade"),
+		foreignKey({
+			columns: [table.courseId],
+			foreignColumns: [courses.id],
+			name: "own_notes_course_id_fkey",
+		}).onDelete("cascade"),
+	]
 );
 
 // Generation configurations table
@@ -471,7 +481,9 @@ export const generationConfigs = pgTable(
 		updatedAt: timestamp("updated_at").defaultNow().notNull(),
 
 		// Generation status tracking (added in status tracking cleanup)
-		generationStatus: varchar("generation_status", { length: 20 }).default("pending"), // 'pending', 'processing', 'completed', 'failed'
+		generationStatus: varchar("generation_status", { length: 20 }).default(
+			"pending"
+		), // 'pending', 'processing', 'completed', 'failed'
 		generationStartedAt: timestamp("generation_started_at"),
 		generationCompletedAt: timestamp("generation_completed_at"),
 		failedFeatures: jsonb("failed_features").default("[]"),
@@ -503,7 +515,10 @@ export const generationConfigs = pgTable(
 			table.isActive
 		),
 		index("idx_generation_configs_applied_at").using("btree", table.appliedAt),
-		index("idx_generation_configs_status").using("btree", table.generationStatus),
+		index("idx_generation_configs_status").using(
+			"btree",
+			table.generationStatus
+		),
 
 		// Foreign key constraints with proper cascade behavior
 		foreignKey({
@@ -547,9 +562,7 @@ export const userPromptTemplates = pgTable(
 		userId: uuid("user_id").notNull(),
 		featureType: varchar("feature_type", { length: 50 }).notNull(), // 'cuecards', 'mcqs', 'openQuestions', etc.
 		name: varchar("name", { length: 255 }).notNull(),
-		config: jsonb("config")
-			.$type<GenerationTemplate["config"]>()
-			.notNull(), // Uses existing GenerationTemplate type
+		config: jsonb("config").$type<GenerationTemplate["config"]>().notNull(), // Uses existing GenerationTemplate type
 		isDefault: boolean("is_default").default(false),
 		createdAt: timestamp("created_at").defaultNow().notNull(),
 		updatedAt: timestamp("updated_at").defaultNow().notNull(),

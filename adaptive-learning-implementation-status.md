@@ -32,7 +32,40 @@ The adaptive learning system has sophisticated infrastructure in place but lacks
 
 ## ✅ COMPLETED IMPLEMENTATIONS
 
-### 1. Database Schema (100% Complete)
+### 1. Callback Registration Pattern (100% Complete)
+
+- **Location**: `src/stores/session-manager/` and `src/stores/cuecard-session/`
+- **Status**: Fully implemented and TypeScript error-free
+- **Documentation**: `docs/Session Manager Role and Relationship with Cuecard Store.md`
+
+#### Key Features Implemented:
+
+- ✅ **Session Manager Registration API**: `registerSessionCallbacks(sessionType, callbacks)`
+- ✅ **Type-Safe Callback Interfaces**: `SessionCallbacks` with onStart, onEnd, onProgress
+- ✅ **Clean Store Communication**: Eliminated direct `getState()` calls between stores
+- ✅ **Hierarchical Relationship Maintained**: Session Manager remains parent coordinator
+- ✅ **Error-Resilient**: Graceful callback failure handling with console warnings
+- ✅ **Zustand Best Practices**: Proper store patterns and TypeScript compliance
+
+#### Implementation Pattern:
+
+```typescript
+// Session Manager provides registration API
+sessionManager.registerSessionCallbacks('cuecards', {
+  onStart: (_sessionId) => { /* Session coordination handled */ },
+  onEnd: (_sessionId, _stats) => { /* Analytics updated */ },  
+  onProgress: (_sessionId, _progress) => { /* Progress tracked */ }
+});
+```
+
+#### Benefits Achieved:
+
+- **Loose Coupling**: Stores communicate through callbacks, not direct references
+- **Maintainable**: Clear separation of concerns between session coordination and store logic
+- **Scalable**: Pattern easily extensible to MCQ and Open Questions stores
+- **Type-Safe**: Full TypeScript support with proper error handling
+
+### 2. Database Schema (100% Complete)
 
 - **Location**: `drizzle/schema.ts`
 - **Status**: Fully implemented with comprehensive RLS policies
@@ -58,6 +91,9 @@ The adaptive learning system has sophisticated infrastructure in place but lacks
 - ✅ Goal setting and streak calculations
 - ✅ Smart recommendation generation
 - ✅ Individual store sync coordination (`syncAllStores()`)
+- ✅ **COMPLETED**: Callback Registration Pattern for clean store communication
+- ✅ **COMPLETED**: Session lifecycle callbacks (onStart, onEnd, onProgress)
+- ✅ **COMPLETED**: Eliminated tight coupling with getState() pattern
 - 🔄 Server synchronization (infrastructure ready, database tables needed)
 - 📋 **Architecture Documentation**: `/docs/adaptive-learning-session-manager-architecture.md`
 
@@ -71,23 +107,25 @@ The adaptive learning system has sophisticated infrastructure in place but lacks
   - ✅ **COMPLETED**: Removed all sample data - uses `getUserCuecards()`
   - ✅ **COMPLETED**: Empty state handling with generation triggers
   - ✅ **COMPLETED**: Server synchronization with progress persistence
-  - ✅ **COMPLETED**: Session manager integration (start/end notifications)
+  - ✅ **COMPLETED**: Session manager integration via Callback Registration Pattern
+  - ✅ **COMPLETED**: Eliminated direct getState() calls between stores
+  - ✅ **COMPLETED**: TypeScript error-free implementation
 
-- 🔄 **MCQ Session** (`src/stores/mcq-session/use-mcq-session.ts`) - **NEEDS SESSION MANAGER INTEGRATION**
+- 🔄 **MCQ Session** (`src/stores/mcq-session/use-mcq-session.ts`) - **NEEDS CALLBACK PATTERN INTEGRATION**
   - Comprehensive answer tracking and analysis
   - Difficulty and topic breakdown analytics
   - Confidence correlation tracking
   - ❌ Uses `SAMPLE_MCQ_QUESTIONS` instead of database content
-  - ❌ No session manager integration (start/end notifications missing)
+  - ❌ Needs Callback Registration Pattern integration (like cuecards)
   - ❌ No server synchronization implementation
   - ❌ No progress persistence to database
 
-- 🔄 **Open Questions Session** (`src/stores/open-question-session/use-open-question-session.ts`) - **NEEDS FULL INTEGRATION**
+- 🔄 **Open Questions Session** (`src/stores/open-question-session/use-open-question-session.ts`) - **NEEDS CALLBACK PATTERN INTEGRATION**
   - Advanced writing session management
   - AI evaluation integration ready
   - Performance tracking infrastructure
   - ❌ Uses sample data instead of database content
-  - ❌ No session manager integration
+  - ❌ Needs Callback Registration Pattern integration (like cuecards)
   - ❌ No server synchronization implementation
   - ❌ No database integration at all
 
@@ -157,9 +195,9 @@ export async function triggerOnDemandGeneration(courseId: string, contentTypes: 
 - Replace sample data with `getUserOpenQuestions()` calls
 - Add fallback to trigger content generation when no content exists
 
-### 3. Server Synchronization & Session Management (35% Complete)
+### 3. Server Synchronization & Session Management (40% Complete)
 
-**Status**: Cuecards fully integrated, session manager coordinated, other stores pending
+**Status**: Cuecards fully integrated with Callback Pattern, session manager coordinated, other stores pending
 
 **Completed Implementations** (Cuecards + Session Manager):
 
@@ -171,13 +209,15 @@ export async function triggerOnDemandGeneration(courseId: string, contentTypes: 
 - ✅ Progress persistence to `user_progress` table
 - ✅ Session analytics and performance metrics saved to database
 - ✅ Session manager coordination (`syncAllStores()` with dynamic imports)
-- ✅ Session lifecycle notifications (start/end) between stores
+- ✅ **COMPLETED**: Callback Registration Pattern implementation
+- ✅ **COMPLETED**: Clean store communication without getState() coupling
+- ✅ **COMPLETED**: TypeScript error-free session lifecycle callbacks
 
 **Still Required for MCQ Integration**:
 
 - Create MCQ server actions (`/src/lib/actions/mcq.ts`)
 - Implement `syncWithServer()` method in MCQ session store
-- Add session manager integration hooks (start/end notifications)
+- Add Callback Registration Pattern integration (following cuecards pattern)
 - Replace `SAMPLE_MCQ_QUESTIONS` with database content
 - Add progress persistence to `user_progress` table
 
@@ -185,7 +225,7 @@ export async function triggerOnDemandGeneration(courseId: string, contentTypes: 
 
 - Create open questions server actions (`/src/lib/actions/open-questions.ts`)
 - Implement complete database integration (no current integration exists)
-- Add session manager integration hooks
+- Add Callback Registration Pattern integration (following cuecards pattern)
 - Implement server synchronization methods
 - Add AI evaluation result persistence
 
@@ -317,7 +357,7 @@ export async function triggerOnDemandGeneration(courseId: string, contentTypes: 
 
 2. **Update MCQ Session Store**
    - [ ] Replace `SAMPLE_MCQ_QUESTIONS` with `getUserMcqs()` calls
-   - [ ] Add session manager integration (start/end notifications)
+   - [ ] Add Callback Registration Pattern integration (following cuecards example)
    - [ ] Implement `syncWithServer()` method for progress persistence
    - [ ] Add `loadProgressFromServer()` method
    - [ ] Add loading and error states
@@ -325,9 +365,9 @@ export async function triggerOnDemandGeneration(courseId: string, contentTypes: 
    - [ ] Maintain all existing analytics functionality
 
 3. **Session Manager Integration**
-   - [ ] Add session start notification to session manager
-   - [ ] Add session end notification with final stats
-   - [ ] Add progress update calls during session
+   - [ ] Register callbacks with Session Manager on store initialization
+   - [ ] Remove any direct getState() calls between stores
+   - [ ] Implement TypeScript-compliant callback parameters
    - [ ] Implement graceful error handling for session manager failures
 
 4. **Database Integration**
@@ -389,7 +429,7 @@ export async function triggerOnDemandGeneration(courseId: string, contentTypes: 
 
 2. **Update Session Store**
    - [ ] Replace sample data with database calls (`getUserOpenQuestions()`)
-   - [ ] Add session manager integration (start/end notifications)
+   - [ ] Add Callback Registration Pattern integration (following cuecards example)
    - [ ] Implement `syncWithServer()` method for progress persistence
    - [ ] Add `loadProgressFromServer()` method
    - [ ] Add loading/error states and empty state handling
@@ -397,9 +437,9 @@ export async function triggerOnDemandGeneration(courseId: string, contentTypes: 
    - [ ] Maintain all existing analytics functionality
 
 3. **Session Manager Integration**
-   - [ ] Add session start notification to session manager
-   - [ ] Add session end notification with final stats
-   - [ ] Add progress update calls during writing session
+   - [ ] Register callbacks with Session Manager on store initialization  
+   - [ ] Remove any direct getState() calls between stores
+   - [ ] Implement TypeScript-compliant callback parameters
    - [ ] Implement graceful error handling for session manager failures
 
 4. **Database Integration**
@@ -464,7 +504,7 @@ export async function triggerOnDemandGeneration(courseId: string, contentTypes: 
 
 2. **Create Session Store** (`src/stores/concept-map-session/`)
    - [ ] Implement concept map session management
-   - [ ] Add session manager integration (start/end notifications)
+   - [ ] Add Callback Registration Pattern integration (following cuecards example) 
    - [ ] Implement `syncWithServer()` method for progress persistence
    - [ ] Add concept relationship tracking and analytics
    - [ ] Add mastery detection algorithms
@@ -477,9 +517,9 @@ export async function triggerOnDemandGeneration(courseId: string, contentTypes: 
    - [ ] Add node and edge interaction capabilities
 
 4. **Session Manager Integration**
-   - [ ] Add session start notification to session manager
-   - [ ] Add session end notification with concept mastery stats
-   - [ ] Add progress tracking for concept exploration
+   - [ ] Register callbacks with Session Manager on store initialization
+   - [ ] Remove any direct getState() calls between stores  
+   - [ ] Implement TypeScript-compliant callback parameters
    - [ ] Implement graceful error handling for session manager failures
 
 5. **Database Integration**

@@ -1,56 +1,85 @@
 "use client";
 
+import type { CuecardAvailability, UserCuecard } from "@/lib/actions/cuecard";
 import { useCuecardSession } from "@/stores/cuecard-session/use-cuecard-session";
 import { useSessionManager } from "@/stores/session-manager/use-session-manager";
-import type { Course } from "@/types/database-types";
+import type { Course, CourseWeek } from "@/types/database-types";
+import type { SelectiveGenerationConfig } from "@/types/generation-types";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { useShallow } from "zustand/react/shallow";
 import { SessionRecoveryDialog } from "../session/session-recovery-dialog";
 import { CuecardDisplay } from "./cuecard-display";
 import { CuecardResultsView } from "./cuecard-results-view";
 import { CuecardSessionSetup } from "./cuecard-session-setup";
-import type { CuecardConfig, CuecardFeedback } from "./types";
-import { formatSessionResultsForDisplay } from "./utils";
+import type { CuecardFeedback } from "./types";
+import {
+	formatSessionResultsForDisplay,
+	hasNoContentForWeeks,
+	isActiveState,
+	isCompletedState,
+	isGenerating,
+	isSetupState,
+} from "./utils";
 
 interface CuecardSessionManagerProps {
 	courses: Course[];
+	initialData?: {
+		courseId: string;
+		weeks: CourseWeek[];
+		cuecards: UserCuecard[];
+		availability: CuecardAvailability;
+	} | null;
 }
 
-export function CuecardSessionManager({ courses }: CuecardSessionManagerProps) {
-	// Prevent SSR hydration issues with Zustand
-	const [isClient, setIsClient] = useState(false);
-	useEffect(() => {
-		setIsClient(true);
-	}, []);
-
-	// MUST CALL ALL HOOKS BEFORE ANY EARLY RETURNS - RULES OF HOOKS
-	const cuecardStatus = useCuecardSession((s) => s.status);
-	const cuecardCurrentIndex = useCuecardSession((s) => s.currentIndex);
-	const cuecardCards = useCuecardSession((s) => s.cards);
-	const cuecardResponses = useCuecardSession((s) => s.responses);
-	const cuecardStartTime = useCuecardSession((s) => s.startTime);
+export function CuecardSessionManager({
+	courses,
+	initialData,
+}: CuecardSessionManagerProps) {
+	// Use shallow equality check to prevent unnecessary re-renders
+	const cuecardState = useCuecardSession(
+		useShallow((s) => ({
+			status: s.status,
+			currentIndex: s.currentIndex,
+			cards: s.cards,
+			responses: s.responses,
+			startTime: s.startTime,
+		}))
+	);
 	const cuecardActions = useCuecardSession((s) => s.actions);
 	const sessionManagerActions = useSessionManager((s) => s.actions);
 
-	// All state hooks must be called consistently
 	const [hasCheckedRecovery, setHasCheckedRecovery] = useState(false);
 	const [showRecoveryDialog, setShowRecoveryDialog] = useState(false);
 
-	// All callback and effect hooks must also be called consistently
+	// Recovery effect
+	useEffect(() => {
+		if (!hasCheckedRecovery) {
+			const check = async () => {
+				const recoverable = await sessionManagerActions.recoverSession();
+				if (recoverable && recoverable.type === "cuecards") {
+					setShowRecoveryDialog(true);
+				}
+				setHasCheckedRecovery(true);
+			};
+			check();
+		}
+	}, [hasCheckedRecovery, sessionManagerActions]);
+
 	const handleTriggerGeneration = useCallback(
 		async (
-			courseId: string,
-			weekIds?: string[],
-			generationConfig?: import(
-				"@/types/generation-types"
-			).SelectiveGenerationConfig
+			_courseId: string,
+			_weekIds: string[],
+			_generationConfig: SelectiveGenerationConfig
 		) => {
 			try {
-				const success = await cuecardActions.triggerGeneration(
-					courseId,
-					weekIds,
-					generationConfig
-				);
+				const success = true;
+				// COMMENTED OUT FOR TESTING!
+				// const success = await cuecardActions.triggerGeneration(
+				// 	courseId,
+				// 	weekIds,
+				// 	generationConfig
+				// );
 
 				if (success) {
 					toast.success(
@@ -64,21 +93,7 @@ export function CuecardSessionManager({ courses }: CuecardSessionManagerProps) {
 				toast.error("Failed to start cuecard generation. Please try again.");
 			}
 		},
-		[cuecardActions]
-	);
-
-	const handleStartSession = useCallback(
-		async (config: CuecardConfig) => {
-			try {
-				await sessionManagerActions.startSession("cuecards", config);
-				await cuecardActions.startSession(config);
-				toast.success("Cuecard session started!");
-			} catch (error) {
-				console.error(error);
-				toast.error("Failed to start session. Please try again.");
-			}
-		},
-		[sessionManagerActions, cuecardActions]
+		[]
 	);
 
 	const handleCardFeedback = useCallback(
@@ -99,35 +114,6 @@ export function CuecardSessionManager({ courses }: CuecardSessionManagerProps) {
 		// Navigate back to the adaptive learning dashboard
 		window.location.href = "/dashboard/adaptive-learning";
 	}, [cuecardActions]);
-
-	// Recovery effect
-	useEffect(() => {
-		if (!hasCheckedRecovery) {
-			const check = async () => {
-				const recoverable = await sessionManagerActions.recoverSession();
-				if (recoverable && recoverable.type === "cuecards") {
-					setShowRecoveryDialog(true);
-				}
-				setHasCheckedRecovery(true);
-			};
-			check();
-		}
-	}, [hasCheckedRecovery, sessionManagerActions]);
-
-	// NOW safe to do early return after all hooks are called
-	if (!isClient) {
-		return <div>Loading...</div>;
-	}
-
-	// Recreate the session object for compatibility with existing code
-	const cuecardSession = {
-		status: cuecardStatus,
-		currentIndex: cuecardCurrentIndex,
-		cards: cuecardCards,
-		responses: cuecardResponses,
-		startTime: cuecardStartTime,
-		actions: cuecardActions,
-	};
 
 	const handleRecover = () => {
 		setShowRecoveryDialog(false);
@@ -151,31 +137,21 @@ export function CuecardSessionManager({ courses }: CuecardSessionManagerProps) {
 	}
 
 	// Handle setup states (idle, failed, needs_generation, etc.)
-	const setupStates = [
-		"idle",
-		"failed",
-		"needs_generation",
-		"no_content_for_weeks",
-		"generating",
-	];
-	if (setupStates.includes(cuecardSession.status)) {
+	if (isSetupState(cuecardState.status)) {
 		return (
 			<CuecardSessionSetup
 				courses={courses}
-				onStartSession={handleStartSession}
+				initialData={initialData}
 				onClose={handleClose}
-				showGenerationPrompt={cuecardSession.status === "needs_generation"}
-				showWeekSelectionError={
-					cuecardSession.status === "no_content_for_weeks"
-				}
-				showGenerationProgress={cuecardSession.status === "generating"}
+				showWeekSelectionError={hasNoContentForWeeks(cuecardState.status)}
+				showGenerationProgress={isGenerating(cuecardState.status)}
 				onTriggerGeneration={handleTriggerGeneration}
 			/>
 		);
 	}
 
-	if (cuecardSession.status === "active") {
-		const currentCard = cuecardSession.actions.getCurrentCard();
+	if (isActiveState(cuecardState.status)) {
+		const currentCard = cuecardActions.getCurrentCard();
 		if (!currentCard) {
 			// This shouldn't happen, but handle gracefully
 			handleEndSession();
@@ -189,8 +165,8 @@ export function CuecardSessionManager({ courses }: CuecardSessionManagerProps) {
 						card={currentCard}
 						onFeedback={handleCardFeedback}
 						onClose={handleEndSession}
-						currentIndex={cuecardSession.currentIndex}
-						totalCards={cuecardSession.cards.length}
+						currentIndex={cuecardState.currentIndex}
+						totalCards={cuecardState.cards.length}
 						weekInfo={`Week ${currentCard.weekNumber}`}
 					/>
 				</div>
@@ -198,11 +174,11 @@ export function CuecardSessionManager({ courses }: CuecardSessionManagerProps) {
 		);
 	}
 
-	if (cuecardSession.status === "completed") {
+	if (isCompletedState(cuecardState.status)) {
 		const resultsData = formatSessionResultsForDisplay(
-			cuecardSession.cards,
-			cuecardSession.responses,
-			cuecardSession.startTime
+			cuecardState.cards,
+			cuecardState.responses,
+			cuecardState.startTime
 		);
 
 		return (

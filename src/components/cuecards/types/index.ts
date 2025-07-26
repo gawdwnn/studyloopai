@@ -31,7 +31,6 @@ export interface CuecardSessionSetupProps {
 		config: import("@/stores/cuecard-session/types").CuecardConfig
 	) => void;
 	onClose: () => void;
-	showGenerationPrompt?: boolean;
 	showWeekSelectionError?: boolean;
 	showGenerationProgress?: boolean;
 	onTriggerGeneration?: (

@@ -23,6 +23,9 @@ export type SessionStatus =
 // Cuecard-specific configuration for an active session
 export interface CuecardConfig extends BaseSessionConfig {
 	mode: CuecardMode;
+	// Properties expected by session progress indicator
+	difficulty?: string;
+	focus?: string;
 }
 
 // Configuration used on the setup screen
@@ -54,12 +57,16 @@ export interface CuecardSessionState {
 	// progress tracking
 	currentIndex: number;
 	responses: CardResponse[];
-	startTime: Date; // Track when session started
+	startTime: Date | null; // Track when session started
 	cardStartTime: Date | null; // Track when current card was started
 
 	// UI state
 	error: string | null;
 	isLoading: boolean;
+
+	// Generation tracking
+	generationRunId?: string;
+	generationToken?: string;
 }
 
 // Session statistics for results display
@@ -76,7 +83,10 @@ export interface SessionStats {
 // Simplified store actions
 export interface CuecardSessionActions {
 	// Session lifecycle
-	startSession: (config: CuecardConfig) => Promise<void>;
+	startSessionWithData: (
+		config: CuecardConfig,
+		preLoadedCards: UserCuecard[]
+	) => Promise<void>;
 	endSession: () => Promise<void>;
 	resetSession: () => void;
 
@@ -94,17 +104,28 @@ export interface CuecardSessionActions {
 	// Content generation
 	triggerGeneration: (
 		courseId: string,
-		weekIds?: string[],
-		generationConfig?: SelectiveGenerationConfig
+		weekIds: string[],
+		generationConfig: SelectiveGenerationConfig
 	) => Promise<boolean>;
 
 	// Error handling
 	setError: (error: string | null) => void;
 }
 
+// Progress tracking for session progress indicator
+export interface CuecardProgress {
+	correctAnswers: number;
+	incorrectAnswers: number;
+	currentIndex: number;
+	totalCards: number;
+	startedAt: Date | null;
+}
+
 // Complete store interface
 export interface CuecardSessionStore extends CuecardSessionState {
 	actions: CuecardSessionActions;
+	// Computed property for session progress indicator
+	progress: CuecardProgress;
 }
 
 // Initial state
@@ -126,8 +147,10 @@ export const initialCuecardState: CuecardSessionState = {
 	cards: [],
 	currentIndex: 0,
 	responses: [],
-	startTime: new Date(),
+	startTime: null,
 	cardStartTime: null,
 	error: null,
 	isLoading: false,
+	generationRunId: undefined,
+	generationToken: undefined,
 };

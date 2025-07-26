@@ -1,13 +1,11 @@
 "use client";
 
-import {
-	checkCuecardsAvailability,
-	getUserCuecards,
-	triggerCuecardsGeneration,
-	updateCuecardProgress,
-} from "@/lib/actions/cuecard";
+import { type UserCuecard, updateCuecardProgress } from "@/lib/actions/cuecard";
+import { triggerOnDemandGeneration } from "@/lib/services/on-demand-generation-service";
+import type { SelectiveGenerationConfig } from "@/types/generation-types";
 import { create } from "zustand";
 import { persist, subscribeWithSelector } from "zustand/middleware";
+import { useSessionManager } from "../session-manager/use-session-manager";
 import type {
 	CardResponse,
 	CuecardConfig,
@@ -17,7 +15,6 @@ import type {
 	SessionStats,
 } from "./types";
 import { initialCuecardState } from "./types";
-import { useSessionManager } from "../session-manager/use-session-manager";
 
 // Helper function to calculate raw session metrics for internal use
 function calculateRawSessionMetrics(state: CuecardSessionStore): SessionStats {
@@ -30,7 +27,9 @@ function calculateRawSessionMetrics(state: CuecardSessionStore): SessionStats {
 	const incorrect = state.responses.filter(
 		(r) => r.feedback === "incorrect"
 	).length;
-	const totalTime = Date.now() - state.startTime.getTime();
+	const totalTime = state.startTime
+		? Date.now() - state.startTime.getTime()
+		: 0;
 
 	const totalResponses = state.responses.length;
 	const correctResponses = tooEasy;
@@ -51,272 +50,296 @@ function calculateRawSessionMetrics(state: CuecardSessionStore): SessionStats {
 const useCuecardSession = create<CuecardSessionStore>()(
 	subscribeWithSelector(
 		persist(
-			(set, get) => ({
-				...initialCuecardState,
+			(set, get) => {
+				// Initialize callback registration with Session Manager
+				try {
+					const sessionManager = useSessionManager.getState();
+					sessionManager.actions.registerSessionCallbacks("cuecards", {
+						onStart: (_sessionId) => {
+							// Session Manager handles coordination, no action needed here
+							// Callback confirms session started successfully
+						},
+						onEnd: (_sessionId, _stats) => {
+							// Session Manager handles analytics, no action needed here
+							// Callback confirms session ended and stats were recorded
+						},
+						onProgress: (_sessionId, _progress) => {
+							// Session Manager handles progress tracking, no action needed here
+							// Callback confirms progress was updated
+						},
+					});
+				} catch (error) {
+					console.warn(
+						"Failed to register callbacks with Session Manager:",
+						error
+					);
+				}
 
-				actions: {
-					// Start a new session
-					startSession: async (config: CuecardConfig) => {
-						try {
-							set({ isLoading: true, error: null, status: "loading" });
+				return {
+					...initialCuecardState,
 
-							const sessionId = `cuecard_${Date.now()}`;
+					// Computed progress property for session progress indicator
+					get progress() {
+						const state = get();
+						const correctAnswers = state.responses.filter(
+							(r) => r.feedback === "too_easy"
+						).length;
+						const incorrectAnswers = state.responses.filter(
+							(r) => r.feedback === "incorrect"
+						).length;
 
-							// Session manager integration (simplified)
+						return {
+							correctAnswers,
+							incorrectAnswers,
+							currentIndex: state.currentIndex,
+							totalCards: state.cards.length,
+							startedAt: state.startTime,
+						};
+					},
+
+					actions: {
+						// Start session with pre-loaded data (optimized component-driven approach)
+						startSessionWithData: async (
+							config: CuecardConfig,
+							preLoadedCards: UserCuecard[]
+						) => {
 							try {
-								const sessionManager = useSessionManager.getState();
-								await sessionManager.actions.startSession("cuecards", config);
-							} catch (e) {
-								console.warn(
-									"Session manager failed to start, continuing...",
-									e
-								);
-							}
+								set({ isLoading: true, error: null, status: "loading" });
 
-							// Get cuecards from database
-							const dbCuecards = await getUserCuecards(
-								config.courseId,
-								config.weeks
-							);
+								const sessionId = `cuecard_${Date.now()}`;
 
-							if (dbCuecards.length === 0) {
-								const availability = await checkCuecardsAvailability(
-									config.courseId
-								);
+								// Session manager integration
+								try {
+									const sessionManager = useSessionManager.getState();
+									await sessionManager.actions.startSession("cuecards", config);
+								} catch (e) {
+									console.warn(
+										"Session manager failed to start, continuing...",
+										e
+									);
+								}
 
-								if (availability.hasWeeksWithContent) {
+								// Use pre-loaded data - no database fetch needed
+								if (preLoadedCards.length === 0) {
 									set({
 										isLoading: false,
-										error:
-											"No cuecards found for the selected weeks. Please try other weeks or generate new content.",
-										status: "no_content_for_weeks",
+										error: "No cuecards available for session",
+										status: "needs_generation",
 									});
 									return;
 								}
 
+								// Start session immediately with pre-loaded cards
 								set({
+									id: sessionId,
+									status: "active",
+									config,
+									cards: preLoadedCards,
+									currentIndex: 0,
+									responses: [],
+									startTime: new Date(),
 									isLoading: false,
-									error:
-										"No cuecards found for this course. You can generate them from the setup screen.",
-									status: "needs_generation",
-								});
-								return;
-							}
-
-							// Start session with cards
-							set({
-								id: sessionId,
-								status: "active",
-								config,
-								cards: dbCuecards,
-								currentIndex: 0,
-								responses: [],
-								startTime: new Date(),
-								isLoading: false,
-								error: null,
-								cardStartTime: new Date(),
-							});
-						} catch (error) {
-							console.error("Failed to start cuecard session:", error);
-							const errorMessage =
-								error instanceof Error
-									? error.message
-									: "An unknown error occurred";
-							set({
-								error: `Failed to start session: ${errorMessage}`,
-								isLoading: false,
-								status: "failed",
-							});
-						}
-					},
-
-					// End current session
-					endSession: async () => {
-						const state = get();
-						if (state.status !== "active") return;
-
-						try {
-							const stats = calculateRawSessionMetrics(state);
-
-							// Batch update progress
-							const progressUpdates = state.responses.map((response) => ({
-								cardId: response.cardId,
-								status: "completed",
-								score:
-									response.feedback === "too_easy"
-										? 100
-										: response.feedback === "knew_some"
-											? 70
-											: 30,
-								lastAttemptAt: response.attemptedAt,
-							}));
-
-							// We can batch these updates in a single server action if the API supports it
-							await Promise.all(
-								progressUpdates.map((update) =>
-									updateCuecardProgress(update.cardId, {
-										status: update.status as
-											| "not_started"
-											| "in_progress"
-											| "completed",
-										score: update.score,
-										lastAttemptAt: update.lastAttemptAt,
-									})
-								)
-							);
-
-							// Session manager integration (simplified)
-							try {
-								const sessionManager = useSessionManager.getState();
-								if (state.id) {
-									await sessionManager.actions.endSession(state.id, {
-										totalTime: Date.now() - state.startTime.getTime(),
-										itemsCompleted: state.responses.length,
-										accuracy: stats.accuracy,
-									});
-								}
-							} catch (e) {
-								console.warn("Session manager failed to end, continuing...", e);
-							}
-
-							set({ status: "completed", cardStartTime: null });
-						} catch (error) {
-							console.error("Failed to end cuecard session:", error);
-							const errorMessage =
-								error instanceof Error
-									? error.message
-									: "An unknown error occurred";
-							set({
-								error: `Failed to save session progress: ${errorMessage}`,
-								status: "failed", // Or some other error state
-							});
-						}
-					},
-
-					// Reset session to initial state
-					resetSession: () => {
-						set(initialCuecardState);
-					},
-
-					// Setup configuration
-					setSetupConfig: (config: Partial<CuecardSetupConfig>) => {
-						set((state) => ({
-							setupConfig: { ...state.setupConfig, ...config },
-						}));
-					},
-
-					initSetupConfig: (
-						courses: { id: string }[],
-						initialParams: Partial<CuecardSetupConfig>
-					) => {
-						const currentConfig = get().setupConfig;
-						const newConfig = { ...currentConfig, ...initialParams };
-
-						if (!newConfig.courseId && courses.length > 0) {
-							newConfig.courseId = courses[0].id;
-						}
-						set({ setupConfig: newConfig });
-					},
-
-					// Get current card
-					getCurrentCard: () => {
-						const state = get();
-						if (
-							state.status !== "active" ||
-							state.currentIndex >= state.cards.length
-						) {
-							return null;
-						}
-						return state.cards[state.currentIndex];
-					},
-
-					// Submit feedback for current card
-					submitFeedback: async (feedback: CuecardFeedback) => {
-						const state = get();
-						const currentCard = get().actions.getCurrentCard();
-
-						if (!currentCard || !state.cardStartTime) return;
-
-						// Record response with accurate time spent on the card
-						const response: CardResponse = {
-							cardId: currentCard.id,
-							feedback,
-							timeSpent: Date.now() - state.cardStartTime.getTime(),
-							attemptedAt: new Date(),
-						};
-
-						const newResponses = [...state.responses, response];
-						const nextIndex = state.currentIndex + 1;
-
-						// Check if session is complete
-						if (nextIndex >= state.cards.length) {
-							set({ responses: newResponses });
-							await get().actions.endSession();
-						} else {
-							// Move to next card and reset card start time
-							set({
-								responses: newResponses,
-								currentIndex: nextIndex,
-								cardStartTime: new Date(),
-							});
-						}
-					},
-
-					// Trigger content generation
-					triggerGeneration: async (
-						courseId: string,
-						weekIds?: string[],
-						generationConfig?: import(
-							"@/types/generation-types"
-						).SelectiveGenerationConfig
-					) => {
-						try {
-							set({ isLoading: true, error: null, status: "generating" });
-
-							const result = await triggerCuecardsGeneration(
-								courseId,
-								weekIds,
-								generationConfig
-							);
-
-							if (result.success) {
-								set({
-									isLoading: false,
-									status: "generating", // Keep this status until generation is confirmed complete
 									error: null,
+									cardStartTime: new Date(),
+								});
+							} catch (error) {
+								console.error(
+									"Failed to start cuecard session with data:",
+									error
+								);
+								const errorMessage =
+									error instanceof Error
+										? error.message
+										: "An unknown error occurred";
+								set({
+									error: `Failed to start session: ${errorMessage}`,
+									isLoading: false,
+									status: "failed",
+								});
+							}
+						},
+
+						// TODO: fix this code!
+						endSession: async () => {
+							const state = get();
+							if (state.status !== "active") return;
+
+							try {
+								const stats = calculateRawSessionMetrics(state);
+
+								// Batch update progress
+								const progressUpdates = state.responses.map((response) => ({
+									cardId: response.cardId,
+									status: "completed",
+									score:
+										response.feedback === "too_easy"
+											? 100
+											: response.feedback === "knew_some"
+												? 70
+												: 30,
+									lastAttemptAt: response.attemptedAt,
+								}));
+
+								// TODO: fix this code!
+								// We can batch these updates in a single server action if the API supports it
+								await Promise.all(
+									progressUpdates.map((update) =>
+										updateCuecardProgress(update.cardId, {
+											status: update.status as
+												| "not_started"
+												| "in_progress"
+												| "completed",
+											score: update.score,
+											lastAttemptAt: update.lastAttemptAt,
+										})
+									)
+								);
+
+								// Session manager integration - now uses callback pattern
+								try {
+									const sessionManager = useSessionManager.getState();
+									if (state.id) {
+										await sessionManager.actions.endSession(state.id, {
+											totalTime: state.startTime
+												? Date.now() - state.startTime.getTime()
+												: 0,
+											itemsCompleted: state.responses.length,
+											accuracy: stats.accuracy,
+										});
+									}
+								} catch (e) {
+									console.warn(
+										"Session manager failed to end, continuing...",
+										e
+									);
+								}
+
+								set({ status: "completed", cardStartTime: null });
+							} catch (error) {
+								console.error("Failed to end cuecard session:", error);
+								const errorMessage =
+									error instanceof Error
+										? error.message
+										: "An unknown error occurred";
+								set({
+									error: `Failed to save session progress: ${errorMessage}`,
+									status: "failed", // Or some other error state
+								});
+							}
+						},
+
+						// Reset session to initial state
+						resetSession: () => {
+							set(initialCuecardState);
+						},
+
+						// Setup configuration
+						setSetupConfig: (config: Partial<CuecardSetupConfig>) => {
+							set((state) => ({
+								setupConfig: { ...state.setupConfig, ...config },
+							}));
+						},
+
+						initSetupConfig: (
+							courses: { id: string }[],
+							initialParams: Partial<CuecardSetupConfig>
+						) => {
+							const currentConfig = get().setupConfig;
+							const newConfig = { ...currentConfig, ...initialParams };
+
+							if (!newConfig.courseId && courses.length > 0) {
+								newConfig.courseId = courses[0].id;
+							}
+							set({ setupConfig: newConfig });
+						},
+
+						// Get current card
+						getCurrentCard: () => {
+							const state = get();
+							if (
+								state.status !== "active" ||
+								state.currentIndex >= state.cards.length
+							) {
+								return null;
+							}
+							return state.cards[state.currentIndex];
+						},
+
+						// Submit feedback for current card
+						submitFeedback: async (feedback: CuecardFeedback) => {
+							const state = get();
+							const currentCard = get().actions.getCurrentCard();
+
+							if (!currentCard || !state.cardStartTime) return;
+
+							// Record response with accurate time spent on the card
+							const response: CardResponse = {
+								cardId: currentCard.id,
+								feedback,
+								timeSpent: Date.now() - state.cardStartTime.getTime(),
+								attemptedAt: new Date(),
+							};
+
+							const newResponses = [...state.responses, response];
+							const nextIndex = state.currentIndex + 1;
+
+							// Check if session is complete
+							if (nextIndex >= state.cards.length) {
+								set({ responses: newResponses });
+								await get().actions.endSession();
+							} else {
+								// Move to next card and reset card start time
+								set({
+									responses: newResponses,
+									currentIndex: nextIndex,
+									cardStartTime: new Date(),
+								});
+							}
+						},
+
+						triggerGeneration: async (
+							courseId: string,
+							weekIds: string[],
+							generationConfig: SelectiveGenerationConfig
+						) => {
+							try {
+								set({ isLoading: true, error: null, status: "generating" });
+
+								const result = await triggerOnDemandGeneration({
+									courseId,
+									weekId: weekIds[0],
+									featureTypes: ["cuecards"],
+									config: generationConfig,
+									configSource: "course_week_override",
+								});
+
+								set({
+									isLoading: false,
+									status: "generating",
+									error: null,
+									generationRunId: result.runId,
+									generationToken: result.publicAccessToken,
 								});
 								return true;
+							} catch (error) {
+								console.error("Failed to trigger cuecard generation:", error);
+
+								set({
+									isLoading: false,
+									error: "Failed to trigger generation",
+									status: "failed",
+								});
+								return false;
 							}
+						},
 
-							set({
-								isLoading: false,
-								error:
-									result.message ||
-									"An unknown error occurred during generation.",
-								status: "failed",
-							});
-							return false;
-						} catch (error) {
-							console.error("Failed to trigger cuecard generation:", error);
-							const errorMessage =
-								error instanceof Error
-									? error.message
-									: "An unknown error occurred";
-							set({
-								isLoading: false,
-								error: `Failed to trigger generation: ${errorMessage}`,
-								status: "failed",
-							});
-							return false;
-						}
+						// Error handling
+						setError: (error: string | null) => {
+							set({ error });
+						},
 					},
-
-					// Error handling
-					setError: (error: string | null) => {
-						set({ error });
-					},
-				},
-			}),
+				};
+			},
 			{
 				name: "cuecard-session",
 				partialize: (state) => ({
