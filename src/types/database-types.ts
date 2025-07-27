@@ -6,6 +6,7 @@
 import type {
 	conceptMaps,
 	courseMaterials,
+	courseWeekFeatures,
 	courseWeeks,
 	courses,
 	cuecards,
@@ -35,6 +36,10 @@ export type NewCourse = InferInsertModel<typeof courses>;
 // Course week types
 export type CourseWeek = InferSelectModel<typeof courseWeeks>;
 export type NewCourseWeek = InferInsertModel<typeof courseWeeks>;
+
+// Course week features types
+export type CourseWeekFeatures = InferSelectModel<typeof courseWeekFeatures>;
+export type NewCourseWeekFeatures = InferInsertModel<typeof courseWeekFeatures>;
 
 // Course material types
 export type CourseMaterial = InferSelectModel<typeof courseMaterials>;

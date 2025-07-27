@@ -65,7 +65,7 @@ export function McqSessionSetup({
 		(searchParams.get("practiceMode") as PracticeMode) || "practice";
 
 	const { data: weeks = [], isLoading: loadingWeeks } =
-		useCourseWeeks(selectedCourse, { onlyWithMaterials: true });
+		useCourseWeeks(selectedCourse);
 
 	// When selectedCourse changes, if the selectedWeek is not in the new list of weeks, reset it.
 	useEffect(() => {

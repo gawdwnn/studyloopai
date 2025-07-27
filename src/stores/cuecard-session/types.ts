@@ -106,10 +106,18 @@ export interface CuecardSessionActions {
 		courseId: string,
 		weekIds: string[],
 		generationConfig: SelectiveGenerationConfig
-	) => Promise<boolean>;
+	) => Promise<{
+		success: boolean;
+		runId?: string;
+		publicAccessToken?: string;
+		error?: string;
+	}>;
 
 	// Error handling
 	setError: (error: string | null) => void;
+
+	// Generation state management
+	resetGenerationState: () => void;
 }
 
 // Progress tracking for session progress indicator

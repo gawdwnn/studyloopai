@@ -721,3 +721,71 @@ export const users = pgTable(
 		}).onDelete("set null"),
 	]
 );
+
+// Course week features table - Tracks generation status per feature per week
+export const courseWeekFeatures = pgTable(
+	"course_week_features",
+	{
+		id: uuid().defaultRandom().primaryKey().notNull(),
+		courseId: uuid("course_id").notNull(),
+		weekId: uuid("week_id").notNull(),
+
+		// Feature generation flags and counts
+		cuecardsGenerated: boolean("cuecards_generated").default(false),
+		cuecardsCount: integer("cuecards_count").default(0),
+		cuecardsGeneratedAt: timestamp("cuecards_generated_at"),
+
+		mcqsGenerated: boolean("mcqs_generated").default(false),
+		mcqsCount: integer("mcqs_count").default(0),
+		mcqsGeneratedAt: timestamp("mcqs_generated_at"),
+
+		openQuestionsGenerated: boolean("open_questions_generated").default(false),
+		openQuestionsCount: integer("open_questions_count").default(0),
+		openQuestionsGeneratedAt: timestamp("open_questions_generated_at"),
+
+		summariesGenerated: boolean("summaries_generated").default(false),
+		summariesCount: integer("summaries_count").default(0),
+		summariesGeneratedAt: timestamp("summaries_generated_at"),
+
+		goldenNotesGenerated: boolean("golden_notes_generated").default(false),
+		goldenNotesCount: integer("golden_notes_count").default(0),
+		goldenNotesGeneratedAt: timestamp("golden_notes_generated_at"),
+
+		conceptMapsGenerated: boolean("concept_maps_generated").default(false),
+		conceptMapsCount: integer("concept_maps_count").default(0),
+		conceptMapsGeneratedAt: timestamp("concept_maps_generated_at"),
+
+		// Last generation config used (for tracking)
+		lastGenerationConfigId: uuid("last_generation_config_id"),
+
+		// Metadata
+		createdAt: timestamp("created_at").defaultNow().notNull(),
+		updatedAt: timestamp("updated_at").defaultNow().notNull(),
+	},
+	(table) => [
+		// Unique constraint - one record per course week
+		unique("unique_course_week").on(table.courseId, table.weekId),
+
+		// Performance indexes
+		index("idx_course_week_features_course_id").using("btree", table.courseId),
+		index("idx_course_week_features_week_id").using("btree", table.weekId),
+		index("idx_course_week_features_updated").using("btree", table.updatedAt),
+
+		// Foreign key constraints
+		foreignKey({
+			columns: [table.courseId],
+			foreignColumns: [courses.id],
+			name: "course_week_features_course_id_fkey",
+		}).onDelete("cascade"),
+		foreignKey({
+			columns: [table.weekId],
+			foreignColumns: [courseWeeks.id],
+			name: "course_week_features_week_id_fkey",
+		}).onDelete("cascade"),
+		foreignKey({
+			columns: [table.lastGenerationConfigId],
+			foreignColumns: [generationConfigs.id],
+			name: "course_week_features_config_id_fkey",
+		}).onDelete("set null"),
+	]
+);

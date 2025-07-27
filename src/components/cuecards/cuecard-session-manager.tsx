@@ -1,10 +1,12 @@
 "use client";
 
+import { env } from "@/env";
 import type { CuecardAvailability, UserCuecard } from "@/lib/actions/cuecard";
 import { useCuecardSession } from "@/stores/cuecard-session/use-cuecard-session";
 import { useSessionManager } from "@/stores/session-manager/use-session-manager";
 import type { Course, CourseWeek } from "@/types/database-types";
 import type { SelectiveGenerationConfig } from "@/types/generation-types";
+import { useRealtimeRun } from "@trigger.dev/react-hooks";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useShallow } from "zustand/react/shallow";
@@ -44,6 +46,8 @@ export function CuecardSessionManager({
 			cards: s.cards,
 			responses: s.responses,
 			startTime: s.startTime,
+			generationRunId: s.generationRunId,
+			generationToken: s.generationToken,
 		}))
 	);
 	const cuecardActions = useCuecardSession((s) => s.actions);
@@ -51,6 +55,18 @@ export function CuecardSessionManager({
 
 	const [hasCheckedRecovery, setHasCheckedRecovery] = useState(false);
 	const [showRecoveryDialog, setShowRecoveryDialog] = useState(false);
+
+	// Realtime tracking for cuecard generation
+	const { run: runData, error: runError } = useRealtimeRun(
+		cuecardState.generationRunId || undefined,
+		{
+			accessToken: cuecardState.generationToken || "",
+			baseURL: env.NEXT_PUBLIC_TRIGGER_API_URL,
+			enabled: Boolean(
+				cuecardState.generationRunId && cuecardState.generationToken
+			),
+		}
+	);
 
 	// Recovery effect
 	useEffect(() => {
@@ -66,6 +82,50 @@ export function CuecardSessionManager({
 		}
 	}, [hasCheckedRecovery, sessionManagerActions]);
 
+	// Handle generation completion and progress updates
+	useEffect(() => {
+		if (!runData || !cuecardState.generationRunId) return;
+
+		const { status, output } = runData;
+
+		if (status === "COMPLETED" || String(status).includes("COMPLETED")) {
+			// Generation completed successfully
+			toast.success("Cuecards generated successfully! Loading content...");
+
+			// Reset generation state - this will cause the session setup to refresh
+			// and detect the newly generated cuecards
+			setTimeout(() => {
+				cuecardActions.resetGenerationState();
+			}, 2000); // Give a brief moment to show the completion message
+		} else if (
+			status === "CRASHED" ||
+			status === "CANCELED" ||
+			status === "SYSTEM_FAILURE" ||
+			status === "INTERRUPTED" ||
+			status === "TIMED_OUT"
+		) {
+			// Generation failed
+			const errorMessage = output?.error || "Generation failed unexpectedly";
+			toast.error(`Generation failed: ${errorMessage}`);
+			cuecardActions.setError(errorMessage);
+		} else if (
+			status === "EXECUTING" ||
+			status === "QUEUED" ||
+			status === "WAITING_FOR_DEPLOY"
+		) {
+			// Still generating - status should remain "generating"
+			// This keeps the UI in the correct state showing generation progress
+		}
+	}, [runData, cuecardState.generationRunId, cuecardActions]);
+
+	// Handle generation errors
+	useEffect(() => {
+		if (runError) {
+			console.error("Realtime tracking error:", runError);
+			toast.error("Lost connection to generation tracking");
+		}
+	}, [runError]);
+
 	const handleTriggerGeneration = useCallback(
 		async (
 			courseId: string,
@@ -73,16 +133,18 @@ export function CuecardSessionManager({
 			generationConfig: SelectiveGenerationConfig
 		) => {
 			try {
-				const success = await cuecardActions.triggerGeneration(
+				const result = await cuecardActions.triggerGeneration(
 					courseId,
 					weekIds,
 					generationConfig
 				);
 
-				if (success) {
+				if (result.success) {
 					toast.success(
 						"Cuecard generation started! This may take a few minutes."
 					);
+					// Realtime tracking will automatically start via useRealtimeRun hook
+					// when generationRunId and generationToken are set in the store
 				} else {
 					toast.error("Failed to start cuecard generation. Please try again.");
 				}
@@ -143,6 +205,7 @@ export function CuecardSessionManager({
 				onClose={handleClose}
 				showWeekSelectionError={hasNoContentForWeeks(cuecardState.status)}
 				showGenerationProgress={isGenerating(cuecardState.status)}
+				generationProgress={runData}
 				onTriggerGeneration={handleTriggerGeneration}
 			/>
 		);

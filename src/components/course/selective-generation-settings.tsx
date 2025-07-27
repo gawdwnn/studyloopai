@@ -1,6 +1,6 @@
 "use client";
 
-import { Info, Minus, Plus } from "lucide-react";
+import { CheckCircle2, Info, Minus, Plus, Zap } from "lucide-react";
 import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +29,7 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
+import type { WeekFeatureAvailability } from "@/lib/actions/course-week-features";
 import { VALIDATION_RULES } from "@/lib/validation/generation-config";
 import type { SelectiveGenerationConfig } from "@/types/generation-types";
 import {
@@ -44,6 +45,8 @@ interface SelectiveGenerationSettingsProps {
 	config: SelectiveGenerationConfig;
 	onConfigChange: (config: SelectiveGenerationConfig) => void;
 	featuresFilter?: (keyof SelectiveGenerationConfig["selectedFeatures"])[];
+	featureAvailability?: WeekFeatureAvailability | null;
+	showAvailabilityStatus?: boolean;
 }
 
 const DIFFICULTY_OPTIONS = [
@@ -123,8 +126,50 @@ export function SelectiveGenerationSettings({
 	config,
 	onConfigChange,
 	featuresFilter,
+	featureAvailability,
+	showAvailabilityStatus = false,
 }: SelectiveGenerationSettingsProps) {
 	const [activeTab, setActiveTab] = useState("features");
+
+	// Helper to check if a feature is already generated
+	const isFeatureGenerated = (
+		feature: keyof SelectiveGenerationConfig["selectedFeatures"]
+	): boolean => {
+		if (!featureAvailability || !showAvailabilityStatus) return false;
+		return featureAvailability[feature]?.generated ?? false;
+	};
+
+	// Helper to get feature status badge
+	const getFeatureBadge = (
+		feature: keyof SelectiveGenerationConfig["selectedFeatures"]
+	) => {
+		if (!showAvailabilityStatus || !featureAvailability) return null;
+
+		const status = featureAvailability[feature];
+		if (!status) return null;
+
+		if (status.generated) {
+			return (
+				<Badge
+					variant="outline"
+					className="text-green-600 border-green-200 bg-green-50"
+				>
+					<CheckCircle2 className="h-3 w-3 mr-1" />
+					{status.count} available
+				</Badge>
+			);
+		}
+
+		return (
+			<Badge
+				variant="outline"
+				className="text-orange-600 border-orange-200 bg-orange-50"
+			>
+				<Zap className="h-3 w-3 mr-1" />
+				Can generate
+			</Badge>
+		);
+	};
 
 	const updateConfig = (updates: Partial<SelectiveGenerationConfig>) => {
 		const mergedConfig = { ...config, ...updates };
@@ -298,14 +343,16 @@ export function SelectiveGenerationSettings({
 	return (
 		<TooltipProvider>
 			<div className="space-y-6">
-				{/* #TODO: when featuresFilter is provided, show a different message */}
 				<div>
 					<h3 className="text-lg font-semibold mb-2">
 						Selective Content Generation
 					</h3>
 					<p className="text-sm text-muted-foreground">
-						Choose which content types to generate immediately. You can generate
-						others later on-demand.
+						{showAvailabilityStatus
+							? "Features with green badges are already available. Features with orange badges can be generated now."
+							: featuresFilter && featuresFilter.length > 0
+								? `Configure settings for ${featuresFilter.join(", ")} generation.`
+								: "Choose which content types to generate immediately. You can generate others later on-demand."}
 					</p>
 				</div>
 
@@ -334,16 +381,32 @@ export function SelectiveGenerationSettings({
 											featuresFilter.includes(
 												feature as keyof SelectiveGenerationConfig["selectedFeatures"]
 											);
+
+										if (!selected || !isAvailable) return null;
+
+										const featureKey =
+											feature as keyof SelectiveGenerationConfig["selectedFeatures"];
+										const isGenerated = isFeatureGenerated(featureKey);
+										const featureName =
+											FEATURE_INFO[feature as keyof typeof FEATURE_INFO].label;
+
 										return (
-											selected &&
-											isAvailable && (
-												<Badge key={feature} variant="outline">
-													{
-														FEATURE_INFO[feature as keyof typeof FEATURE_INFO]
-															.label
-													}
-												</Badge>
-											)
+											<div key={feature} className="flex items-center gap-1">
+												<Badge variant="outline">{featureName}</Badge>
+												{showAvailabilityStatus &&
+													featureAvailability?.[featureKey] && (
+														<Badge
+															variant="secondary"
+															className={
+																isGenerated
+																	? "text-green-600 bg-green-50 border-green-200"
+																	: "text-orange-600 bg-orange-50 border-orange-200"
+															}
+														>
+															{isGenerated ? "Available" : "Will generate"}
+														</Badge>
+													)}
+											</div>
 										);
 									}
 								)}
@@ -383,7 +446,7 @@ export function SelectiveGenerationSettings({
 										<CardHeader className="pb-3">
 											<div className="flex items-start justify-between">
 												<div className="flex-1">
-													<div className="flex items-center gap-2">
+													<div className="flex items-center gap-2 flex-wrap">
 														<CardTitle className="text-base">
 															{info.label}
 														</CardTitle>
@@ -395,6 +458,9 @@ export function SelectiveGenerationSettings({
 																<p>{info.tooltip}</p>
 															</TooltipContent>
 														</Tooltip>
+														{getFeatureBadge(
+															feature as keyof typeof config.selectedFeatures
+														)}
 													</div>
 													<CardDescription className="mt-1">
 														{info.description}

@@ -53,12 +53,12 @@ export type ConceptMapsConfig = {
 // Selective generation configuration
 export interface SelectiveGenerationConfig {
 	selectedFeatures: {
-		cuecards: boolean;
-		mcqs: boolean;
-		openQuestions: boolean;
-		summaries: boolean;
-		goldenNotes: boolean;
-		conceptMaps: boolean;
+		cuecards?: boolean;
+		mcqs?: boolean;
+		openQuestions?: boolean;
+		summaries?: boolean;
+		goldenNotes?: boolean;
+		conceptMaps?: boolean;
 	};
 	featureConfigs: {
 		cuecards?: CuecardsConfig;
@@ -108,28 +108,6 @@ export interface ContentAvailabilityStatus {
 		goldenNotes: boolean;
 		conceptMaps: boolean;
 	};
-}
-
-// Generation metadata for tracking
-export interface GenerationFeatureMetadata {
-	status: GenerationStatus;
-	jobId?: string;
-	lastGenerated?: string;
-	lastAttempt?: string;
-	configVersion?: number;
-	error?: {
-		code: string;
-		message: string;
-	};
-}
-
-export interface GenerationMetadata {
-	cuecards?: GenerationFeatureMetadata;
-	mcqs?: GenerationFeatureMetadata;
-	openQuestions?: GenerationFeatureMetadata;
-	summaries?: GenerationFeatureMetadata;
-	goldenNotes?: GenerationFeatureMetadata;
-	conceptMaps?: GenerationFeatureMetadata;
 }
 
 // Default config generators - type-safe

@@ -24,7 +24,7 @@ export default async function CuecardsPage({
 		// Use Promise.all for parallel execution
 		const [initialWeeks, initialCuecards, initialAvailability] =
 			await Promise.all([
-				getCourseWeeks(initialCourseId, { onlyWithMaterials: true }),
+				getCourseWeeks(initialCourseId),
 				getUserCuecards(initialCourseId, initialWeekIds),
 				checkCuecardsAvailabilityOptimized(initialCourseId, initialWeekIds),
 			]);

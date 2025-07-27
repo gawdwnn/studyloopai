@@ -13,6 +13,66 @@ import type { z } from "zod";
  * Content insertion functions using Supabase admin client for background jobs
  */
 
+/**
+ * Update feature counts for background jobs using admin access
+ */
+async function updateFeatureCountsAdmin(
+	courseId: string,
+	weekId: string,
+	featureType: string,
+	count: number
+): Promise<void> {
+	const admin = getAdminDatabaseAccess();
+	const now = new Date();
+	const updateData: Record<string, unknown> = { updated_at: now };
+
+	// Set feature-specific fields
+	switch (featureType) {
+		case "cuecards":
+			updateData.cuecards_generated = true;
+			updateData.cuecards_count = count;
+			updateData.cuecards_generated_at = now;
+			break;
+		case "mcqs":
+			updateData.mcqs_generated = true;
+			updateData.mcqs_count = count;
+			updateData.mcqs_generated_at = now;
+			break;
+		case "openQuestions":
+			updateData.open_questions_generated = true;
+			updateData.open_questions_count = count;
+			updateData.open_questions_generated_at = now;
+			break;
+		case "goldenNotes":
+			updateData.golden_notes_generated = true;
+			updateData.golden_notes_count = count;
+			updateData.golden_notes_generated_at = now;
+			break;
+		case "summaries":
+			updateData.summaries_generated = true;
+			updateData.summaries_count = count;
+			updateData.summaries_generated_at = now;
+			break;
+		case "conceptMaps":
+			updateData.concept_maps_generated = true;
+			updateData.concept_maps_count = count;
+			updateData.concept_maps_generated_at = now;
+			break;
+		default:
+			throw new Error(`Unknown feature type: ${featureType}`);
+	}
+
+	const { error } = await admin
+		.from("course_week_features")
+		.update(updateData)
+		.eq("course_id", courseId)
+		.eq("week_id", weekId);
+
+	if (error) {
+		throw new Error(`Failed to update feature counts: ${error.message}`);
+	}
+}
+
 export async function insertGoldenNotes(
 	data: z.infer<typeof GoldenNotesArraySchema>,
 	courseId: string,
@@ -36,6 +96,14 @@ export async function insertGoldenNotes(
 		if (error) {
 			throw new Error(`Failed to insert golden notes: ${error.message}`);
 		}
+
+		// Update feature tracking
+		await updateFeatureCountsAdmin(
+			courseId,
+			weekId,
+			"goldenNotes",
+			notesToInsert.length
+		);
 	}
 }
 
@@ -61,6 +129,14 @@ export async function insertCuecards(
 		if (error) {
 			throw new Error(`Failed to insert cuecards: ${error.message}`);
 		}
+
+		// Update feature tracking
+		await updateFeatureCountsAdmin(
+			courseId,
+			weekId,
+			"cuecards",
+			cuecardsToInsert.length
+		);
 	}
 }
 
@@ -88,6 +164,14 @@ export async function insertMCQs(
 		if (error) {
 			throw new Error(`Failed to insert MCQs: ${error.message}`);
 		}
+
+		// Update feature tracking
+		await updateFeatureCountsAdmin(
+			courseId,
+			weekId,
+			"mcqs",
+			mcqsToInsert.length
+		);
 	}
 }
 
@@ -116,6 +200,14 @@ export async function insertOpenQuestions(
 		if (error) {
 			throw new Error(`Failed to insert open questions: ${error.message}`);
 		}
+
+		// Update feature tracking
+		await updateFeatureCountsAdmin(
+			courseId,
+			weekId,
+			"openQuestions",
+			questionsToInsert.length
+		);
 	}
 }
 
@@ -142,6 +234,14 @@ export async function insertSummaries(
 		if (error) {
 			throw new Error(`Failed to insert summaries: ${error.message}`);
 		}
+
+		// Update feature tracking
+		await updateFeatureCountsAdmin(
+			courseId,
+			weekId,
+			"summaries",
+			summaryToInsert.length
+		);
 	}
 }
 
@@ -173,5 +273,13 @@ export async function insertConceptMaps(
 		if (error) {
 			throw new Error(`Failed to insert concept maps: ${error.message}`);
 		}
+
+		// Update feature tracking
+		await updateFeatureCountsAdmin(
+			courseId,
+			weekId,
+			"conceptMaps",
+			conceptMapsToInsert.length
+		);
 	}
 }
