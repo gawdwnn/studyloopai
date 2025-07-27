@@ -20,7 +20,12 @@ const DEFAULT_OPTIONS: Required<RetryOptions> = {
 	backoffFactor: 2,
 	shouldRetry: (error: Error) => {
 		// Retry on network errors, timeouts, and 5xx server errors
-		const retryableErrors = ["NetworkError", "TimeoutError", "AbortError", "fetch"];
+		const retryableErrors = [
+			"NetworkError",
+			"TimeoutError",
+			"AbortError",
+			"fetch",
+		];
 
 		return (
 			retryableErrors.some(
@@ -64,7 +69,8 @@ export async function withRetry<T>(
 			}
 
 			// Calculate delay with exponential backoff and jitter
-			const baseDelay = config.baseDelay * config.backoffFactor ** (attempt - 1);
+			const baseDelay =
+				config.baseDelay * config.backoffFactor ** (attempt - 1);
 			const jitter = Math.random() * 0.1 * baseDelay; // Add 10% jitter
 			const delay = Math.min(baseDelay + jitter, config.maxDelay);
 			await new Promise((resolve) => setTimeout(resolve, delay));

@@ -118,7 +118,12 @@ export function ScrollRevealSection({
 	...props
 }: Omit<ScrollRevealProps, "direction"> & { className?: string }) {
 	return (
-		<ScrollReveal direction="up" duration={0.8} className={className} {...props}>
+		<ScrollReveal
+			direction="up"
+			duration={0.8}
+			className={className}
+			{...props}
+		>
 			{children}
 		</ScrollReveal>
 	);
@@ -131,7 +136,13 @@ export function ScrollRevealCard({
 	...props
 }: Omit<ScrollRevealProps, "direction"> & { className?: string }) {
 	return (
-		<ScrollReveal direction="scale" duration={0.6} delay={delay} className={className} {...props}>
+		<ScrollReveal
+			direction="scale"
+			duration={0.6}
+			delay={delay}
+			className={className}
+			{...props}
+		>
 			{children}
 		</ScrollReveal>
 	);
@@ -157,7 +168,9 @@ export function ScrollRevealStagger({
 
 		// Small delay to ensure DOM is ready
 		const timeout = setTimeout(() => {
-			const items = Array.from(container.children).filter((child) => child instanceof Element);
+			const items = Array.from(container.children).filter(
+				(child) => child instanceof Element
+			);
 			if (items.length === 0) return;
 
 			// Set initial state for all items

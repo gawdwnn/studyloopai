@@ -78,7 +78,9 @@ export function AppBreadcrumbs() {
 						<>
 							<BreadcrumbSeparator />
 							<BreadcrumbItem>
-								<BreadcrumbPage className="truncate">{lastItem.label}</BreadcrumbPage>
+								<BreadcrumbPage className="truncate">
+									{lastItem.label}
+								</BreadcrumbPage>
 							</BreadcrumbItem>
 						</>
 					)}
@@ -91,7 +93,9 @@ export function AppBreadcrumbs() {
 							{index > 0 && <BreadcrumbSeparator />}
 							<BreadcrumbItem>
 								{index === segments.length - 1 ? (
-									<BreadcrumbPage className="truncate">{segment.label}</BreadcrumbPage>
+									<BreadcrumbPage className="truncate">
+										{segment.label}
+									</BreadcrumbPage>
 								) : (
 									<BreadcrumbLink asChild>
 										<Link href={segment.href} className="truncate">

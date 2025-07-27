@@ -9,7 +9,9 @@ export interface StorageCleanupResult {
 /**
  * Clean up storage files with comprehensive error handling
  */
-export async function cleanupStorageFiles(filePaths: string[]): Promise<StorageCleanupResult> {
+export async function cleanupStorageFiles(
+	filePaths: string[]
+): Promise<StorageCleanupResult> {
 	const storageErrors: string[] = [];
 	let filesDeleted = 0;
 
@@ -28,7 +30,10 @@ export async function cleanupStorageFiles(filePaths: string[]): Promise<StorageC
 			filesDeleted = filePaths.length;
 		} else {
 			storageErrors.push(storageResult.error || "Unknown storage error");
-			console.error("Failed to delete files from storage:", storageResult.error);
+			console.error(
+				"Failed to delete files from storage:",
+				storageResult.error
+			);
 		}
 	} catch (error) {
 		const errorMsg = error instanceof Error ? error.message : "Unknown error";

@@ -19,7 +19,9 @@ export function ReactQueryProvider({ children }: ReactQueryProviderProps) {
 						gcTime: 10 * 60 * 1000, // 10 minutes (was cacheTime)
 						retry: (failureCount, error: unknown) => {
 							/// More robust error checking
-							const hasResponse = (err: unknown): err is { response: { status: number } } => {
+							const hasResponse = (
+								err: unknown
+							): err is { response: { status: number } } => {
 								return !!(
 									err &&
 									typeof err === "object" &&
@@ -53,7 +55,9 @@ export function ReactQueryProvider({ children }: ReactQueryProviderProps) {
 		<QueryClientProvider client={queryClient}>
 			{children}
 			{/* Only show devtools in development */}
-			{process.env.NODE_ENV === "development" && <ReactQueryDevtools initialIsOpen={false} />}
+			{process.env.NODE_ENV === "development" && (
+				<ReactQueryDevtools initialIsOpen={false} />
+			)}
 		</QueryClientProvider>
 	);
 }

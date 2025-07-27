@@ -69,7 +69,11 @@ export function McqResultsView({ results, onRestart }: McqResultsViewProps) {
 		setOpenItems([]);
 	};
 
-	const getOptionState = (option: string, correctAnswer: string, userAnswer: string | null) => {
+	const getOptionState = (
+		option: string,
+		correctAnswer: string,
+		userAnswer: string | null
+	) => {
 		if (option === correctAnswer) {
 			return "correct";
 		}
@@ -98,7 +102,9 @@ export function McqResultsView({ results, onRestart }: McqResultsViewProps) {
 				<CardContent>
 					<div className="grid md:grid-cols-3 gap-8 items-center py-8">
 						<div className="text-center md:text-left">
-							<p className="text-xl font-bold">You skipped {results.skipped} exercises</p>
+							<p className="text-xl font-bold">
+								You skipped {results.skipped} exercises
+							</p>
 							<p className="text-sm text-muted-foreground mt-1">
 								Don&apos;t worry, they won&apos;t count in the feedback
 							</p>
@@ -121,14 +127,19 @@ export function McqResultsView({ results, onRestart }: McqResultsViewProps) {
 											stroke="none"
 										>
 											{chartData.map((entry, index) => (
-												<Cell key={`cell-${entry.name}`} fill={COLORS[index % COLORS.length]} />
+												<Cell
+													key={`cell-${entry.name}`}
+													fill={COLORS[index % COLORS.length]}
+												/>
 											))}
 										</Pie>
 									</PieChart>
 								</ResponsiveContainer>
 								<div className="absolute inset-0 flex flex-col justify-center items-center pointer-events-none">
 									<span className="text-4xl font-bold">{results.score}%</span>
-									<span className="text-muted-foreground text-sm">CORRECT ANSWERS</span>
+									<span className="text-muted-foreground text-sm">
+										CORRECT ANSWERS
+									</span>
 								</div>
 							</div>
 						</div>
@@ -139,11 +150,15 @@ export function McqResultsView({ results, onRestart }: McqResultsViewProps) {
 							</div>
 							<div className="flex flex-col items-center md:items-start">
 								<p className="text-2xl font-bold">{results.timeOnExercise}</p>
-								<p className="text-xs text-muted-foreground">TIME ON EXERCISE</p>
+								<p className="text-xs text-muted-foreground">
+									TIME ON EXERCISE
+								</p>
 							</div>
 							<div className="flex flex-col items-center md:items-start">
 								<p className="text-2xl font-bold">{results.avgPerExercise}</p>
-								<p className="text-xs text-muted-foreground">AVERAGE PER EXERCISE</p>
+								<p className="text-xs text-muted-foreground">
+									AVERAGE PER EXERCISE
+								</p>
 							</div>
 						</div>
 					</div>
@@ -164,12 +179,17 @@ export function McqResultsView({ results, onRestart }: McqResultsViewProps) {
 							onValueChange={setOpenItems}
 						>
 							{results.questions.map((q, index) => (
-								<AccordionItem value={`item-${index}`} key={`${q.question}-${index}`}>
+								<AccordionItem
+									value={`item-${index}`}
+									key={`${q.question}-${index}`}
+								>
 									<AccordionTrigger className="hover:bg-muted/50 px-4 rounded-md">
 										<div className="flex justify-between w-full items-center gap-4">
 											<div className="flex-1 text-left">{q.question}</div>
 											<div className="flex items-center space-x-4 flex-shrink-0">
-												<span className="text-sm text-muted-foreground">{q.time}</span>
+												<span className="text-sm text-muted-foreground">
+													{q.time}
+												</span>
 												{q.correct ? (
 													<CheckCircle2 className="text-green-500 h-5 w-5" />
 												) : (
@@ -184,7 +204,11 @@ export function McqResultsView({ results, onRestart }: McqResultsViewProps) {
 									<AccordionContent className="px-4 pt-4 pb-2">
 										<div className="space-y-3">
 											{q.options.map((option) => {
-												const state = getOptionState(option, q.correctAnswer, q.userAnswer);
+												const state = getOptionState(
+													option,
+													q.correctAnswer,
+													q.userAnswer
+												);
 												return (
 													<div
 														key={`${q.question}-${option}`}

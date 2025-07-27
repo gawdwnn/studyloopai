@@ -26,7 +26,8 @@ const DB_VERSION = 2;
 /**
  * Detect IndexedDB support (Edge runtime/server & Safari private mode may disable it)
  */
-export const supportsIndexedDB = typeof window !== "undefined" && typeof indexedDB !== "undefined";
+export const supportsIndexedDB =
+	typeof window !== "undefined" && typeof indexedDB !== "undefined";
 
 const dbPromise = supportsIndexedDB
 	? openDB<DraftDb>(DB_NAME, DB_VERSION, {
@@ -47,7 +48,11 @@ const dbPromise = supportsIndexedDB
 const LS_PREFIX = "draft-"; // fallback key prefix for localStorage
 
 /** Error handling wrapper for database operations */
-async function withRetry<T>(operation: () => Promise<T>, maxRetries = 3, delay = 100): Promise<T> {
+async function withRetry<T>(
+	operation: () => Promise<T>,
+	maxRetries = 3,
+	delay = 100
+): Promise<T> {
 	let lastError: Error | undefined;
 
 	for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -56,7 +61,9 @@ async function withRetry<T>(operation: () => Promise<T>, maxRetries = 3, delay =
 		} catch (error) {
 			lastError = error as Error;
 			if (attempt < maxRetries) {
-				await new Promise((resolve) => setTimeout(resolve, delay * 2 ** attempt));
+				await new Promise((resolve) =>
+					setTimeout(resolve, delay * 2 ** attempt)
+				);
 			}
 		}
 	}
@@ -83,13 +90,18 @@ export async function getDraft(key: string): Promise<DraftData | undefined> {
 }
 
 /** Bulk upsert drafts in a single transaction */
-export async function bulkUpsertDrafts(drafts: Array<[string, DraftData]>): Promise<void> {
+export async function bulkUpsertDrafts(
+	drafts: Array<[string, DraftData]>
+): Promise<void> {
 	return withRetry(async () => {
 		if (supportsIndexedDB && dbPromise) {
 			const db = await dbPromise;
 			const tx = db.transaction(STORE_NAME, "readwrite");
 
-			await Promise.all([...drafts.map(([key, value]) => tx.store.put(value, key)), tx.done]);
+			await Promise.all([
+				...drafts.map(([key, value]) => tx.store.put(value, key)),
+				tx.done,
+			]);
 			return;
 		}
 
@@ -202,7 +214,9 @@ export async function getDraftsWithPagination(
 }
 
 /** Return all draft [key, value] pairs */
-export async function getAllDraftEntries(): Promise<Array<[string, DraftData]>> {
+export async function getAllDraftEntries(): Promise<
+	Array<[string, DraftData]>
+> {
 	return getDraftsWithPagination(0, Number.MAX_SAFE_INTEGER);
 }
 
@@ -224,7 +238,10 @@ export async function cleanupExpiredDrafts(): Promise<number> {
 			}
 
 			// Delete expired drafts in bulk
-			await Promise.all([...expiredKeys.map((key) => tx.store.delete(key)), tx.done]);
+			await Promise.all([
+				...expiredKeys.map((key) => tx.store.delete(key)),
+				tx.done,
+			]);
 
 			cleanedCount = expiredKeys.length;
 		} else if (typeof localStorage !== "undefined") {
@@ -267,7 +284,10 @@ export async function deleteDraftsBySession(sessionId: string): Promise<void> {
 				keysToDelete.push(cursor.primaryKey as string);
 			}
 
-			await Promise.all([...keysToDelete.map((key) => tx.store.delete(key)), tx.done]);
+			await Promise.all([
+				...keysToDelete.map((key) => tx.store.delete(key)),
+				tx.done,
+			]);
 			return;
 		}
 

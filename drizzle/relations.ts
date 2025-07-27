@@ -16,22 +16,25 @@ import {
 	users,
 } from "./schema";
 
-export const courseMaterialsRelations = relations(courseMaterials, ({ one, many }) => ({
-	course: one(courses, {
-		fields: [courseMaterials.courseId],
-		references: [courses.id],
-	}),
-	user: one(users, {
-		fields: [courseMaterials.uploadedBy],
-		references: [users.userId],
-	}),
-	courseWeek: one(courseWeeks, {
-		fields: [courseMaterials.weekId],
-		references: [courseWeeks.id],
-	}),
-	documentChunks: many(documentChunks),
-	ownNotes: many(ownNotes),
-}));
+export const courseMaterialsRelations = relations(
+	courseMaterials,
+	({ one, many }) => ({
+		course: one(courses, {
+			fields: [courseMaterials.courseId],
+			references: [courses.id],
+		}),
+		user: one(users, {
+			fields: [courseMaterials.uploadedBy],
+			references: [users.userId],
+		}),
+		courseWeek: one(courseWeeks, {
+			fields: [courseMaterials.weekId],
+			references: [courseWeeks.id],
+		}),
+		documentChunks: many(documentChunks),
+		ownNotes: many(ownNotes),
+	})
+);
 
 export const coursesRelations = relations(courses, ({ one, many }) => ({
 	courseMaterials: many(courseMaterials),
@@ -98,16 +101,19 @@ export const cuecardsRelations = relations(cuecards, ({ one }) => ({
 }));
 
 // Multiple choice questions relations
-export const multipleChoiceQuestionsRelations = relations(multipleChoiceQuestions, ({ one }) => ({
-	course: one(courses, {
-		fields: [multipleChoiceQuestions.courseId],
-		references: [courses.id],
-	}),
-	courseWeek: one(courseWeeks, {
-		fields: [multipleChoiceQuestions.weekId],
-		references: [courseWeeks.id],
-	}),
-}));
+export const multipleChoiceQuestionsRelations = relations(
+	multipleChoiceQuestions,
+	({ one }) => ({
+		course: one(courses, {
+			fields: [multipleChoiceQuestions.courseId],
+			references: [courses.id],
+		}),
+		courseWeek: one(courseWeeks, {
+			fields: [multipleChoiceQuestions.weekId],
+			references: [courseWeeks.id],
+		}),
+	})
+);
 
 // Open questions relations
 export const openQuestionsRelations = relations(openQuestions, ({ one }) => ({
@@ -162,20 +168,23 @@ export const ownNotesRelations = relations(ownNotes, ({ one }) => ({
 }));
 
 // Generation configs relations
-export const generationConfigsRelations = relations(generationConfigs, ({ one }) => ({
-	courseWeek: one(courseWeeks, {
-		fields: [generationConfigs.weekId],
-		references: [courseWeeks.id],
-	}),
-	course: one(courses, {
-		fields: [generationConfigs.courseId],
-		references: [courses.id],
-	}),
-	user: one(users, {
-		fields: [generationConfigs.userId],
-		references: [users.userId],
-	}),
-}));
+export const generationConfigsRelations = relations(
+	generationConfigs,
+	({ one }) => ({
+		courseWeek: one(courseWeeks, {
+			fields: [generationConfigs.weekId],
+			references: [courseWeeks.id],
+		}),
+		course: one(courses, {
+			fields: [generationConfigs.courseId],
+			references: [courses.id],
+		}),
+		user: one(users, {
+			fields: [generationConfigs.userId],
+			references: [users.userId],
+		}),
+	})
+);
 
 // User progress relations
 export const userProgressRelations = relations(userProgress, ({ one }) => ({

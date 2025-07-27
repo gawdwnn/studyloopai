@@ -14,7 +14,10 @@ interface SessionErrorBoundaryState {
 	error: Error | null;
 }
 
-class SessionErrorBoundary extends Component<SessionErrorBoundaryProps, SessionErrorBoundaryState> {
+class SessionErrorBoundary extends Component<
+	SessionErrorBoundaryProps,
+	SessionErrorBoundaryState
+> {
 	constructor(props: SessionErrorBoundaryProps) {
 		super(props);
 		this.state = { hasError: false, error: null };
@@ -46,18 +49,23 @@ class SessionErrorBoundary extends Component<SessionErrorBoundaryProps, SessionE
 							<div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
 								<AlertTriangle className="h-6 w-6 text-destructive" />
 							</div>
-							<CardTitle className="mt-4">Oops! Something went wrong.</CardTitle>
+							<CardTitle className="mt-4">
+								Oops! Something went wrong.
+							</CardTitle>
 						</CardHeader>
 						<CardContent>
 							<p className="mb-4 text-muted-foreground">
-								An unexpected error occurred in your learning session. Please try again.
+								An unexpected error occurred in your learning session. Please
+								try again.
 							</p>
 							{process.env.NODE_ENV === "development" && this.state.error && (
 								<div className="my-4 rounded-md bg-destructive/10 p-4 text-left text-sm text-destructive">
 									<p>
 										<strong>Error:</strong> {this.state.error.message}
 									</p>
-									<pre className="mt-2 whitespace-pre-wrap break-all">{this.state.error.stack}</pre>
+									<pre className="mt-2 whitespace-pre-wrap break-all">
+										{this.state.error.stack}
+									</pre>
 								</div>
 							)}
 							<Button onClick={this.handleRetry}>Retry Session</Button>

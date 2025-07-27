@@ -79,7 +79,8 @@ export function NoteCard({
 		toast.success("Note chat started.");
 	};
 
-	const isLoading = updateNoteMutation.isPending || deleteNoteMutation.isPending;
+	const isLoading =
+		updateNoteMutation.isPending || deleteNoteMutation.isPending;
 
 	return (
 		<Card className="group relative h-full">
@@ -123,7 +124,12 @@ export function NoteCard({
 								confirmText="Delete"
 								variant="destructive"
 								trigger={
-									<Button variant="ghost" size="icon" className="h-8 w-8" disabled={isLoading}>
+									<Button
+										variant="ghost"
+										size="icon"
+										className="h-8 w-8"
+										disabled={isLoading}
+									>
 										<Trash2 className="h-4 w-4" />
 									</Button>
 								}

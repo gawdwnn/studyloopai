@@ -1,7 +1,13 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/card";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import React from "react";
 
@@ -18,7 +24,10 @@ interface ErrorBoundaryProps {
 	showRetry?: boolean;
 }
 
-export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+export class ErrorBoundary extends React.Component<
+	ErrorBoundaryProps,
+	ErrorBoundaryState
+> {
 	constructor(props: ErrorBoundaryProps) {
 		super(props);
 		this.state = { hasError: false, retryCount: 0 };
@@ -58,7 +67,9 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
 		}
 
 		// Use retry count as key to force re-mounting of children on retry
-		return <div key={`retry-${this.state.retryCount}`}>{this.props.children}</div>;
+		return (
+			<div key={`retry-${this.state.retryCount}`}>{this.props.children}</div>
+		);
 	}
 }
 
@@ -78,8 +89,9 @@ function ErrorFallback({ error, onRetry }: ErrorFallbackProps) {
 					<div className="space-y-2">
 						<CardTitle className="text-xl">Something went wrong</CardTitle>
 						<CardDescription className="text-base">
-							We encountered an unexpected error. This might be due to a connection issue or a
-							temporary problem. Please try again or reload the page.
+							We encountered an unexpected error. This might be due to a
+							connection issue or a temporary problem. Please try again or
+							reload the page.
 						</CardDescription>
 					</div>
 				</CardHeader>

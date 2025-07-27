@@ -1,10 +1,24 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { AnimatePresence, motion } from "framer-motion";
-import { BookOpen, Clock, Eye, GraduationCap, Hand, Headphones, Target } from "lucide-react";
+import {
+	BookOpen,
+	Clock,
+	Eye,
+	GraduationCap,
+	Hand,
+	Headphones,
+	Target,
+} from "lucide-react";
 import { useState } from "react";
 
 export function PersonalizationDemo() {
@@ -15,38 +29,82 @@ export function PersonalizationDemo() {
 
 	const getLearningStyleLabel = (value: number) => {
 		if (value < 33)
-			return { label: "Visual Learner", icon: Eye, color: "bg-blue-500/10 text-blue-600" };
+			return {
+				label: "Visual Learner",
+				icon: Eye,
+				color: "bg-blue-500/10 text-blue-600",
+			};
 		if (value < 66)
 			return {
 				label: "Auditory Learner",
 				icon: Headphones,
 				color: "bg-purple-500/10 text-purple-600",
 			};
-		return { label: "Kinesthetic Learner", icon: Hand, color: "bg-green-500/10 text-green-600" };
+		return {
+			label: "Kinesthetic Learner",
+			icon: Hand,
+			color: "bg-green-500/10 text-green-600",
+		};
 	};
 
 	const getPaceLabel = (value: number) => {
 		if (value < 33)
-			return { label: "Slow & Steady", icon: Clock, color: "bg-orange-500/10 text-orange-600" };
+			return {
+				label: "Slow & Steady",
+				icon: Clock,
+				color: "bg-orange-500/10 text-orange-600",
+			};
 		if (value < 66)
-			return { label: "Moderate Pace", icon: BookOpen, color: "bg-yellow-500/10 text-yellow-600" };
-		return { label: "Fast & Intensive", icon: Target, color: "bg-red-500/10 text-red-600" };
+			return {
+				label: "Moderate Pace",
+				icon: BookOpen,
+				color: "bg-yellow-500/10 text-yellow-600",
+			};
+		return {
+			label: "Fast & Intensive",
+			icon: Target,
+			color: "bg-red-500/10 text-red-600",
+		};
 	};
 
 	const getDifficultyLabel = (value: number) => {
 		if (value < 33)
-			return { label: "Beginner", icon: GraduationCap, color: "bg-green-500/10 text-green-600" };
+			return {
+				label: "Beginner",
+				icon: GraduationCap,
+				color: "bg-green-500/10 text-green-600",
+			};
 		if (value < 66)
-			return { label: "Intermediate", icon: BookOpen, color: "bg-yellow-500/10 text-yellow-600" };
-		return { label: "Advanced", icon: Target, color: "bg-red-500/10 text-red-600" };
+			return {
+				label: "Intermediate",
+				icon: BookOpen,
+				color: "bg-yellow-500/10 text-yellow-600",
+			};
+		return {
+			label: "Advanced",
+			icon: Target,
+			color: "bg-red-500/10 text-red-600",
+		};
 	};
 
 	const getFocusLabel = (value: number) => {
 		if (value < 33)
-			return { label: "Concepts", icon: BookOpen, color: "bg-blue-500/10 text-blue-600" };
+			return {
+				label: "Concepts",
+				icon: BookOpen,
+				color: "bg-blue-500/10 text-blue-600",
+			};
 		if (value < 66)
-			return { label: "Practice", icon: Target, color: "bg-purple-500/10 text-purple-600" };
-		return { label: "Memorization", icon: GraduationCap, color: "bg-green-500/10 text-green-600" };
+			return {
+				label: "Practice",
+				icon: Target,
+				color: "bg-purple-500/10 text-purple-600",
+			};
+		return {
+			label: "Memorization",
+			icon: GraduationCap,
+			color: "bg-green-500/10 text-green-600",
+		};
 	};
 
 	const currentLearningStyle = getLearningStyleLabel(learningStyle[0]);
@@ -87,9 +145,12 @@ export function PersonalizationDemo() {
 				transition={{ duration: 0.6, delay: 0.2 }}
 			>
 				<div>
-					<h3 className="text-xl font-semibold mb-4">Customize Your AI Study Companion</h3>
+					<h3 className="text-xl font-semibold mb-4">
+						Customize Your AI Study Companion
+					</h3>
 					<p className="text-sm opacity-75 mb-6">
-						Adjust the sliders to see how your AI companion adapts to your learning style
+						Adjust the sliders to see how your AI companion adapts to your
+						learning style
 					</p>
 				</div>
 
@@ -111,7 +172,10 @@ export function PersonalizationDemo() {
 							transition={springTransition}
 						>
 							<Badge variant="secondary" className={currentLearningStyle.color}>
-								{getCurrentIcon(currentLearningStyle.icon, currentLearningStyle.color)}
+								{getCurrentIcon(
+									currentLearningStyle.icon,
+									currentLearningStyle.color
+								)}
 								<span className="ml-2">{currentLearningStyle.label}</span>
 							</Badge>
 						</motion.div>
@@ -187,7 +251,10 @@ export function PersonalizationDemo() {
 							transition={springTransition}
 						>
 							<Badge variant="secondary" className={currentDifficulty.color}>
-								{getCurrentIcon(currentDifficulty.icon, currentDifficulty.color)}
+								{getCurrentIcon(
+									currentDifficulty.icon,
+									currentDifficulty.color
+								)}
 								<span className="ml-2">{currentDifficulty.label}</span>
 							</Badge>
 						</motion.div>
@@ -256,13 +323,16 @@ export function PersonalizationDemo() {
 				<motion.div
 					whileHover={{
 						scale: 1.02,
-						boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+						boxShadow:
+							"0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
 					}}
 					transition={{ type: "spring", stiffness: 400, damping: 25 }}
 				>
 					<Card className="transition-all duration-300 hover:shadow-lg">
 						<CardHeader>
-							<CardTitle className="text-lg">Your Personalized Study Experience</CardTitle>
+							<CardTitle className="text-lg">
+								Your Personalized Study Experience
+							</CardTitle>
 							<CardDescription>
 								See how your AI companion adapts based on your preferences
 							</CardDescription>
@@ -282,10 +352,12 @@ export function PersonalizationDemo() {
 										>
 											<div className="text-sm">
 												<p className="mb-2">
-													Visual learner detected - showing diagram-based question:
+													Visual learner detected - showing diagram-based
+													question:
 												</p>
 												<div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded border-l-4 border-blue-400 dark:border-blue-600">
-													📊 Which diagram best represents the concept of photosynthesis?
+													📊 Which diagram best represents the concept of
+													photosynthesis?
 												</div>
 											</div>
 										</motion.div>
@@ -300,11 +372,12 @@ export function PersonalizationDemo() {
 										>
 											<div className="text-sm">
 												<p className="mb-2">
-													Auditory learner detected - providing audio explanation:
+													Auditory learner detected - providing audio
+													explanation:
 												</p>
 												<div className="bg-purple-50 dark:bg-purple-900/20 p-3 rounded border-l-4 border-purple-400 dark:border-purple-600">
-													🎵 Listen to the explanation and answer: What is the main process in
-													photosynthesis?
+													🎵 Listen to the explanation and answer: What is the
+													main process in photosynthesis?
 												</div>
 											</div>
 										</motion.div>
@@ -322,7 +395,8 @@ export function PersonalizationDemo() {
 													Kinesthetic learner detected - interactive simulation:
 												</p>
 												<div className="bg-green-50 dark:bg-green-900/20 p-3 rounded border-l-4 border-green-400 dark:border-green-600">
-													🔬 Drag and drop the components to build the photosynthesis equation
+													🔬 Drag and drop the components to build the
+													photosynthesis equation
 												</div>
 											</div>
 										</motion.div>
@@ -345,7 +419,9 @@ export function PersonalizationDemo() {
 											>
 												<div>
 													<p>🐌 Slow & Steady: 30-45 min sessions</p>
-													<p className="text-xs opacity-75">Perfect for deep understanding</p>
+													<p className="text-xs opacity-75">
+														Perfect for deep understanding
+													</p>
 												</div>
 											</motion.div>
 										)}
@@ -359,7 +435,9 @@ export function PersonalizationDemo() {
 											>
 												<div>
 													<p>⚡ Moderate Pace: 45-60 min sessions</p>
-													<p className="text-xs opacity-75">Balanced approach with breaks</p>
+													<p className="text-xs opacity-75">
+														Balanced approach with breaks
+													</p>
 												</div>
 											</motion.div>
 										)}

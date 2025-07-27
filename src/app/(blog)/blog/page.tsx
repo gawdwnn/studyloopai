@@ -43,7 +43,9 @@ export default function BlogPage() {
 					>
 						<div className="flex flex-col gap-2">
 							<div className="flex items-center gap-2 text-sm text-muted-foreground">
-								<span className="font-medium text-primary">{post.category}</span>
+								<span className="font-medium text-primary">
+									{post.category}
+								</span>
 								<span>•</span>
 								<div className="flex items-center gap-1">
 									<CalendarDays className="h-4 w-4" />
@@ -65,7 +67,9 @@ export default function BlogPage() {
 								href={`/blog/${post.slug}`}
 								className="group-hover:text-primary transition-colors"
 							>
-								<h2 className="text-2xl font-semibold tracking-tight">{post.title}</h2>
+								<h2 className="text-2xl font-semibold tracking-tight">
+									{post.title}
+								</h2>
 							</Link>
 							<p className="text-muted-foreground">{post.excerpt}</p>
 							<Link

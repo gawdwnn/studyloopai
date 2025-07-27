@@ -2,7 +2,10 @@
 
 import { auth } from "@trigger.dev/sdk";
 
-export async function generatePublicToken(runId: string, expirationTime = "15m") {
+export async function generatePublicToken(
+	runId: string,
+	expirationTime = "15m"
+) {
 	try {
 		const publicToken = await auth.createPublicToken({
 			scopes: {
@@ -17,7 +20,8 @@ export async function generatePublicToken(runId: string, expirationTime = "15m")
 		console.error("Failed to generate public token:", error);
 		return {
 			success: false,
-			error: error instanceof Error ? error.message : "Failed to generate token",
+			error:
+				error instanceof Error ? error.message : "Failed to generate token",
 		};
 	}
 }

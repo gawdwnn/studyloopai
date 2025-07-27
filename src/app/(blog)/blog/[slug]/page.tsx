@@ -70,7 +70,10 @@ export default async function BlogPostPage({ params }: Props) {
 				<p className="text-muted-foreground mb-8">
 					The blog post you're looking for doesn't exist.
 				</p>
-				<Link href="/blog" className="text-primary hover:underline inline-flex items-center gap-1">
+				<Link
+					href="/blog"
+					className="text-primary hover:underline inline-flex items-center gap-1"
+				>
 					← Back to blog
 				</Link>
 			</div>
@@ -107,7 +110,10 @@ export default async function BlogPostPage({ params }: Props) {
 			</div>
 
 			<div className="mt-12 pt-8 border-t">
-				<Link href="/blog" className="text-primary hover:underline inline-flex items-center gap-1">
+				<Link
+					href="/blog"
+					className="text-primary hover:underline inline-flex items-center gap-1"
+				>
 					← Back to blog
 				</Link>
 			</div>

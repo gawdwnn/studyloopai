@@ -40,63 +40,71 @@ export function HomeNavbar() {
 			setMousePosition({ x: e.clientX, y: e.clientY });
 		};
 
-		window.addEventListener('scroll', handleScroll, { passive: true });
-		window.addEventListener('mousemove', handleMouseMove, { passive: true });
-		
+		window.addEventListener("scroll", handleScroll, { passive: true });
+		window.addEventListener("mousemove", handleMouseMove, { passive: true });
+
 		return () => {
-			window.removeEventListener('scroll', handleScroll);
-			window.removeEventListener('mousemove', handleMouseMove);
+			window.removeEventListener("scroll", handleScroll);
+			window.removeEventListener("mousemove", handleMouseMove);
 		};
 	}, []);
 
 	return (
-		<header className={`sticky top-0 z-50 w-full transition-all duration-500 ${
-			scrolled 
-				? 'bg-background/95 backdrop-blur-2xl border-b border-border/50 shadow-lg shadow-black/5' 
-				: 'bg-background/80 backdrop-blur-xl border-b border-transparent'
-		}`}>
+		<header
+			className={`sticky top-0 z-50 w-full transition-all duration-500 ${
+				scrolled
+					? "bg-background/95 backdrop-blur-2xl border-b border-border/50 shadow-lg shadow-black/5"
+					: "bg-background/80 backdrop-blur-xl border-b border-transparent"
+			}`}
+		>
 			{/* Animated background gradient that follows mouse */}
-			<div 
+			<div
 				className="absolute inset-0 opacity-30 transition-opacity duration-300"
 				style={{
-					background: `radial-gradient(600px circle at ${mousePosition.x}px ${mousePosition.y}px, var(--homepage-primary)/10, transparent 40%)`
+					background: `radial-gradient(600px circle at ${mousePosition.x}px ${mousePosition.y}px, var(--homepage-primary)/10, transparent 40%)`,
 				}}
 			/>
-			
+
 			{/* Glass morphism effect */}
 			<div className="absolute inset-0 bg-gradient-to-r from-transparent via-background/5 to-transparent" />
-			
+
 			<div className="relative mx-auto max-w-7xl flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
 				{/* Enhanced Logo Section with Magnetic Effect */}
 				<div className="flex items-center gap-2 min-w-0 flex-shrink-0">
 					<Link href="/" className="flex items-center gap-2 group relative">
 						{/* Magnetic hover area */}
 						<div className="absolute -inset-4 rounded-2xl bg-gradient-to-r from-[var(--homepage-primary)]/5 to-[var(--homepage-ai-primary)]/5 opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:scale-105" />
-						
+
 						<div className="relative">
 							{/* Main logo with enhanced animations */}
 							<div className="w-8 h-8 bg-gradient-to-br from-[var(--homepage-primary)] to-[var(--homepage-ai-primary)] rounded-lg flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-lg group-hover:shadow-xl group-hover:shadow-[var(--homepage-primary)]/25">
 								<Brain className="w-4 h-4 text-white group-hover:scale-110 transition-transform duration-300" />
 							</div>
-							
+
 							{/* Animated sparkle */}
 							<div className="absolute -top-1 -right-1 w-3 h-3 bg-[var(--homepage-accent)] rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:scale-125 group-hover:animate-pulse">
 								<Sparkles className="w-2 h-2 text-white absolute top-0.5 left-0.5 group-hover:rotate-12 transition-transform duration-300" />
 							</div>
-							
+
 							{/* Orbiting dots */}
 							<div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
 								<div className="absolute w-1 h-1 bg-[var(--homepage-primary)] rounded-full -top-2 left-1/2 transform -translate-x-1/2 group-hover:animate-bounce" />
-								<div className="absolute w-1 h-1 bg-[var(--homepage-ai-primary)] rounded-full top-1/2 -right-2 transform -translate-y-1/2 group-hover:animate-pulse" style={{ animationDelay: '0.1s' }} />
-								<div className="absolute w-1 h-1 bg-[var(--homepage-accent)] rounded-full -bottom-2 left-1/2 transform -translate-x-1/2 group-hover:animate-bounce" style={{ animationDelay: '0.2s' }} />
+								<div
+									className="absolute w-1 h-1 bg-[var(--homepage-ai-primary)] rounded-full top-1/2 -right-2 transform -translate-y-1/2 group-hover:animate-pulse"
+									style={{ animationDelay: "0.1s" }}
+								/>
+								<div
+									className="absolute w-1 h-1 bg-[var(--homepage-accent)] rounded-full -bottom-2 left-1/2 transform -translate-x-1/2 group-hover:animate-bounce"
+									style={{ animationDelay: "0.2s" }}
+								/>
 							</div>
 						</div>
-						
+
 						{/* Enhanced text with gradient animation */}
 						<span className="font-bold text-lg sm:text-xl bg-gradient-to-r from-foreground via-[var(--homepage-primary)] to-foreground bg-clip-text group-hover:bg-gradient-to-r group-hover:from-[var(--homepage-primary)] group-hover:via-[var(--homepage-ai-primary)] group-hover:to-[var(--homepage-primary)] transition-all duration-500">
 							StudyLoop
 						</span>
-						
+
 						{/* Enhanced AI badge with glow effect */}
 						<Badge
 							variant="secondary"
@@ -122,7 +130,7 @@ export function HomeNavbar() {
 								<div className="relative backdrop-blur-xl bg-background/95 border border-border/50 rounded-2xl shadow-2xl shadow-black/10 overflow-hidden">
 									{/* Subtle gradient overlay */}
 									<div className="absolute inset-0 bg-gradient-to-br from-[var(--homepage-primary)]/5 via-transparent to-[var(--homepage-ai-primary)]/5" />
-									
+
 									<div className="relative grid gap-4 p-8 w-[600px] lg:w-[800px] lg:grid-cols-3">
 										{/* Featured section with enhanced styling */}
 										<div className="row-span-3">
@@ -132,14 +140,15 @@ export function HomeNavbar() {
 													<div className="absolute top-4 right-4 w-8 h-8 border border-current/20 rounded-full" />
 													<div className="absolute bottom-6 left-4 w-4 h-4 border border-current/20 rotate-45" />
 												</div>
-												
+
 												<div className="relative z-10">
 													<div className="mb-2 mt-4 text-lg font-semibold bg-gradient-to-r from-[var(--homepage-primary)] to-[var(--homepage-ai-primary)] bg-clip-text text-transparent">
 														AI-Powered Learning
 													</div>
 													<p className="text-sm leading-relaxed text-muted-foreground">
-														Experience the future of education with personalized AI study tools that
-														adapt to your learning style and accelerate your success.
+														Experience the future of education with personalized
+														AI study tools that adapt to your learning style and
+														accelerate your success.
 													</p>
 												</div>
 											</div>
@@ -154,8 +163,12 @@ export function HomeNavbar() {
 													<FileQuestion className="w-5 h-5 text-blue-600 group-hover:scale-110 transition-transform duration-300" />
 												</div>
 												<div className="flex-1">
-													<div className="text-sm font-semibold leading-none mb-1">Smart Quizzes</div>
-													<p className="text-xs text-muted-foreground">AI-adaptive learning</p>
+													<div className="text-sm font-semibold leading-none mb-1">
+														Smart Quizzes
+													</div>
+													<p className="text-xs text-muted-foreground">
+														AI-adaptive learning
+													</p>
 												</div>
 												<ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300 text-blue-600" />
 											</div>
@@ -170,8 +183,12 @@ export function HomeNavbar() {
 													<Brain className="w-5 h-5 text-green-600 group-hover:scale-110 transition-transform duration-300" />
 												</div>
 												<div className="flex-1">
-													<div className="text-sm font-semibold leading-none mb-1">Smart Cuecards</div>
-													<p className="text-xs text-muted-foreground">Memory enhancement</p>
+													<div className="text-sm font-semibold leading-none mb-1">
+														Smart Cuecards
+													</div>
+													<p className="text-xs text-muted-foreground">
+														Memory enhancement
+													</p>
 												</div>
 												<ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300 text-green-600" />
 											</div>
@@ -186,8 +203,12 @@ export function HomeNavbar() {
 													<Calendar className="w-5 h-5 text-purple-600 group-hover:scale-110 transition-transform duration-300" />
 												</div>
 												<div className="flex-1">
-													<div className="text-sm font-semibold leading-none mb-1">Course Planner</div>
-													<p className="text-xs text-muted-foreground">Smart scheduling</p>
+													<div className="text-sm font-semibold leading-none mb-1">
+														Course Planner
+													</div>
+													<p className="text-xs text-muted-foreground">
+														Smart scheduling
+													</p>
 												</div>
 												<ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300 text-purple-600" />
 											</div>
@@ -202,8 +223,12 @@ export function HomeNavbar() {
 													<GraduationCap className="w-5 h-5 text-orange-600 group-hover:scale-110 transition-transform duration-300" />
 												</div>
 												<div className="flex-1">
-													<div className="text-sm font-semibold leading-none mb-1">Multiple Choice</div>
-													<p className="text-xs text-muted-foreground">Practice tests</p>
+													<div className="text-sm font-semibold leading-none mb-1">
+														Multiple Choice
+													</div>
+													<p className="text-xs text-muted-foreground">
+														Practice tests
+													</p>
 												</div>
 												<ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300 text-orange-600" />
 											</div>
@@ -218,8 +243,12 @@ export function HomeNavbar() {
 													<MessageSquare className="w-5 h-5 text-pink-600 group-hover:scale-110 transition-transform duration-300" />
 												</div>
 												<div className="flex-1">
-													<div className="text-sm font-semibold leading-none mb-1">Open Questions</div>
-													<p className="text-xs text-muted-foreground">Deep learning</p>
+													<div className="text-sm font-semibold leading-none mb-1">
+														Open Questions
+													</div>
+													<p className="text-xs text-muted-foreground">
+														Deep learning
+													</p>
 												</div>
 												<ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300 text-pink-600" />
 											</div>
@@ -237,7 +266,11 @@ export function HomeNavbar() {
 					<div className="md:hidden">
 						<Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
 							<SheetTrigger asChild>
-								<Button variant="ghost" size="sm" className="h-10 w-10 p-0 relative group">
+								<Button
+									variant="ghost"
+									size="sm"
+									className="h-10 w-10 p-0 relative group"
+								>
 									{/* Hamburger Icon */}
 									<div className="w-6 h-6 flex flex-col justify-center items-center">
 										<span
@@ -259,10 +292,13 @@ export function HomeNavbar() {
 									<span className="sr-only">Toggle navigation menu</span>
 								</Button>
 							</SheetTrigger>
-							<SheetContent side="right" className="w-full sm:w-[350px] backdrop-blur-xl bg-background/95 border-l border-border/50">
+							<SheetContent
+								side="right"
+								className="w-full sm:w-[350px] backdrop-blur-xl bg-background/95 border-l border-border/50"
+							>
 								{/* Subtle gradient overlay for mobile menu */}
 								<div className="absolute inset-0 bg-gradient-to-br from-[var(--homepage-primary)]/5 via-transparent to-[var(--homepage-ai-primary)]/5" />
-								
+
 								<div className="relative flex flex-col space-y-4 mt-4 px-2">
 									{/* Enhanced Mobile Navigation Header */}
 									<div className="flex items-center justify-between pb-4 border-b border-border/50 px-2">
@@ -270,7 +306,9 @@ export function HomeNavbar() {
 											<div className="w-8 h-8 bg-gradient-to-br from-[var(--homepage-primary)] to-[var(--homepage-ai-primary)] rounded-lg flex items-center justify-center shadow-lg">
 												<Brain className="w-4 h-4 text-white" />
 											</div>
-											<span className="font-bold text-xl bg-gradient-to-r from-[var(--homepage-primary)] to-[var(--homepage-ai-primary)] bg-clip-text text-transparent">StudyLoop</span>
+											<span className="font-bold text-xl bg-gradient-to-r from-[var(--homepage-primary)] to-[var(--homepage-ai-primary)] bg-clip-text text-transparent">
+												StudyLoop
+											</span>
 											<Badge
 												variant="secondary"
 												className="text-xs px-2 py-1 bg-[var(--homepage-ai-primary)]/10 text-[var(--homepage-ai-primary)] border-[var(--homepage-ai-primary)]/20 shadow-sm"
@@ -296,7 +334,9 @@ export function HomeNavbar() {
 											</div>
 											<div className="flex-1">
 												<div className="font-semibold">Smart Quizzes</div>
-												<div className="text-sm text-muted-foreground">AI-adaptive quizzes</div>
+												<div className="text-sm text-muted-foreground">
+													AI-adaptive quizzes
+												</div>
 											</div>
 											<ArrowRight className="w-4 h-4 text-blue-600 opacity-75 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300" />
 										</Link>
@@ -311,7 +351,9 @@ export function HomeNavbar() {
 											</div>
 											<div className="flex-1">
 												<div className="font-semibold">Smart Cuecards</div>
-												<div className="text-sm text-muted-foreground">AI-generated cards</div>
+												<div className="text-sm text-muted-foreground">
+													AI-generated cards
+												</div>
 											</div>
 											<ArrowRight className="w-4 h-4 text-green-600 opacity-75 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300" />
 										</Link>
@@ -326,7 +368,9 @@ export function HomeNavbar() {
 											</div>
 											<div className="flex-1">
 												<div className="font-semibold">Course Planner</div>
-												<div className="text-sm text-muted-foreground">Study planning</div>
+												<div className="text-sm text-muted-foreground">
+													Study planning
+												</div>
 											</div>
 											<ArrowRight className="w-4 h-4 text-purple-600 opacity-75 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300" />
 										</Link>
@@ -341,7 +385,9 @@ export function HomeNavbar() {
 											</div>
 											<div className="flex-1">
 												<div className="font-semibold">Multiple Choice</div>
-												<div className="text-sm text-muted-foreground">Practice questions</div>
+												<div className="text-sm text-muted-foreground">
+													Practice questions
+												</div>
 											</div>
 											<ArrowRight className="w-4 h-4 text-orange-600 opacity-75 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300" />
 										</Link>
@@ -356,7 +402,9 @@ export function HomeNavbar() {
 											</div>
 											<div className="flex-1">
 												<div className="font-semibold">Open Questions</div>
-												<div className="text-sm text-muted-foreground">Deep learning</div>
+												<div className="text-sm text-muted-foreground">
+													Deep learning
+												</div>
 											</div>
 											<ArrowRight className="w-4 h-4 text-pink-600 opacity-75 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300" />
 										</Link>
@@ -364,22 +412,30 @@ export function HomeNavbar() {
 
 									{/* Enhanced Mobile Action Buttons */}
 									<div className="space-y-3 pt-4 border-t border-border/50 px-2">
-										<Button 
-											variant="outline" 
-											className="w-full mx-auto group hover:bg-gradient-to-r hover:from-[var(--homepage-primary)]/10 hover:to-[var(--homepage-ai-primary)]/10 border-border/50 hover:border-[var(--homepage-primary)]/30 transition-all duration-300" 
+										<Button
+											variant="outline"
+											className="w-full mx-auto group hover:bg-gradient-to-r hover:from-[var(--homepage-primary)]/10 hover:to-[var(--homepage-ai-primary)]/10 border-border/50 hover:border-[var(--homepage-primary)]/30 transition-all duration-300"
 											asChild
 										>
-											<Link href="/auth/signin" onClick={() => setIsMobileMenuOpen(false)} className="relative">
+											<Link
+												href="/auth/signin"
+												onClick={() => setIsMobileMenuOpen(false)}
+												className="relative"
+											>
 												<span className="relative z-10">Sign In</span>
 												<div className="absolute inset-0 rounded-lg bg-gradient-to-r from-[var(--homepage-primary)]/5 to-[var(--homepage-ai-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 											</Link>
 										</Button>
 
-										<Button 
-											className="w-full mx-auto relative overflow-hidden group bg-gradient-to-r from-[var(--homepage-primary)] to-[var(--homepage-ai-primary)] hover:from-[var(--homepage-primary)]/90 hover:to-[var(--homepage-ai-primary)]/90 text-white border-0 shadow-lg hover:shadow-xl hover:shadow-[var(--homepage-primary)]/25 transition-all duration-300 hover:scale-105" 
+										<Button
+											className="w-full mx-auto relative overflow-hidden group bg-gradient-to-r from-[var(--homepage-primary)] to-[var(--homepage-ai-primary)] hover:from-[var(--homepage-primary)]/90 hover:to-[var(--homepage-ai-primary)]/90 text-white border-0 shadow-lg hover:shadow-xl hover:shadow-[var(--homepage-primary)]/25 transition-all duration-300 hover:scale-105"
 											asChild
 										>
-											<Link href="/auth/signin" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center justify-center gap-2 relative z-10">
+											<Link
+												href="/auth/signin"
+												onClick={() => setIsMobileMenuOpen(false)}
+												className="flex items-center justify-center gap-2 relative z-10"
+											>
 												<span className="font-medium">Get Started</span>
 												<Zap className="w-4 h-4 group-hover:scale-110 group-hover:rotate-12 transition-all duration-300" />
 												{/* Subtle glow effect */}
@@ -398,10 +454,10 @@ export function HomeNavbar() {
 					</div>
 
 					{/* Enhanced Desktop Actions */}
-					<Button 
-						variant="ghost" 
-						size="sm" 
-						asChild 
+					<Button
+						variant="ghost"
+						size="sm"
+						asChild
 						className="hidden sm:inline-flex relative group hover:bg-gradient-to-r hover:from-[var(--homepage-primary)]/10 hover:to-[var(--homepage-ai-primary)]/10 transition-all duration-300 rounded-lg"
 					>
 						<Link href="/auth/signin" className="relative">
@@ -418,7 +474,10 @@ export function HomeNavbar() {
 						onMouseEnter={() => setIsHovered(true)}
 						onMouseLeave={() => setIsHovered(false)}
 					>
-						<Link href="/auth/signin" className="flex items-center gap-2 relative z-10">
+						<Link
+							href="/auth/signin"
+							className="flex items-center gap-2 relative z-10"
+						>
 							<span className="font-medium">Get Started</span>
 							<Zap
 								className={`w-4 h-4 transition-all duration-300 ${

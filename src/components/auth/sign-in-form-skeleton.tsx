@@ -17,7 +17,9 @@ export function SignInFormSkeleton() {
 					<Skeleton className="h-[1px] w-full" />
 				</div>
 				<div className="relative flex justify-center text-xs uppercase">
-					<span className="bg-background px-2 text-transparent">Or continue with email</span>
+					<span className="bg-background px-2 text-transparent">
+						Or continue with email
+					</span>
 				</div>
 			</div>
 

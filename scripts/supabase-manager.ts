@@ -18,6 +18,8 @@
  * ```
  */
 
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { env } from "@/env";
 import { databaseUrl } from "@/lib/database/db";
 import { Separator, confirm, input, select } from "@inquirer/prompts";
@@ -25,8 +27,6 @@ import chalk from "chalk";
 import { Command } from "commander";
 import { execa } from "execa";
 import { Listr } from "listr2";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { join, resolve } from "node:path";
 import pMap from "p-map";
 import pRetry from "p-retry";
 import pino from "pino";

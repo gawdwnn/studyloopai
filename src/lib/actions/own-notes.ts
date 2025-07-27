@@ -20,7 +20,9 @@ const CreateOwnNoteSchema = z.object({
 		.trim()
 		.min(1, "Content is required")
 		.max(50000, "Content cannot exceed 50,000 characters"),
-	noteType: z.enum(["general", "annotation", "summary", "question"]).default("general"),
+	noteType: z
+		.enum(["general", "annotation", "summary", "question"])
+		.default("general"),
 	tags: z.array(z.string()).default([]),
 	isPrivate: z.boolean().default(true),
 	color: z.string().default("#ffffff"),
@@ -250,7 +252,11 @@ export async function getOwnNotes(options: {
 export async function getOwnNoteById(noteId: string) {
 	return await withErrorHandling(
 		async () => {
-			const note = await db.select().from(ownNotes).where(eq(ownNotes.id, noteId)).limit(1);
+			const note = await db
+				.select()
+				.from(ownNotes)
+				.where(eq(ownNotes.id, noteId))
+				.limit(1);
 
 			if (note.length === 0) {
 				throw new Error("Note not found or access denied");

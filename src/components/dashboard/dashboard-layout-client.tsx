@@ -6,7 +6,11 @@ import { CommandPalette } from "@/components/command-palette";
 import { CommandPaletteTrigger } from "@/components/command-palette-trigger";
 import { FloatingChat } from "@/components/floating-chat";
 import { SidebarStateManager } from "@/components/sidebar-state-manager";
-import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import {
+	SidebarInset,
+	SidebarProvider,
+	SidebarTrigger,
+} from "@/components/ui/sidebar";
 
 interface DashboardLayoutClientProps {
 	children: React.ReactNode;
@@ -31,7 +35,9 @@ export function DashboardLayoutClient({
 							</div>
 						</div>
 					</header>
-					<div className="p-4 md:p-6 w-full min-w-0 flex-1 flex flex-col">{children}</div>
+					<div className="p-4 md:p-6 w-full min-w-0 flex-1 flex flex-col">
+						{children}
+					</div>
 					<div className="fixed right-4 top-4 z-50">
 						<CommandPaletteTrigger />
 					</div>

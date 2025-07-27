@@ -21,7 +21,11 @@ interface WeekCarouselProps {
 	selectedWeek: number;
 }
 
-export function WeekCarousel({ weeks, onWeekSelect, selectedWeek }: WeekCarouselProps) {
+export function WeekCarousel({
+	weeks,
+	onWeekSelect,
+	selectedWeek,
+}: WeekCarouselProps) {
 	const handleWeekClick = (weekNumber: number) => {
 		onWeekSelect(weekNumber);
 	};
@@ -53,9 +57,13 @@ export function WeekCarousel({ weeks, onWeekSelect, selectedWeek }: WeekCarousel
 							</CardHeader>
 							<CardContent>
 								{week.title ? (
-									<p className="line-clamp-2 text-sm font-semibold">{week.title}</p>
+									<p className="line-clamp-2 text-sm font-semibold">
+										{week.title}
+									</p>
 								) : (
-									<p className="text-xs text-muted-foreground">No files for this week yet...</p>
+									<p className="text-xs text-muted-foreground">
+										No files for this week yet...
+									</p>
 								)}
 							</CardContent>
 						</Card>

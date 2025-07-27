@@ -14,7 +14,8 @@ export function FinalCTASection() {
 		<section
 			className="py-20 text-white relative overflow-hidden"
 			style={{
-				background: "linear-gradient(135deg, var(--homepage-primary), var(--homepage-ai-primary))",
+				background:
+					"linear-gradient(135deg, var(--homepage-primary), var(--homepage-ai-primary))",
 			}}
 		>
 			{/* Background Pattern */}
@@ -28,15 +29,18 @@ export function FinalCTASection() {
 				<div className="text-center max-w-4xl mx-auto">
 					<div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 rounded-full mb-6">
 						<Zap className="w-4 h-4" />
-						<span className="text-sm font-medium">Limited Time: free for Students</span>
+						<span className="text-sm font-medium">
+							Limited Time: free for Students
+						</span>
 					</div>
 
 					<h2 className="text-3xl md:text-5xl font-bold mb-6 homepage-text-balanced">
 						Ready to Transform Your Learning?
 					</h2>
 					<p className="text-xl opacity-90 mb-8 max-w-2xl mx-auto leading-relaxed">
-						Join thousands of students who have already improved their grades with our AI-powered
-						study tools. Start your journey to academic success today.
+						Join thousands of students who have already improved their grades
+						with our AI-powered study tools. Start your journey to academic
+						success today.
 					</p>
 
 					{/* Value Props */}

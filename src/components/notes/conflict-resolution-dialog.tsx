@@ -1,6 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
 import type { ConflictError, OwnNote } from "@/hooks/use-own-notes";
 import { MarkdownRenderer } from "./markdown-renderer";
 
@@ -25,7 +30,8 @@ export function ConflictResolutionDialog({
 				<DialogHeader>
 					<DialogTitle>Resolve Edit Conflict</DialogTitle>
 					<p className="text-sm text-muted-foreground">
-						Your note has been modified by another session. Choose which version to keep.
+						Your note has been modified by another session. Choose which version
+						to keep.
 					</p>
 				</DialogHeader>
 				<div className="grid grid-cols-2 gap-6 mt-4">
@@ -47,7 +53,11 @@ export function ConflictResolutionDialog({
 								<MarkdownRenderer content={serverContent} />
 							</CardContent>
 						</Card>
-						<Button className="w-full mt-4" variant="outline" onClick={() => onResolve("server")}>
+						<Button
+							className="w-full mt-4"
+							variant="outline"
+							onClick={() => onResolve("server")}
+						>
 							Use Latest Version
 						</Button>
 					</div>

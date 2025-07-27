@@ -39,7 +39,9 @@ export function useDraft({
 	const [draftKey, setDraftKey] = useState<string | null>(null);
 	const [content, setContent] = useState(initialContent);
 	const [lastSaved, setLastSaved] = useState<Date | null>(null);
-	const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+	const [saveStatus, setSaveStatus] = useState<
+		"idle" | "saving" | "saved" | "error"
+	>("idle");
 	const [hasDraft, setHasDraft] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
 
@@ -86,7 +88,10 @@ export function useDraft({
 
 	// Update content when initialContent changes (switching between notes)
 	useEffect(() => {
-		if (!isInitializedRef.current || initialContent === initialContentRef.current) {
+		if (
+			!isInitializedRef.current ||
+			initialContent === initialContentRef.current
+		) {
 			return;
 		}
 

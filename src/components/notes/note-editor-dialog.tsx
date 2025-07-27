@@ -1,5 +1,10 @@
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
 	Select,
@@ -16,7 +21,12 @@ interface NoteEditorDialogProps {
 	isOpen: boolean;
 	onOpenChange: (isOpen: boolean) => void;
 	note: OwnNote | null;
-	onSave: (note: OwnNote | null, content: string, title: string, noteType: NoteType) => void;
+	onSave: (
+		note: OwnNote | null,
+		content: string,
+		title: string,
+		noteType: NoteType
+	) => void;
 	isLoading: boolean;
 }
 
@@ -29,7 +39,9 @@ export function NoteEditorDialog({
 }: NoteEditorDialogProps) {
 	const [title, setTitle] = useState(note?.title || "");
 	const [content, setContent] = useState(note?.content || "");
-	const [noteType, setNoteType] = useState<NoteType>(note?.noteType || "general");
+	const [noteType, setNoteType] = useState<NoteType>(
+		note?.noteType || "general"
+	);
 
 	useEffect(() => {
 		if (isOpen) {
@@ -70,7 +82,10 @@ export function NoteEditorDialog({
 							onChange={(e) => setTitle(e.target.value)}
 							className="text-lg font-semibold flex-1"
 						/>
-						<Select value={noteType} onValueChange={(value) => setNoteType(value as NoteType)}>
+						<Select
+							value={noteType}
+							onValueChange={(value) => setNoteType(value as NoteType)}
+						>
 							<SelectTrigger className="w-40">
 								<SelectValue />
 							</SelectTrigger>
@@ -92,10 +107,17 @@ export function NoteEditorDialog({
 						/>
 					</div>
 					<div className="flex justify-end gap-2">
-						<Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
+						<Button
+							variant="outline"
+							onClick={() => onOpenChange(false)}
+							disabled={isLoading}
+						>
 							Cancel
 						</Button>
-						<Button onClick={handleSave} disabled={isLoading || !content.trim()}>
+						<Button
+							onClick={handleSave}
+							disabled={isLoading || !content.trim()}
+						>
 							{isLoading
 								? note
 									? "Saving..."

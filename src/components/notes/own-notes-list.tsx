@@ -58,7 +58,10 @@ export function OwnNotesList({
 		<div className="space-y-4">
 			<div className="grid gap-4">
 				{notes.map((note) => (
-					<Card key={note.id} className="group hover:shadow-md transition-shadow">
+					<Card
+						key={note.id}
+						className="group hover:shadow-md transition-shadow"
+					>
 						<CardHeader>
 							<div className="flex items-start justify-between">
 								<div className="flex-1">
@@ -105,7 +108,10 @@ export function OwnNotesList({
 							</div>
 						</CardHeader>
 						<CardContent>
-							<div id={`note-content-${note.id}`} className="text-sm text-muted-foreground">
+							<div
+								id={`note-content-${note.id}`}
+								className="text-sm text-muted-foreground"
+							>
 								{truncateContent(note.content)}
 							</div>
 							{note.content.length > 150 && (

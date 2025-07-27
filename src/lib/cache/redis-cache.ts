@@ -4,8 +4,13 @@ const CACHE_TTL_EMBEDDINGS = 7 * 24 * 60 * 60; // 7 days
 const CACHE_PREFIX_EMBEDDINGS = "embeddings:";
 
 const createRedisClient = () => {
-	if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
-		console.warn("Upstash Redis credentials not set. Redis caching will be disabled.");
+	if (
+		!process.env.UPSTASH_REDIS_REST_URL ||
+		!process.env.UPSTASH_REDIS_REST_TOKEN
+	) {
+		console.warn(
+			"Upstash Redis credentials not set. Redis caching will be disabled."
+		);
 		return null;
 	}
 
@@ -26,7 +31,9 @@ export class EmbeddingCache {
 		return `${CACHE_PREFIX_EMBEDDINGS}${textHash}`;
 	}
 
-	async getBatchEmbeddings(textHashes: string[]): Promise<Map<string, number[]>> {
+	async getBatchEmbeddings(
+		textHashes: string[]
+	): Promise<Map<string, number[]>> {
 		const results = new Map<string, number[]>();
 		if (textHashes.length === 0 || !this.cache) {
 			return results;

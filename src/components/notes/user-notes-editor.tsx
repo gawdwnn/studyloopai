@@ -58,7 +58,8 @@ export function UserNotesEditor({ courseId, weekId }: UserNotesEditorProps) {
 		courseId,
 		weekId,
 		searchQuery: searchQuery || undefined,
-		noteType: selectedNoteType === "all" ? undefined : (selectedNoteType as NoteType),
+		noteType:
+			selectedNoteType === "all" ? undefined : (selectedNoteType as NoteType),
 		page: currentPage,
 		limit: notesPerPage,
 	});
@@ -120,7 +121,11 @@ export function UserNotesEditor({ courseId, weekId }: UserNotesEditorProps) {
 		},
 	});
 
-	const handleCreateNote = (content: string, title: string, noteType: NoteType) => {
+	const handleCreateNote = (
+		content: string,
+		title: string,
+		noteType: NoteType
+	) => {
 		const newNote: CreateOwnNoteInput = {
 			courseId,
 			weekId,
@@ -134,7 +139,12 @@ export function UserNotesEditor({ courseId, weekId }: UserNotesEditorProps) {
 		createNoteMutation.mutate(newNote);
 	};
 
-	const handleUpdateNote = (note: OwnNote, content: string, title: string, noteType: NoteType) => {
+	const handleUpdateNote = (
+		note: OwnNote,
+		content: string,
+		title: string,
+		noteType: NoteType
+	) => {
 		updateNoteMutation.mutate({
 			id: note.id,
 			content,
@@ -274,7 +284,9 @@ export function UserNotesEditor({ courseId, weekId }: UserNotesEditorProps) {
 							handleCreateNote(content, title, noteType);
 						}
 					}}
-					isLoading={createNoteMutation.isPending || updateNoteMutation.isPending}
+					isLoading={
+						createNoteMutation.isPending || updateNoteMutation.isPending
+					}
 				/>
 
 				<ConflictResolutionDialog

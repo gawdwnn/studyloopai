@@ -16,7 +16,16 @@ interface LoadingButtonProps
 
 const LoadingButton = forwardRef<HTMLButtonElement, LoadingButtonProps>(
 	(
-		{ children, loading = false, loadingText, className, disabled, variant, size, ...props },
+		{
+			children,
+			loading = false,
+			loadingText,
+			className,
+			disabled,
+			variant,
+			size,
+			...props
+		},
 		ref
 	) => {
 		return (
@@ -44,7 +53,10 @@ const LoadingButton = forwardRef<HTMLButtonElement, LoadingButtonProps>(
 					{children}
 				</div>
 				{loading && (
-					<div className="absolute inset-0 flex items-center justify-center" aria-live="polite">
+					<div
+						className="absolute inset-0 flex items-center justify-center"
+						aria-live="polite"
+					>
 						<Loader2 className="w-4 h-4 animate-spin mr-2" aria-hidden="true" />
 						<span>{loadingText || "Loading..."}</span>
 					</div>

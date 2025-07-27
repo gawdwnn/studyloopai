@@ -75,7 +75,11 @@ const notesKeys = {
 		[...notesKeys.byCourse(courseId), weekId] as const,
 };
 
-export function useNotesData(courseId: string, weekId: string, options?: { enabled?: boolean }) {
+export function useNotesData(
+	courseId: string,
+	weekId: string,
+	options?: { enabled?: boolean }
+) {
 	return useQuery({
 		queryKey: notesKeys.byCourseAndWeek(courseId, weekId),
 		queryFn: () => getNotesData(courseId, weekId),
@@ -93,8 +97,9 @@ export function useUpdateGoldenNote() {
 			id,
 			version,
 			...data
-		}: { id: string; version: number } & Partial<Omit<UpdateGoldenNoteInput, "id" | "version">>) =>
-			updateGoldenNote({ id, version, ...data }),
+		}: { id: string; version: number } & Partial<
+			Omit<UpdateGoldenNoteInput, "id" | "version">
+		>) => updateGoldenNote({ id, version, ...data }),
 		onSuccess: (result, _variables) => {
 			if (result.success) {
 				toast.success("Note updated successfully!");

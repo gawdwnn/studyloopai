@@ -9,11 +9,11 @@ interface ParallaxWatermarkProps {
 	parallaxType?: "horizontal" | "fade" | "scale" | "none";
 }
 
-export function ParallaxWatermark({ 
-	text, 
+export function ParallaxWatermark({
+	text,
 	repeat = 3,
 	className = "",
-	parallaxType = "horizontal" 
+	parallaxType = "horizontal",
 }: ParallaxWatermarkProps) {
 	const watermarkRef = useRef<HTMLDivElement>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
@@ -31,7 +31,10 @@ export function ParallaxWatermark({
 			const footerInView = rect.top < windowHeight && rect.bottom > 0;
 
 			if (footerInView) {
-				const scrollProgress = Math.max(0, (windowHeight - rect.top) / windowHeight);
+				const scrollProgress = Math.max(
+					0,
+					(windowHeight - rect.top) / windowHeight
+				);
 
 				switch (parallaxType) {
 					case "horizontal": {
