@@ -24,6 +24,7 @@ import {
 } from "@/lib/services/course-material-service";
 import { createClient } from "@/lib/supabase/client";
 import { validateSelectiveGenerationConfig } from "@/lib/validation/generation-config";
+import { useCourseMaterialProcessingStore } from "@/stores/course-material-processing-store";
 import { useUploadWizardStore } from "@/stores/upload-wizard-store";
 import type { Course } from "@/types/database-types";
 import { useQuery } from "@tanstack/react-query";
@@ -85,6 +86,8 @@ export function UploadWizard({ courses, onUploadSuccess }: UploadWizardProps) {
 		setIsUploading,
 		setUploadProgress,
 	} = useUploadWizardStore();
+
+	const { setBatchProcessingJob } = useCourseMaterialProcessingStore();
 
 	const { data: courseWeeks = [] } = useQuery({
 		queryKey: ["course-weeks", selectedCourseId],
@@ -168,13 +171,21 @@ export function UploadWizard({ courses, onUploadSuccess }: UploadWizardProps) {
 			}
 
 			// Complete upload and trigger processing
-			await completeUpload(
+			const result = await completeUpload(
 				uploadedMaterialIds,
 				selectedWeekId,
 				selectedCourseId,
 				selectiveConfig,
 				"course_week_override"
 			);
+
+			// Store processing job information for real-time tracking
+			setBatchProcessingJob(uploadedMaterialIds, {
+				runId: result.runId,
+				publicAccessToken: result.publicAccessToken,
+				weekId: result.weekId,
+				courseId: result.courseId,
+			});
 
 			const successMessage =
 				uploadedMaterialIds.length === files.length

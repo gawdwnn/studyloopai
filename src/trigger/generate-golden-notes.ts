@@ -28,7 +28,11 @@ export const generateGoldenNotes = schemaTask({
 	run: async (payload: GenerateGoldenNotesPayloadType, { ctx: _ctx }) => {
 		const { weekId, courseId, materialIds, configId } = payload;
 
-		await tags.add([`weekId:${payload.weekId}`, "contentType:goldenNotes"]);
+		await tags.add([
+			`weekId:${payload.weekId}`,
+			`courseId:${payload.courseId}`,
+			"contentType:goldenNotes",
+		]);
 
 		try {
 			const { getFeatureGenerationConfig } = await import(

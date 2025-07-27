@@ -1,45 +1,50 @@
 import {
-	type WeekFeatureAvailability,
+	getCourseWeekFeatureAvailability,
 	getFeatureAvailability,
 } from "@/lib/actions/course-week-features";
 import { useQuery } from "@tanstack/react-query";
 
-/**
- * Custom hook for fetching feature availability data for a course
- * Provides centralized caching, error handling, and automatic refetching
- */
-export function useFeatureAvailability(courseId: string | null) {
-	return useQuery({
-		queryKey: ["feature-availability", courseId],
-		queryFn: () => {
-			if (!courseId) {
-				throw new Error("Course ID is required");
-			}
-			return getFeatureAvailability(courseId);
-		},
-		enabled: !!courseId,
-		staleTime: 1000 * 60 * 5, // 5 minutes
-		gcTime: 1000 * 60 * 10, // 10 minutes
-		retry: 3,
-		retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-	});
-}
-
-/**
- * Helper hook to get feature availability for a specific week
- */
-export function useWeekFeatureAvailability(
+// TODO: fix server actions used in this hook
+export function useFeatureAvailability(
 	courseId: string | null,
 	weekId: string | null
 ) {
-	const { data: courseAvailability, ...query } =
-		useFeatureAvailability(courseId);
+	// Use the optimized single week query when both IDs are provided
+	const singleWeekQuery = useQuery({
+		queryKey: ["course-week-feature-availability", courseId, weekId],
+		queryFn: () => {
+			if (!courseId || !weekId) {
+				throw new Error("Both courseId and weekId required");
+			}
+			return getCourseWeekFeatureAvailability(courseId, weekId);
+		},
+		enabled: !!(courseId && weekId),
+		staleTime: 1000 * 60 * 5,
+		gcTime: 1000 * 60 * 10,
+	});
 
-	const weekAvailability: WeekFeatureAvailability | null =
-		courseAvailability && weekId ? courseAvailability[weekId] || null : null;
+	// Fallback to course query when weekId is null
+	const courseQuery = useQuery({
+		queryKey: ["course-feature-availability", courseId],
+		queryFn: () => {
+			if (!courseId) {
+				throw new Error("Course ID required");
+			}
+			return getFeatureAvailability(courseId);
+		},
+		enabled: !!(courseId && !weekId),
+		staleTime: 1000 * 60 * 5,
+		gcTime: 1000 * 60 * 10,
+	});
 
+	// Return consistent interface
+	if (weekId) {
+		return singleWeekQuery;
+	}
+
+	// When no weekId, return null data but preserve query state
 	return {
-		...query,
-		data: weekAvailability,
+		...courseQuery,
+		data: null,
 	};
 }

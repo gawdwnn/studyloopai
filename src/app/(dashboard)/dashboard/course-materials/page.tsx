@@ -2,10 +2,11 @@
 
 import { deleteCourseMaterial } from "@/lib/actions/course-materials";
 import { getAllUserMaterials, getUserCourses } from "@/lib/actions/courses";
+import { useCourseMaterialProcessingCleanup } from "@/stores/course-material-processing-store";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, FilePlus2, FileX } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { CourseMaterialsSkeletonLoader } from "@/components/course/course-materials-skeleton-loader";
@@ -21,6 +22,7 @@ export default function CourseMaterialsPage() {
 	);
 	const queryClient = useQueryClient();
 	const router = useRouter();
+	const { clearExpiredJobs } = useCourseMaterialProcessingCleanup();
 
 	const {
 		data: courses = [],
@@ -42,6 +44,23 @@ export default function CourseMaterialsPage() {
 		queryFn: () => getAllUserMaterials(),
 		enabled: courses.length > 0,
 	});
+
+	// Clean up expired processing jobs (older than 24 hours) on mount and every 10 minutes
+	// Prevents accumulation of stale Trigger.dev job tracking data in Zustand store
+	useEffect(() => {
+		// Clean up on mount
+		clearExpiredJobs();
+
+		// Set up periodic cleanup every 10 minutes
+		const interval = setInterval(
+			() => {
+				clearExpiredJobs();
+			},
+			10 * 60 * 1000
+		);
+
+		return () => clearInterval(interval);
+	}, [clearExpiredJobs]);
 
 	const handleUploadSuccess = () => {
 		// The new row will appear and its status will be tracked in-line

@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { useWeekFeatureAvailability } from "@/hooks/use-feature-availability";
+import { useFeatureAvailability } from "@/hooks/use-feature-availability";
 import { useUploadWizardStore } from "@/stores/upload-wizard-store";
 import type { Course, CourseWeek } from "@/types/database-types";
 import { CheckCircle, CheckCircle2, XCircle, Zap } from "lucide-react";
@@ -45,7 +45,7 @@ export function StepReviewUpload({
 	} = useUploadWizardStore();
 
 	// feature availability
-	const { data: featureAvailability } = useWeekFeatureAvailability(
+	const { data: featureAvailability } = useFeatureAvailability(
 		selectedCourseId,
 		selectedWeekId
 	);

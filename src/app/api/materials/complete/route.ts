@@ -112,6 +112,8 @@ export async function POST(req: NextRequest) {
 			success: true,
 			runId: handle.id,
 			publicAccessToken: handle.publicAccessToken,
+			weekId: body.weekId,
+			courseId: body.courseId,
 		});
 	} catch (err) {
 		console.error("Materials completion error:", err);

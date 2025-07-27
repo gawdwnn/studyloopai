@@ -28,7 +28,11 @@ export const generateOpenQuestions = schemaTask({
 	run: async (payload: GenerateOpenQuestionsPayloadType, { ctx: _ctx }) => {
 		const { weekId, courseId, materialIds, configId } = payload;
 
-		await tags.add([`weekId:${payload.weekId}`, "contentType:openQuestions"]);
+		await tags.add([
+			`weekId:${payload.weekId}`,
+			`courseId:${payload.courseId}`,
+			"contentType:openQuestions",
+		]);
 
 		try {
 			const { getFeatureGenerationConfig } = await import(

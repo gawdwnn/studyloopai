@@ -34,7 +34,7 @@ import {
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useCourseWeeks } from "@/hooks/use-course-week";
-import { useWeekFeatureAvailability } from "@/hooks/use-feature-availability";
+import { useFeatureAvailability } from "@/hooks/use-feature-availability";
 import { useQueryState } from "@/hooks/use-query-state";
 import type { CuecardAvailability, UserCuecard } from "@/lib/actions/cuecard";
 import type { Course, CourseWeek } from "@/types/database-types";
@@ -127,7 +127,7 @@ export function CuecardSessionSetup({
 
 	// Feature availability - will be filtered by isWeeksReady in combined loading
 	const { data: weekFeatureAvailability, isLoading: isLoadingAvailability } =
-		useWeekFeatureAvailability(
+		useFeatureAvailability(
 			selectedCourse,
 			selectedWeek === "all-weeks" ? null : selectedWeek
 		);
