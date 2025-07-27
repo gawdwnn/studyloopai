@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { updateCourse } from "@/lib/actions/courses";
 import type { Course } from "@/types/database-types";
-import { addWeeks, format } from "date-fns";
 import { Edit2, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
@@ -29,11 +28,6 @@ export function CourseCard({
 	const [isHovered, setIsHovered] = useState(false);
 	const [isPending, startTransition] = useTransition();
 	const inputRef = useRef<HTMLInputElement>(null);
-
-	const examDate = addWeeks(
-		new Date(course.createdAt),
-		course.durationWeeks || 12
-	);
 
 	const handleEdit = (e: React.MouseEvent) => {
 		e.preventDefault();
@@ -135,8 +129,7 @@ export function CourseCard({
 							</div>
 
 							<div className="flex flex-col items-end text-sm text-muted-foreground">
-								<span className="font-medium">Exam</span>
-								<span>{format(examDate, "MMM, dd")}</span>
+								{/* TODO: add important dates */}
 							</div>
 						</div>
 					</CardContent>

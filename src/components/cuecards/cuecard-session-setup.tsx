@@ -1,7 +1,7 @@
 "use client";
 
 import { SelectiveGenerationSettings } from "@/components/course/selective-generation-settings";
-import { GenerationProgressAlert } from "@/components/generation/generation-progress-alert";
+import { OnDemandGenerationProgress } from "@/components/on-demand-generation-progress";
 import {
 	Accordion,
 	AccordionContent,
@@ -596,7 +596,7 @@ export function CuecardSessionSetup({
 
 				<CardFooter className="px-8 pb-8">
 					<div className="w-full space-y-4">
-						<GenerationProgressAlert
+						<OnDemandGenerationProgress
 							isVisible={showGenerationProgress}
 							progress={generationProgress}
 							contentType="cuecards"
