@@ -15,6 +15,7 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useWeekFeatureAvailability } from "@/hooks/use-feature-availability";
 import { useUploadWizardStore } from "@/stores/upload-wizard-store";
 import {
 	type FeatureType,
@@ -25,7 +26,7 @@ import {
 	getDefaultOpenQuestionsConfig,
 	getDefaultSummariesConfig,
 } from "@/types/generation-types";
-import { Info } from "lucide-react";
+import { CheckCircle2, Info, Zap } from "lucide-react";
 
 const FEATURES: Record<
 	FeatureType,
@@ -74,7 +75,16 @@ const FEATURES: Record<
 } as const;
 
 export function StepFeatureSelection() {
-	const { selectiveConfig, setSelectiveConfig } = useUploadWizardStore();
+	const {
+		selectiveConfig,
+		setSelectiveConfig,
+		selectedCourseId,
+		selectedWeekId,
+	} = useUploadWizardStore();
+
+	// feature availability
+	const { data: featureAvailability, isLoading: isLoadingAvailability } =
+		useWeekFeatureAvailability(selectedCourseId, selectedWeekId);
 
 	const toggleFeature = (feature: FeatureType) => {
 		const newSelectedFeatures = {
@@ -124,13 +134,57 @@ export function StepFeatureSelection() {
 		Boolean
 	).length;
 
+	// Helper to get feature status badge
+	const getFeatureBadge = (feature: FeatureType) => {
+		if (isLoadingAvailability) {
+			return (
+				<Badge
+					variant="outline"
+					className="text-muted-foreground animate-pulse"
+				>
+					Checking...
+				</Badge>
+			);
+		}
+
+		if (!featureAvailability) return null;
+
+		const status = featureAvailability[feature];
+		if (!status) return null;
+
+		if (status.generated) {
+			return (
+				<Badge
+					variant="outline"
+					className="text-green-600 border-green-200 bg-green-50"
+				>
+					<CheckCircle2 className="h-3 w-3 mr-1" />
+					{status.count} available
+				</Badge>
+			);
+		}
+
+		return (
+			<Badge
+				variant="outline"
+				className="text-orange-600 border-orange-200 bg-orange-50"
+			>
+				<Zap className="h-3 w-3 mr-1" />
+				Can generate
+			</Badge>
+		);
+	};
+
 	return (
 		<Card>
 			<CardHeader>
 				<CardTitle>Select Features to Generate</CardTitle>
 				<CardDescription>
-					Choose which AI-powered study materials to generate immediately. You
-					can always generate other features later on-demand.
+					{isLoadingAvailability
+						? "Checking feature availability for this course week..."
+						: featureAvailability
+							? "Features with green badges are already available. Features with orange badges can be generated now."
+							: "Choose which AI-powered study materials to generate immediately. You can always generate other features later on-demand."}
 				</CardDescription>
 			</CardHeader>
 			<CardContent className="space-y-4">
@@ -163,7 +217,7 @@ export function StepFeatureSelection() {
 									className="mt-0.5"
 								/>
 								<div className="flex-1">
-									<div className="flex items-center gap-2">
+									<div className="flex items-center gap-2 flex-wrap">
 										<h4 className="font-medium">{feature.label}</h4>
 										<TooltipProvider>
 											<Tooltip>
@@ -175,6 +229,7 @@ export function StepFeatureSelection() {
 												</TooltipContent>
 											</Tooltip>
 										</TooltipProvider>
+										{getFeatureBadge(featureKey)}
 									</div>
 									<p className="text-sm text-muted-foreground mt-0.5">
 										{feature.description}

@@ -43,6 +43,7 @@ export const env = createEnv({
 		NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: sanitizeString(
 			z.string().min(1)
 		).optional(),
+		NEXT_PUBLIC_TRIGGER_API_URL: sanitizeString(z.string().url()).optional(),
 	},
 
 	/**
@@ -72,6 +73,7 @@ export const env = createEnv({
 		NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
 		NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:
 			process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
+		NEXT_PUBLIC_TRIGGER_API_URL: process.env.NEXT_PUBLIC_TRIGGER_API_URL,
 	},
 
 	/**

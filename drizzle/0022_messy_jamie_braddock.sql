@@ -1,0 +1,3 @@
+CREATE TYPE "public"."generation_state" AS ENUM('not_started', 'queued', 'processing', 'partial_success', 'completed', 'failed', 'retry_scheduled');--> statement-breakpoint
+ALTER TABLE "course_week_features" ALTER COLUMN "generation_state" SET DEFAULT 'not_started'::"public"."generation_state";--> statement-breakpoint
+ALTER TABLE "course_week_features" ALTER COLUMN "generation_state" SET DATA TYPE "public"."generation_state" USING "generation_state"::"public"."generation_state";

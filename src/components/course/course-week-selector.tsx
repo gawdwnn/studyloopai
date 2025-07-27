@@ -41,17 +41,15 @@ export function CourseWeekSelector({
 	required = false,
 	showOnlyWeeksWithoutMaterials = false,
 }: CourseWeekSelectorProps) {
-	const availableWeeks = courseWeeks.filter(
-		(week) => {
-			if (week.courseId !== selectedCourseId) return false;
-			
-			if (showOnlyWeeksWithoutMaterials) {
-				return !week.hasMaterials;
-			}
-			
-			return true;
+	const availableWeeks = courseWeeks.filter((week) => {
+		if (week.courseId !== selectedCourseId) return false;
+
+		if (showOnlyWeeksWithoutMaterials) {
+			return !week.hasMaterials;
 		}
-	);
+
+		return true;
+	});
 
 	return (
 		<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -93,7 +91,9 @@ export function CourseWeekSelector({
 				<Select
 					value={selectedWeek?.toString() ?? ""}
 					onValueChange={(value) => onWeekChange(Number.parseInt(value, 10))}
-					disabled={!selectedCourseId || isLoading || availableWeeks.length === 0}
+					disabled={
+						!selectedCourseId || isLoading || availableWeeks.length === 0
+					}
 				>
 					<SelectTrigger id="week-select" className="w-full">
 						<SelectValue placeholder={weekPlaceholder} />
@@ -107,11 +107,15 @@ export function CourseWeekSelector({
 					</SelectContent>
 				</Select>
 				{!selectedCourseId && (
-					<p className="text-xs text-muted-foreground">Select a course first to choose a week</p>
+					<p className="text-xs text-muted-foreground">
+						Select a course first to choose a week
+					</p>
 				)}
 				{selectedCourseId && availableWeeks.length === 0 && (
 					<p className="text-xs text-muted-foreground">
-						All weeks for this course already have materials uploaded
+						{showOnlyWeeksWithoutMaterials
+							? "All weeks for this course already have materials uploaded"
+							: "No weeks available for this course"}
 					</p>
 				)}
 			</div>

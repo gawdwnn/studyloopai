@@ -8,10 +8,22 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import { useWeekFeatureAvailability } from "@/hooks/use-feature-availability";
 import { useUploadWizardStore } from "@/stores/upload-wizard-store";
 
 export function StepGenerationSettings() {
-	const { selectiveConfig, setSelectiveConfig } = useUploadWizardStore();
+	const {
+		selectiveConfig,
+		setSelectiveConfig,
+		selectedCourseId,
+		selectedWeekId,
+	} = useUploadWizardStore();
+
+	// feature availability
+	const { data: featureAvailability } = useWeekFeatureAvailability(
+		selectedCourseId,
+		selectedWeekId
+	);
 
 	// Only show settings for selected features
 	const hasSelectedFeatures = Object.values(
@@ -45,6 +57,8 @@ export function StepGenerationSettings() {
 				<SelectiveGenerationSettings
 					config={selectiveConfig}
 					onConfigChange={setSelectiveConfig}
+					featureAvailability={featureAvailability}
+					showAvailabilityStatus={true}
 				/>
 			</CardContent>
 		</Card>

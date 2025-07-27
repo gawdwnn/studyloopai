@@ -10,9 +10,10 @@ import {
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+import { useWeekFeatureAvailability } from "@/hooks/use-feature-availability";
 import { useUploadWizardStore } from "@/stores/upload-wizard-store";
 import type { Course, CourseWeek } from "@/types/database-types";
-import { CheckCircle, XCircle } from "lucide-react";
+import { CheckCircle, CheckCircle2, XCircle, Zap } from "lucide-react";
 import { useMemo } from "react";
 
 interface StepReviewUploadProps {
@@ -26,6 +27,7 @@ const FEATURE_LABELS = {
 	openQuestions: "Open Questions",
 	summaries: "Summaries",
 	goldenNotes: "Golden Notes",
+	conceptMaps: "Concept Maps",
 };
 
 export function StepReviewUpload({
@@ -35,11 +37,18 @@ export function StepReviewUpload({
 	const {
 		selectedCourseId,
 		selectedWeekNumber,
+		selectedWeekId,
 		files,
 		selectiveConfig,
 		isUploading,
 		uploadProgress,
 	} = useUploadWizardStore();
+
+	// feature availability
+	const { data: featureAvailability } = useWeekFeatureAvailability(
+		selectedCourseId,
+		selectedWeekId
+	);
 
 	const selectedCourse = courses.find((c) => c.id === selectedCourseId);
 	const selectedWeek = courseWeeks.find(
@@ -60,6 +69,14 @@ export function StepReviewUpload({
 	const selectedFeatures = Object.entries(selectiveConfig.selectedFeatures)
 		.filter(([_, selected]) => selected)
 		.map(([feature]) => feature);
+
+	// Helper to get feature status
+	const getFeatureStatus = (feature: string) => {
+		if (!featureAvailability) return null;
+		const status =
+			featureAvailability[feature as keyof typeof featureAvailability];
+		return status?.generated ? "available" : "generate";
+	};
 
 	return (
 		<div className="space-y-4">
@@ -127,11 +144,39 @@ export function StepReviewUpload({
 						<h4 className="font-medium mb-3">Features to Generate</h4>
 						<div className="flex flex-wrap gap-2">
 							{selectedFeatures.length > 0 ? (
-								selectedFeatures.map((feature) => (
-									<Badge key={feature} variant="default">
-										{FEATURE_LABELS[feature as keyof typeof FEATURE_LABELS]}
-									</Badge>
-								))
+								selectedFeatures.map((feature) => {
+									const status = getFeatureStatus(feature);
+									const featureName =
+										FEATURE_LABELS[feature as keyof typeof FEATURE_LABELS];
+
+									return (
+										<div key={feature} className="flex items-center gap-1">
+											<Badge variant="default">{featureName}</Badge>
+											{status && (
+												<Badge
+													variant="outline"
+													className={
+														status === "available"
+															? "text-green-600 border-green-200 bg-green-50"
+															: "text-orange-600 border-orange-200 bg-orange-50"
+													}
+												>
+													{status === "available" ? (
+														<>
+															<CheckCircle2 className="h-3 w-3 mr-1" />
+															Available
+														</>
+													) : (
+														<>
+															<Zap className="h-3 w-3 mr-1" />
+															Will generate
+														</>
+													)}
+												</Badge>
+											)}
+										</div>
+									);
+								})
 							) : (
 								<p className="text-sm text-muted-foreground">
 									No features selected

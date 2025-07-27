@@ -7,12 +7,12 @@ import { z } from "zod";
 // Selective generation config schema - the only config type we support
 export const SelectiveGenerationConfigSchema = z.object({
 	selectedFeatures: z.object({
-		cuecards: z.boolean(),
-		mcqs: z.boolean(),
-		openQuestions: z.boolean(),
-		summaries: z.boolean(),
-		goldenNotes: z.boolean(),
-		conceptMaps: z.boolean(),
+		cuecards: z.boolean().optional(),
+		mcqs: z.boolean().optional(),
+		openQuestions: z.boolean().optional(),
+		summaries: z.boolean().optional(),
+		goldenNotes: z.boolean().optional(),
+		conceptMaps: z.boolean().optional(),
 	}),
 	featureConfigs: z.object({
 		cuecards: z
@@ -102,9 +102,13 @@ export function validateSelectiveGenerationConfig(
 ): ValidationError[] {
 	const errors: ValidationError[] = [];
 
-	// Check if at least one feature is selected
-	const selectedFeatures = Object.values(config.selectedFeatures).some(Boolean);
-	if (!selectedFeatures) {
+	// Get all features that are explicitly set to true
+	const selectedFeatureEntries = Object.entries(config.selectedFeatures).filter(
+		([, isSelected]) => isSelected === true
+	);
+
+	// Check if at least one feature is selected (explicitly true)
+	if (selectedFeatureEntries.length === 0) {
 		errors.push({
 			field: "selectedFeatures",
 			message: "At least one feature must be selected for generation",
@@ -113,32 +117,30 @@ export function validateSelectiveGenerationConfig(
 	}
 
 	// Validate each selected feature's configuration
-	for (const [feature, isSelected] of Object.entries(config.selectedFeatures)) {
-		if (isSelected) {
-			const featureType = feature as FeatureType;
-			const featureConfig = config.featureConfigs[featureType];
+	for (const [feature] of selectedFeatureEntries) {
+		const featureType = feature as FeatureType;
+		const featureConfig = config.featureConfigs[featureType];
 
-			if (!featureConfig) {
-				errors.push({
-					field: `featureConfigs.${feature}`,
-					message: `Configuration required for selected feature: ${feature}`,
-					code: "MISSING_FEATURE_CONFIG",
-				});
-				continue;
-			}
+		if (!featureConfig) {
+			errors.push({
+				field: `featureConfigs.${feature}`,
+				message: `Configuration required for selected feature: ${feature}`,
+				code: "MISSING_FEATURE_CONFIG",
+			});
+			continue;
+		}
 
-			// Validate feature-specific rules
-			const rules = VALIDATION_RULES[featureType];
-			if (rules) {
-				if ("count" in featureConfig && "count" in rules) {
-					const count = featureConfig.count as number;
-					if (count < rules.count.min || count > rules.count.max) {
-						errors.push({
-							field: `featureConfigs.${feature}.count`,
-							message: `${feature} count must be between ${rules.count.min} and ${rules.count.max}`,
-							code: "INVALID_COUNT_RANGE",
-						});
-					}
+		// Validate feature-specific rules
+		const rules = VALIDATION_RULES[featureType];
+		if (rules) {
+			if ("count" in featureConfig && "count" in rules) {
+				const count = featureConfig.count as number;
+				if (count < rules.count.min || count > rules.count.max) {
+					errors.push({
+						field: `featureConfigs.${feature}.count`,
+						message: `${feature} count must be between ${rules.count.min} and ${rules.count.max}`,
+						code: "INVALID_COUNT_RANGE",
+					});
 				}
 			}
 		}

@@ -320,7 +320,11 @@ const useCuecardSession = create<CuecardSessionStore>()(
 									generationRunId: result.runId,
 									generationToken: result.publicAccessToken,
 								});
-								return true;
+								return {
+									success: true,
+									runId: result.runId,
+									publicAccessToken: result.publicAccessToken,
+								};
 							} catch (error) {
 								console.error("Failed to trigger cuecard generation:", error);
 
@@ -329,13 +333,27 @@ const useCuecardSession = create<CuecardSessionStore>()(
 									error: "Failed to trigger generation",
 									status: "failed",
 								});
-								return false;
+								return {
+									success: false,
+									error:
+										error instanceof Error ? error.message : "Unknown error",
+								};
 							}
 						},
 
 						// Error handling
 						setError: (error: string | null) => {
 							set({ error });
+						},
+
+						// Generation state management
+						resetGenerationState: () => {
+							set({
+								generationRunId: undefined,
+								generationToken: undefined,
+								status: "idle",
+								error: null,
+							});
 						},
 					},
 				};
