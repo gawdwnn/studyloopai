@@ -1,8 +1,8 @@
 "use client";
 
+import { ParallaxWatermark } from "@/components/home-sections/parallax-watermark";
 import { ScrollRevealStagger } from "@/components/scroll-reveal";
 import { Button } from "@/components/ui/button";
-import { ParallaxWatermark } from "@/components/home-sections/parallax-watermark";
 import { cn } from "@/lib/utils";
 import {
 	ArrowRight,
@@ -64,7 +64,8 @@ const ctaCardsData = [
 		buttonLink: "/about",
 		buttonProps: {
 			variant: "ghost",
-			className: "text-pink-300 hover:text-white hover:bg-pink-500/20 group-hover:translate-x-2",
+			className:
+				"text-pink-300 hover:text-white hover:bg-pink-500/20 group-hover:translate-x-2",
 		},
 	},
 	{
@@ -136,13 +137,18 @@ function FooterCtaCard({
 					>
 						{icon}
 					</div>
-					<span className={cn("text-sm font-medium", styles.preTitle)}>{preTitle}</span>
+					<span className={cn("text-sm font-medium", styles.preTitle)}>
+						{preTitle}
+					</span>
 				</div>
 				<h3 className="text-2xl font-bold mb-4 text-white">{title}</h3>
 				<Button
 					size="lg"
 					{...buttonProps}
-					className={cn("mt-4 transition-all duration-300", buttonProps.className)}
+					className={cn(
+						"mt-4 transition-all duration-300",
+						buttonProps.className
+					)}
 					asChild
 				>
 					<Link href={buttonLink} className="flex items-center gap-2">
@@ -243,7 +249,11 @@ export function HomeFooter() {
 			</div>
 
 			{/* Background Branding with Parallax */}
-			<ParallaxWatermark text="StudyLoopAI" repeat={3} parallaxType="horizontal" />
+			<ParallaxWatermark
+				text="StudyLoopAI"
+				repeat={3}
+				parallaxType="horizontal"
+			/>
 
 			<div className="relative mx-auto max-w-7xl px-6 lg:px-8">
 				{/* Hero CTA Cards Section */}

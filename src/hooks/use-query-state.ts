@@ -23,7 +23,9 @@ export function useQueryState() {
 	 * will remove the parameter from the URL. Arrays are joined with commas.
 	 */
 	const setQueryState = useCallback(
-		(updates: Record<string, string | number | string[] | null | undefined>) => {
+		(
+			updates: Record<string, string | number | string[] | null | undefined>
+		) => {
 			const newSearchParams = new URLSearchParams(searchParams.toString());
 
 			for (const [key, value] of Object.entries(updates)) {

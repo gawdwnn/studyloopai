@@ -34,7 +34,10 @@ export async function middleware(request: NextRequest) {
 
 		// Route protection for unauthenticated users
 		if (!user) {
-			if (pathname.startsWith("/dashboard") || pathname.startsWith("/onboarding")) {
+			if (
+				pathname.startsWith("/dashboard") ||
+				pathname.startsWith("/onboarding")
+			) {
 				const url = request.nextUrl.clone();
 				url.pathname = "/auth/signin";
 				url.searchParams.set("redirectedFrom", pathname);

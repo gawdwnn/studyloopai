@@ -14,6 +14,8 @@ export default async function DashboardLayout({
 	}
 
 	return (
-		<DashboardLayoutClient defaultSidebarOpen={defaultState}>{children}</DashboardLayoutClient>
+		<DashboardLayoutClient defaultSidebarOpen={defaultState}>
+			{children}
+		</DashboardLayoutClient>
 	);
 }

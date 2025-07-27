@@ -152,7 +152,9 @@ export function useUpdateOwnNote(
 	});
 }
 
-export function useDeleteOwnNote(options?: MutationOptions<boolean, Error, string>) {
+export function useDeleteOwnNote(
+	options?: MutationOptions<boolean, Error, string>
+) {
 	const queryClient = useQueryClient();
 
 	return useMutation({

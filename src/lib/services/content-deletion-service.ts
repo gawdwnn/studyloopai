@@ -65,7 +65,10 @@ export async function deleteContentForCourse(
 		materialsResult,
 		weeksResult,
 	] = await Promise.all([
-		tx.delete(cuecards).where(eq(cuecards.courseId, courseId)).returning({ id: cuecards.id }),
+		tx
+			.delete(cuecards)
+			.where(eq(cuecards.courseId, courseId))
+			.returning({ id: cuecards.id }),
 		tx
 			.delete(multipleChoiceQuestions)
 			.where(eq(multipleChoiceQuestions.courseId, courseId))
@@ -74,12 +77,18 @@ export async function deleteContentForCourse(
 			.delete(openQuestions)
 			.where(eq(openQuestions.courseId, courseId))
 			.returning({ id: openQuestions.id }),
-		tx.delete(summaries).where(eq(summaries.courseId, courseId)).returning({ id: summaries.id }),
+		tx
+			.delete(summaries)
+			.where(eq(summaries.courseId, courseId))
+			.returning({ id: summaries.id }),
 		tx
 			.delete(goldenNotes)
 			.where(eq(goldenNotes.courseId, courseId))
 			.returning({ id: goldenNotes.id }),
-		tx.delete(ownNotes).where(eq(ownNotes.courseId, courseId)).returning({ id: ownNotes.id }),
+		tx
+			.delete(ownNotes)
+			.where(eq(ownNotes.courseId, courseId))
+			.returning({ id: ownNotes.id }),
 		tx
 			.delete(generationConfigs)
 			.where(eq(generationConfigs.courseId, courseId))
@@ -169,15 +178,24 @@ export async function deleteContentForCourseWeek(
 			.returning({ id: multipleChoiceQuestions.id }),
 		tx
 			.delete(openQuestions)
-			.where(and(eq(openQuestions.courseId, courseId), eq(openQuestions.weekId, weekId)))
+			.where(
+				and(
+					eq(openQuestions.courseId, courseId),
+					eq(openQuestions.weekId, weekId)
+				)
+			)
 			.returning({ id: openQuestions.id }),
 		tx
 			.delete(summaries)
-			.where(and(eq(summaries.courseId, courseId), eq(summaries.weekId, weekId)))
+			.where(
+				and(eq(summaries.courseId, courseId), eq(summaries.weekId, weekId))
+			)
 			.returning({ id: summaries.id }),
 		tx
 			.delete(goldenNotes)
-			.where(and(eq(goldenNotes.courseId, courseId), eq(goldenNotes.weekId, weekId)))
+			.where(
+				and(eq(goldenNotes.courseId, courseId), eq(goldenNotes.weekId, weekId))
+			)
 			.returning({ id: goldenNotes.id }),
 		tx
 			.delete(ownNotes)
@@ -185,7 +203,12 @@ export async function deleteContentForCourseWeek(
 			.returning({ id: ownNotes.id }),
 		tx
 			.delete(generationConfigs)
-			.where(and(eq(generationConfigs.courseId, courseId), eq(generationConfigs.weekId, weekId)))
+			.where(
+				and(
+					eq(generationConfigs.courseId, courseId),
+					eq(generationConfigs.weekId, weekId)
+				)
+			)
 			.returning({ id: generationConfigs.id }),
 		materialIds && materialIds.length > 0
 			? tx

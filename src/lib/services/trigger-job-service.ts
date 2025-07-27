@@ -72,8 +72,12 @@ export async function getTriggerRunStatus(runId: string) {
 			createdAt: run.createdAt,
 			startedAt: run.startedAt,
 			completedAt: run.isCompleted ? run.updatedAt : undefined,
-			isActive: ["QUEUED", "EXECUTING", "WAITING_FOR_DEPLOY"].includes(run.status),
-			canCancel: ["QUEUED", "EXECUTING", "WAITING_FOR_DEPLOY"].includes(run.status),
+			isActive: ["QUEUED", "EXECUTING", "WAITING_FOR_DEPLOY"].includes(
+				run.status
+			),
+			canCancel: ["QUEUED", "EXECUTING", "WAITING_FOR_DEPLOY"].includes(
+				run.status
+			),
 		};
 	} catch (error) {
 		console.error(`Failed to get trigger run status ${runId}:`, error);

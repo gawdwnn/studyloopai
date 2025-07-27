@@ -15,7 +15,7 @@ export function MaterialStatusIndicator({
 }: MaterialStatusIndicatorProps) {
 	// Simplified material status indicator
 	// Complex realtime tracking has been simplified in favor of basic status display
-	
+
 	if (uploadStatus === "failed" || embeddingStatus === "failed") {
 		return (
 			<Badge variant="destructive" className="text-xs">

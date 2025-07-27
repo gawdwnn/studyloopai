@@ -19,7 +19,9 @@ const UpdateGoldenNoteSchema = z.object({
 
 export type UpdateGoldenNoteInput = z.infer<typeof UpdateGoldenNoteSchema>;
 
-type NoteOperationResult<T = unknown> = { success: true; data: T } | { success: false; data: null };
+type NoteOperationResult<T = unknown> =
+	| { success: true; data: T }
+	| { success: false; data: null };
 
 // Conflict resolution types
 export type ConflictResolutionStrategy = "client" | "server" | "merge";
@@ -82,7 +84,12 @@ export async function getGoldenNotes(courseId: string, weekId: string) {
 					courseId: goldenNotes.courseId,
 				})
 				.from(goldenNotes)
-				.where(and(eq(goldenNotes.courseId, courseId), eq(goldenNotes.weekId, weekId)))
+				.where(
+					and(
+						eq(goldenNotes.courseId, courseId),
+						eq(goldenNotes.weekId, weekId)
+					)
+				)
 				.orderBy(desc(goldenNotes.priority), asc(goldenNotes.createdAt));
 
 			return notes;
@@ -115,7 +122,9 @@ export async function getSummaries(courseId: string, weekId: string) {
 					courseId: summaries.courseId,
 				})
 				.from(summaries)
-				.where(and(eq(summaries.courseId, courseId), eq(summaries.weekId, weekId)))
+				.where(
+					and(eq(summaries.courseId, courseId), eq(summaries.weekId, weekId))
+				)
 				.orderBy(desc(summaries.createdAt));
 
 			return summaryData;
@@ -160,7 +169,9 @@ export async function getCourseWeeks(courseId: string) {
 /**
  * Update a golden note with optimistic locking
  */
-export async function updateGoldenNote(input: UpdateGoldenNoteInput): Promise<NoteOperationResult> {
+export async function updateGoldenNote(
+	input: UpdateGoldenNoteInput
+): Promise<NoteOperationResult> {
 	return await withErrorHandling(
 		async (): Promise<NoteOperationResult> => {
 			const supabase = await getServerClient();

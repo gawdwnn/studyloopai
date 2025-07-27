@@ -3,7 +3,10 @@
 import { db } from "@/db";
 import { courseMaterials, courseWeeks, courses } from "@/db/schema";
 import { deleteContentForCourseWeek } from "@/lib/services/content-deletion-service";
-import { cleanupStorageFiles, extractFilePaths } from "@/lib/services/storage-cleanup-service";
+import {
+	cleanupStorageFiles,
+	extractFilePaths,
+} from "@/lib/services/storage-cleanup-service";
 import { getServerClient } from "@/lib/supabase/server";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -26,10 +29,7 @@ export async function addCourseMaterial(material: {
 	}
 
 	const course = await db.query.courses.findFirst({
-		where: and(
-			eq(courses.id, material.courseId),
-			eq(courses.userId, user.id)
-		),
+		where: and(eq(courses.id, material.courseId), eq(courses.userId, user.id)),
 		columns: { id: true, userId: true },
 	});
 
@@ -38,7 +38,9 @@ export async function addCourseMaterial(material: {
 	}
 
 	if (course.userId !== user.id) {
-		throw new Error("You don't have permission to add materials to this course.");
+		throw new Error(
+			"You don't have permission to add materials to this course."
+		);
 	}
 
 	// Get the week ID from the week number and course ID (now safe since ownership verified)
@@ -98,7 +100,10 @@ export async function markMaterialsUploadFailed(materialIds: string[]) {
 	}
 }
 
-export async function deleteCourseMaterial(materialId: string, filePath?: string | null) {
+export async function deleteCourseMaterial(
+	materialId: string,
+	filePath?: string | null
+) {
 	const supabase = await getServerClient();
 
 	const {
@@ -125,12 +130,16 @@ export async function deleteCourseMaterial(materialId: string, filePath?: string
 		});
 
 		if (!material) {
-			throw new Error("Course material not found or you don't have permission to delete it.");
+			throw new Error(
+				"Course material not found or you don't have permission to delete it."
+			);
 		}
 
 		// Verify ownership through course relationship
 		if (material.course.userId !== user.id) {
-			throw new Error("You don't have permission to delete this course material.");
+			throw new Error(
+				"You don't have permission to delete this course material."
+			);
 		}
 
 		// Step 2: Background job cancellation
@@ -188,7 +197,10 @@ export async function deleteCourseMaterial(materialId: string, filePath?: string
 		});
 
 		// Step 4: Clean up storage files (after successful DB deletion)
-		const allFilePaths = extractFilePaths([material], filePath ? [filePath] : []);
+		const allFilePaths = extractFilePaths(
+			[material],
+			filePath ? [filePath] : []
+		);
 		await cleanupStorageFiles(allFilePaths);
 
 		// Step 5: Revalidate related pages
@@ -199,7 +211,8 @@ export async function deleteCourseMaterial(materialId: string, filePath?: string
 			success: true,
 		};
 	} catch (error) {
-		const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+		const errorMessage =
+			error instanceof Error ? error.message : "Unknown error occurred";
 
 		console.error(`Failed to delete course material ${materialId}:`, {
 			error: errorMessage,

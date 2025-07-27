@@ -47,7 +47,7 @@ export async function searchContent(
 	return res.json() as Promise<SearchResponse>;
 }
 
-/** 
+/**
  * Convenience function for simple text search with defaults
  * Uses default limit of 10 and threshold of 0.7
  */

@@ -62,7 +62,11 @@ export function ConfirmDialog({
 
 	return (
 		<AlertDialog open={open} onOpenChange={setOpen}>
-			<div onClick={handleTriggerClick} onKeyDown={handleKeyDown} style={{ display: "contents" }}>
+			<div
+				onClick={handleTriggerClick}
+				onKeyDown={handleKeyDown}
+				style={{ display: "contents" }}
+			>
 				{trigger}
 			</div>
 			<AlertDialogContent onClick={(e) => e.stopPropagation()}>
@@ -71,7 +75,9 @@ export function ConfirmDialog({
 					<AlertDialogDescription>{description}</AlertDialogDescription>
 				</AlertDialogHeader>
 				<AlertDialogFooter>
-					<AlertDialogCancel disabled={isLoading}>{cancelText}</AlertDialogCancel>
+					<AlertDialogCancel disabled={isLoading}>
+						{cancelText}
+					</AlertDialogCancel>
 					<AlertDialogAction
 						onClick={handleConfirm}
 						disabled={isLoading}

@@ -17,7 +17,8 @@ const phases = [
 		icon: Brain,
 		title: "Learning Your Style",
 		description: "Adapting to your unique learning patterns...",
-		typingText: "Visual learner detected. Preference for examples. Optimal: 25min sessions.",
+		typingText:
+			"Visual learner detected. Preference for examples. Optimal: 25min sessions.",
 		color: "var(--homepage-ai-primary)",
 		bgGradient: "from-purple-500/20 to-pink-500/20",
 	},
@@ -155,7 +156,10 @@ export function AIAssistant() {
 								exit={{ opacity: 0, scale: 0.5, rotate: 90 }}
 								transition={{ duration: 0.4, ease: "easeOut" }}
 							>
-								<Icon className="w-10 h-10" style={{ color: currentPhaseData.color }} />
+								<Icon
+									className="w-10 h-10"
+									style={{ color: currentPhaseData.color }}
+								/>
 							</motion.div>
 						)}
 					</AnimatePresence>
@@ -203,8 +207,12 @@ export function AIAssistant() {
 						exit={{ opacity: 0, y: -20 }}
 						transition={{ duration: 0.5, ease: "easeOut" }}
 					>
-						<h3 className="text-lg font-semibold mb-3">{currentPhaseData.title}</h3>
-						<p className="text-sm opacity-75 mb-4">{currentPhaseData.description}</p>
+						<h3 className="text-lg font-semibold mb-3">
+							{currentPhaseData.title}
+						</h3>
+						<p className="text-sm opacity-75 mb-4">
+							{currentPhaseData.description}
+						</p>
 
 						{/* Typing Animation */}
 						<div className="bg-black/5 dark:bg-white/5 rounded-lg p-3 font-mono text-xs leading-relaxed min-h-[40px] text-left">
@@ -245,8 +253,10 @@ export function AIAssistant() {
 						<div
 							className="w-2 h-2 rounded-full transition-all duration-300"
 							style={{
-								backgroundColor: index === currentPhase ? phase.color : `${phase.color}40`,
-								boxShadow: index === currentPhase ? `0 0 12px ${phase.color}60` : "none",
+								backgroundColor:
+									index === currentPhase ? phase.color : `${phase.color}40`,
+								boxShadow:
+									index === currentPhase ? `0 0 12px ${phase.color}60` : "none",
 							}}
 						/>
 						{index === currentPhase && (

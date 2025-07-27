@@ -27,9 +27,12 @@ export async function generateEmbeddings(
 	const { batchSize = 100, maxRetries = 3, retryDelay = 1000 } = options;
 
 	try {
-		const textHashes = texts.map((text) => createHash("sha256").update(text).digest("hex"));
+		const textHashes = texts.map((text) =>
+			createHash("sha256").update(text).digest("hex")
+		);
 
-		const cachedEmbeddingsMap = await embeddingCache.getBatchEmbeddings(textHashes);
+		const cachedEmbeddingsMap =
+			await embeddingCache.getBatchEmbeddings(textHashes);
 		const uncachedTexts: { text: string; hash: string; index: number }[] = [];
 
 		texts.forEach((text, index) => {
@@ -69,7 +72,8 @@ export async function generateEmbeddings(
 		}
 
 		const finalEmbeddings: number[][] = textHashes.map((hash) => {
-			const embedding = cachedEmbeddingsMap.get(hash) || newEmbeddingsMap.get(hash);
+			const embedding =
+				cachedEmbeddingsMap.get(hash) || newEmbeddingsMap.get(hash);
 			if (!embedding) {
 				// This should theoretically never happen if logic is correct
 				throw new Error(`Embedding not found for hash: ${hash}`);

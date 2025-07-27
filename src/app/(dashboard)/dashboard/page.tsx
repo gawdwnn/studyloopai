@@ -12,7 +12,9 @@ import { toast } from "sonner";
 
 export default function DashboardPage() {
 	const [isPending, startTransition] = useTransition();
-	const [deletingCourses, setDeletingCourses] = useState<Set<string>>(new Set());
+	const [deletingCourses, setDeletingCourses] = useState<Set<string>>(
+		new Set()
+	);
 	const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
 	const { searchParams, setQueryState } = useQueryState();
 
@@ -58,7 +60,9 @@ export default function DashboardPage() {
 				queryClient.invalidateQueries({ queryKey: ["user-courses"] });
 
 				toast.error(
-					error instanceof Error ? error.message : "Failed to delete course. Please try again."
+					error instanceof Error
+						? error.message
+						: "Failed to delete course. Please try again."
 				);
 			} finally {
 				// Always remove from deleting state
@@ -76,7 +80,10 @@ export default function DashboardPage() {
 			<div className="space-y-6">
 				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
 					{[...Array(4)].map(() => (
-						<Skeleton key={crypto.randomUUID()} className="w-full h-48 rounded-lg" />
+						<Skeleton
+							key={crypto.randomUUID()}
+							className="w-full h-48 rounded-lg"
+						/>
 					))}
 				</div>
 			</div>
@@ -106,7 +113,10 @@ export default function DashboardPage() {
 		<div className="space-y-12">
 			<div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-end">
 				<div className="w-full md:w-auto">
-					<CreateCourseDialog isOpen={isCreateDialogOpen} onOpenChange={setCreateDialogOpen} />
+					<CreateCourseDialog
+						isOpen={isCreateDialogOpen}
+						onOpenChange={setCreateDialogOpen}
+					/>
 				</div>
 			</div>
 

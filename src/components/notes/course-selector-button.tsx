@@ -30,7 +30,9 @@ export function CourseSelectorButton({
 		}
 	}, [selectedCourseId, courses, onCourseSelect]);
 
-	const selectedCourse = courses.find((course) => course.id === selectedCourseId);
+	const selectedCourse = courses.find(
+		(course) => course.id === selectedCourseId
+	);
 
 	if (isLoading) {
 		return <Skeleton className="h-10 w-[200px]" />;
@@ -64,7 +66,9 @@ export function CourseSelectorButton({
 					>
 						<span className="font-medium">{course.name}</span>
 						{course.description && (
-							<span className="text-sm text-muted-foreground">{course.description}</span>
+							<span className="text-sm text-muted-foreground">
+								{course.description}
+							</span>
 						)}
 					</DropdownMenuItem>
 				))}

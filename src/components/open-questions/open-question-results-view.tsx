@@ -13,7 +13,10 @@ import confetti from "canvas-confetti";
 import { SparklesIcon, XIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
-import { AnswerFeedbackAnalysis, type AnswerFeedbackData } from "./answer-feedback-analysis";
+import {
+	AnswerFeedbackAnalysis,
+	type AnswerFeedbackData,
+} from "./answer-feedback-analysis";
 
 interface OpenQuestionResultsData {
 	answered: number;
@@ -37,7 +40,10 @@ type OpenQuestionResultsViewProps = {
 	onRestart: () => void;
 };
 
-export function OpenQuestionResultsView({ results, onRestart }: OpenQuestionResultsViewProps) {
+export function OpenQuestionResultsView({
+	results,
+	onRestart,
+}: OpenQuestionResultsViewProps) {
 	const [openItems, setOpenItems] = useState<string[]>([]);
 
 	// Dummy feedback data for static UI
@@ -46,13 +52,23 @@ export function OpenQuestionResultsView({ results, onRestart }: OpenQuestionResu
 			score: 85,
 			feedback:
 				"Your answer demonstrates strong factual accuracy with correct concepts and terminology.",
-			strengths: ["Accurate use of technical terms", "Correct identification of key concepts"],
-			improvements: ["Could include more specific examples", "Consider citing relevant sources"],
+			strengths: [
+				"Accurate use of technical terms",
+				"Correct identification of key concepts",
+			],
+			improvements: [
+				"Could include more specific examples",
+				"Consider citing relevant sources",
+			],
 		},
 		logicalStructure: {
 			score: 78,
-			feedback: "The logical flow is generally clear, though some transitions could be smoother.",
-			strengths: ["Clear introduction and conclusion", "Good paragraph organization"],
+			feedback:
+				"The logical flow is generally clear, though some transitions could be smoother.",
+			strengths: [
+				"Clear introduction and conclusion",
+				"Good paragraph organization",
+			],
 			improvements: [
 				"Improve transitions between ideas",
 				"Consider using more structured argumentation",
@@ -60,15 +76,26 @@ export function OpenQuestionResultsView({ results, onRestart }: OpenQuestionResu
 		},
 		depthOfInsight: {
 			score: 72,
-			feedback: "Shows good understanding but could benefit from deeper analysis of implications.",
-			strengths: ["Demonstrates understanding of core concepts", "Makes relevant connections"],
-			improvements: ["Explore underlying causes and effects", "Consider multiple perspectives"],
+			feedback:
+				"Shows good understanding but could benefit from deeper analysis of implications.",
+			strengths: [
+				"Demonstrates understanding of core concepts",
+				"Makes relevant connections",
+			],
+			improvements: [
+				"Explore underlying causes and effects",
+				"Consider multiple perspectives",
+			],
 		},
 		supportingEvidence: {
 			score: 68,
-			feedback: "Limited use of supporting evidence and examples to strengthen arguments.",
+			feedback:
+				"Limited use of supporting evidence and examples to strengthen arguments.",
 			strengths: ["Uses some relevant examples", "References course material"],
-			improvements: ["Include more specific evidence", "Use data or statistics where appropriate"],
+			improvements: [
+				"Include more specific evidence",
+				"Use data or statistics where appropriate",
+			],
 		},
 		overallScore: 76,
 		overallFeedback:
@@ -97,7 +124,9 @@ export function OpenQuestionResultsView({ results, onRestart }: OpenQuestionResu
 
 	const totalQuestions = results.answered + results.skipped;
 	const completionRate =
-		totalQuestions > 0 ? Math.round((results.answered / totalQuestions) * 100) : 0;
+		totalQuestions > 0
+			? Math.round((results.answered / totalQuestions) * 100)
+			: 0;
 
 	// Create chart data from results
 	const chartData = [
@@ -132,9 +161,12 @@ export function OpenQuestionResultsView({ results, onRestart }: OpenQuestionResu
 				<CardContent>
 					<div className="grid md:grid-cols-3 gap-8 items-center py-8">
 						<div className="text-center md:text-left">
-							<p className="text-xl font-bold">You answered {results.answered} questions</p>
+							<p className="text-xl font-bold">
+								You answered {results.answered} questions
+							</p>
 							<p className="text-sm text-muted-foreground mt-1">
-								{results.skipped > 0 && `You skipped ${results.skipped} questions`}
+								{results.skipped > 0 &&
+									`You skipped ${results.skipped} questions`}
 							</p>
 						</div>
 
@@ -155,14 +187,19 @@ export function OpenQuestionResultsView({ results, onRestart }: OpenQuestionResu
 											stroke="none"
 										>
 											{chartData.map((entry, index) => (
-												<Cell key={`cell-${entry.name}`} fill={COLORS[index % COLORS.length]} />
+												<Cell
+													key={`cell-${entry.name}`}
+													fill={COLORS[index % COLORS.length]}
+												/>
 											))}
 										</Pie>
 									</PieChart>
 								</ResponsiveContainer>
 								<div className="absolute inset-0 flex flex-col justify-center items-center pointer-events-none">
 									<span className="text-4xl font-bold">{completionRate}%</span>
-									<span className="text-muted-foreground text-sm">COMPLETION RATE</span>
+									<span className="text-muted-foreground text-sm">
+										COMPLETION RATE
+									</span>
 								</div>
 							</div>
 						</div>
@@ -173,11 +210,15 @@ export function OpenQuestionResultsView({ results, onRestart }: OpenQuestionResu
 							</div>
 							<div className="flex flex-col items-center md:items-start">
 								<p className="text-2xl font-bold">{results.timeOnExercise}</p>
-								<p className="text-xs text-muted-foreground">TIME ON EXERCISE</p>
+								<p className="text-xs text-muted-foreground">
+									TIME ON EXERCISE
+								</p>
 							</div>
 							<div className="flex flex-col items-center md:items-start">
 								<p className="text-2xl font-bold">{results.avgPerExercise}</p>
-								<p className="text-xs text-muted-foreground">AVERAGE PER EXERCISE</p>
+								<p className="text-xs text-muted-foreground">
+									AVERAGE PER EXERCISE
+								</p>
 							</div>
 						</div>
 					</div>
@@ -198,12 +239,17 @@ export function OpenQuestionResultsView({ results, onRestart }: OpenQuestionResu
 							onValueChange={setOpenItems}
 						>
 							{results.questions.map((q, index) => (
-								<AccordionItem value={`item-${index}`} key={`${q.question}-${index}`}>
+								<AccordionItem
+									value={`item-${index}`}
+									key={`${q.question}-${index}`}
+								>
 									<AccordionTrigger className="hover:bg-muted/50 px-4 rounded-md">
 										<div className="flex justify-between w-full items-center gap-4">
 											<div className="flex-1 text-left">{q.question}</div>
 											<div className="flex items-center space-x-4 flex-shrink-0">
-												<span className="text-sm text-muted-foreground">{q.time}</span>
+												<span className="text-sm text-muted-foreground">
+													{q.time}
+												</span>
 												<span className="text-sm text-muted-foreground">
 													{q.userAnswer ? "Answered" : "Skipped"}
 												</span>
@@ -218,22 +264,30 @@ export function OpenQuestionResultsView({ results, onRestart }: OpenQuestionResu
 											{/* Your Answer */}
 											{q.userAnswer && (
 												<div className="p-3 bg-muted/30 rounded-md">
-													<h4 className="font-medium text-sm mb-2">Your Answer:</h4>
+													<h4 className="font-medium text-sm mb-2">
+														Your Answer:
+													</h4>
 													<p className="text-sm">{q.userAnswer}</p>
 												</div>
 											)}
 
 											{/* Sample Answer */}
 											<div className="p-3 bg-accent/50 rounded-md">
-												<h4 className="font-medium text-sm mb-2">Sample Answer:</h4>
-												<p className="text-sm text-muted-foreground">{q.sampleAnswer}</p>
+												<h4 className="font-medium text-sm mb-2">
+													Sample Answer:
+												</h4>
+												<p className="text-sm text-muted-foreground">
+													{q.sampleAnswer}
+												</p>
 											</div>
 
 											{/* Feedback - Always show for answered questions */}
 											{q.userAnswer && (
 												<div className="space-y-4">
 													<h4 className="font-medium">Feedback</h4>
-													<AnswerFeedbackAnalysis feedback={getDummyFeedback()} />
+													<AnswerFeedbackAnalysis
+														feedback={getDummyFeedback()}
+													/>
 												</div>
 											)}
 										</div>

@@ -17,7 +17,10 @@ export async function POST(request: NextRequest) {
 		} = await supabase.auth.getUser();
 
 		if (!user) {
-			return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+			return NextResponse.json(
+				{ error: "Authentication required" },
+				{ status: 401 }
+			);
 		}
 
 		const body: SearchRequest = await request.json();
@@ -46,6 +49,9 @@ export async function POST(request: NextRequest) {
 		});
 	} catch (error) {
 		console.error("Search API error:", error);
-		return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+		return NextResponse.json(
+			{ error: "Internal server error" },
+			{ status: 500 }
+		);
 	}
 }

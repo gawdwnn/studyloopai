@@ -364,7 +364,9 @@ async function getDraftMetadata(
 		draft = await getPersistedDraft(draftKey);
 	}
 
-	return draft ? { timestamp: draft.timestamp, expiresAt: draft.expiresAt } : null;
+	return draft
+		? { timestamp: draft.timestamp, expiresAt: draft.expiresAt }
+		: null;
 }
 
 /**

@@ -10,14 +10,14 @@ const courseWeeksKeys = {
 };
 
 export function useCourseWeeks(
-	courseId: string, 
-	options?: { 
+	courseId: string,
+	options?: {
 		enabled?: boolean;
 		onlyWithMaterials?: boolean;
 	}
 ) {
 	const { onlyWithMaterials = false, enabled = !!courseId } = options || {};
-	
+
 	return useQuery({
 		queryKey: [...courseWeeksKeys.byCourse(courseId), { onlyWithMaterials }],
 		queryFn: () => getCourseWeeks(courseId, { onlyWithMaterials }),

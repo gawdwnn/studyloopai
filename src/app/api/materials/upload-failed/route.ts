@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
 
 		const updateResult = await db
 			.update(courseMaterials)
-			.set({ 
+			.set({
 				uploadStatus: "failed",
 			})
 			.where(
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
 		}
 
 		console.log(`Upload failed for ${updateResult.length} materials:`, {
-			materialIds: updateResult.map(m => m.id),
+			materialIds: updateResult.map((m) => m.id),
 			userId: user.id,
 		});
 
@@ -61,14 +61,11 @@ export async function POST(req: NextRequest) {
 		});
 	} catch (err) {
 		console.error("Upload failure tracking error:", err);
-		
+
 		const userMessage = getUserFriendlyErrorMessage(
 			err instanceof Error ? err : "Unknown error occurred"
 		);
-		
-		return NextResponse.json(
-			{ error: userMessage },
-			{ status: 400 }
-		);
+
+		return NextResponse.json({ error: userMessage }, { status: 400 });
 	}
 }

@@ -1,8 +1,17 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import type { Course, CourseMaterial, CourseWeek } from "@/types/database-types";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
+import type {
+	Course,
+	CourseMaterial,
+	CourseWeek,
+} from "@/types/database-types";
 
 type CourseMaterialWithRelations = CourseMaterial & {
 	course?: Pick<Course, "name"> | null;
@@ -46,13 +55,15 @@ function ContentBadge({ count, emoji, label }: ContentBadgeProps) {
 	);
 }
 
-export function GeneratedContentBadges({ contentCounts }: GeneratedContentBadgesProps) {
+export function GeneratedContentBadges({
+	contentCounts,
+}: GeneratedContentBadgesProps) {
 	// TODO: Integrate with content-availability-service to show per-material content counts
 	// Need to query AI content tables (cuecards, summaries, mcqs, etc.) filtered by:
 	// - courseId and weekId (from material)
 	// - Generated from this specific material (requires tracking material source in AI tables)
 	// This will show which content types and counts have been generated for each material
-	
+
 	if (!contentCounts) {
 		return (
 			<Badge variant="secondary" className="text-xs">
@@ -77,10 +88,18 @@ export function GeneratedContentBadges({ contentCounts }: GeneratedContentBadges
 	return (
 		<div className="flex flex-wrap gap-1 items-center">
 			{contentCounts.goldenNotes > 0 && (
-				<ContentBadge count={contentCounts.goldenNotes} emoji="📝" label="Study Notes" />
+				<ContentBadge
+					count={contentCounts.goldenNotes}
+					emoji="📝"
+					label="Study Notes"
+				/>
 			)}
 			{contentCounts.cuecards > 0 && (
-				<ContentBadge count={contentCounts.cuecards} emoji="🃏" label="Cuecards" />
+				<ContentBadge
+					count={contentCounts.cuecards}
+					emoji="🃏"
+					label="Cuecards"
+				/>
 			)}
 			{contentCounts.mcqs > 0 && (
 				<ContentBadge
@@ -97,10 +116,18 @@ export function GeneratedContentBadges({ contentCounts }: GeneratedContentBadges
 				/>
 			)}
 			{contentCounts.summaries > 0 && (
-				<ContentBadge count={contentCounts.summaries} emoji="📄" label="Summaries" />
+				<ContentBadge
+					count={contentCounts.summaries}
+					emoji="📄"
+					label="Summaries"
+				/>
 			)}
 			{contentCounts.conceptMaps > 0 && (
-				<ContentBadge count={contentCounts.conceptMaps} emoji="🗺️" label="Concept Maps" />
+				<ContentBadge
+					count={contentCounts.conceptMaps}
+					emoji="🗺️"
+					label="Concept Maps"
+				/>
 			)}
 		</div>
 	);

@@ -51,7 +51,9 @@ interface AnswerFeedbackAnalysisProps {
 	feedback: AnswerFeedbackData;
 }
 
-export function AnswerFeedbackAnalysis({ feedback }: AnswerFeedbackAnalysisProps) {
+export function AnswerFeedbackAnalysis({
+	feedback,
+}: AnswerFeedbackAnalysisProps) {
 	const getScoreColor = (score: number) => {
 		if (score >= 80) return "text-green-600 dark:text-green-400";
 		if (score >= 60) return "text-yellow-600 dark:text-yellow-400";
@@ -59,9 +61,14 @@ export function AnswerFeedbackAnalysis({ feedback }: AnswerFeedbackAnalysisProps
 	};
 
 	const getScoreIcon = (score: number) => {
-		if (score >= 80) return <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />;
+		if (score >= 80)
+			return (
+				<CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+			);
 		if (score >= 60)
-			return <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />;
+			return (
+				<AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+			);
 		return <XCircle className="h-4 w-4 text-destructive" />;
 	};
 
@@ -104,7 +111,10 @@ export function AnswerFeedbackAnalysis({ feedback }: AnswerFeedbackAnalysisProps
 			<div className="p-4 bg-muted/30 rounded-lg border">
 				<div className="flex items-center justify-between mb-4">
 					<h3 className="text-lg font-semibold">Overall Assessment</h3>
-					<Badge variant={getScoreBadgeVariant(feedback.overallScore)} className="text-sm">
+					<Badge
+						variant={getScoreBadgeVariant(feedback.overallScore)}
+						className="text-sm"
+					>
 						{feedback.overallScore}%
 					</Badge>
 				</div>
@@ -112,11 +122,15 @@ export function AnswerFeedbackAnalysis({ feedback }: AnswerFeedbackAnalysisProps
 					<div className="flex items-center gap-2">
 						{getScoreIcon(feedback.overallScore)}
 						<Progress value={feedback.overallScore} className="flex-1" />
-						<span className={`text-sm font-medium ${getScoreColor(feedback.overallScore)}`}>
+						<span
+							className={`text-sm font-medium ${getScoreColor(feedback.overallScore)}`}
+						>
 							{feedback.overallScore}%
 						</span>
 					</div>
-					<p className="text-sm text-muted-foreground">{feedback.overallFeedback}</p>
+					<p className="text-sm text-muted-foreground">
+						{feedback.overallFeedback}
+					</p>
 				</div>
 			</div>
 
@@ -132,18 +146,25 @@ export function AnswerFeedbackAnalysis({ feedback }: AnswerFeedbackAnalysisProps
 										{criterion.icon}
 										<h4 className="font-medium">{criterion.name}</h4>
 									</div>
-									<Badge variant={getScoreBadgeVariant(criterion.data.score)} className="text-sm">
+									<Badge
+										variant={getScoreBadgeVariant(criterion.data.score)}
+										className="text-sm"
+									>
 										{criterion.data.score}%
 									</Badge>
 								</div>
 							</AccordionTrigger>
 							<AccordionContent className="pt-4 space-y-4">
-								<p className="text-xs text-muted-foreground">{criterion.description}</p>
+								<p className="text-xs text-muted-foreground">
+									{criterion.description}
+								</p>
 
 								<div className="flex items-center gap-2">
 									{getScoreIcon(criterion.data.score)}
 									<Progress value={criterion.data.score} className="flex-1" />
-									<span className={`text-sm font-medium ${getScoreColor(criterion.data.score)}`}>
+									<span
+										className={`text-sm font-medium ${getScoreColor(criterion.data.score)}`}
+									>
 										{criterion.data.score}%
 									</span>
 								</div>

@@ -23,7 +23,10 @@ export interface StructuredError {
 }
 
 // Type guard helper for safe property access
-const hasProperty = <T extends Record<string, unknown>>(obj: unknown, prop: keyof T): obj is T => {
+const hasProperty = <T extends Record<string, unknown>>(
+	obj: unknown,
+	prop: keyof T
+): obj is T => {
 	return typeof obj === "object" && obj !== null && prop in obj;
 };
 
@@ -123,7 +126,9 @@ export const handleApiError = (error: unknown, operation: string): string => {
 
 	// Validation errors with custom messages
 	if (isValidationError(error)) {
-		const userMessage = hasProperty(error, "userMessage") ? error.userMessage : null;
+		const userMessage = hasProperty(error, "userMessage")
+			? error.userMessage
+			: null;
 		const message = hasProperty(error, "message") ? error.message : null;
 		const customMessage = userMessage || message;
 
@@ -134,12 +139,19 @@ export const handleApiError = (error: unknown, operation: string): string => {
 	}
 
 	// Structured errors from our own server actions
-	if (hasProperty(error, "userMessage") && typeof error.userMessage === "string") {
+	if (
+		hasProperty(error, "userMessage") &&
+		typeof error.userMessage === "string"
+	) {
 		return error.userMessage;
 	}
 
 	// Server errors (5xx)
-	if (hasProperty(error, "status") && typeof error.status === "number" && error.status >= 500) {
+	if (
+		hasProperty(error, "status") &&
+		typeof error.status === "number" &&
+		error.status >= 500
+	) {
 		return `Unable to ${operation} due to a server issue. Please try again later.`;
 	}
 
@@ -154,14 +166,20 @@ export const handleApiError = (error: unknown, operation: string): string => {
  * @param onRetry - Optional retry function
  * @returns Formatted error object with message and retry option
  */
-export const handleMutationError = (error: unknown, operation: string, onRetry?: () => void) => {
+export const handleMutationError = (
+	error: unknown,
+	operation: string,
+	onRetry?: () => void
+) => {
 	const message = handleApiError(error, operation);
 
 	return {
 		message,
 		canRetry:
 			isNetworkError(error) ||
-			(hasProperty(error, "status") && typeof error.status === "number" && error.status >= 500),
+			(hasProperty(error, "status") &&
+				typeof error.status === "number" &&
+				error.status >= 500),
 		retry: onRetry,
 	};
 };
@@ -169,7 +187,10 @@ export const handleMutationError = (error: unknown, operation: string, onRetry?:
 /**
  * Creates user-friendly error messages for specific operations
  */
-export const getOperationErrorMessage = (operation: string, error: unknown): string => {
+export const getOperationErrorMessage = (
+	operation: string,
+	error: unknown
+): string => {
 	const baseMessage = handleApiError(error, operation);
 
 	// Add operation-specific context
@@ -222,7 +243,10 @@ export interface ErrorFallbackProps {
 /**
  * Formats errors for toast notifications
  */
-export const formatErrorForToast = (error: unknown, operation: string): string => {
+export const formatErrorForToast = (
+	error: unknown,
+	operation: string
+): string => {
 	const message = getOperationErrorMessage(operation, error);
 
 	// Keep toast messages concise but informative
@@ -240,7 +264,9 @@ export const formatErrorForToast = (error: unknown, operation: string): string =
 export const shouldShowRetry = (error: unknown): boolean => {
 	return (
 		isNetworkError(error) ||
-		(hasProperty(error, "status") && typeof error.status === "number" && error.status >= 500) ||
+		(hasProperty(error, "status") &&
+			typeof error.status === "number" &&
+			error.status >= 500) ||
 		isRateLimitError(error)
 	);
 };
@@ -248,7 +274,10 @@ export const shouldShowRetry = (error: unknown): boolean => {
 /**
  * Gets appropriate retry delay based on error type
  */
-export const getRetryDelay = (error: unknown, attemptNumber: number): number => {
+export const getRetryDelay = (
+	error: unknown,
+	attemptNumber: number
+): number => {
 	if (isRateLimitError(error)) {
 		return 60000; // 1 minute for rate limits
 	}
@@ -270,14 +299,19 @@ export const createErrorResponse = (
 	return {
 		success: false,
 		error: getOperationErrorMessage(operation, error),
-		code: hasProperty(error, "code") && typeof error.code === "string" ? error.code : undefined,
+		code:
+			hasProperty(error, "code") && typeof error.code === "string"
+				? error.code
+				: undefined,
 	};
 };
 
 /**
  * Creates a success response for server actions
  */
-export const createSuccessResponse = <T>(data: T): { success: true; data: T } => {
+export const createSuccessResponse = <T>(
+	data: T
+): { success: true; data: T } => {
 	return {
 		success: true,
 		data,

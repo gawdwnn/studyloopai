@@ -43,7 +43,11 @@ const nextConfig: NextConfig = {
 
 	// Experimental features for performance
 	experimental: {
-		optimizePackageImports: ["@radix-ui/react-icons", "lucide-react", "framer-motion"],
+		optimizePackageImports: [
+			"@radix-ui/react-icons",
+			"lucide-react",
+			"framer-motion",
+		],
 	},
 };
 
