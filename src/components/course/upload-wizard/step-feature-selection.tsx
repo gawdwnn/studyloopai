@@ -15,16 +15,11 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useWeekFeatureAvailability } from "@/hooks/use-feature-availability";
+import { useFeatureAvailability } from "@/hooks/use-feature-availability";
 import { useUploadWizardStore } from "@/stores/upload-wizard-store";
 import {
 	type FeatureType,
-	getDefaultConceptMapsConfig,
-	getDefaultCuecardsConfig,
-	getDefaultGoldenNotesConfig,
-	getDefaultMcqsConfig,
-	getDefaultOpenQuestionsConfig,
-	getDefaultSummariesConfig,
+	getDefaultConfigForFeature,
 } from "@/types/generation-types";
 import { CheckCircle2, Info, Zap } from "lucide-react";
 
@@ -84,7 +79,7 @@ export function StepFeatureSelection() {
 
 	// feature availability
 	const { data: featureAvailability, isLoading: isLoadingAvailability } =
-		useWeekFeatureAvailability(selectedCourseId, selectedWeekId);
+		useFeatureAvailability(selectedCourseId, selectedWeekId);
 
 	const toggleFeature = (feature: FeatureType) => {
 		const newSelectedFeatures = {
@@ -98,26 +93,9 @@ export function StepFeatureSelection() {
 		if (newSelectedFeatures[feature]) {
 			// Add default config when enabling
 			if (!newFeatureConfigs[feature]) {
-				switch (feature) {
-					case "cuecards":
-						newFeatureConfigs.cuecards = getDefaultCuecardsConfig();
-						break;
-					case "mcqs":
-						newFeatureConfigs.mcqs = getDefaultMcqsConfig();
-						break;
-					case "openQuestions":
-						newFeatureConfigs.openQuestions = getDefaultOpenQuestionsConfig();
-						break;
-					case "summaries":
-						newFeatureConfigs.summaries = getDefaultSummariesConfig();
-						break;
-					case "goldenNotes":
-						newFeatureConfigs.goldenNotes = getDefaultGoldenNotesConfig();
-						break;
-					case "conceptMaps":
-						newFeatureConfigs.conceptMaps = getDefaultConceptMapsConfig();
-						break;
-				}
+				Object.assign(newFeatureConfigs, {
+					[feature]: getDefaultConfigForFeature(feature),
+				});
 			}
 		} else {
 			// Remove config when disabling
