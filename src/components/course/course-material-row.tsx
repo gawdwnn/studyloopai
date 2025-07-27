@@ -3,6 +3,7 @@
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { CourseWeekFeature } from "@/components/course/course-week-feature";
 import { RealtimeCourseMaterialStatus } from "@/components/course/realtime-course-material-status";
+import type { TableColumn } from "@/components/course/table-column-config";
 import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { useFeatureAvailability } from "@/hooks/use-feature-availability";
@@ -32,6 +33,8 @@ interface CourseMaterialRowProps {
 	onDeleteMaterial: (materialId: string, materialName: string) => void;
 	isDeleting: boolean;
 	isBeingDeleted: boolean;
+	visibleColumns: TableColumn[];
+	isMobile: boolean;
 }
 
 export function CourseMaterialRow({
@@ -39,6 +42,8 @@ export function CourseMaterialRow({
 	onDeleteMaterial,
 	isDeleting,
 	isBeingDeleted,
+	visibleColumns,
+	isMobile,
 }: CourseMaterialRowProps) {
 	const { data, isLoading } = useFeatureAvailability(
 		material.courseId,
@@ -66,90 +71,93 @@ export function CourseMaterialRow({
 		}
 	};
 
-	return (
-		<TableRow
-			className={`transition-all duration-300 ${
-				isBeingDeleted
-					? "opacity-50 bg-destructive/5 animate-pulse"
-					: "hover:bg-muted/50"
-			}`}
-		>
-			<TableCell className="font-medium text-center whitespace-nowrap">
-				<span className="text-sm font-medium">
-					{material.courseWeek?.weekNumber
-						? `Week ${material.courseWeek.weekNumber}`
-						: "Unassigned"}
-				</span>
-			</TableCell>
-			<TableCell className="font-medium">
-				<span className="text-sm font-medium">
-					{material.course?.name || "Unknown Course"}
-				</span>
-			</TableCell>
-			<TableCell className="font-medium">
-				<div className="flex items-center gap-2">
-					{getContentTypeIcon(material.contentType || "pdf")}
-					<div>
-						<div>{material.fileName || material.title}</div>
-						<div className="text-xs text-muted-foreground">
-							{CONTENT_TYPE_LABELS[
-								material.contentType as keyof typeof CONTENT_TYPE_LABELS
-							] || "PDF Document"}
+	// Render cell content based on column type
+	const renderCellContent = (columnId: string) => {
+		switch (columnId) {
+			case "week":
+				return (
+					<span className="text-sm font-medium">
+						{material.courseWeek?.weekNumber
+							? `Week ${material.courseWeek.weekNumber}`
+							: "Unassigned"}
+					</span>
+				);
+			case "courseName":
+				return (
+					<span className="text-sm font-medium">
+						{material.course?.name || "Unknown Course"}
+					</span>
+				);
+			case "materialName":
+				return (
+					<div className="flex items-center gap-2">
+						{getContentTypeIcon(material.contentType || "pdf")}
+						<div className="min-w-0 flex-1">
+							<div className="truncate">
+								{material.fileName || material.title}
+							</div>
+							{!isMobile && (
+								<div className="text-xs text-muted-foreground">
+									{CONTENT_TYPE_LABELS[
+										material.contentType as keyof typeof CONTENT_TYPE_LABELS
+									] || "PDF Document"}
+								</div>
+							)}
 						</div>
 					</div>
-				</div>
-			</TableCell>
-
-			<TableCell>
-				<RealtimeCourseMaterialStatus courseMaterial={material} />
-			</TableCell>
-
-			<TableCell className="text-center">
-				<CourseWeekFeature
-					weekFeatures={weekFeatures}
-					featureType="goldenNotes"
-					isLoading={isLoading}
-				/>
-			</TableCell>
-			<TableCell className="text-center">
-				<CourseWeekFeature
-					weekFeatures={weekFeatures}
-					featureType="summaries"
-					isLoading={isLoading}
-				/>
-			</TableCell>
-			<TableCell className="text-center">
-				<CourseWeekFeature
-					weekFeatures={weekFeatures}
-					featureType="cuecards"
-					isLoading={isLoading}
-				/>
-			</TableCell>
-			<TableCell className="text-center">
-				<CourseWeekFeature
-					weekFeatures={weekFeatures}
-					featureType="mcqs"
-					isLoading={isLoading}
-				/>
-			</TableCell>
-			<TableCell className="text-center">
-				<CourseWeekFeature
-					weekFeatures={weekFeatures}
-					featureType="openQuestions"
-					isLoading={isLoading}
-				/>
-			</TableCell>
-
-			<TableCell className="text-center">
-				<CourseWeekFeature
-					weekFeatures={weekFeatures}
-					featureType="conceptMaps"
-					isLoading={isLoading}
-				/>
-			</TableCell>
-
-			<TableCell className="text-center whitespace-nowrap">
-				{isBeingDeleted ? (
+				);
+			case "status":
+				return <RealtimeCourseMaterialStatus courseMaterial={material} />;
+			case "notes":
+				return (
+					<CourseWeekFeature
+						weekFeatures={weekFeatures}
+						featureType="goldenNotes"
+						isLoading={isLoading}
+					/>
+				);
+			case "summaries":
+				return (
+					<CourseWeekFeature
+						weekFeatures={weekFeatures}
+						featureType="summaries"
+						isLoading={isLoading}
+					/>
+				);
+			case "cuecards":
+				return (
+					<CourseWeekFeature
+						weekFeatures={weekFeatures}
+						featureType="cuecards"
+						isLoading={isLoading}
+					/>
+				);
+			case "mcqs":
+				return (
+					<CourseWeekFeature
+						weekFeatures={weekFeatures}
+						featureType="mcqs"
+						isLoading={isLoading}
+					/>
+				);
+			case "openQuestions":
+				return (
+					<CourseWeekFeature
+						weekFeatures={weekFeatures}
+						featureType="openQuestions"
+						isLoading={isLoading}
+					/>
+				);
+			case "conceptMaps":
+				return (
+					<CourseWeekFeature
+						weekFeatures={weekFeatures}
+						featureType="conceptMaps"
+						isLoading={isLoading}
+					/>
+				);
+			case "actions":
+				return isBeingDeleted ? (
 					<div className="flex items-center justify-center h-8 w-8">
 						<div className="h-4 w-4 border-2 border-destructive border-t-transparent rounded-full animate-spin" />
 					</div>
@@ -176,8 +184,25 @@ export function CourseMaterialRow({
 						isLoading={isDeleting}
 						disabled={isDeleting || isBeingDeleted}
 					/>
-				)}
-			</TableCell>
+				);
+			default:
+				return null;
+		}
+	};
+
+	return (
+		<TableRow
+			className={`transition-all duration-300 ${
+				isBeingDeleted
+					? "opacity-50 bg-destructive/5 animate-pulse"
+					: "hover:bg-muted/50"
+			}`}
+		>
+			{visibleColumns.map((column) => (
+				<TableCell key={column.id} className={column.className}>
+					{renderCellContent(column.id)}
+				</TableCell>
+			))}
 		</TableRow>
 	);
 }

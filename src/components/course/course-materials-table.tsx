@@ -1,6 +1,10 @@
 "use client";
 
 import { CourseMaterialRow } from "@/components/course/course-material-row";
+import { COURSE_MATERIAL_COLUMNS } from "@/components/course/table-column-config";
+import { useResponsiveColumns } from "@/components/table/hooks/use-responsive-columns";
+import { useTableScroll } from "@/components/table/hooks/use-table-scroll";
+import { TableScrollControls } from "@/components/table/table-scroll-controls";
 import { Input } from "@/components/ui/input";
 import {
 	Table,
@@ -38,6 +42,19 @@ export function CourseMaterialsTable({
 }: CourseMaterialsTableProps) {
 	const [searchTerm, setSearchTerm] = useState("");
 
+	// Responsive columns and table scroll
+	const { visibleColumns, isMobile } = useResponsiveColumns(
+		COURSE_MATERIAL_COLUMNS
+	);
+	const {
+		containerRef,
+		canScrollLeft,
+		canScrollRight,
+		isScrollable,
+		scrollLeft,
+		scrollRight,
+	} = useTableScroll({ scrollAmount: 150 });
+
 	// Filter materials based on search term
 	const filteredMaterials = courseMaterials.filter(
 		(material) =>
@@ -61,51 +78,51 @@ export function CourseMaterialsTable({
 
 	return (
 		<div className="space-y-4 w-full">
-			<div className="flex justify-between items-center">
-				<h2 className="text-lg font-semibold">Uploaded Materials</h2>
-				<div className="relative w-72">
-					<Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-					<Input
-						placeholder="Search materials or courses..."
-						value={searchTerm}
-						onChange={(e) => setSearchTerm(e.target.value)}
-						className="pl-10"
-					/>
+			<div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+				<div className="flex items-center justify-between w-full sm:w-auto">
+					<h2 className="text-lg font-semibold">Uploaded Materials</h2>
+					{isScrollable && (
+						<TableScrollControls
+							canScrollLeft={canScrollLeft}
+							canScrollRight={canScrollRight}
+							onScrollLeft={scrollLeft}
+							onScrollRight={scrollRight}
+							className="sm:hidden"
+						/>
+					)}
+				</div>
+				<div className="flex items-center gap-3 w-full sm:w-auto">
+					<div className="relative flex-1 sm:w-72">
+						<Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+						<Input
+							placeholder="Search materials or courses..."
+							value={searchTerm}
+							onChange={(e) => setSearchTerm(e.target.value)}
+							className="pl-10"
+						/>
+					</div>
+					{isScrollable && (
+						<TableScrollControls
+							canScrollLeft={canScrollLeft}
+							canScrollRight={canScrollRight}
+							onScrollLeft={scrollLeft}
+							onScrollRight={scrollRight}
+							className="hidden sm:flex"
+						/>
+					)}
 				</div>
 			</div>
 
 			<div className="w-full rounded-lg border">
-				<div className="relative w-full overflow-x-auto">
+				<div ref={containerRef} className="relative w-full overflow-x-auto">
 					<Table className="w-full caption-bottom text-sm">
 						<TableHeader>
 							<TableRow className="bg-muted/50">
-								<TableHead className="w-20 whitespace-nowrap">Week</TableHead>
-								<TableHead className="min-w-[150px] whitespace-nowrap">
-									Course Name
-								</TableHead>
-								<TableHead className="min-w-[200px] whitespace-nowrap">
-									Material Name
-								</TableHead>
-								<TableHead className="w-40 whitespace-nowrap">Status</TableHead>
-								<TableHead className="w-16 whitespace-nowrap text-center">
-									Notes
-								</TableHead>
-								<TableHead className="w-16 whitespace-nowrap text-center">
-									Summaries
-								</TableHead>
-								<TableHead className="w-16 whitespace-nowrap text-center">
-									Cuecards
-								</TableHead>
-								<TableHead className="w-16 whitespace-nowrap text-center">
-									MCQs
-								</TableHead>
-								<TableHead className="w-16 whitespace-nowrap text-center">
-									Open Questions
-								</TableHead>
-								<TableHead className="w-16 whitespace-nowrap text-center">
-									Concept Maps
-								</TableHead>
-								<TableHead className="w-16 whitespace-nowrap" />
+								{visibleColumns.map((column) => (
+									<TableHead key={column.id} className={column.headerClassName}>
+										{column.label}
+									</TableHead>
+								))}
 							</TableRow>
 						</TableHeader>
 						<TableBody>
@@ -118,13 +135,15 @@ export function CourseMaterialsTable({
 											onDeleteMaterial={onDeleteMaterial}
 											isDeleting={isDeleting}
 											isBeingDeleted={deletingMaterials.has(material.id)}
+											visibleColumns={visibleColumns}
+											isMobile={isMobile}
 										/>
 									);
 								})
 							) : (
 								<TableRow>
 									<TableCell
-										colSpan={11}
+										colSpan={visibleColumns.length}
 										className="text-center py-8 text-muted-foreground"
 									>
 										{searchTerm
