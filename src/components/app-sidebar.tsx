@@ -68,7 +68,7 @@ const routes: RouteItem[] = [
 	},
 	{
 		label: "Notes",
-		href: "/dashboard/adaptive-learning/notes",
+		href: "/dashboard/notes",
 		icon: FileText,
 	},
 	{

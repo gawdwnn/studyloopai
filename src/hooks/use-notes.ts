@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import {
 	type UpdateGoldenNoteInput,
 	deleteGoldenNote,
-	getNotesData,
+	getAllCourseNotesData,
 	updateGoldenNote,
 } from "@/lib/actions/notes";
 import { formatErrorForToast } from "@/lib/utils/error-handling";
@@ -71,21 +71,41 @@ interface NotesData {
 const notesKeys = {
 	all: ["notes"] as const,
 	byCourse: (courseId: string) => [...notesKeys.all, courseId] as const,
-	byCourseAndWeek: (courseId: string, weekId?: string) =>
-		[...notesKeys.byCourse(courseId), weekId] as const,
 };
 
-export function useNotesData(
+/**
+ * Unified hook that fetches all notes for a course and provides client-side filtering
+ */
+export function useUnifiedNotesData(
 	courseId: string,
-	weekId: string,
-	options?: { enabled?: boolean }
+	options?: {
+		weekId?: string;
+		initialData?: NotesData;
+		enabled?: boolean;
+	}
 ) {
 	return useQuery({
-		queryKey: notesKeys.byCourseAndWeek(courseId, weekId),
-		queryFn: () => getNotesData(courseId, weekId),
+		queryKey: notesKeys.byCourse(courseId), // Single cache key per course
+		queryFn: () => getAllCourseNotesData(courseId),
 		enabled: options?.enabled ?? !!courseId,
-		staleTime: 5 * 60 * 1000, // 5 minutes
-		gcTime: 10 * 60 * 1000, // 10 minutes
+		initialData: options?.initialData,
+		staleTime: 10 * 60 * 1000, // Longer stale time (10 minutes) since we cache more data
+		gcTime: 30 * 60 * 1000, // Extended GC time (30 minutes)
+		select: (data) => {
+			// Client-side filtering for specific week if provided
+			if (options?.weekId) {
+				return {
+					...data,
+					goldenNotes: data.goldenNotes.filter(
+						(note) => note.weekId === options.weekId
+					),
+					summaries: data.summaries.filter(
+						(summary) => summary.weekId === options.weekId
+					),
+				};
+			}
+			return data;
+		},
 	});
 }
 

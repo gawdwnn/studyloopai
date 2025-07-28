@@ -35,41 +35,11 @@ export type ConflictError = {
 };
 
 /**
- * Get notes data for a specific course and week
+ * Get ALL golden notes for a course (all weeks)
  */
-export async function getNotesData(courseId: string, weekId: string) {
+export async function getAllGoldenNotes(courseId: string) {
 	return await withErrorHandling(
 		async () => {
-			const [goldenNotesData, summariesData, weekData] = await Promise.all([
-				getGoldenNotes(courseId, weekId),
-				getSummaries(courseId, weekId),
-				getCourseWeeks(courseId),
-			]);
-
-			return {
-				goldenNotes: goldenNotesData,
-				summaries: summariesData,
-				weeks: weekData,
-			};
-		},
-		"getNotesData",
-		{
-			goldenNotes: [],
-			summaries: [],
-			weeks: [],
-		}
-	);
-}
-/**
- * Get golden notes for a specific course and week
- */
-export async function getGoldenNotes(courseId: string, weekId: string) {
-	return await withErrorHandling(
-		async () => {
-			if (!weekId || weekId.trim() === "") {
-				return [];
-			}
-
 			const notes = await db
 				.select({
 					id: goldenNotes.id,
@@ -84,31 +54,22 @@ export async function getGoldenNotes(courseId: string, weekId: string) {
 					courseId: goldenNotes.courseId,
 				})
 				.from(goldenNotes)
-				.where(
-					and(
-						eq(goldenNotes.courseId, courseId),
-						eq(goldenNotes.weekId, weekId)
-					)
-				)
+				.where(eq(goldenNotes.courseId, courseId))
 				.orderBy(desc(goldenNotes.priority), asc(goldenNotes.createdAt));
 
 			return notes;
 		},
-		"getGoldenNotes",
+		"getAllGoldenNotes",
 		[]
 	);
 }
 
 /**
- * Get summaries for a specific course and week
+ * Get ALL summaries for a course (all weeks)
  */
-export async function getSummaries(courseId: string, weekId: string) {
+export async function getAllSummaries(courseId: string) {
 	return await withErrorHandling(
 		async () => {
-			if (!weekId || weekId.trim() === "") {
-				return [];
-			}
-
 			const summaryData = await db
 				.select({
 					id: summaries.id,
@@ -122,15 +83,42 @@ export async function getSummaries(courseId: string, weekId: string) {
 					courseId: summaries.courseId,
 				})
 				.from(summaries)
-				.where(
-					and(eq(summaries.courseId, courseId), eq(summaries.weekId, weekId))
-				)
+				.where(eq(summaries.courseId, courseId))
 				.orderBy(desc(summaries.createdAt));
 
 			return summaryData;
 		},
-		"getSummaries",
+		"getAllSummaries",
 		[]
+	);
+}
+
+/**
+ * Get ALL notes data for a course (unified query)
+ */
+export async function getAllCourseNotesData(courseId: string) {
+	return await withErrorHandling(
+		async () => {
+			const [goldenNotesData, summariesData, weekData] = await Promise.all([
+				getAllGoldenNotes(courseId),
+				getAllSummaries(courseId),
+				getCourseWeeks(courseId),
+			]);
+
+			return {
+				goldenNotes: goldenNotesData,
+				summaries: summariesData,
+				weeks: weekData,
+				ownNotes: [], // Own notes are handled separately in UserNotesEditor
+			};
+		},
+		"getAllCourseNotesData",
+		{
+			goldenNotes: [],
+			summaries: [],
+			weeks: [],
+			ownNotes: [],
+		}
 	);
 }
 
