@@ -1,5 +1,6 @@
 "use client";
 
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
 	Collapsible,
 	CollapsibleContent,
@@ -21,6 +22,8 @@ import {
 	SidebarMenuSubItem,
 	useSidebar,
 } from "@/components/ui/sidebar";
+import { useCurrentUserImage } from "@/hooks/use-current-user-image";
+import { useCurrentUserName } from "@/hooks/use-current-user-name";
 import { signOut } from "@/lib/actions/auth";
 import { cn } from "@/lib/utils";
 import {
@@ -133,6 +136,8 @@ export function AppSidebar() {
 	const pathname = usePathname();
 	const [openItems, setOpenItems] = useState<string[]>([]);
 	const { setOpenMobile } = useSidebar();
+	const userImage = useCurrentUserImage();
+	const userName = useCurrentUserName();
 
 	const closeMobileSidebar = () => {
 		if (window.innerWidth < 768) {
@@ -151,13 +156,29 @@ export function AppSidebar() {
 	return (
 		<Sidebar collapsible="icon">
 			<SidebarHeader>
-				<div className="flex h-14 items-center px-4">
-					<Link href="/dashboard" className="flex items-center gap-2">
-						<span className="font-semibold group-data-[collapsible=icon]:hidden">
-							StudyLoopAI
-						</span>
-					</Link>
-				</div>
+				<SidebarMenu>
+					<SidebarMenuItem>
+						<SidebarMenuButton size="lg" className="w-full">
+							<Avatar className="h-8 w-8">
+								<AvatarImage
+									src={userImage || undefined}
+									alt={userName || "User"}
+								/>
+								<AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-500 text-white">
+									{userName ? userName.charAt(0).toUpperCase() : "U"}
+								</AvatarFallback>
+							</Avatar>
+							<div className="flex flex-col gap-0.5 text-left group-data-[collapsible=icon]:hidden">
+								<span className="text-sm font-semibold">
+									{userName || "StudyLoopAI"}
+								</span>
+								<span className="text-xs text-muted-foreground">
+									Personal Workspace
+								</span>
+							</div>
+						</SidebarMenuButton>
+					</SidebarMenuItem>
+				</SidebarMenu>
 			</SidebarHeader>
 			<SidebarContent>
 				<SidebarGroup>
@@ -190,9 +211,9 @@ export function AppSidebar() {
 														{route.onClick ? (
 															<button
 																type="button"
-																onClick={async (e) => {
+																onClick={(e) => {
 																	closeMobileSidebar();
-																	await route.onClick?.(e);
+																	route.onClick?.(e);
 																}}
 																className="flex w-full items-center gap-2 text-left"
 															>
@@ -304,9 +325,9 @@ export function AppSidebar() {
 											{route.label === "Sign Out" ? (
 												<button
 													type="button"
-													onClick={async () => {
+													onClick={() => {
 														closeMobileSidebar();
-														await signOut();
+														signOut();
 														router.push("/auth/signin");
 													}}
 													className="flex w-full items-center gap-2 text-left cursor-pointer"

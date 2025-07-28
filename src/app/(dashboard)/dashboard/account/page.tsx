@@ -1,4 +1,4 @@
-import { AccountBillingSettings } from "@/components/dashboard/account-billing-settings";
+import { AccountBillingSettings } from "@/components/billing/account-billing-settings";
 import {
 	Card,
 	CardContent,

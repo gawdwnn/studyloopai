@@ -1,15 +1,7 @@
-"use client";
+import { ArrowRight, Brain, CheckCircle, Clipboard, Route } from "lucide-react";
+import Link from "next/link";
 
-import {
-	ArrowRight,
-	BookOpen,
-	CheckCircle,
-	Clipboard,
-	Route,
-} from "lucide-react";
-import { useRouter } from "next/navigation";
-import { Line, LineChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
-
+import { PageHeading } from "@/components/page-heading";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -18,185 +10,138 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import {
-	ChartContainer,
-	ChartTooltip,
-	ChartTooltipContent,
-} from "@/components/ui/chart";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
 import { QuestionMarkIcon } from "@radix-ui/react-icons";
 
-// Mock data for the activity chart
-const activityData = [
-	{ month: "May", value: 0 },
-	{ month: "Jun", value: 0 },
-	{ month: "Jul", value: 0 },
-	{ month: "Aug", value: 0 },
-	{ month: "Sep", value: 0 },
-];
-
-const chartConfig = {
-	value: {
-		label: "Activity",
-		color: "hsl(var(--chart-1))",
-	},
+export const metadata = {
+	title: "Adaptive Learning - StudyLoop AI",
+	description:
+		"Enhance your learning with AI-powered adaptive features including quizzes, flashcards, and personalized assessments.",
 };
 
 // Feature cards data
 const features = [
 	{
-		id: "multiple-choice",
-		title: "Multiple Choice",
-		description: "Test your knowledge with quizzes",
-		icon: CheckCircle,
-		iconColor: "text-blue-600 dark:text-blue-400",
-	},
-	{
 		id: "cuecards",
-		title: "Cue Cards",
-		description: "Master key concepts",
+		title: "Smart Cue Cards",
+		description:
+			"Master key concepts with AI-generated flashcards and spaced repetition",
 		icon: Clipboard,
 		iconColor: "text-purple-600 dark:text-purple-400",
+		available: true,
+	},
+	{
+		id: "multiple-choice",
+		title: "Multiple Choice Questions",
+		description:
+			"Test your knowledge with AI-generated MCQs tailored to your course materials",
+		icon: CheckCircle,
+		iconColor: "text-blue-600 dark:text-blue-400",
+		available: false,
+		comingSoon: true,
 	},
 	{
 		id: "open-questions",
-		title: "Open Questions",
-		description: "Practice written-response questions",
+		title: "Open-Ended Questions",
+		description:
+			"Practice critical thinking with written-response questions and AI feedback",
 		icon: QuestionMarkIcon,
 		iconColor: "text-teal-600 dark:text-teal-400",
+		available: false,
+		comingSoon: true,
 	},
 	{
 		id: "concept-maps",
 		title: "Concept Maps",
-		description: "Visualize your learning journey",
+		description:
+			"Visualize connections between topics with interactive concept mapping",
 		icon: Route,
-		iconColor: "text-indigo-600 dark:text-indigo-400",
+		iconColor: "text-orange-600 dark:text-orange-400",
+		available: false,
+		comingSoon: true,
 	},
 	{
 		id: "gap-assessment",
-		title: "Gap Assessment",
-		description: "Identify and bridge your learning gaps",
-		icon: BookOpen,
-		iconColor: "text-indigo-600 dark:text-indigo-400",
+		title: "Learning Gap Analysis",
+		description:
+			"Identify knowledge gaps and receive personalized learning recommendations",
+		icon: Brain,
+		iconColor: "text-green-600 dark:text-green-400",
+		available: false,
+		comingSoon: true,
 	},
 ];
 
 export default function AdaptiveLearningPage() {
-	const router = useRouter();
-
-	const handleStartSession = (featureId: string) => {
-		router.push(`/dashboard/adaptive-learning/${featureId}`);
-	};
-
 	return (
-		<div className="space-y-6 sm:space-y-8">
+		<div className="space-y-6">
+			<PageHeading
+				title="Adaptive Learning"
+				description="Enhance your learning with AI-powered tools that adapt to your progress and learning style. Our adaptive learning features use AI to analyze your progress and customize your study experience. Each tool adapts to your learning pace, identifies knowledge gaps, and provides targeted practice to maximize your learning efficiency."
+			/>
+
 			{/* Feature Cards */}
-			<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 sm:gap-6">
+			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
 				{features.map((feature) => {
 					const Icon = feature.icon;
 					return (
 						<Card
 							key={feature.id}
-							className="hover:shadow-md transition-shadow h-full flex flex-col"
+							className={`hover:shadow-md transition-all duration-200 h-full flex flex-col ${
+								feature.available ? "hover:scale-[1.02]" : "opacity-75"
+							}`}
 						>
 							<CardHeader className="pb-2">
-								<div className="flex items-center space-x-2">
+								<div className="flex items-center justify-between">
 									<div
-										className={`p-2 rounded-lg bg-background/50 border border-border/50 ${feature.iconColor}`}
+										className={`p-2 rounded-lg bg-background/50 border ${feature.iconColor}`}
 									>
 										<Icon className="h-5 w-5" />
 									</div>
+									{feature.comingSoon && (
+										<span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+											Coming Soon
+										</span>
+									)}
 								</div>
 							</CardHeader>
-							<CardContent className="pt-0 flex flex-col flex-1 justify-between">
-								<div className="flex-1">
-									<CardTitle className="text-base font-semibold mb-2">
+							<CardContent className="pt-0 flex flex-col flex-1">
+								<div className="flex-1 space-y-2">
+									<CardTitle className="text-base font-semibold">
 										{feature.title}
 									</CardTitle>
-									<CardDescription className="text-sm text-muted-foreground mb-4">
+									<CardDescription className="text-xs leading-relaxed line-clamp-3">
 										{feature.description}
 									</CardDescription>
 								</div>
-								<Button
-									className="w-full"
-									variant="outline"
-									size="sm"
-									onClick={() => handleStartSession(feature.id)}
-								>
-									<span className="flex items-center gap-2 text-xs">
-										START SESSION
-										<ArrowRight className="h-3 w-3" />
-									</span>
-								</Button>
+								<div className="mt-4">
+									{feature.available ? (
+										<Button
+											asChild
+											className="w-full h-8 text-sm"
+											variant="default"
+										>
+											<Link href={`/dashboard/adaptive-learning/${feature.id}`}>
+												<span className="flex items-center gap-1.5">
+													Start Session
+													<ArrowRight className="h-3 w-3" />
+												</span>
+											</Link>
+										</Button>
+									) : (
+										<Button
+											className="w-full h-8 text-sm"
+											variant="outline"
+											disabled
+										>
+											Coming Soon
+										</Button>
+									)}
+								</div>
 							</CardContent>
 						</Card>
 					);
 				})}
 			</div>
-
-			{/* Activity Chart */}
-			<Card>
-				<CardHeader className="pb-4 sm:pb-6">
-					<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-						<CardTitle className="text-lg sm:text-xl font-semibold">
-							Activity
-						</CardTitle>
-						<Select defaultValue="May">
-							<SelectTrigger className="w-full sm:w-[120px]">
-								<SelectValue placeholder="Month" />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="May">May</SelectItem>
-								<SelectItem value="Jun">Jun</SelectItem>
-								<SelectItem value="Jul">Jul</SelectItem>
-								<SelectItem value="Aug">Aug</SelectItem>
-								<SelectItem value="Sep">Sep</SelectItem>
-							</SelectContent>
-						</Select>
-					</div>
-				</CardHeader>
-				<CardContent className="pt-0">
-					<ChartContainer
-						config={chartConfig}
-						className="h-[250px] sm:h-[300px] lg:h-[350px]"
-					>
-						<ResponsiveContainer width="100%" height="100%">
-							<LineChart
-								data={activityData}
-								margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
-							>
-								<XAxis
-									dataKey="month"
-									tickLine={false}
-									axisLine={false}
-									className="text-xs sm:text-sm text-muted-foreground"
-								/>
-								<YAxis
-									domain={[0, 10]}
-									tickLine={false}
-									axisLine={false}
-									className="text-xs sm:text-sm text-muted-foreground"
-								/>
-								<ChartTooltip content={<ChartTooltipContent />} />
-								<Line
-									type="monotone"
-									dataKey="value"
-									stroke="var(--color-value)"
-									strokeWidth={2}
-									dot={{ fill: "var(--color-value)", strokeWidth: 2, r: 3 }}
-									activeDot={{ r: 5, fill: "var(--color-value)" }}
-								/>
-							</LineChart>
-						</ResponsiveContainer>
-					</ChartContainer>
-				</CardContent>
-			</Card>
 		</div>
 	);
 }
