@@ -1,7 +1,7 @@
 "use client";
 
 import { SelectiveGenerationSettings } from "@/components/course/selective-generation-settings";
-import { GenerationProgressAlert } from "@/components/generation/generation-progress-alert";
+import { OnDemandGenerationProgress } from "@/components/on-demand-generation-progress";
 import {
 	Accordion,
 	AccordionContent,
@@ -34,7 +34,7 @@ import {
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useCourseWeeks } from "@/hooks/use-course-week";
-import { useWeekFeatureAvailability } from "@/hooks/use-feature-availability";
+import { useFeatureAvailability } from "@/hooks/use-feature-availability";
 import { useQueryState } from "@/hooks/use-query-state";
 import type { CuecardAvailability, UserCuecard } from "@/lib/actions/cuecard";
 import type { Course, CourseWeek } from "@/types/database-types";
@@ -127,7 +127,7 @@ export function CuecardSessionSetup({
 
 	// Feature availability - will be filtered by isWeeksReady in combined loading
 	const { data: weekFeatureAvailability, isLoading: isLoadingAvailability } =
-		useWeekFeatureAvailability(
+		useFeatureAvailability(
 			selectedCourse,
 			selectedWeek === "all-weeks" ? null : selectedWeek
 		);
@@ -596,7 +596,7 @@ export function CuecardSessionSetup({
 
 				<CardFooter className="px-8 pb-8">
 					<div className="w-full space-y-4">
-						<GenerationProgressAlert
+						<OnDemandGenerationProgress
 							isVisible={showGenerationProgress}
 							progress={generationProgress}
 							contentType="cuecards"

@@ -31,6 +31,8 @@ export async function presignUpload(
 export interface CompleteUploadResponse {
 	runId: string;
 	publicAccessToken: string;
+	weekId: string;
+	courseId: string;
 }
 
 export async function completeUpload(

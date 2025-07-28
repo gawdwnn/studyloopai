@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, FilePlus2 } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import { useEffect, useMemo } from "react";
 
 import { CourseSelectorButton } from "@/components/notes/course-selector-button";
@@ -13,64 +13,84 @@ import { WeekCarousel } from "@/components/notes/week-carousel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useUserCourses } from "@/hooks/use-courses";
-import { type GoldenNote, type Summary, useNotesData } from "@/hooks/use-notes";
+import {
+	type GoldenNote,
+	type NotesData,
+	type Summary,
+	useUnifiedNotesData,
+} from "@/hooks/use-notes";
 import { useQueryState } from "@/hooks/use-query-state";
 import { handleApiError, shouldShowRetry } from "@/lib/utils/error-handling";
-import { useRouter } from "next/navigation";
 
-export default function NotesPage() {
-	const router = useRouter();
+interface Course {
+	id: string;
+	name: string;
+}
+
+interface NotesClientProps {
+	courses: Course[];
+	initialNotesData: NotesData;
+	initialCourseId: string;
+	initialWeek: number;
+	initialTab: string;
+}
+
+export function NotesClient({
+	courses,
+	initialNotesData,
+	initialCourseId,
+	initialWeek,
+	initialTab,
+}: NotesClientProps) {
 	const { searchParams, setQueryState } = useQueryState();
-	const { data: courses = [], isLoading: isLoadingCourses } = useUserCourses();
 
 	const selectedCourseId = useMemo(
-		() => searchParams.get("courseId") || "",
-		[searchParams]
+		() => searchParams.get("courseId") || initialCourseId,
+		[searchParams, initialCourseId]
 	);
 	const selectedWeek = useMemo(
-		() => Number(searchParams.get("week") || 1),
-		[searchParams]
+		() => Number(searchParams.get("week") || initialWeek),
+		[searchParams, initialWeek]
 	);
 	const activeTab = useMemo(
-		() => searchParams.get("tab") || "golden-notes",
-		[searchParams]
+		() => searchParams.get("tab") || initialTab,
+		[searchParams, initialTab]
 	);
 
-	// Auto-select first course if none is selected
-	useEffect(() => {
-		if (!selectedCourseId && courses.length > 0) {
-			setQueryState({ courseId: courses[0].id });
-		}
-	}, [courses, selectedCourseId, setQueryState]);
-
-	// Initially fetch with empty weekId to get all weeks
+	// Unified query that fetches all course data and filters client-side
 	const {
-		data: notesPageData,
-		isLoading: isLoadingNotes,
+		data: notesData,
+		isLoading,
 		error,
 		refetch,
-	} = useNotesData(selectedCourseId, "");
+	} = useUnifiedNotesData(selectedCourseId, {
+		initialData:
+			selectedCourseId === initialCourseId ? initialNotesData : undefined,
+	});
 
-	const weeks = notesPageData?.weeks || [];
+	const weeks = notesData?.weeks || [];
 	const selectedWeekId = useMemo(
 		() => weeks.find((w) => w.weekNumber === selectedWeek)?.id || "",
 		[weeks, selectedWeek]
 	);
 
-	const {
-		data: weekSpecificData,
-		isLoading: isLoadingWeekNotes,
-		error: weekError,
-		refetch: refetchWeek,
-	} = useNotesData(selectedCourseId, selectedWeekId, {
-		enabled: !!selectedWeekId,
-	});
+	// Get filtered data for the specific week
+	const weekFilteredData = useMemo(() => {
+		if (!selectedWeekId || !notesData) {
+			return { goldenNotes: [], summaries: [] };
+		}
+		return {
+			goldenNotes: notesData.goldenNotes.filter(
+				(note) => note.weekId === selectedWeekId
+			),
+			summaries: notesData.summaries.filter(
+				(summary) => summary.weekId === selectedWeekId
+			),
+		};
+	}, [notesData, selectedWeekId]);
 
-	const goldenNotes =
-		weekSpecificData?.goldenNotes || notesPageData?.goldenNotes || [];
-	const summaries =
-		weekSpecificData?.summaries || notesPageData?.summaries || [];
+	const goldenNotes = weekFilteredData.goldenNotes;
+	const summaries = weekFilteredData.summaries;
 
 	const selectedWeekData = weeks.find((w) => w.weekNumber === selectedWeek);
 	const materialTitle =
@@ -79,61 +99,60 @@ export default function NotesPage() {
 		(course) => course.id === selectedCourseId
 	);
 
-	const isLoading =
-		isLoadingCourses ||
-		(selectedCourseId &&
-			(isLoadingNotes || (selectedWeekId && isLoadingWeekNotes)));
+	// Update URL params if they don't match current state
+	useEffect(() => {
+		const currentCourseId = searchParams.get("courseId");
+		const currentWeek = searchParams.get("week");
+		const currentTab = searchParams.get("tab");
 
-	if (!isLoading && courses.length === 0) {
-		return (
-			<div className="flex flex-col items-center justify-center h-[calc(100vh-200px)] text-center">
-				<FilePlus2 className="h-20 w-20 text-muted-foreground mb-6" />
-				<h2 className="text-2xl font-bold tracking-tight mb-2">
-					No Courses Found
-				</h2>
-				<p className="text-muted-foreground mb-6 max-w-md">
-					It looks like you haven&apos;t created any courses yet. Create your
-					first course to start generating and managing your study notes.
-				</p>
-				<Button onClick={() => router.push("/dashboard?action=create")}>
-					Add a New Course
-				</Button>
-			</div>
-		);
-	}
+		if (
+			currentCourseId !== selectedCourseId ||
+			currentWeek !== selectedWeek.toString() ||
+			currentTab !== activeTab
+		) {
+			setQueryState({
+				courseId: selectedCourseId,
+				week: selectedWeek,
+				tab: activeTab,
+			});
+		}
+	}, [searchParams, selectedCourseId, selectedWeek, activeTab, setQueryState]);
 
 	return (
 		<div className="space-y-6">
 			{/* Toolbar with course selector and actions */}
-			<div className="flex items-center justify-between">
+			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 				<CourseSelectorButton
 					onCourseSelect={(id) => setQueryState({ courseId: id, week: 1 })}
 					selectedCourseId={selectedCourseId}
 				/>
 
 				{selectedCourseId && (
-					<NotesToolbar
-						activeTab={activeTab}
-						onTabChange={(tab) => setQueryState({ tab })}
-						goldenNotes={goldenNotes}
-						summaries={summaries}
-						courseName={selectedCourse?.name}
-						weekNumber={selectedWeek}
-						materialTitle={materialTitle}
-					/>
+					<div className="w-full sm:w-auto">
+						<NotesToolbar
+							activeTab={activeTab}
+							onTabChange={(tab) => setQueryState({ tab })}
+							goldenNotes={goldenNotes}
+							summaries={summaries}
+							courseName={selectedCourse?.name}
+							weekNumber={selectedWeek}
+							materialTitle={materialTitle}
+						/>
+					</div>
 				)}
 			</div>
 
-			{!selectedCourseId && !isLoading && (
+			{!selectedCourseId && (
 				<div className="flex flex-col items-center justify-center h-[calc(100vh-400px)] text-center">
-					<h2 className="text-2xl font-bold tracking-tight mb-2">
+					<h2 className="text-xl font-bold tracking-tight mb-2 sm:text-2xl">
 						Select a Course
 					</h2>
-					<p className="text-muted-foreground mb-6 max-w-md">
+					<p className="text-sm text-muted-foreground mb-6 max-w-md sm:text-base">
 						Please select a course from the dropdown above to view its notes.
 					</p>
 				</div>
 			)}
+
 			{selectedCourseId && (
 				<>
 					<WeekCarousel
@@ -147,8 +166,8 @@ export default function NotesPage() {
 
 					<Card>
 						<CardHeader>
-							<div className="flex items-start justify-between">
-								<h2 className="text-xl font-semibold tracking-tight">
+							<div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+								<h2 className="text-lg font-semibold tracking-tight sm:text-xl">
 									{materialTitle}
 								</h2>
 								<p className="text-sm text-muted-foreground">
@@ -159,20 +178,17 @@ export default function NotesPage() {
 						<CardContent>
 							{isLoading ? (
 								<NotesSkeletonLoader />
-							) : error || weekError ? (
+							) : error ? (
 								<div className="text-center py-8">
 									<AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
 									<h3 className="text-lg font-semibold mb-2">
 										Unable to load notes
 									</h3>
 									<p className="text-muted-foreground mb-4">
-										{handleApiError(error || weekError, "load notes")}
+										{handleApiError(error, "load notes")}
 									</p>
-									{shouldShowRetry(error || weekError) && (
-										<Button
-											variant="outline"
-											onClick={() => (weekError ? refetchWeek() : refetch())}
-										>
+									{shouldShowRetry(error) && (
+										<Button variant="outline" onClick={() => refetch()}>
 											Try Again
 										</Button>
 									)}
@@ -183,19 +199,30 @@ export default function NotesPage() {
 									onValueChange={(tab) => setQueryState({ tab })}
 									className="w-full"
 								>
-									<TabsList>
-										<TabsTrigger value="golden-notes">
+									<TabsList className="grid w-full grid-cols-3">
+										<TabsTrigger
+											value="golden-notes"
+											className="text-xs sm:text-sm"
+										>
 											Golden Notes ({goldenNotes.length})
 										</TabsTrigger>
-										<TabsTrigger value="summaries">
+										<TabsTrigger
+											value="summaries"
+											className="text-xs sm:text-sm"
+										>
 											Summaries ({summaries.length})
 										</TabsTrigger>
-										<TabsTrigger value="own-notes">Own Notes</TabsTrigger>
+										<TabsTrigger
+											value="own-notes"
+											className="text-xs sm:text-sm"
+										>
+											Own Notes
+										</TabsTrigger>
 									</TabsList>
 
 									<TabsContent value="golden-notes" className="pt-6">
 										{goldenNotes.length > 0 ? (
-											<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+											<div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
 												{goldenNotes.map((note: GoldenNote) => (
 													<NoteCard
 														key={note.id}
@@ -210,7 +237,7 @@ export default function NotesPage() {
 											</div>
 										) : (
 											<div className="flex h-40 items-center justify-center rounded-md border border-dashed">
-												<p className="text-muted-foreground">
+												<p className="text-sm text-muted-foreground sm:text-base">
 													No golden notes available for this week yet.
 												</p>
 											</div>
@@ -223,7 +250,7 @@ export default function NotesPage() {
 												{summaries.map((summary: Summary) => (
 													<Card key={summary.id}>
 														<CardHeader>
-															<div className="flex items-start justify-between">
+															<div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
 																<h3 className="text-lg font-semibold">
 																	{summary.title || "Summary"}
 																</h3>
@@ -249,7 +276,7 @@ export default function NotesPage() {
 											</div>
 										) : (
 											<div className="flex h-40 items-center justify-center rounded-md border border-dashed">
-												<p className="text-muted-foreground">
+												<p className="text-sm text-muted-foreground sm:text-base">
 													No summaries available for this week yet.
 												</p>
 											</div>

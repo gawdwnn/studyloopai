@@ -25,7 +25,11 @@ export const generateMCQs = schemaTask({
 	run: async (payload: GenerateMCQsPayloadType, { ctx: _ctx }) => {
 		const { weekId, courseId, materialIds, configId } = payload;
 
-		await tags.add([`weekId:${payload.weekId}`, "contentType:multipleChoice"]);
+		await tags.add([
+			`weekId:${payload.weekId}`,
+			`courseId:${payload.courseId}`,
+			"contentType:multipleChoice",
+		]);
 
 		try {
 			const { getFeatureGenerationConfig } = await import(

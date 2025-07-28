@@ -1,139 +1,54 @@
-"use client";
+import { getAllUserMaterials, getUserCourses } from "@/lib/actions/courses";
 
-import { CourseCard } from "@/components/course/course-card";
-import { CreateCourseDialog } from "@/components/course/create-course-dialog";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useQueryState } from "@/hooks/use-query-state";
-import { deleteCourse, getUserCourses } from "@/lib/actions/courses";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { BookPlus } from "lucide-react";
-import { useEffect, useState, useTransition } from "react";
-import { toast } from "sonner";
+import { CreateCourseWrapper } from "@/components/course/create-course-wrapper";
+import { DashboardStats } from "@/components/dashboard/dashboard-stats";
+import { WelcomeScreen } from "@/components/dashboard/welcome-screen";
+import { PageHeading } from "@/components/page-heading";
+import { DashboardClient } from "./dashboard-client";
 
-export default function DashboardPage() {
-	const [isPending, startTransition] = useTransition();
-	const [deletingCourses, setDeletingCourses] = useState<Set<string>>(
-		new Set()
-	);
-	const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
-	const { searchParams, setQueryState } = useQueryState();
+export const metadata = {
+	title: "Dashboard - StudyLoop AI",
+	description: "Manage your courses and track your learning progress.",
+};
 
-	const queryClient = useQueryClient();
+export default async function DashboardPage() {
+	// Fetch data server-side
+	const [courses, materials] = await Promise.all([
+		getUserCourses(),
+		getAllUserMaterials(),
+	]);
 
-	const { data: courses = [], isLoading } = useQuery({
-		queryKey: ["user-courses"],
-		queryFn: () => getUserCourses(),
-	});
-
-	useEffect(() => {
-		const action = searchParams.get("action");
-		if (action === "create") {
-			setCreateDialogOpen(true);
-			setQueryState({ action: null });
-		}
-	}, [searchParams, setQueryState]);
-
-	const handleDeleteCourse = async (courseId: string, courseName: string) => {
-		// Optimistic update: immediately mark as deleting and remove from UI
-		setDeletingCourses((prev) => new Set(prev).add(courseId));
-
-		// Optimistically update the query cache to remove the item immediately
-		queryClient.setQueryData(["user-courses"], (oldData: typeof courses) => {
-			return oldData?.filter((course) => course.id !== courseId) || [];
-		});
-
-		// Show immediate feedback
-		toast.info(`Deleting "${courseName}"...`, {
-			duration: 2000,
-		});
-
-		startTransition(async () => {
-			try {
-				await deleteCourse(courseId);
-
-				// Success: show user-friendly message
-				toast.success(`"${courseName}" deleted successfully`, {
-					duration: 3000,
-				});
-			} catch (error) {
-				// Error: revert optimistic update
-				queryClient.invalidateQueries({ queryKey: ["user-courses"] });
-
-				toast.error(
-					error instanceof Error
-						? error.message
-						: "Failed to delete course. Please try again."
-				);
-			} finally {
-				// Always remove from deleting state
-				setDeletingCourses((prev) => {
-					const newSet = new Set(prev);
-					newSet.delete(courseId);
-					return newSet;
-				});
-			}
-		});
-	};
-
-	if (isLoading) {
-		return (
-			<div className="space-y-6">
-				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-					{[...Array(4)].map(() => (
-						<Skeleton
-							key={crypto.randomUUID()}
-							className="w-full h-48 rounded-lg"
-						/>
-					))}
-				</div>
-			</div>
-		);
+	// Handle empty courses state with enhanced welcome screen
+	if (courses.length === 0) {
+		return <WelcomeScreen />;
 	}
 
-	if (!isLoading && courses.length === 0) {
-		return (
-			<div className="flex h-[calc(100vh-200px)] flex-col items-center justify-center text-center">
-				<BookPlus className="h-20 w-20 text-muted-foreground mb-6" />
-				<h2 className="text-2xl font-bold tracking-tight mb-2">
-					You haven't created any courses yet
-				</h2>
-				<p className="text-muted-foreground mb-6 max-w-md">
-					Get started by creating your first course to organize your study
-					materials and track your progress.
-				</p>
-				<CreateCourseDialog
-					isOpen={isCreateDialogOpen}
-					onOpenChange={setCreateDialogOpen}
-				/>
-			</div>
-		);
-	}
+	// Calculate basic stats
+	const totalMaterials = materials.length;
+	// These would typically come from user progress data
+	const completionRate = 0;
+	const weeklyProgress = 0;
 
+	// Render dashboard with courses and stats
 	return (
-		<div className="space-y-12">
-			<div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-end">
-				<div className="w-full md:w-auto">
-					<CreateCourseDialog
-						isOpen={isCreateDialogOpen}
-						onOpenChange={setCreateDialogOpen}
-					/>
-				</div>
-			</div>
+		<div className="space-y-8">
+			<PageHeading
+				title="welcome 👋"
+				description="Track your learning progress and manage your courses"
+			>
+				<CreateCourseWrapper />
+			</PageHeading>
 
-			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-				{courses.map((course) => {
-					const isBeingDeleted = deletingCourses.has(course.id);
-					return (
-						<div key={course.id} className="h-48">
-							<CourseCard
-								course={course}
-								onDeleteCourse={handleDeleteCourse}
-								isDeleting={isPending}
-								isBeingDeleted={isBeingDeleted}
-							/>
-						</div>
-					);
-				})}
+			<DashboardStats
+				totalCourses={courses.length}
+				totalMaterials={totalMaterials}
+				completionRate={completionRate}
+				weeklyProgress={weeklyProgress}
+			/>
+
+			<div className="space-y-4">
+				<h2 className="text-lg sm:text-xl font-semibold">My Courses</h2>
+				<DashboardClient initialCourses={courses} />
 			</div>
 		</div>
 	);

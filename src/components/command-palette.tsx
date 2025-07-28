@@ -12,11 +12,10 @@ import {
 import { useCommandPalette } from "@/stores/command-palette";
 import {
 	BookOpen,
+	BookOpenCheck,
 	Brain,
 	BrainCog,
-	Calendar,
-	FileQuestion,
-	GraduationCap,
+	FileText,
 	Home,
 	MessageSquare,
 	Moon,
@@ -36,14 +35,14 @@ const navigationItems = [
 		href: "/dashboard",
 	},
 	{
-		label: "Planner",
-		icon: Calendar,
-		href: "/dashboard/course-planner",
-	},
-	{
 		label: "Course Materials",
 		icon: BookOpen,
 		href: "/dashboard/course-materials",
+	},
+	{
+		label: "Notes",
+		icon: FileText,
+		href: "/dashboard/notes",
 	},
 	{
 		label: "Adaptive Learning",
@@ -55,37 +54,22 @@ const navigationItems = [
 		icon: MessageSquare,
 		href: "/dashboard/feedback",
 	},
-];
-
-const learningItems = [
-	{
-		label: "Quizzes",
-		icon: FileQuestion,
-		href: "/dashboard/adaptive-learning/quizzes",
-	},
-	{
-		label: "Cuecards",
-		icon: BookOpen,
-		href: "/dashboard/adaptive-learning/cuecards",
-	},
-	{
-		label: "Multiple Choice",
-		icon: FileQuestion,
-		href: "/dashboard/adaptive-learning/multiple-choice",
-	},
-	{
-		label: "Open Questions",
-		icon: GraduationCap,
-		href: "/dashboard/adaptive-learning/open-questions",
-	},
-];
-
-const accountItems = [
 	{
 		label: "Ask AI",
 		icon: BrainCog,
 		href: "/dashboard/ask-ai",
 	},
+];
+
+const learningItems = [
+	{
+		label: "Cue Cards",
+		icon: BookOpenCheck,
+		href: "/dashboard/adaptive-learning/cuecards",
+	},
+];
+
+const accountItems = [
 	{
 		label: "Settings",
 		icon: Settings,

@@ -105,9 +105,8 @@ export function CuecardSessionManager({
 			status === "TIMED_OUT"
 		) {
 			// Generation failed
-			const errorMessage = output?.error || "Generation failed unexpectedly";
-			toast.error(`Generation failed: ${errorMessage}`);
-			cuecardActions.setError(errorMessage);
+			console.error("Generation failed:", output?.error);
+			toast.error("Generation failed, please try again.");
 		} else if (
 			status === "EXECUTING" ||
 			status === "QUEUED" ||
@@ -122,7 +121,6 @@ export function CuecardSessionManager({
 	useEffect(() => {
 		if (runError) {
 			console.error("Realtime tracking error:", runError);
-			toast.error("Lost connection to generation tracking");
 		}
 	}, [runError]);
 

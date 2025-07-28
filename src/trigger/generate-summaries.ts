@@ -26,7 +26,11 @@ export const generateSummaries = schemaTask({
 	run: async (payload: GenerateSummariesPayloadType, { ctx: _ctx }) => {
 		const { weekId, courseId, materialIds, configId } = payload;
 
-		await tags.add([`weekId:${payload.weekId}`, "contentType:summaries"]);
+		await tags.add([
+			`weekId:${payload.weekId}`,
+			`courseId:${payload.courseId}`,
+			"contentType:summaries",
+		]);
 
 		try {
 			const { getFeatureGenerationConfig } = await import(

@@ -29,23 +29,18 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { WeekFeatureAvailability } from "@/lib/actions/course-week-features";
 import { VALIDATION_RULES } from "@/lib/validation/generation-config";
-import type { SelectiveGenerationConfig } from "@/types/generation-types";
-import {
-	getDefaultConceptMapsConfig,
-	getDefaultCuecardsConfig,
-	getDefaultGoldenNotesConfig,
-	getDefaultMcqsConfig,
-	getDefaultOpenQuestionsConfig,
-	getDefaultSummariesConfig,
+import type {
+	FeatureAvailability,
+	SelectiveGenerationConfig,
 } from "@/types/generation-types";
+import { getDefaultConfigForFeature } from "@/types/generation-types";
 
 interface SelectiveGenerationSettingsProps {
 	config: SelectiveGenerationConfig;
 	onConfigChange: (config: SelectiveGenerationConfig) => void;
 	featuresFilter?: (keyof SelectiveGenerationConfig["selectedFeatures"])[];
-	featureAvailability?: WeekFeatureAvailability | null;
+	featureAvailability?: FeatureAvailability | null;
 	showAvailabilityStatus?: boolean;
 }
 
@@ -209,26 +204,9 @@ export function SelectiveGenerationSettings({
 		if (newSelectedFeatures[feature]) {
 			// If enabling a feature, add default config
 			if (!newFeatureConfigs[feature]) {
-				switch (feature) {
-					case "cuecards":
-						newFeatureConfigs.cuecards = getDefaultCuecardsConfig();
-						break;
-					case "mcqs":
-						newFeatureConfigs.mcqs = getDefaultMcqsConfig();
-						break;
-					case "openQuestions":
-						newFeatureConfigs.openQuestions = getDefaultOpenQuestionsConfig();
-						break;
-					case "summaries":
-						newFeatureConfigs.summaries = getDefaultSummariesConfig();
-						break;
-					case "goldenNotes":
-						newFeatureConfigs.goldenNotes = getDefaultGoldenNotesConfig();
-						break;
-					case "conceptMaps":
-						newFeatureConfigs.conceptMaps = getDefaultConceptMapsConfig();
-						break;
-				}
+				Object.assign(newFeatureConfigs, {
+					[feature]: getDefaultConfigForFeature(feature),
+				});
 			}
 		} else {
 			delete newFeatureConfigs[feature];

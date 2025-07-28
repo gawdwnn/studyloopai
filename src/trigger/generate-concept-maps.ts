@@ -28,7 +28,11 @@ export const generateConceptMaps = schemaTask({
 	run: async (payload: GenerateConceptMapsPayloadType, { ctx: _ctx }) => {
 		const { weekId, courseId, materialIds, configId } = payload;
 
-		await tags.add([`weekId:${payload.weekId}`, "contentType:conceptMaps"]);
+		await tags.add([
+			`weekId:${payload.weekId}`,
+			`courseId:${payload.courseId}`,
+			"contentType:conceptMaps",
+		]);
 
 		try {
 			const { getFeatureGenerationConfig } = await import(

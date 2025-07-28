@@ -1,196 +1,76 @@
-"use client";
-
-import { deleteCourseMaterial } from "@/lib/actions/course-materials";
 import { getAllUserMaterials, getUserCourses } from "@/lib/actions/courses";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, FilePlus2, FileX } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
-import { toast } from "sonner";
+import { FilePlus2, FileX } from "lucide-react";
+import Link from "next/link";
 
-import { CourseMaterialsSkeletonLoader } from "@/components/course/course-materials-skeleton-loader";
-import { CourseMaterialsTable } from "@/components/course/course-materials-table";
-import { UploadWizard } from "@/components/course/upload-wizard";
+import { UploadWizardWrapper } from "@/components/course/upload-wizard-wrapper";
+import { EmptyState } from "@/components/empty-state";
+import { PageHeading } from "@/components/page-heading";
 import { Button } from "@/components/ui/button";
-import { handleApiError, shouldShowRetry } from "@/lib/utils/error-handling";
+import { CourseMaterialsClient } from "./course-materials-client";
 
-export default function CourseMaterialsPage() {
-	const [isPending, startTransition] = useTransition();
-	const [deletingMaterials, setDeletingMaterials] = useState<Set<string>>(
-		new Set()
-	);
-	const queryClient = useQueryClient();
-	const router = useRouter();
+export const metadata = {
+	title: "Course Materials - StudyLoop AI",
+	description: "Manage your uploaded course materials and generated content.",
+};
 
-	const {
-		data: courses = [],
-		isLoading: isLoadingCourses,
-		error: coursesError,
-		refetch: refetchCourses,
-	} = useQuery({
-		queryKey: ["user-courses"],
-		queryFn: () => getUserCourses(),
-	});
+export default async function CourseMaterialsPage() {
+	// Fetch data server-side
+	const [courses, courseMaterials] = await Promise.all([
+		getUserCourses(),
+		getAllUserMaterials(),
+	]);
 
-	const {
-		data: courseMaterials = [],
-		refetch: refetchMaterials,
-		isLoading: isLoadingMaterials,
-		error: materialsError,
-	} = useQuery({
-		queryKey: ["all-user-materials"],
-		queryFn: () => getAllUserMaterials(),
-		enabled: courses.length > 0,
-	});
-
-	const handleUploadSuccess = () => {
-		// The new row will appear and its status will be tracked in-line
-		// A refetch ensures we get the new material with its runId
-		refetchMaterials();
-	};
-
-	const handleDeleteMaterial = async (
-		materialId: string,
-		materialName: string
-	) => {
-		// Optimistic update: immediately mark as deleting and remove from UI
-		setDeletingMaterials((prev) => new Set(prev).add(materialId));
-
-		// Optimistically update the query cache to remove the item immediately
-		queryClient.setQueryData(
-			["all-user-materials"],
-			(oldData: typeof courseMaterials) => {
-				return oldData?.filter((material) => material.id !== materialId) || [];
-			}
-		);
-
-		// Show immediate feedback
-		toast.info(`Deleting "${materialName}"...`, {
-			duration: 2000,
-		});
-
-		startTransition(async () => {
-			try {
-				await deleteCourseMaterial(materialId);
-
-				// Success: show user-friendly message
-				toast.success(`"${materialName}" deleted successfully`, {
-					duration: 3000,
-				});
-			} catch (error) {
-				// Error: revert optimistic update
-				queryClient.invalidateQueries({ queryKey: ["all-user-materials"] });
-
-				toast.error(handleApiError(error, "delete course material"));
-			} finally {
-				// Always remove from deleting state
-				setDeletingMaterials((prev) => {
-					const newSet = new Set(prev);
-					newSet.delete(materialId);
-					return newSet;
-				});
-			}
-		});
-	};
-
-	// Handle courses error state
-	if (coursesError) {
+	// Handle no courses state
+	if (courses.length === 0) {
 		return (
-			<div className="flex h-[calc(100vh-200px)] flex-col items-center justify-center text-center">
-				<AlertCircle className="h-20 w-20 text-destructive mb-6" />
-				<h2 className="text-2xl font-bold tracking-tight mb-2">
-					Unable to Load Courses
-				</h2>
-				<p className="text-muted-foreground mb-6 max-w-md">
-					{handleApiError(coursesError, "load courses")}
-				</p>
-				{shouldShowRetry(coursesError) && (
-					<Button onClick={() => refetchCourses()}>Try Again</Button>
-				)}
-			</div>
-		);
-	}
-
-	const hasNoCourses = !isLoadingCourses && courses.length === 0;
-
-	if (hasNoCourses) {
-		return (
-			<div className="flex h-[calc(100vh-200px)] flex-col items-center justify-center text-center">
-				<FilePlus2 className="h-20 w-20 text-muted-foreground mb-6" />
-				<h2 className="text-2xl font-bold tracking-tight mb-2">
-					Create a Course to Get Started
-				</h2>
-				<p className="text-muted-foreground mb-6 max-w-md">
-					You need to create a course first before you can upload and manage
-					your study materials.
-				</p>
-				<Button onClick={() => router.push("/dashboard?action=create")}>
-					Create a New Course
+			<EmptyState
+				icon={FilePlus2}
+				title="Create a Course to Get Started"
+				description="You need to create a course first before you can upload and manage your study materials."
+			>
+				<Button asChild>
+					<Link href="/dashboard?action=create">Create a New Course</Link>
 				</Button>
+			</EmptyState>
+		);
+	}
+
+	// Handle empty materials state
+	if (courseMaterials.length === 0) {
+		return (
+			<div className="space-y-6">
+				<PageHeading
+					title="Course Materials"
+					description="Manage your uploaded course materials and generated content."
+				>
+					<UploadWizardWrapper courses={courses} />
+				</PageHeading>
+
+				<EmptyState
+					icon={FileX}
+					title="No Materials Uploaded Yet"
+					description="Upload your first course material to start generating AI-powered study content like notes, flashcards, and quizzes."
+				>
+					<UploadWizardWrapper courses={courses} />
+				</EmptyState>
 			</div>
 		);
 	}
 
-	if (isLoadingCourses || (courses.length > 0 && isLoadingMaterials)) {
-		return <CourseMaterialsSkeletonLoader />;
-	}
-
+	// Render materials table with client-side interactions
 	return (
 		<div className="space-y-6">
-			<div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-				<div>
-					<h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-						Course Materials
-					</h1>
-					<p className="text-muted-foreground">
-						Manage your uploaded course materials and generated content.
-					</p>
-				</div>
+			<PageHeading
+				title="Course Materials"
+				description="Manage your uploaded course materials and generated content."
+			>
+				<UploadWizardWrapper courses={courses} />
+			</PageHeading>
 
-				<div className="w-full md:w-auto">
-					<UploadWizard
-						courses={courses}
-						onUploadSuccess={handleUploadSuccess}
-					/>
-				</div>
-			</div>
-
-			{materialsError ? (
-				<div className="flex flex-col items-center justify-center h-[calc(100vh-300px)] text-center">
-					<AlertCircle className="h-20 w-20 text-destructive mb-6" />
-					<h2 className="text-2xl font-bold tracking-tight mb-2">
-						Unable to Load Materials
-					</h2>
-					<p className="text-muted-foreground mb-6 max-w-md">
-						{handleApiError(materialsError, "load course materials")}
-					</p>
-					{shouldShowRetry(materialsError) && (
-						<Button onClick={() => refetchMaterials()}>Try Again</Button>
-					)}
-				</div>
-			) : courseMaterials.length === 0 ? (
-				<div className="flex flex-col items-center justify-center h-[calc(100vh-300px)] text-center">
-					<FileX className="h-20 w-20 text-muted-foreground mb-6" />
-					<h2 className="text-2xl font-bold tracking-tight mb-2">
-						No Materials Uploaded Yet
-					</h2>
-					<p className="text-muted-foreground mb-6 max-w-md">
-						Upload your first course material to start generating AI-powered
-						study content like notes, flashcards, and quizzes.
-					</p>
-					<UploadWizard
-						courses={courses}
-						onUploadSuccess={handleUploadSuccess}
-					/>
-				</div>
-			) : (
-				<CourseMaterialsTable
-					courseMaterials={courseMaterials}
-					onDeleteMaterial={handleDeleteMaterial}
-					isDeleting={isPending}
-					deletingMaterials={deletingMaterials}
-				/>
-			)}
+			<CourseMaterialsClient
+				courses={courses}
+				initialMaterials={courseMaterials}
+			/>
 		</div>
 	);
 }

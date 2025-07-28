@@ -47,6 +47,7 @@ export const aiContentOrchestrator = schemaTask({
 			weekId: payload.weekId,
 			courseId: payload.courseId,
 			configId: payload.configId,
+			materialIds: payload.materialIds,
 		});
 	},
 	run: async (payload: AiContentOrchestratorPayloadType, { ctx: _ctx }) => {
@@ -55,21 +56,11 @@ export const aiContentOrchestrator = schemaTask({
 		await tags.add([
 			`weekId:${payload.weekId}`,
 			`courseId:${payload.courseId}`,
+			`configId:${payload.configId}`,
 			"phase:orchestration",
 		]);
 
 		try {
-			logger.info(
-				"🎯 Triggering parallel content generation with validated materials",
-				{
-					weekId,
-					courseId,
-					materialIds,
-					materialCount: materialIds.length,
-					configId,
-				}
-			);
-
 			if (!configId) {
 				throw new Error("Configuration ID is required for content generation");
 			}
@@ -152,11 +143,6 @@ export const aiContentOrchestrator = schemaTask({
 				}
 			}
 
-			logger.info("🚀 Content generation tasks triggered", {
-				weekId,
-				batchInfo: contentBatchInfo,
-			});
-
 			const results = Object.entries(contentBatchInfo).map(
 				([contentType, info]) => ({
 					contentType,
@@ -173,9 +159,7 @@ export const aiContentOrchestrator = schemaTask({
 			});
 
 			logger.info("✅ Updated generation config status to completed", {
-				configId,
-				weekId,
-				successfulTriggers,
+				results,
 			});
 
 			return {

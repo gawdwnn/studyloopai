@@ -2,7 +2,7 @@
 
 import { CheckCircle, Loader2, XCircle } from "lucide-react";
 
-interface GenerationProgressAlertProps {
+interface OnDemandGenerationProgressProps {
 	isVisible: boolean;
 	progress?: {
 		status: string;
@@ -11,11 +11,11 @@ interface GenerationProgressAlertProps {
 	contentType?: string;
 }
 
-export function GenerationProgressAlert({
+export function OnDemandGenerationProgress({
 	isVisible,
 	progress,
 	contentType = "content",
-}: GenerationProgressAlertProps) {
+}: OnDemandGenerationProgressProps) {
 	if (!isVisible) return null;
 
 	const isExecuting =

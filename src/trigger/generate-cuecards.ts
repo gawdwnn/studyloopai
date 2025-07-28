@@ -25,7 +25,11 @@ export const generateCuecards = schemaTask({
 	run: async (payload: GenerateCuecardsPayloadType, { ctx: _ctx }) => {
 		const { weekId, courseId, materialIds, configId } = payload;
 
-		await tags.add([`weekId:${payload.weekId}`, "contentType:cuecards"]);
+		await tags.add([
+			`weekId:${payload.weekId}`,
+			`courseId:${payload.courseId}`,
+			"contentType:cuecards",
+		]);
 
 		try {
 			const { getFeatureGenerationConfig } = await import(

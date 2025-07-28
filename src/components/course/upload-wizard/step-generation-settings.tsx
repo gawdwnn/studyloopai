@@ -8,7 +8,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { useWeekFeatureAvailability } from "@/hooks/use-feature-availability";
+import { useFeatureAvailability } from "@/hooks/use-feature-availability";
 import { useUploadWizardStore } from "@/stores/upload-wizard-store";
 
 export function StepGenerationSettings() {
@@ -20,7 +20,7 @@ export function StepGenerationSettings() {
 	} = useUploadWizardStore();
 
 	// feature availability
-	const { data: featureAvailability } = useWeekFeatureAvailability(
+	const { data: featureAvailability } = useFeatureAvailability(
 		selectedCourseId,
 		selectedWeekId
 	);
