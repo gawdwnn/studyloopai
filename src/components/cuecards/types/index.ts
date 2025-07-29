@@ -1,21 +1,24 @@
 // Cuecard-specific types colocated for better maintainability
 // Re-exports from store types for convenience
 
+import type { CuecardConfig } from "@/stores/cuecard-session/types";
+import type { SelectiveGenerationConfig } from "@/types/generation-types";
+
 export type {
+	CardResponse,
+	CuecardConfig,
 	CuecardFeedback,
 	CuecardMode,
+	CuecardSessionState,
 	PracticeMode,
 	SessionStatus,
-	CuecardConfig,
-	CardResponse,
-	CuecardSessionState,
 } from "@/stores/cuecard-session/types";
 
 // Re-exports from action types for convenience
 export type {
-	UserCuecard,
 	CuecardProgress,
 	SessionSyncData,
+	UserCuecard,
 } from "@/lib/actions/cuecard";
 
 // Component-specific types
@@ -27,18 +30,14 @@ export interface Course {
 
 export interface CuecardSessionSetupProps {
 	courses: Course[];
-	onStartSession: (
-		config: import("@/stores/cuecard-session/types").CuecardConfig
-	) => void;
+	onStartSession: (config: CuecardConfig) => void;
 	onClose: () => void;
 	showWeekSelectionError?: boolean;
 	showGenerationProgress?: boolean;
 	onTriggerGeneration?: (
 		courseId: string,
 		weekIds?: string[],
-		generationConfig?: import(
-			"@/types/generation-types"
-		).SelectiveGenerationConfig
+		generationConfig?: SelectiveGenerationConfig
 	) => Promise<void>;
 }
 

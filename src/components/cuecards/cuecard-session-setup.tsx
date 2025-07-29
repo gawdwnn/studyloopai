@@ -51,13 +51,14 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { useCuecardSessionData } from "./hooks/use-cuecard-session-data";
+import { useCuecardSessionData } from "./hooks";
 import type { CuecardConfig, CuecardMode, PracticeMode } from "./types";
 
 interface CuecardSessionSetupProps {
 	courses: Course[];
 	initialData?: {
 		courseId: string;
+		weekIds: string[]; // Store the initial week selection for proper cache comparison
 		weeks: CourseWeek[];
 		cuecards: UserCuecard[];
 		availability: CuecardAvailability;
@@ -107,7 +108,14 @@ export function CuecardSessionSetup({
 		});
 
 	// Use pre-fetched initialData.weeks when available, otherwise fetch with hook
-	const shouldUseInitialData = initialData?.courseId === selectedCourse;
+	// Only use initial data if BOTH course and week selection match the initial request
+	const currentWeekIds = selectedWeek === "all-weeks" ? [] : [selectedWeek];
+	const initialWeekIds = initialData?.weekIds || [];
+	const shouldUseInitialData =
+		initialData?.courseId === selectedCourse &&
+		JSON.stringify(currentWeekIds.sort()) ===
+			JSON.stringify(initialWeekIds.sort());
+
 	const { data: fetchedWeeks = [], isLoading: loadingWeeks } = useCourseWeeks(
 		selectedCourse,
 		{
@@ -123,6 +131,12 @@ export function CuecardSessionSetup({
 		courseId: selectedCourse,
 		weekIds: selectedWeek === "all-weeks" ? [] : [selectedWeek],
 		enabled: Boolean(selectedCourse) && isWeeksReady,
+		initialData: shouldUseInitialData
+			? {
+					cuecards: initialData?.cuecards || [],
+					availability: initialData?.availability,
+				}
+			: undefined,
 	});
 
 	// Feature availability - will be filtered by isWeeksReady in combined loading
@@ -426,16 +440,28 @@ export function CuecardSessionSetup({
 									<span>Checking content...</span>
 								</div>
 							) : sessionData.isAvailable ? (
-								<div className="flex items-center gap-2 text-sm text-green-600">
-									<PlayCircle className="h-4 w-4" />
-									<span>
-										{sessionData.count} cuecard
-										{sessionData.count !== 1 ? "s" : ""} available
-									</span>
-									<Badge variant="secondary" className="text-xs">
-										Ready
-									</Badge>
-								</div>
+								selectedWeek === "all-weeks" ? (
+									<div className="flex items-center gap-2 text-sm text-blue-600">
+										<Info className="h-4 w-4" />
+										<span>
+											{sessionData.count} total cuecard
+											{sessionData.count !== 1 ? "s" : ""} across{" "}
+											{sessionData.availableWeeks.length} week
+											{sessionData.availableWeeks.length !== 1 ? "s" : ""}
+										</span>
+									</div>
+								) : (
+									<div className="flex items-center gap-2 text-sm text-green-600">
+										<PlayCircle className="h-4 w-4" />
+										<span>
+											{sessionData.count} cuecard
+											{sessionData.count !== 1 ? "s" : ""} available
+										</span>
+										<Badge variant="secondary" className="text-xs">
+											Ready
+										</Badge>
+									</div>
+								)
 							) : (
 								<div className="space-y-2">
 									{selectedWeek === "all-weeks" ? (
@@ -486,7 +512,7 @@ export function CuecardSessionSetup({
 														<p className="text-red-700 dark:text-red-300 mt-1">
 															Please{" "}
 															<a
-																href={`/dashboard/course-materials/${selectedCourse}`}
+																href={"/dashboard/course-materials"}
 																className="underline font-medium hover:text-red-600 dark:hover:text-red-200"
 															>
 																upload course materials

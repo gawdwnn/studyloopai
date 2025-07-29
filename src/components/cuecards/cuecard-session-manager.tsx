@@ -28,6 +28,7 @@ interface CuecardSessionManagerProps {
 	courses: Course[];
 	initialData?: {
 		courseId: string;
+		weekIds: string[]; // Store the initial week selection for proper cache comparison
 		weeks: CourseWeek[];
 		cuecards: UserCuecard[];
 		availability: CuecardAvailability;

@@ -1,9 +1,6 @@
 import { CuecardSessionManager } from "@/components/cuecards/cuecard-session-manager";
 import { getCourseWeeks, getUserCourses } from "@/lib/actions/courses";
-import {
-	checkCuecardsAvailabilityOptimized,
-	getUserCuecards,
-} from "@/lib/actions/cuecard";
+import { getUserCuecardsWithAvailability } from "@/lib/actions/cuecard";
 
 export default async function CuecardsPage({
 	searchParams,
@@ -22,18 +19,17 @@ export default async function CuecardsPage({
 
 	if (initialCourseId) {
 		// Use Promise.all for parallel execution
-		const [initialWeeks, initialCuecards, initialAvailability] =
-			await Promise.all([
-				getCourseWeeks(initialCourseId),
-				getUserCuecards(initialCourseId, initialWeekIds),
-				checkCuecardsAvailabilityOptimized(initialCourseId, initialWeekIds),
-			]);
+		const [initialWeeks, cuecardData] = await Promise.all([
+			getCourseWeeks(initialCourseId),
+			getUserCuecardsWithAvailability(initialCourseId, initialWeekIds),
+		]);
 
 		initialData = {
 			courseId: initialCourseId,
+			weekIds: initialWeekIds, // Store the initial week selection
 			weeks: initialWeeks,
-			cuecards: initialCuecards,
-			availability: initialAvailability,
+			cuecards: cuecardData.cards,
+			availability: cuecardData.availability,
 		};
 	}
 

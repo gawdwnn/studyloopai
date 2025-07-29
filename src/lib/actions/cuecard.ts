@@ -23,225 +23,6 @@ export type CuecardAvailability = {
 	cuecardsByWeek: Record<string, number>;
 };
 
-/**
- * Get user's generated cuecards for a specific course and weeks
- * Includes RLS protection through course ownership verification
- */
-export async function getUserCuecards(
-	courseId: string,
-	weekIds?: string[]
-): Promise<UserCuecard[]> {
-	return await withErrorHandling(
-		async () => {
-			const supabase = await getServerClient();
-			const {
-				data: { user },
-			} = await supabase.auth.getUser();
-
-			if (!user) {
-				throw new Error("Authentication required");
-			}
-
-			// Build base query with RLS protection through course ownership
-			const whereConditions = [
-				eq(courses.userId, user.id), // RLS protection
-				eq(cuecards.courseId, courseId),
-			];
-
-			// Add week filter if provided
-			if (weekIds && weekIds.length > 0 && !weekIds.includes("all-weeks")) {
-				whereConditions.push(inArray(cuecards.weekId, weekIds));
-			}
-
-			const results = await db
-				.select({
-					id: cuecards.id,
-					courseId: cuecards.courseId,
-					weekId: cuecards.weekId,
-					weekNumber: courseWeeks.weekNumber,
-					question: cuecards.question,
-					answer: cuecards.answer,
-					difficulty: cuecards.difficulty,
-					metadata: cuecards.metadata,
-					createdAt: cuecards.createdAt,
-					updatedAt: cuecards.updatedAt,
-				})
-				.from(cuecards)
-				.innerJoin(courses, eq(cuecards.courseId, courses.id))
-				.innerJoin(courseWeeks, eq(cuecards.weekId, courseWeeks.id))
-				.where(and(...whereConditions))
-				.orderBy(cuecards.createdAt);
-
-			return results;
-		},
-		"getUserCuecards",
-		[] // fallback to empty array
-	);
-}
-
-// TODO: fix this code!
-/**
- * Check if cuecards are available for a course/weeks combination
- */
-export async function checkCuecardsAvailability(
-	courseId: string,
-	weekIds?: string[]
-): Promise<{
-	available: boolean;
-	count: number;
-	hasWeeksWithContent: boolean;
-}> {
-	return await withErrorHandling(
-		async () => {
-			const cuecards = await getUserCuecards(courseId, weekIds);
-
-			// Check if there are any weeks with content
-			const allCuecards = await getUserCuecards(courseId); // Get all cuecards for course
-
-			return {
-				available: cuecards.length > 0,
-				count: cuecards.length,
-				hasWeeksWithContent: allCuecards.length > 0,
-			};
-		},
-		"checkCuecardsAvailability",
-		{ available: false, count: 0, hasWeeksWithContent: false }
-	);
-}
-
-/**
- * OPTIMIZED: Check cuecards availability with hasMaterials pre-filtering
- * This eliminates the double-query issue in the original function
- */
-export async function checkCuecardsAvailabilityOptimized(
-	courseId: string,
-	weekIds?: string[]
-): Promise<CuecardAvailability> {
-	return await withErrorHandling(
-		async () => {
-			const supabase = await getServerClient();
-			const {
-				data: { user },
-			} = await supabase.auth.getUser();
-
-			if (!user) {
-				throw new Error("Authentication required");
-			}
-
-			// PRE-FILTER: Only query weeks that have materials
-			const weeksWithMaterialsQuery = db
-				.select({
-					id: courseWeeks.id,
-					weekNumber: courseWeeks.weekNumber,
-				})
-				.from(courseWeeks)
-				.innerJoin(courses, eq(courseWeeks.courseId, courses.id))
-				.where(
-					and(
-						eq(courses.userId, user.id),
-						eq(courseWeeks.courseId, courseId),
-						eq(courseWeeks.hasMaterials, true), // 🎯 KEY OPTIMIZATION
-						weekIds?.length && !weekIds.includes("all-weeks")
-							? inArray(courseWeeks.id, weekIds)
-							: undefined
-					)
-				);
-
-			const weeksWithMaterials = await weeksWithMaterialsQuery;
-
-			if (weeksWithMaterials.length === 0) {
-				return {
-					available: false,
-					count: 0,
-					hasWeeksWithContent: false,
-					availableWeeks: [],
-					cuecardsByWeek: {},
-				};
-			}
-
-			// Query cuecards only for weeks with materials
-			const cuecardsQuery = db
-				.select({
-					id: cuecards.id,
-					weekId: cuecards.weekId,
-					weekNumber: courseWeeks.weekNumber,
-				})
-				.from(cuecards)
-				.innerJoin(courseWeeks, eq(cuecards.weekId, courseWeeks.id))
-				.innerJoin(courses, eq(cuecards.courseId, courses.id))
-				.where(
-					and(
-						eq(courses.userId, user.id),
-						eq(cuecards.courseId, courseId),
-						inArray(
-							cuecards.weekId,
-							weeksWithMaterials.map((w) => w.id)
-						)
-					)
-				);
-
-			const cuecardsResult = await cuecardsQuery;
-
-			// Build cuecards-by-week map
-			const cuecardsByWeek = cuecardsResult.reduce(
-				(acc, card) => {
-					acc[card.weekId] = (acc[card.weekId] || 0) + 1;
-					return acc;
-				},
-				{} as Record<string, number>
-			);
-
-			return {
-				available: cuecardsResult.length > 0,
-				count: cuecardsResult.length,
-				hasWeeksWithContent: true, // We know this is true from pre-filter
-				availableWeeks: weeksWithMaterials,
-				cuecardsByWeek,
-			};
-		},
-		"checkCuecardsAvailabilityOptimized",
-		{
-			available: false,
-			count: 0,
-			hasWeeksWithContent: false,
-			availableWeeks: [],
-			cuecardsByWeek: {},
-		}
-	);
-}
-
-/**
- * Get generation status for cuecards
- */
-export async function getCuecardsGenerationStatus(_courseId: string): Promise<{
-	isGenerating: boolean;
-	status: string;
-	progress?: number;
-}> {
-	return await withErrorHandling(
-		async () => {
-			const supabase = await getServerClient();
-			const {
-				data: { user },
-			} = await supabase.auth.getUser();
-
-			if (!user) {
-				throw new Error("Authentication required");
-			}
-
-			// This would integrate with your existing generation status tracking
-			// For now, return a simple implementation
-			return {
-				isGenerating: false,
-				status: "completed",
-				progress: 100,
-			};
-		},
-		"getCuecardsGenerationStatus",
-		{ isGenerating: false, status: "unknown", progress: 0 }
-	);
-}
-
 // Types for session synchronization
 export interface CuecardProgress {
 	cardId: string;
@@ -346,12 +127,16 @@ export async function updateCuecardProgress(
 }
 
 /**
- * Get user progress for cuecards
+ * OPTIMIZED: Single query to get cuecards with availability info
+ * Eliminates the double-query pattern from the hook
  */
-export async function getCuecardProgress(
+export async function getUserCuecardsWithAvailability(
 	courseId: string,
 	weekIds?: string[]
-): Promise<{ [cardId: string]: CuecardProgress }> {
+): Promise<{
+	cards: UserCuecard[];
+	availability: CuecardAvailability;
+}> {
 	return await withErrorHandling(
 		async () => {
 			const supabase = await getServerClient();
@@ -363,55 +148,82 @@ export async function getCuecardProgress(
 				throw new Error("Authentication required");
 			}
 
-			// Get cuecards for the course/weeks
-			const cardConditions = [
-				eq(courses.userId, user.id),
-				eq(cuecards.courseId, courseId),
-			];
+			// Single optimized query to get both cards and availability info
+			const shouldFilterByWeeks =
+				weekIds?.length && !weekIds.includes("all-weeks");
 
-			if (weekIds && weekIds.length > 0 && !weekIds.includes("all-weeks")) {
-				cardConditions.push(inArray(cuecards.weekId, weekIds));
-			}
-
-			// Get progress data with card information
-			const progressData = await db
+			// Get cuecards with week information in one query
+			const baseQuery = db
 				.select({
-					cardId: cuecards.id,
-					status: userProgress.status,
-					score: userProgress.score,
-					attempts: userProgress.attempts,
-					lastAttemptAt: userProgress.lastAttemptAt,
+					// Cuecard fields
+					id: cuecards.id,
+					courseId: cuecards.courseId,
+					weekId: cuecards.weekId,
+					question: cuecards.question,
+					answer: cuecards.answer,
+					difficulty: cuecards.difficulty,
+					metadata: cuecards.metadata,
+					createdAt: cuecards.createdAt,
+					updatedAt: cuecards.updatedAt,
+					// Week fields
+					weekNumber: courseWeeks.weekNumber,
 				})
 				.from(cuecards)
+				.innerJoin(courseWeeks, eq(cuecards.weekId, courseWeeks.id))
 				.innerJoin(courses, eq(cuecards.courseId, courses.id))
-				.leftJoin(
-					userProgress,
+				.where(
 					and(
-						eq(userProgress.contentId, cuecards.id),
-						eq(userProgress.userId, user.id),
-						eq(userProgress.contentType, "cuecard")
+						eq(courses.userId, user.id), // RLS protection
+						eq(cuecards.courseId, courseId),
+						// Only include weeks that have materials (required for generation)
+						eq(courseWeeks.hasMaterials, true),
+						shouldFilterByWeeks ? inArray(cuecards.weekId, weekIds) : undefined
 					)
-				)
-				.where(and(...cardConditions));
+				);
 
-			// Convert to map format
-			const progressMap: { [cardId: string]: CuecardProgress } = {};
+			const cards = await baseQuery;
 
-			for (const row of progressData) {
-				progressMap[row.cardId] = {
-					cardId: row.cardId,
-					status:
-						(row.status as "not_started" | "in_progress" | "completed") ||
-						"not_started",
-					score: row.score || undefined,
-					attempts: row.attempts || 0,
-					lastAttemptAt: row.lastAttemptAt || new Date(0),
-				};
+			// Calculate availability from the results
+			const uniqueWeeks = new Map<string, { id: string; weekNumber: number }>();
+			for (const card of cards) {
+				uniqueWeeks.set(card.weekId, {
+					id: card.weekId,
+					weekNumber: card.weekNumber,
+				});
 			}
+			const availableWeeks = Array.from(uniqueWeeks.values());
 
-			return progressMap;
+			const cuecardsByWeek = cards.reduce(
+				(acc, card) => {
+					acc[card.weekId] = (acc[card.weekId] || 0) + 1;
+					return acc;
+				},
+				{} as Record<string, number>
+			);
+
+			const availability: CuecardAvailability = {
+				available: cards.length > 0,
+				count: cards.length,
+				hasWeeksWithContent: availableWeeks.length > 0,
+				availableWeeks,
+				cuecardsByWeek,
+			};
+
+			return {
+				cards,
+				availability,
+			};
 		},
-		"getCuecardProgress",
-		{}
+		"getUserCuecardsWithAvailability",
+		{
+			cards: [] as UserCuecard[],
+			availability: {
+				available: false,
+				count: 0,
+				hasWeeksWithContent: false,
+				availableWeeks: [],
+				cuecardsByWeek: {},
+			} as CuecardAvailability,
+		}
 	);
 }
