@@ -26,7 +26,7 @@ const phases = [
 		icon: Target,
 		title: "Crafting Your Plan",
 		description: "Building personalized study materials...",
-		typingText: "Generated 23 quiz questions, 5 summaries, 12 flashcards...",
+		typingText: "Generated 23 quiz questions, 5 summaries, 12 cuecards...",
 		color: "var(--homepage-success)",
 		bgGradient: "from-green-500/20 to-blue-500/20",
 	},

@@ -49,7 +49,7 @@ export default async function CourseMaterialsPage() {
 				<EmptyState
 					icon={FileX}
 					title="No Materials Uploaded Yet"
-					description="Upload your first course material to start generating AI-powered study content like notes, flashcards, and quizzes."
+					description="Upload your first course material to start generating AI-powered study content like notes, cuecards, and quizzes."
 				>
 					<UploadWizardWrapper courses={courses} />
 				</EmptyState>

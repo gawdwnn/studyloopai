@@ -110,7 +110,7 @@ export function CuecardResultsView({
 										{totalResponses}
 									</span>
 									<span className="text-muted-foreground text-sm font-medium tracking-wider">
-										FLASHCARDS
+										CUEDCARDS
 									</span>
 								</div>
 							</div>

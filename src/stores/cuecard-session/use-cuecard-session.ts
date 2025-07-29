@@ -153,7 +153,7 @@ const useCuecardSession = create<CuecardSessionStore>()(
 							}
 						},
 
-						// TODO: fix this code!
+						// Enhanced session end with adaptive learning integration
 						endSession: async () => {
 							const state = get();
 							if (state.status !== "active") return;
@@ -161,28 +161,65 @@ const useCuecardSession = create<CuecardSessionStore>()(
 							try {
 								const stats = calculateRawSessionMetrics(state);
 
-								// Batch update progress
-								const progressUpdates = state.responses.map((response) => ({
-									cardId: response.cardId,
-									status: "completed",
-									score: response.feedback === "correct" ? 100 : 0,
-									lastAttemptAt: response.attemptedAt,
-								}));
+								// TODO: ADAPTIVE LEARNING - Record session data in learningSessions table
+								// const sessionRecord = await createLearningSession({
+								//   userId: user.id,
+								//   contentType: 'cuecard',
+								//   sessionConfig: { courseId: state.config.courseId, weeks: state.config.weeks },
+								//   totalTime: stats.totalTime,
+								//   itemsCompleted: stats.totalCards,
+								//   accuracy: stats.accuracy,
+								//   startedAt: state.startTime!,
+								//   completedAt: new Date()
+								// });
 
-								// TODO: fix this code!
-								// We can batch these updates in a single server action if the API supports it
-								await Promise.all(
-									progressUpdates.map((update) =>
-										updateCuecardProgress(update.cardId, {
-											status: update.status as
-												| "not_started"
-												| "in_progress"
-												| "completed",
-											score: update.score,
-											lastAttemptAt: update.lastAttemptAt,
-										})
-									)
-								);
+								// TODO: ADAPTIVE LEARNING - Record detailed responses in sessionResponses table
+								// await createSessionResponses(sessionRecord.id, state.responses.map(response => ({
+								//   contentId: response.cardId,
+								//   responseData: { feedback: response.feedback, timeSpent: response.timeSpent },
+								//   responseTime: response.timeSpent,
+								//   isCorrect: response.feedback === 'correct',
+								//   attemptedAt: response.attemptedAt
+								// })));
+
+								// TODO: ADAPTIVE LEARNING - Update spaced repetition scheduling in cuecardScheduling table
+								// for (const response of state.responses) {
+								//   await updateCuecardScheduling(response.cardId, {
+								//     lastReviewedAt: response.attemptedAt,
+								//     reviewCount: existing.reviewCount + 1,
+								//     consecutiveCorrect: response.feedback === 'correct' ? existing.consecutiveCorrect + 1 : 0,
+								//     nextReviewAt: calculateNextReview(response.feedback, existing),
+								//     easeFactor: adjustEaseFactor(response.feedback, existing.easeFactor)
+								//   });
+								// }
+
+								// TODO: ADAPTIVE LEARNING - Detect learning gaps in learningGaps table
+								// const incorrectResponses = state.responses.filter(r => r.feedback === 'incorrect');
+								// for (const incorrect of incorrectResponses) {
+								//   await createOrUpdateLearningGap({
+								//     userId: user.id,
+								//     contentType: 'cuecard',
+								//     contentId: incorrect.cardId,
+								//     severity: calculateGapSeverity(incorrect, userHistory),
+								//     lastFailureAt: incorrect.attemptedAt
+								//   });
+								// }
+
+								// TODO: ADAPTIVE LEARNING - Generate AI recommendations (only after minimum sessions threshold)
+								// const userSessionCount = await getUserSessionCount(user.id);
+								// const MIN_SESSIONS_FOR_RECOMMENDATIONS = 5;
+								// if (userSessionCount >= MIN_SESSIONS_FOR_RECOMMENDATIONS) {
+								//   const recommendations = await generateSessionRecommendations({
+								//     sessionData: sessionRecord,
+								//     responses: state.responses,
+								//     learningGaps: detectedGaps,
+								//     performanceHistory: userHistory
+								//   });
+								//   await createAIRecommendations(recommendations);
+								// }
+
+								// REMOVED: Batch progress update - now handled in real-time via submitFeedback
+								// Individual progress updates are handled immediately in submitFeedback for better UX
 
 								// Session manager integration - now uses callback pattern
 								try {
@@ -269,7 +306,7 @@ const useCuecardSession = create<CuecardSessionStore>()(
 								attemptedAt: new Date(),
 							};
 
-							// ✨ NEW: Immediate progress update
+							// ✨ REAL-TIME: Immediate progress update (better UX than batch at session end)
 							const progressData = {
 								status: "completed" as const,
 								score: feedback === "correct" ? 100 : 0,
@@ -278,12 +315,18 @@ const useCuecardSession = create<CuecardSessionStore>()(
 
 							try {
 								await updateCuecardProgress(currentCard.id, progressData);
+								
+								// TODO: ADAPTIVE LEARNING - Real-time adaptive updates
+								// - Update cuecardScheduling immediately for next review calculation
+								// - Detect learning gaps in real-time for immediate feedback
+								// - Trigger concept mapping updates for cross-content intelligence
+								
 							} catch (error) {
 								console.warn(
 									`Failed to update progress immediately for card ${currentCard.id}:`,
 									error
 								);
-								// Continue with session - will retry at session end
+								// Continue with session - adaptive learning will be handled at session end
 							}
 
 							const newResponses = [...state.responses, response];

@@ -15,16 +15,16 @@ import { QuestionMarkIcon } from "@radix-ui/react-icons";
 export const metadata = {
 	title: "Adaptive Learning - StudyLoop AI",
 	description:
-		"Enhance your learning with AI-powered adaptive features including quizzes, flashcards, and personalized assessments.",
+		"Enhance your learning with AI-powered adaptive features including quizzes, cuecards, and personalized assessments.",
 };
 
 // Feature cards data
 const features = [
 	{
 		id: "cuecards",
-		title: "Smart Cue Cards",
+		title: "Smart Cuecards",
 		description:
-			"Master key concepts with AI-generated flashcards and spaced repetition",
+			"Master key concepts with AI-generated cuecards and spaced repetition",
 		icon: Clipboard,
 		iconColor: "text-purple-600 dark:text-purple-400",
 		available: true,

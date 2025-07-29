@@ -45,9 +45,9 @@ const FEATURES: Record<
 	},
 	cuecards: {
 		label: "Cuecards",
-		description: "Interactive flashcards for memorization",
+		description: "Interactive cuecards for memorization",
 		tooltip:
-			"AI generates flashcards with questions on one side and answers on the other. Perfect for quick review and memorization.",
+			"AI generates cuecards with questions on one side and answers on the other. Perfect for quick review and memorization.",
 	},
 	mcqs: {
 		label: "Multiple Choice Questions",

@@ -25,7 +25,7 @@ const nextSteps = [
 		icon: Brain,
 		title: "Explore AI features",
 		description:
-			"Try flashcards, quizzes, and summaries tailored to your materials",
+			"Try cuecards, quizzes, and summaries tailored to your materials",
 		color: "text-purple-500",
 	},
 	{
