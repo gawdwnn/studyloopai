@@ -15,8 +15,7 @@ export function formatSessionResultsForDisplay(
 	startTime: Date | null
 ): SessionResults {
 	// Calculate feedback counts
-	const tooEasy = responses.filter((r) => r.feedback === "too_easy").length;
-	const knewSome = responses.filter((r) => r.feedback === "knew_some").length;
+	const correct = responses.filter((r) => r.feedback === "correct").length;
 	const incorrect = responses.filter((r) => r.feedback === "incorrect").length;
 
 	// Calculate timing - handle invalid/null startTime
@@ -44,8 +43,7 @@ export function formatSessionResultsForDisplay(
 
 	return {
 		totalCards: cards.length,
-		tooEasy,
-		showAnswer: knewSome,
+		correct,
 		incorrect,
 		sessionTime: sessionTimeString,
 		avgPerCard: `${avgTime} sec`,

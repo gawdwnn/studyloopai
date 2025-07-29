@@ -8,8 +8,6 @@ export type SessionType = "cuecards" | "multiple-choice" | "open-questions";
 
 export type { SessionStatus };
 
-export type PracticeMode = "practice" | "exam";
-
 // Callback interface for child stores to register with Session Manager
 export interface SessionCallbacks {
 	onStart?: (sessionId: string, config: BaseSessionConfig) => void;
@@ -24,7 +22,6 @@ export interface SessionCallbacks {
 export interface BaseSessionConfig {
 	courseId: string;
 	weeks: string[];
-	practiceMode: PracticeMode;
 }
 
 // Session history and tracking

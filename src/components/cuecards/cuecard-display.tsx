@@ -130,27 +130,20 @@ export function CuecardDisplay({
 									</div>
 								)}
 
-								<div className="flex flex-col sm:flex-row gap-3 w-full max-w-2xl">
+								<div className="flex flex-col sm:flex-row gap-4 w-full max-w-lg">
 									<Button
-										onClick={() => handleFeedback("too_easy")}
+										onClick={() => handleFeedback("correct")}
 										variant="default"
-										className="flex-1 bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white"
+										className="flex-1 bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white font-medium py-3"
 									>
-										Too easy
-									</Button>
-									<Button
-										onClick={() => handleFeedback("knew_some")}
-										variant="outline"
-										className="flex-1 bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/20 dark:hover:bg-amber-900/30 text-amber-800 dark:text-amber-200 border-amber-200 dark:border-amber-800"
-									>
-										I knew some of it
+										✓ I knew this
 									</Button>
 									<Button
 										onClick={() => handleFeedback("incorrect")}
 										variant="destructive"
-										className="flex-1"
+										className="flex-1 font-medium py-3"
 									>
-										I answered incorrectly
+										✗ I didn't know this
 									</Button>
 								</div>
 							</>

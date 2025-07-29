@@ -81,7 +81,7 @@ function useActiveSessionDetails() {
 				};
 			}
 			case "cuecards": {
-				const { progress, config, isLoading } = cuecardSession;
+				const { progress, isLoading } = cuecardSession;
 				const totalAnswered =
 					progress.correctAnswers + progress.incorrectAnswers;
 				return {
@@ -99,8 +99,8 @@ function useActiveSessionDetails() {
 						startedAt: progress.startedAt,
 					},
 					config: {
-						difficulty: String(config.difficulty),
-						focus: config.focus || "general",
+						difficulty: "adaptive",
+						focus: "general",
 						mode: "Practice",
 					},
 				};

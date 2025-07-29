@@ -63,7 +63,6 @@ async function generateSmartRecommendations(
 			config: {
 				courseId: "current",
 				weeks: [],
-				practiceMode: "practice",
 			},
 			estimatedDuration: 15,
 			priority: "high",
@@ -265,7 +264,6 @@ const useSessionManager = create<SessionManagerStore>()(
 							await get().actions.startSession(newType, {
 								courseId: "current",
 								weeks: [],
-								practiceMode: "practice",
 							});
 						},
 
