@@ -4,11 +4,7 @@ import type { UserCuecard } from "@/lib/actions/cuecard";
 import type { SelectiveGenerationConfig } from "@/types/generation-types";
 import type { BaseSessionConfig } from "../session-manager/types";
 
-export type CuecardFeedback = "too_easy" | "knew_some" | "incorrect";
-
-export type CuecardMode = "both" | "term_first" | "definition_first";
-
-export type PracticeMode = "practice" | "exam";
+export type CuecardFeedback = "correct" | "incorrect";
 
 export type SessionStatus =
 	| "idle"
@@ -22,18 +18,13 @@ export type SessionStatus =
 
 // Cuecard-specific configuration for an active session
 export interface CuecardConfig extends BaseSessionConfig {
-	mode: CuecardMode;
-	// Properties expected by session progress indicator
-	difficulty?: string;
-	focus?: string;
+	// Simplified configuration for binary feedback system
 }
 
 // Configuration used on the setup screen
 export interface CuecardSetupConfig {
 	courseId: string;
 	week: string;
-	mode: CuecardMode;
-	practiceMode: PracticeMode;
 }
 
 // Simple card response tracking
@@ -72,8 +63,7 @@ export interface CuecardSessionState {
 // Session statistics for results display
 export interface SessionStats {
 	totalCards: number;
-	tooEasy: number;
-	knewSome: number;
+	correct: number;
 	incorrect: number;
 	totalTime: number;
 	averageTimePerCard: number;
@@ -143,14 +133,10 @@ export const initialCuecardState: CuecardSessionState = {
 	config: {
 		courseId: "",
 		weeks: [],
-		mode: "both",
-		practiceMode: "practice",
 	},
 	setupConfig: {
 		courseId: "",
 		week: "all-weeks",
-		mode: "both",
-		practiceMode: "practice",
 	},
 	cards: [],
 	currentIndex: 0,

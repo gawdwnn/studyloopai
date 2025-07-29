@@ -19,7 +19,6 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
 	Select,
 	SelectContent,
@@ -52,7 +51,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useCuecardSessionData } from "./hooks";
-import type { CuecardConfig, CuecardMode, PracticeMode } from "./types";
+import type { CuecardConfig } from "./types";
 
 interface CuecardSessionSetupProps {
 	courses: Course[];
@@ -93,9 +92,6 @@ export function CuecardSessionSetup({
 		initialData?.courseId ||
 		(courses.length > 0 ? courses[0].id : "");
 	const selectedWeek = searchParams.get("week") || "all-weeks";
-	const selectedMode = (searchParams.get("mode") as CuecardMode) || "both";
-	const practiceMode =
-		(searchParams.get("practiceMode") as PracticeMode) || "practice";
 
 	const [generationConfig, setGenerationConfig] =
 		useState<SelectiveGenerationConfig>({
@@ -213,8 +209,6 @@ export function CuecardSessionSetup({
 		const config: CuecardConfig = {
 			courseId: selectedCourse,
 			weeks: isAllWeeksSelected ? [] : [selectedWeek], // Empty array means all available weeks
-			practiceMode: practiceMode,
-			mode: selectedMode,
 		};
 
 		// Start the cuecard session with existing content
@@ -549,78 +543,9 @@ export function CuecardSessionSetup({
 							</AccordionItem>
 						</Accordion>
 					)}
-
-					<Accordion type="single" collapsible className="w-full">
-						<AccordionItem
-							value="session-settings"
-							className="border rounded-lg"
-						>
-							<AccordionTrigger className="px-4 py-3 hover:no-underline">
-								<span className="font-medium">Session Settings</span>
-							</AccordionTrigger>
-							<AccordionContent className="px-4 pb-4 space-y-4">
-								<div className="space-y-2">
-									<Label className="text-sm font-medium">
-										Card Display Mode
-									</Label>
-									<Select
-										value={selectedMode}
-										onValueChange={(v) => setQueryState({ mode: v })}
-									>
-										<SelectTrigger className="h-12 w-full">
-											<SelectValue />
-										</SelectTrigger>
-										<SelectContent>
-											<SelectItem value="both">Both Sides</SelectItem>
-											<SelectItem value="term-first">Term First</SelectItem>
-											<SelectItem value="definition-first">
-												Definition First
-											</SelectItem>
-										</SelectContent>
-									</Select>
-								</div>
-
-								<div className="space-y-2">
-									<Label className="text-sm font-medium">Practice Mode</Label>
-									<RadioGroup
-										value={practiceMode}
-										onValueChange={(v) => setQueryState({ practiceMode: v })}
-										className="grid grid-cols-2 gap-4"
-									>
-										<div>
-											<RadioGroupItem
-												value="practice"
-												id="practice"
-												className="peer sr-only"
-											/>
-											<Label
-												htmlFor="practice"
-												className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-											>
-												Practice
-											</Label>
-										</div>
-										<div>
-											<RadioGroupItem
-												value="exam"
-												id="exam"
-												className="peer sr-only"
-											/>
-											<Label
-												htmlFor="exam"
-												className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-											>
-												Exam
-											</Label>
-										</div>
-									</RadioGroup>
-								</div>
-							</AccordionContent>
-						</AccordionItem>
-					</Accordion>
 				</CardContent>
 
-				<CardFooter className="px-8 pb-8">
+				<CardFooter className="px-8 p-8">
 					<div className="w-full space-y-4">
 						<OnDemandGenerationProgress
 							isVisible={showGenerationProgress}

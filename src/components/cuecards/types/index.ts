@@ -8,9 +8,7 @@ export type {
 	CardResponse,
 	CuecardConfig,
 	CuecardFeedback,
-	CuecardMode,
 	CuecardSessionState,
-	PracticeMode,
 	SessionStatus,
 } from "@/stores/cuecard-session/types";
 
@@ -48,8 +46,7 @@ export interface CuecardSessionManagerProps {
 // Session results types
 export interface SessionResults {
 	totalCards: number;
-	tooEasy: number;
-	showAnswer: number;
+	correct: number;
 	incorrect: number;
 	sessionTime: string;
 	avgPerCard: string;

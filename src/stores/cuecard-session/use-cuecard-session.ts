@@ -18,11 +18,8 @@ import { initialCuecardState } from "./types";
 
 // Helper function to calculate raw session metrics for internal use
 function calculateRawSessionMetrics(state: CuecardSessionStore): SessionStats {
-	const tooEasy = state.responses.filter(
-		(r) => r.feedback === "too_easy"
-	).length;
-	const knewSome = state.responses.filter(
-		(r) => r.feedback === "knew_some"
+	const correct = state.responses.filter(
+		(r) => r.feedback === "correct"
 	).length;
 	const incorrect = state.responses.filter(
 		(r) => r.feedback === "incorrect"
@@ -32,14 +29,11 @@ function calculateRawSessionMetrics(state: CuecardSessionStore): SessionStats {
 		: 0;
 
 	const totalResponses = state.responses.length;
-	const correctResponses = tooEasy;
-	const accuracy =
-		totalResponses > 0 ? (correctResponses / totalResponses) * 100 : 0;
+	const accuracy = totalResponses > 0 ? (correct / totalResponses) * 100 : 0;
 
 	return {
 		totalCards: state.cards.length,
-		tooEasy,
-		knewSome,
+		correct,
 		incorrect,
 		totalTime,
 		averageTimePerCard: totalResponses > 0 ? totalTime / totalResponses : 0,
@@ -82,7 +76,7 @@ const useCuecardSession = create<CuecardSessionStore>()(
 					get progress() {
 						const state = get();
 						const correctAnswers = state.responses.filter(
-							(r) => r.feedback === "too_easy"
+							(r) => r.feedback === "correct"
 						).length;
 						const incorrectAnswers = state.responses.filter(
 							(r) => r.feedback === "incorrect"
@@ -171,12 +165,7 @@ const useCuecardSession = create<CuecardSessionStore>()(
 								const progressUpdates = state.responses.map((response) => ({
 									cardId: response.cardId,
 									status: "completed",
-									score:
-										response.feedback === "too_easy"
-											? 100
-											: response.feedback === "knew_some"
-												? 70
-												: 30,
+									score: response.feedback === "correct" ? 100 : 0,
 									lastAttemptAt: response.attemptedAt,
 								}));
 
@@ -279,6 +268,23 @@ const useCuecardSession = create<CuecardSessionStore>()(
 								timeSpent: Date.now() - state.cardStartTime.getTime(),
 								attemptedAt: new Date(),
 							};
+
+							// ✨ NEW: Immediate progress update
+							const progressData = {
+								status: "completed" as const,
+								score: feedback === "correct" ? 100 : 0,
+								lastAttemptAt: new Date(),
+							};
+
+							try {
+								await updateCuecardProgress(currentCard.id, progressData);
+							} catch (error) {
+								console.warn(
+									`Failed to update progress immediately for card ${currentCard.id}:`,
+									error
+								);
+								// Continue with session - will retry at session end
+							}
 
 							const newResponses = [...state.responses, response];
 							const nextIndex = state.currentIndex + 1;

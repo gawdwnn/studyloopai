@@ -9,8 +9,7 @@ import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 
 interface CuecardResultsData {
 	totalCards: number;
-	tooEasy: number;
-	showAnswer: number;
+	correct: number;
 	incorrect: number;
 	sessionTime: string;
 	avgPerCard: string;
@@ -42,21 +41,11 @@ export function CuecardResultsView({
 
 	// Prepare chart data with consistent colors
 	const chartData = [
-		{ name: "Too easy", value: results.tooEasy, color: "#10b981" }, // green-500
-		{
-			name: "I knew some of it",
-			value: results.showAnswer,
-			color: "#f59e0b", // amber-500
-		},
-		{
-			name: "I answered incorrectly",
-			value: results.incorrect,
-			color: "#ef4444", // red-500
-		},
-	];
+		{ name: "Correct", value: results.correct, color: "#10b981" }, // green-500
+		{ name: "Incorrect", value: results.incorrect, color: "#ef4444" }, // red-500
+	].filter((item) => item.value > 0);
 
-	const totalResponses =
-		results.tooEasy + results.showAnswer + results.incorrect;
+	const totalResponses = results.correct + results.incorrect;
 
 	return (
 		<div className="bg-background flex justify-center mt-10">
@@ -136,25 +125,10 @@ export function CuecardResultsView({
 								/>
 								<div className="flex flex-col">
 									<span className="text-2xl font-bold text-foreground">
-										{results.tooEasy}
+										{results.correct}
 									</span>
 									<span className="text-sm text-muted-foreground">
-										Too easy
-									</span>
-								</div>
-							</div>
-
-							<div className="flex items-center gap-4">
-								<div
-									className="w-4 h-4 rounded-full"
-									style={{ backgroundColor: "#f59e0b" }}
-								/>
-								<div className="flex flex-col">
-									<span className="text-2xl font-bold text-foreground">
-										{results.showAnswer}
-									</span>
-									<span className="text-sm text-muted-foreground">
-										I knew some of it
+										✓ I knew this
 									</span>
 								</div>
 							</div>
@@ -169,7 +143,7 @@ export function CuecardResultsView({
 										{results.incorrect}
 									</span>
 									<span className="text-sm text-muted-foreground">
-										I answered incorrectly
+										✗ I didn't know this
 									</span>
 								</div>
 							</div>
