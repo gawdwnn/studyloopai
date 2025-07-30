@@ -3,18 +3,31 @@
 /**
  * Supabase Environment & Policy Manager
  *
+ * A CLI tool to manage Supabase environments, RLS policies, and database operations.
+ * It supports both interactive and direct command execution.
+ *
  * Built on: Bun + Supabase CLI + PostgreSQL etc
  *
  * @example
  * ```bash
- * # Interactive mode
+ * # Interactive mode (shows a menu of options)
  * bun scripts/supabase-manager.ts
  *
- * # Direct commands
- * bun scripts/supabase-manager.ts dev
+ * # Show current status
+ * bun scripts/supabase-manager.ts status
+ *
+ * # Switch to an environment
  * bun scripts/supabase-manager.ts switch --env prod
- * bun scripts/supabase-manager.ts policies --check
- * bun scripts/supabase-manager.ts policies --apply concept_maps.sql
+ *
+ * # Run operations directly on an environment
+ * bun scripts/supabase-manager.ts dev migrate
+ * bun scripts/supabase-manager.ts dev reset-dev-database
+ * bun scripts/supabase-manager.ts prod migrate --force
+ *
+ * # Manage policies
+ * bun scripts/supabase-manager.ts policies --apply # Applies all policies
+ * bun scripts/supabase-manager.ts policies --apply courses_rls.sql # Applies a single file
+ * bun scripts/supabase-manager.ts policies --validate # Validates RLS coverage
  * ```
  */
 
@@ -32,15 +45,34 @@ import pRetry from "p-retry";
 import pino from "pino";
 import postgres from "postgres";
 
-// Configure logger
-const logger = pino({
-	transport: {
-		target: "pino-pretty",
-		options: {
-			colorize: true,
-			translateTime: "HH:MM:ss",
-			ignore: "pid,hostname",
+// Configure logger with the ability to silence it during prompts
+const baseLogger = pino(
+	{
+		transport: {
+			target: "pino-pretty",
+			options: {
+				colorize: true,
+				translateTime: "HH:MM:ss",
+				ignore: "pid,hostname",
+			},
 		},
+	},
+	// Send logs to stderr so they don't interfere with interactive prompts
+	pino.destination({ fd: 2, sync: true }) // sync: true ensures immediate flushing
+);
+
+// Create a logger wrapper that can be silenced
+let loggerSilenced = false;
+const logger = new Proxy(baseLogger, {
+	get(target, prop) {
+		if (
+			loggerSilenced &&
+			typeof target[prop as keyof typeof target] === "function"
+		) {
+			// Return no-op function when silenced
+			return () => {};
+		}
+		return target[prop as keyof typeof target];
 	},
 });
 
@@ -48,21 +80,29 @@ const logger = pino({
 type ProjectKey = "dev" | "prod";
 type DatabaseClient = postgres.Sql;
 
+// Helper function to run interactive prompts without logger interference
+async function withSilentLogger<T>(fn: () => Promise<T>): Promise<T> {
+	// Ensure we're on a new line
+	process.stderr.write("\n");
+
+	// Flush any pending logs with a longer delay
+	await new Promise((resolve) => setTimeout(resolve, 200));
+
+	// Silence logger during prompt
+	loggerSilenced = true;
+	try {
+		return await fn();
+	} finally {
+		// Re-enable logger after prompt
+		loggerSilenced = false;
+	}
+}
+
 interface ProjectConfig {
 	ref: string | undefined;
 	name: string;
 	environment: string;
 	color: (text: string) => string;
-}
-
-interface PolicyInfo {
-	name: string;
-	table: string;
-}
-
-interface ParsedPolicyFile {
-	policies: PolicyInfo[];
-	tables: string[];
 }
 
 interface RLSStatus {
@@ -103,7 +143,8 @@ const getManagedTables = async (): Promise<string[]> => {
 		return [];
 	}
 	const schemaContent = readFileSync(schemaPath, "utf-8");
-	const tableRegex = /export const \w+ = pgTable\(\s*["']([^"]+)["']/g;
+	const tableRegex =
+		/export const \w+ = pgTable\(\s*["\\]'(["\\]'\\]+)\\["\\]'\\]/g;
 	const tables = new Set<string>();
 	const matches = schemaContent.matchAll(tableRegex);
 	for (const match of matches) {
@@ -225,38 +266,6 @@ const unlinkProject = withRetry(async (): Promise<void> => {
 });
 
 // Policy management functions
-const parsePolicyFile = (sqlContent: string): ParsedPolicyFile => {
-	const policies: PolicyInfo[] = [];
-	const tables = new Set<string>();
-
-	// Extract table names from CREATE POLICY statements
-	const policyRegex = /CREATE\s+POLICY\s+"([^"]+)"\s+ON\s+"?(\w+)"?/gi;
-	let match: RegExpExecArray | null;
-
-	match = policyRegex.exec(sqlContent);
-	while (match !== null) {
-		policies.push({
-			name: match[1],
-			table: match[2],
-		});
-		tables.add(match[2]);
-		match = policyRegex.exec(sqlContent);
-	}
-
-	// Extract table names from ALTER TABLE statements
-	const alterRegex =
-		/ALTER\s+TABLE\s+"?(\w+)"?\s+ENABLE\s+ROW\s+LEVEL\s+SECURITY/gi;
-	match = alterRegex.exec(sqlContent);
-	while (match !== null) {
-		tables.add(match[1]);
-		match = alterRegex.exec(sqlContent);
-	}
-
-	return {
-		policies,
-		tables: Array.from(tables),
-	};
-};
 
 const getPolicyFiles = async (): Promise<string[]> => {
 	if (!existsSync(POLICIES_DIR)) {
@@ -332,16 +341,12 @@ const applyPolicyFile = async (
 
 			switch (pgError.code) {
 				case "42710": // duplicate_object - policy already exists
-					process.stdout.write(
-						chalk.yellow(`⚠️  Policy in ${filename} already exists - skipping\n`)
-					);
+					logger.warn(`⚠️  Policy in ${filename} already exists - skipping`);
 					return { status: "warning", message: "Policy already exists" };
 
 				case "42P01": // undefined_table - table does not exist
-					process.stdout.write(
-						chalk.yellow(
-							`⚠️  Table referenced in ${filename} does not exist - skipping\n`
-						)
+					logger.warn(
+						`⚠️  Table referenced in ${filename} does not exist - skipping`
 					);
 					return { status: "warning", message: "Table does not exist" };
 
@@ -362,9 +367,7 @@ const applyPolicyFile = async (
 
 		// Fallback to message-based detection for non-PostgreSQL errors
 		if (errorMessage.includes("already exists")) {
-			process.stdout.write(
-				chalk.yellow(`⚠️  Policy in ${filename} already exists - skipping\n`)
-			);
+			logger.warn(`⚠️  Policy in ${filename} already exists - skipping`);
 			return { status: "warning", message: "Policy already exists" };
 		}
 
@@ -386,21 +389,24 @@ const runCommand = async (
 };
 
 // Interactive operations
-const getEnvironmentOperations = () => {
+const getEnvironmentOperations = (projectKey: ProjectKey) => {
 	const safeOps = [
 		{ name: "Generate migrations", value: "generate" },
-		{ name: "Check RLS policies", value: "policies" },
-		{ name: "List policy files", value: "list-policies" },
 		{ name: "Validate RLS coverage", value: "validate-rls" },
-		{ name: "View recent logs", value: "logs" },
 	];
 
 	const destructiveOps = [
 		{ name: chalk.yellow("Apply migrations"), value: "migrate" },
 		{ name: chalk.yellow("Apply single policy file"), value: "apply-policy" },
 		{ name: chalk.yellow("Apply all RLS policies"), value: "apply-policies" },
-		{ name: chalk.yellow("Run complete setup"), value: "setup" },
 	];
+
+	if (projectKey === "dev") {
+		destructiveOps.push({
+			name: chalk.red("Reset development database (Truncate)"),
+			value: "reset-dev-database",
+		});
+	}
 
 	return [
 		new Separator(chalk.green("--- SAFE Operations ---")),
@@ -413,29 +419,27 @@ const getEnvironmentOperations = () => {
 const confirmProductionOperation = async (
 	operation: string
 ): Promise<boolean> => {
-	process.stdout.write(chalk.red.bold("\n🚨 PRODUCTION ENVIRONMENT\n"));
-	process.stdout.write(
-		chalk.yellow(`You are about to ${operation} on PRODUCTION.\n`)
-	);
-	process.stdout.write(
-		chalk.gray("This operation may affect live users and data.\n\n")
-	);
+	logger.info(chalk.red.bold("\n🚨 PRODUCTION ENVIRONMENT"));
+	logger.info(chalk.yellow(`You are about to ${operation} on PRODUCTION.`));
+	logger.info(chalk.gray("This operation may affect live users and data.\n"));
 
-	const confirmation = await input({
-		message: `Type "PRODUCTION" to confirm ${operation}:`,
-	});
+	const confirmation = await withSilentLogger(() =>
+		input({
+			message: `Type "PRODUCTION" to confirm ${operation}:`,
+		})
+	);
 
 	if (confirmation !== "PRODUCTION") {
-		process.stdout.write(
-			chalk.yellow("Operation cancelled - confirmation text did not match\n")
-		);
+		logger.warn("Operation cancelled - confirmation text did not match");
 		return false;
 	}
 
-	const finalConfirm = await confirm({
-		message: "Are you absolutely sure you want to continue?",
-		default: false,
-	});
+	const finalConfirm = await withSilentLogger(() =>
+		confirm({
+			message: "Are you absolutely sure you want to continue?",
+			default: false,
+		})
+	);
 
 	return finalConfirm;
 };
@@ -443,11 +447,17 @@ const confirmProductionOperation = async (
 // Main execution functions
 const executeOperation = async (
 	projectKey: ProjectKey,
-	operation: string
+	operation: string,
+	targetFile?: string
 ): Promise<void> => {
 	const isProduction = projectKey === "prod";
 
-	const destructiveOps = ["migrate", "apply-policy", "apply-policies", "setup"];
+	const destructiveOps = [
+		"migrate",
+		"apply-policy",
+		"apply-policies",
+		"reset-dev-database",
+	];
 
 	if (isProduction && destructiveOps.includes(operation)) {
 		const confirmed = await confirmProductionOperation(operation);
@@ -456,127 +466,54 @@ const executeOperation = async (
 
 	switch (operation) {
 		case "generate": {
-			await runCommand("bun", ["run", "db:generate"], "Generating migrations");
-			break;
-		}
-
-		case "policies": {
-			await withDatabase(projectKey, async (client) => {
-				const managedTables = await getManagedTables();
-				const { rlsStatus, policies } = await checkRLSStatus(
-					client,
-					managedTables
-				);
-
-				process.stdout.write(chalk.blue("\n📋 RLS Status:\n"));
-				for (const table of rlsStatus) {
-					const status = table.rls_enabled
-						? chalk.green("✅ Enabled")
-						: chalk.red("❌ Disabled");
-					process.stdout.write(`   ${table.tablename}: ${status}\n`);
-				}
-
-				const policyByTable: Record<string, PolicyStatus[]> = {};
-				for (const policy of policies) {
-					if (!policyByTable[policy.tablename]) {
-						policyByTable[policy.tablename] = [];
-					}
-					policyByTable[policy.tablename].push(policy);
-				}
-
-				process.stdout.write(chalk.blue("\n🔐 Current Policies:\n"));
-				for (const [table, tablePolicies] of Object.entries(policyByTable)) {
-					process.stdout.write(chalk.cyan(`\n   ${table}:\n`));
-					for (const policy of tablePolicies) {
-						process.stdout.write(
-							chalk.gray(`     - ${policy.policyname} (${policy.cmd})\n`)
-						);
-					}
-				}
-			});
-			break;
-		}
-
-		case "list-policies": {
-			const files = await getPolicyFiles();
-			process.stdout.write(chalk.blue("\n📁 Available Policy Files:\n"));
-
-			for (const file of files) {
-				const filePath = join(POLICIES_DIR, file);
-				const content = readFileSync(filePath, "utf8");
-				const parsed = parsePolicyFile(content);
-
-				process.stdout.write(`   ${file}:\n`);
-				process.stdout.write(
-					chalk.gray(`     • ${parsed.policies.length} policies\n`)
-				);
-				process.stdout.write(
-					chalk.gray(
-						`     • ${parsed.tables.length} tables: ${parsed.tables.join(", ")}\n`
-					)
-				);
-			}
+			const tasks = new Listr([
+				{
+					title: "Generating migrations",
+					task: () =>
+						runCommand("bun", ["run", "db:generate"], "Generating migrations"),
+				},
+			]);
+			await tasks.run();
 			break;
 		}
 
 		case "validate-rls": {
-			await withDatabase(projectKey, async (client) => {
-				const managedTables = await getManagedTables();
-				const { rlsStatus } = await checkRLSStatus(client, managedTables);
+			const tasks = new Listr([
+				{
+					title: "Validating RLS coverage",
+					task: async () => {
+						await withDatabase(projectKey, async (client) => {
+							const managedTables = await getManagedTables();
+							const { rlsStatus } = await checkRLSStatus(client, managedTables);
 
-				const missingRLS = managedTables.filter(
-					(table) =>
-						!rlsStatus.some(
-							(status) => status.tablename === table && status.rls_enabled
-						)
-				);
+							const missingRLS = managedTables.filter(
+								(table) =>
+									!rlsStatus.some(
+										(status) => status.tablename === table && status.rls_enabled
+									)
+							);
 
-				if (missingRLS.length === 0) {
-					process.stdout.write(
-						chalk.green(
-							`\n✅ All ${managedTables.length} discovered tables have RLS enabled\n`
-						)
-					);
-				} else {
-					process.stdout.write(
-						chalk.red(
-							`\n❌ ${missingRLS.length} of ${managedTables.length} tables are missing RLS:\n`
-						)
-					);
-					for (const table of missingRLS) {
-						process.stdout.write(`   - ${table}\n`);
-					}
-				}
-			});
-			break;
-		}
-
-		case "logs": {
-			process.stdout.write(chalk.blue("\n📋 Recent Logs:\n\n"));
-
-			// Get logs from different services
-			const services = ["api", "postgres", "auth"] as const;
-
-			for (const service of services) {
-				try {
-					process.stdout.write(
-						chalk.cyan(`--- ${service.toUpperCase()} Service ---\n`)
-					);
-
-					// This would use MCP Supabase tools in a real implementation
-					// For now, show a placeholder
-					process.stdout.write(
-						chalk.gray(`Logs for ${service} service would appear here\n`)
-					);
-					process.stdout.write(
-						chalk.gray("(Requires MCP Supabase integration)\n\n")
-					);
-				} catch (error) {
-					process.stdout.write(
-						chalk.red(`Failed to fetch ${service} logs: ${error}\n`)
-					);
-				}
-			}
+							if (missingRLS.length === 0) {
+								logger.info(
+									chalk.green(
+										`\n✅ All ${managedTables.length} discovered tables have RLS enabled`
+									)
+								);
+							} else {
+								logger.error(
+									chalk.red(
+										`\n❌ ${missingRLS.length} of ${managedTables.length} tables are missing RLS:`
+									)
+								);
+								for (const table of missingRLS) {
+									logger.error(`   - ${table}`);
+								}
+							}
+						});
+					},
+				},
+			]);
+			await tasks.run();
 			break;
 		}
 
@@ -593,36 +530,54 @@ const executeOperation = async (
 		}
 
 		case "apply-policy": {
-			const files = await getPolicyFiles();
-			if (files.length === 0) {
-				process.stdout.write(chalk.yellow("No policy files found\n"));
-				return;
-			}
+			try {
+				const policyFiles = await getPolicyFiles();
+				const fileToApply =
+					targetFile ??
+					(await withSilentLogger(() =>
+						select({
+							message: "Select policy file to apply:",
+							choices: policyFiles.map((file) => ({ name: file, value: file })),
+						})
+					));
 
-			const selectedFile = await select({
-				message: "Select policy file to apply:",
-				choices: files.map((file) => ({ name: file, value: file })),
-			});
-
-			await withDatabase(projectKey, async (client) => {
-				const result = await applyPolicyFile(client, selectedFile);
-				if (result.status === "success") {
-					process.stdout.write(
-						chalk.green(`✅ Policy file ${selectedFile} applied successfully\n`)
-					);
-				} else if (result.status === "warning") {
-					// Warning message already displayed in applyPolicyFile
-				} else {
-					throw new Error(result.message || "Failed to apply policy");
+				if (!fileToApply) {
+					logger.warn("No policy file selected or specified.");
+					return;
 				}
-			});
+
+				const tasks = new Listr([
+					{
+						title: `Applying policy file: ${fileToApply}`,
+						task: async () => {
+							await withDatabase(projectKey, async (client) => {
+								const result = await applyPolicyFile(client, fileToApply);
+								if (result.status === "success") {
+									logger.info(
+										chalk.green(
+											`✅ Policy file ${fileToApply} applied successfully`
+										)
+									);
+								} else if (result.status === "warning") {
+									// Warning message already displayed in applyPolicyFile
+								} else {
+									throw new Error(result.message || "Failed to apply policy");
+								}
+							});
+						},
+					},
+				]);
+				await tasks.run();
+			} catch {
+				logger.warn("Operation cancelled by user.");
+			}
 			break;
 		}
 
 		case "apply-policies": {
 			const files = await getPolicyFiles();
 			if (files.length === 0) {
-				process.stdout.write(chalk.yellow("No policy files found\n"));
+				logger.warn("No policy files found");
 				return;
 			}
 
@@ -635,7 +590,7 @@ const executeOperation = async (
 					title: `Processing ${files.length} policy files`,
 					task: () =>
 						withDatabase(projectKey, async (client) => {
-							const results = await pMap(
+							await pMap(
 								files,
 								async (file) => {
 									const result = await applyPolicyFile(client, file);
@@ -653,8 +608,6 @@ const executeOperation = async (
 								},
 								{ concurrency: 1 }
 							);
-
-							return results;
 						}),
 				},
 			]);
@@ -663,69 +616,72 @@ const executeOperation = async (
 
 			// Summary output
 			if (errorCount > 0) {
-				process.stdout.write(
+				logger.error(
 					chalk.red(
-						`❌ ${errorCount} policies failed, ${successCount} succeeded, ${warningCount} skipped\n`
+						`❌ ${errorCount} policies failed, ${successCount} succeeded, ${warningCount} skipped`
 					)
 				);
 			} else if (warningCount > 0) {
-				process.stdout.write(
+				logger.warn(
 					chalk.yellow(
-						`⚠️  ${successCount} policies applied, ${warningCount} already existed (skipped)\n`
+						`⚠️  ${successCount} policies applied, ${warningCount} already existed (skipped)`
 					)
 				);
 			} else {
-				process.stdout.write(
+				logger.info(
 					chalk.green(
-						`✅ All ${successCount} policy files applied successfully\n`
+						`✅ All ${successCount} policy files applied successfully`
 					)
 				);
 			}
 			break;
 		}
 
-		case "setup": {
+		case "reset-dev-database": {
+			if (projectKey !== "dev") {
+				logger.error("This operation is only available in dev environment.");
+				return;
+			}
+
+			const confirmed = await withSilentLogger(() =>
+				confirm({
+					message:
+						"Are you sure you want to truncate all tables? This will delete ALL data.",
+					default: false,
+				})
+			);
+
+			if (!confirmed) {
+				logger.warn("Operation cancelled");
+				return;
+			}
+
 			const tasks = new Listr([
 				{
-					title: "Generating migrations",
+					title: "Truncating all tables in development database",
 					task: () =>
-						runCommand("bun", ["run", "db:generate"], "Generating migrations"),
-				},
-				{
-					title: "Applying migrations",
-					task: () =>
-						runCommand("bun", ["run", "db:migrate"], "Applying migrations"),
-				},
-				{
-					title: "Applying all policies",
-					task: async () => {
-						const files = await getPolicyFiles();
-						await withDatabase(projectKey, async (client) => {
-							await pMap(
-								files,
-								async (file) => {
-									const result = await applyPolicyFile(client, file);
-									if (result.status === "error") {
-										logger.error(
-											`Setup failed: could not apply ${file}: ${result.message}`
-										);
-									}
-									return result;
-								},
-								{ concurrency: 1 }
-							);
-						});
-					},
+						withDatabase(projectKey, async (client: DatabaseClient) => {
+							const tables = await getManagedTables();
+							if (tables.length === 0) {
+								logger.warn("No managed tables found to truncate.");
+								return;
+							}
+							const tableList = tables.map((t) => `"${t}"`).join(", ");
+							const sql = `TRUNCATE TABLE ${tableList} RESTART IDENTITY CASCADE;`;
+
+							logger.info(`Executing: ${sql}`);
+							await client.unsafe(sql);
+						}),
 				},
 			]);
 
 			await tasks.run();
-			process.stdout.write(chalk.green("✅ Setup completed successfully\n"));
+			logger.info(chalk.green("✅ All tables truncated successfully"));
 			break;
 		}
 
 		default:
-			process.stdout.write(chalk.red(`Unknown operation: ${operation}\n`));
+			logger.error(chalk.red(`Unknown operation: ${operation}`));
 	}
 };
 
@@ -743,37 +699,29 @@ program
 		try {
 			const current = await getCurrentProject();
 
-			process.stdout.write(
-				chalk.blue("\n📊 Current Supabase Project Status (Remote)\n\n")
+			logger.info(
+				chalk.blue("\n📊 Current Supabase Project Status (Remote)\n")
 			);
 
 			if (current) {
 				const project = PROJECTS[current];
-				process.stdout.write(
-					`Environment: ${project.color(project.environment)}\n`
-				);
-				process.stdout.write(`Project: ${project.name}\n`);
-				process.stdout.write(`Reference: ${project.ref}\n`);
-				process.stdout.write(chalk.green("✓ Remote project linked\n"));
+				logger.info(`Environment: ${project.color(project.environment)}`);
+				logger.info(`Project: ${project.name}`);
+				logger.info(`Reference: ${project.ref}`);
+				logger.info(chalk.green("✓ Remote project linked"));
 
 				if (current === "prod") {
-					process.stdout.write(chalk.yellow("⚠️  You are in production mode\n"));
+					logger.warn("⚠️  You are in production mode");
 				}
 			} else {
-				process.stdout.write(
-					chalk.yellow("No remote project currently linked\n")
-				);
-				process.stdout.write(
-					chalk.gray("Use 'switch' command to link a project\n")
-				);
+				logger.warn("No remote project currently linked");
+				logger.info(chalk.gray("Use 'switch' command to link a project"));
 			}
 
-			process.stdout.write(chalk.blue("\nAvailable Projects:\n"));
+			logger.info(chalk.blue("\nAvailable Projects:"));
 			for (const [key, project] of Object.entries(PROJECTS)) {
 				const indicator = current === key ? "●" : "○";
-				process.stdout.write(
-					`${indicator} ${project.name} (${project.environment})\n`
-				);
+				logger.info(`${indicator} ${project.name} (${project.environment})`);
 			}
 		} catch (error) {
 			logger.error("Failed to get status", error);
@@ -794,20 +742,20 @@ program
 			if (options.env && ["dev", "prod"].includes(options.env)) {
 				targetProject = options.env as ProjectKey;
 			} else {
-				targetProject = await select({
-					message: "Select target environment:",
-					choices: [
-						{ name: `${PROJECTS.dev.name} (Development)`, value: "dev" },
-						{ name: `${PROJECTS.prod.name} (Production)`, value: "prod" },
-					],
-				});
+				targetProject = await withSilentLogger(() =>
+					select({
+						message: "Select target environment:",
+						choices: [
+							{ name: `${PROJECTS.dev.name} (Development)`, value: "dev" },
+							{ name: `${PROJECTS.prod.name} (Production)`, value: "prod" },
+						],
+					})
+				);
 			}
 
 			if (current === targetProject) {
-				process.stdout.write(
-					chalk.green(
-						`✓ Already connected to ${PROJECTS[targetProject].name}\n`
-					)
+				logger.info(
+					chalk.green(`✓ Already connected to ${PROJECTS[targetProject].name}`)
 				);
 				return;
 			}
@@ -831,13 +779,69 @@ program
 			]);
 
 			await tasks.run();
-			process.stdout.write(
-				chalk.green(
-					`✅ Successfully linked to ${PROJECTS[targetProject].name}\n`
-				)
+			logger.info(
+				chalk.green(`✅ Successfully linked to ${PROJECTS[targetProject].name}`)
 			);
 		} catch (error) {
 			logger.error("Failed to switch project", error);
+			process.exit(1);
+		}
+	});
+
+program
+	.command("link")
+	.description("Link to a Supabase project")
+	.option("-e, --env <environment>", "Target environment (dev/prod)")
+	.action(async (options) => {
+		try {
+			const current = await getCurrentProject();
+
+			let targetProject: ProjectKey;
+			if (options.env && ["dev", "prod"].includes(options.env)) {
+				targetProject = options.env as ProjectKey;
+			} else {
+				targetProject = await withSilentLogger(() =>
+					select({
+						message: "Select target environment to link:",
+						choices: [
+							{ name: `${PROJECTS.dev.name} (Development)`, value: "dev" },
+							{ name: `${PROJECTS.prod.name} (Production)`, value: "prod" },
+						],
+					})
+				);
+			}
+
+			if (current === targetProject) {
+				logger.info(
+					chalk.green(`✓ Already connected to ${PROJECTS[targetProject].name}`)
+				);
+				return;
+			}
+
+			const dbPassword =
+				targetProject === "dev"
+					? env.DEV_DATABASE_PASSWORD
+					: env.PROD_DATABASE_PASSWORD;
+
+			if (!dbPassword) {
+				throw new Error(
+					`Database password for ${targetProject} not found in environment variables. Please set DEV_DATABASE_PASSWORD and PROD_DATABASE_PASSWORD.`
+				);
+			}
+
+			const tasks = new Listr([
+				{
+					title: `Linking to ${PROJECTS[targetProject].name}`,
+					task: () => linkProject(targetProject, dbPassword),
+				},
+			]);
+
+			await tasks.run();
+			logger.info(
+				chalk.green(`✅ Successfully linked to ${PROJECTS[targetProject].name}`)
+			);
+		} catch (error) {
+			logger.error("Failed to link project", error);
 			process.exit(1);
 		}
 	});
@@ -851,18 +855,22 @@ program
 			const current = await getCurrentProject();
 
 			if (!current) {
-				process.stdout.write(chalk.yellow("No project is currently linked\n"));
+				logger.warn("No project is currently linked");
 				return;
 			}
 
 			const project = PROJECTS[current];
-			const confirmed = await confirm({
-				message: `Are you sure you want to unlink from ${project.color(project.name)}?`,
-				default: false,
-			});
+			const confirmed = await withSilentLogger(() =>
+				confirm({
+					message: `Are you sure you want to unlink from ${project.color(
+						project.name
+					)}?`,
+					default: false,
+				})
+			);
 
 			if (!confirmed) {
-				process.stdout.write(chalk.yellow("Operation cancelled\n"));
+				logger.warn("Operation cancelled");
 				return;
 			}
 
@@ -874,9 +882,9 @@ program
 			]);
 
 			await tasks.run();
-			process.stdout.write(
+			logger.info(
 				chalk.green(
-					`✅ Successfully unlinked from ${project.color(project.name)}\n`
+					`✅ Successfully unlinked from ${project.color(project.name)}`
 				)
 			);
 		} catch (error) {
@@ -888,15 +896,16 @@ program
 // Dev command
 program
 	.command("dev")
-	.description("Switch to development and run operations")
-	.action(async () => {
+	.description(
+		"Manage the development environment (migrations, policies, DB reset)"
+	)
+	.argument("[operation]", "The operation to run directly")
+	.action(async (operation) => {
 		try {
 			const current = await getCurrentProject();
 
 			if (current !== "dev") {
-				process.stdout.write(
-					chalk.blue("🔧 Switching to Development Environment\n")
-				);
+				logger.info(chalk.blue("🔧 Switching to Development Environment"));
 
 				const dbPassword = env.DEV_DATABASE_PASSWORD;
 				if (!dbPassword) {
@@ -905,17 +914,20 @@ program
 					);
 				}
 				await linkProject("dev", dbPassword);
-				process.stdout.write(
-					chalk.green("✅ Linked to development environment\n")
-				);
+				logger.info(chalk.green("✅ Linked to development environment"));
 			}
 
-			const operation = await select({
-				message: "Select development operation:",
-				choices: getEnvironmentOperations(),
-			});
-
-			await executeOperation("dev", operation);
+			if (operation) {
+				await executeOperation("dev", operation);
+			} else {
+				const selectedOperation = await withSilentLogger(() =>
+					select({
+						message: "Select development operation:",
+						choices: getEnvironmentOperations("dev"),
+					})
+				);
+				await executeOperation("dev", selectedOperation);
+			}
 		} catch (error) {
 			logger.error("Development command failed", error);
 			process.exit(1);
@@ -925,9 +937,10 @@ program
 // Prod command
 program
 	.command("prod")
-	.description("Switch to production and run operations")
-	.option("--force", "Skip confirmation prompts")
-	.action(async (options) => {
+	.description("Manage the production environment (migrations, policies)")
+	.argument("[operation]", "The operation to run directly")
+	.option("--force", "Skip confirmation prompts for direct operations")
+	.action(async (operation, options) => {
 		try {
 			const current = await getCurrentProject();
 
@@ -946,17 +959,20 @@ program
 					);
 				}
 				await linkProject("prod", dbPassword);
-				process.stdout.write(
-					chalk.red("✅ Linked to production environment\n")
-				);
+				logger.info(chalk.red("✅ Linked to production environment"));
 			}
 
-			const operation = await select({
-				message: "Select production operation:",
-				choices: getEnvironmentOperations(),
-			});
-
-			await executeOperation("prod", operation);
+			if (operation) {
+				await executeOperation("prod", operation);
+			} else {
+				const selectedOperation = await withSilentLogger(() =>
+					select({
+						message: "Select production operation:",
+						choices: getEnvironmentOperations("prod"),
+					})
+				);
+				await executeOperation("prod", selectedOperation);
+			}
 		} catch (error) {
 			logger.error("Production command failed", error);
 			process.exit(1);
@@ -967,8 +983,6 @@ program
 program
 	.command("policies")
 	.description("Manage RLS policies")
-	.option("-c, --check", "Check current policy status")
-	.option("-l, --list", "List available policy files")
 	.option("-a, --apply [file]", "Apply policy file(s)")
 	.option("-v, --validate", "Validate RLS coverage")
 	.action(async (options) => {
@@ -978,16 +992,13 @@ program
 				throw new Error("No project linked. Use 'switch' command first.");
 			}
 
-			if (options.check) {
-				await executeOperation(projectKey, "policies");
-			} else if (options.list) {
-				await executeOperation(projectKey, "list-policies");
-			} else if (options.apply !== undefined) {
-				if (options.apply === true) {
-					await executeOperation(projectKey, "apply-policies");
+			if (options.apply !== undefined) {
+				if (typeof options.apply === "string") {
+					// Apply a single, specified file
+					await executeOperation(projectKey, "apply-policy", options.apply);
 				} else {
-					// Apply specific file - we'd need to modify executeOperation to handle this
-					await executeOperation(projectKey, "apply-policy");
+					// Apply all policies
+					await executeOperation(projectKey, "apply-policies");
 				}
 			} else if (options.validate) {
 				await executeOperation(projectKey, "validate-rls");
@@ -1003,29 +1014,24 @@ program
 // Interactive mode (no command)
 program.action(async () => {
 	try {
-		process.stdout.write(
-			chalk.blue.bold("🚀 Supabase Environment Manager\n\n")
+		// Don't output anything before the prompt to avoid interference
+		await getCurrentProject();
+
+		const mainOperation = await withSilentLogger(() =>
+			select({
+				message: "What would you like to do?",
+				choices: [
+					{ name: "Switch environment", value: "switch" },
+					{ name: "Show status", value: "status" },
+					{ name: "Run development operations", value: "dev" },
+					{ name: "Run production operations", value: "prod" },
+					{ name: "Unlink current project", value: "unlink" },
+					{ name: "Link to a project", value: "link" },
+					{ name: "Show help", value: "help" },
+					{ name: "Exit", value: "exit" },
+				],
+			})
 		);
-
-		const current = await getCurrentProject();
-		if (current) {
-			const project = PROJECTS[current];
-			process.stdout.write(
-				`Currently linked to: ${project.color(project.name)}\n\n`
-			);
-		}
-
-		const mainOperation = await select({
-			message: "What would you like to do?",
-			choices: [
-				{ name: "Switch environment", value: "switch" },
-				{ name: "Run development operations", value: "dev" },
-				{ name: "Run production operations", value: "prod" },
-				{ name: "Show status", value: "status" },
-				{ name: "Unlink current project", value: "unlink" },
-				{ name: "Show help", value: "help" },
-			],
-		});
 
 		// Execute the selected main operation by calling the appropriate command
 		switch (mainOperation) {
@@ -1044,17 +1050,19 @@ program.action(async () => {
 			case "unlink":
 				await program.parseAsync(["unlink"], { from: "user" });
 				break;
+			case "link":
+				await program.parseAsync(["link"], { from: "user" });
+				break;
 			case "help":
 				program.help();
 				break;
+			case "exit":
+				return;
 			default:
-				process.stdout.write(
-					chalk.red(`Unknown operation: ${mainOperation}\n`)
-				);
+				logger.error(chalk.red(`Unknown operation: ${mainOperation}`));
 		}
-	} catch (error) {
-		logger.error("Interactive mode failed", error);
-		process.exit(1);
+	} catch {
+		logger.warn("Operation cancelled by user.");
 	}
 });
 

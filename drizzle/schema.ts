@@ -125,8 +125,16 @@ export const courseWeeks = pgTable(
 			table.weekNumber
 		),
 		// Adaptive learning indexes
-		index("idx_course_weeks_course_number").using("btree", table.courseId, table.weekNumber),
-		index("idx_course_weeks_course_active").using("btree", table.courseId, table.isActive),
+		index("idx_course_weeks_course_number").using(
+			"btree",
+			table.courseId,
+			table.weekNumber
+		),
+		index("idx_course_weeks_course_active").using(
+			"btree",
+			table.courseId,
+			table.isActive
+		),
 	]
 );
 
@@ -147,8 +155,16 @@ export const courses = pgTable(
 	(table) => [
 		index("idx_courses_user_id").using("btree", table.userId),
 		// Adaptive learning indexes
-		index("idx_courses_user_active").using("btree", table.userId, table.isActive),
-		index("idx_courses_user_created").using("btree", table.userId, table.createdAt.desc()),
+		index("idx_courses_user_active").using(
+			"btree",
+			table.userId,
+			table.isActive
+		),
+		index("idx_courses_user_created").using(
+			"btree",
+			table.userId,
+			table.createdAt.desc()
+		),
 	]
 );
 
@@ -831,11 +847,25 @@ export const learningSessions = pgTable(
 	},
 	(table) => [
 		index("idx_learning_sessions_user_id").using("btree", table.userId),
-		index("idx_learning_sessions_content_type").using("btree", table.contentType),
-		index("idx_learning_sessions_completed_at").using("btree", table.completedAt),
-		index("idx_learning_sessions_user_content").using("btree", table.userId, table.contentType),
+		index("idx_learning_sessions_content_type").using(
+			"btree",
+			table.contentType
+		),
+		index("idx_learning_sessions_completed_at").using(
+			"btree",
+			table.completedAt
+		),
+		index("idx_learning_sessions_user_content").using(
+			"btree",
+			table.userId,
+			table.contentType
+		),
 		// Additional composite index for date range queries
-		index("idx_learning_sessions_user_date").using("btree", table.userId, table.completedAt.desc()),
+		index("idx_learning_sessions_user_date").using(
+			"btree",
+			table.userId,
+			table.completedAt.desc()
+		),
 		foreignKey({
 			columns: [table.userId],
 			foreignColumns: [users.userId],
@@ -861,7 +891,10 @@ export const sessionResponses = pgTable(
 		index("idx_session_responses_session_id").using("btree", table.sessionId),
 		index("idx_session_responses_content_id").using("btree", table.contentId),
 		index("idx_session_responses_is_correct").using("btree", table.isCorrect),
-		index("idx_session_responses_attempted_at").using("btree", table.attemptedAt),
+		index("idx_session_responses_attempted_at").using(
+			"btree",
+			table.attemptedAt
+		),
 		// Additional composite index for content performance analysis
 		index("idx_session_responses_content_performance").using(
 			"btree",
@@ -897,11 +930,19 @@ export const learningGaps = pgTable(
 	},
 	(table) => [
 		index("idx_learning_gaps_user_id").using("btree", table.userId),
-		index("idx_learning_gaps_content").using("btree", table.contentType, table.contentId),
+		index("idx_learning_gaps_content").using(
+			"btree",
+			table.contentType,
+			table.contentId
+		),
 		index("idx_learning_gaps_concept_id").using("btree", table.conceptId),
 		index("idx_learning_gaps_severity").using("btree", table.severity),
 		index("idx_learning_gaps_is_active").using("btree", table.isActive),
-		index("idx_learning_gaps_user_active").using("btree", table.userId, table.isActive),
+		index("idx_learning_gaps_user_active").using(
+			"btree",
+			table.userId,
+			table.isActive
+		),
 		// Additional composite index for priority gap detection
 		index("idx_learning_gaps_user_priority").using(
 			"btree",
@@ -923,7 +964,9 @@ export const aiRecommendations = pgTable(
 	{
 		id: uuid().defaultRandom().primaryKey().notNull(),
 		userId: uuid("user_id").notNull(),
-		recommendationType: varchar("recommendation_type", { length: 50 }).notNull(), // 'review_priority', 'content_focus', 'difficulty_adjustment', 'study_strategy'
+		recommendationType: varchar("recommendation_type", {
+			length: 50,
+		}).notNull(), // 'review_priority', 'content_focus', 'difficulty_adjustment', 'study_strategy'
 		contentData: jsonb("content_data").notNull(), // Store recommendation details and content references
 		priority: integer().notNull(), // Recommendation priority (1-10)
 		reasoning: text(), // AI explanation for the recommendation
@@ -936,11 +979,21 @@ export const aiRecommendations = pgTable(
 	},
 	(table) => [
 		index("idx_ai_recommendations_user_id").using("btree", table.userId),
-		index("idx_ai_recommendations_type").using("btree", table.recommendationType),
+		index("idx_ai_recommendations_type").using(
+			"btree",
+			table.recommendationType
+		),
 		index("idx_ai_recommendations_priority").using("btree", table.priority),
-		index("idx_ai_recommendations_is_accepted").using("btree", table.isAccepted),
+		index("idx_ai_recommendations_is_accepted").using(
+			"btree",
+			table.isAccepted
+		),
 		index("idx_ai_recommendations_expires_at").using("btree", table.expiresAt),
-		index("idx_ai_recommendations_user_active").using("btree", table.userId, table.expiresAt),
+		index("idx_ai_recommendations_user_active").using(
+			"btree",
+			table.userId,
+			table.expiresAt
+		),
 		// Additional composite index for active recommendations
 		index("idx_ai_recommendations_active").using(
 			"btree",
@@ -975,12 +1028,23 @@ export const cuecardScheduling = pgTable(
 		updatedAt: timestamp("updated_at").defaultNow().notNull(),
 	},
 	(table) => [
-		unique("cuecard_scheduling_user_card_unique").on(table.userId, table.cardId),
+		unique("cuecard_scheduling_user_card_unique").on(
+			table.userId,
+			table.cardId
+		),
 		index("idx_cuecard_scheduling_user_id").using("btree", table.userId),
 		index("idx_cuecard_scheduling_card_id").using("btree", table.cardId),
-		index("idx_cuecard_scheduling_next_review").using("btree", table.nextReviewAt),
+		index("idx_cuecard_scheduling_next_review").using(
+			"btree",
+			table.nextReviewAt
+		),
 		index("idx_cuecard_scheduling_is_active").using("btree", table.isActive),
-		index("idx_cuecard_scheduling_user_due").using("btree", table.userId, table.nextReviewAt, table.isActive),
+		index("idx_cuecard_scheduling_user_due").using(
+			"btree",
+			table.userId,
+			table.nextReviewAt,
+			table.isActive
+		),
 		foreignKey({
 			columns: [table.userId],
 			foreignColumns: [users.userId],
@@ -1005,16 +1069,29 @@ export const conceptMappings = pgTable(
 		courseId: uuid("course_id").notNull(), // For scoping concepts to courses
 		weekId: uuid("week_id"), // Optional week scoping
 		confidenceScore: integer("confidence_score").default(100).notNull(), // Confidence in mapping (0-100)
-		extractedBy: varchar("extracted_by", { length: 50 }).default("ai").notNull(), // 'ai', 'manual'
+		extractedBy: varchar("extracted_by", { length: 50 })
+			.default("ai")
+			.notNull(), // 'ai', 'manual'
 		createdAt: timestamp("created_at").defaultNow().notNull(),
 		updatedAt: timestamp("updated_at").defaultNow().notNull(),
 	},
 	(table) => [
-		index("idx_concept_mappings_concept_name").using("btree", table.conceptName),
-		index("idx_concept_mappings_content").using("btree", table.contentType, table.contentId),
+		index("idx_concept_mappings_concept_name").using(
+			"btree",
+			table.conceptName
+		),
+		index("idx_concept_mappings_content").using(
+			"btree",
+			table.contentType,
+			table.contentId
+		),
 		index("idx_concept_mappings_course_id").using("btree", table.courseId),
 		index("idx_concept_mappings_week_id").using("btree", table.weekId),
-		index("idx_concept_mappings_course_concept").using("btree", table.courseId, table.conceptName),
+		index("idx_concept_mappings_course_concept").using(
+			"btree",
+			table.courseId,
+			table.conceptName
+		),
 		foreignKey({
 			columns: [table.courseId],
 			foreignColumns: [courses.id],

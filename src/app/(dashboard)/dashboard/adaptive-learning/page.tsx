@@ -1,4 +1,4 @@
-import { ArrowRight, Brain, CheckCircle, Clipboard, Route } from "lucide-react";
+import { ArrowRight, CheckCircle, Clipboard, Route } from "lucide-react";
 import Link from "next/link";
 
 import { PageHeading } from "@/components/page-heading";
@@ -22,7 +22,7 @@ export const metadata = {
 const features = [
 	{
 		id: "cuecards",
-		title: "Smart Cuecards",
+		title: "Cue Cards",
 		description:
 			"Master key concepts with AI-generated cuecards and spaced repetition",
 		icon: Clipboard,
@@ -56,16 +56,6 @@ const features = [
 			"Visualize connections between topics with interactive concept mapping",
 		icon: Route,
 		iconColor: "text-orange-600 dark:text-orange-400",
-		available: false,
-		comingSoon: true,
-	},
-	{
-		id: "gap-assessment",
-		title: "Learning Gap Analysis",
-		description:
-			"Identify knowledge gaps and receive personalized learning recommendations",
-		icon: Brain,
-		iconColor: "text-green-600 dark:text-green-400",
 		available: false,
 		comingSoon: true,
 	},

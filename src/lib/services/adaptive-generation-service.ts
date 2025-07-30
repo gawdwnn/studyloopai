@@ -6,7 +6,7 @@
  */
 
 import { db } from "@/db";
-import { userProgress } from "@/db/schema";
+import { learningSessions, sessionResponses } from "@/db/schema";
 import type {
 	DifficultyLevel,
 	SelectiveGenerationConfig,
@@ -210,16 +210,21 @@ async function getUserPerformanceData(
 	// - Response time analysis
 	// - Knowledge retention over time
 
+	// Get performance stats from session responses instead of user_progress
 	const progressStats = await db
 		.select({
-			contentType: userProgress.contentType,
-			avgScore: sql<number>`AVG(CAST(${userProgress.score} AS DECIMAL))`,
-			totalAttempts: sql<number>`SUM(${userProgress.attempts})`,
-			completedCount: count(),
+			contentType: learningSessions.contentType,
+			avgScore: sql<number>`AVG(CASE WHEN ${sessionResponses.isCorrect} THEN 100 ELSE 0 END)`,
+			totalAttempts: count(sessionResponses.id),
+			completedCount: sql<number>`COUNT(DISTINCT ${learningSessions.id})`,
 		})
-		.from(userProgress)
-		.where(eq(userProgress.userId, userId))
-		.groupBy(userProgress.contentType);
+		.from(sessionResponses)
+		.innerJoin(
+			learningSessions,
+			eq(sessionResponses.sessionId, learningSessions.id)
+		)
+		.where(eq(learningSessions.userId, userId))
+		.groupBy(learningSessions.contentType);
 
 	return {
 		userId,

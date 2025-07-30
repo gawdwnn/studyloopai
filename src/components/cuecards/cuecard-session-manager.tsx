@@ -56,6 +56,7 @@ export function CuecardSessionManager({
 
 	const [hasCheckedRecovery, setHasCheckedRecovery] = useState(false);
 	const [showRecoveryDialog, setShowRecoveryDialog] = useState(false);
+	const [isEndingSession, setIsEndingSession] = useState(false);
 
 	// Realtime tracking for cuecard generation
 	const { run: runData, error: runError } = useRealtimeRun(
@@ -157,15 +158,31 @@ export function CuecardSessionManager({
 
 	const handleCardFeedback = useCallback(
 		async (feedback: CuecardFeedback) => {
+			// Store's submitFeedback now handles everything including session completion
 			await cuecardActions.submitFeedback(feedback);
 		},
 		[cuecardActions]
 	);
 
 	const handleEndSession = useCallback(async () => {
-		await cuecardActions.endSession();
-		cuecardActions.resetSession();
-	}, [cuecardActions]);
+		// Prevent multiple calls
+		if (isEndingSession) return;
+		setIsEndingSession(true);
+
+		try {
+			// Use store's endSession method which now handles all adaptive learning logic
+			await cuecardActions.endSession();
+		} catch (error) {
+			console.error("Failed to end session:", error);
+			// Fallback navigation
+			window.location.href = "/dashboard/feedback";
+		} finally {
+			setIsEndingSession(false);
+		}
+	}, [cuecardActions, isEndingSession]);
+
+	// Session completion is now handled directly in store's submitFeedback method
+	// No need for useEffect to watch for completion
 
 	const handleClose = useCallback(() => {
 		// Reset any active session state
@@ -244,7 +261,7 @@ export function CuecardSessionManager({
 		return (
 			<CuecardResultsView
 				results={resultsData}
-				onNewSession={handleEndSession}
+				onNewSession={() => cuecardActions.resetSession()}
 			/>
 		);
 	}
