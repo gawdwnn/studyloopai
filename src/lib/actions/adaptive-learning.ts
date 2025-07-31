@@ -5,10 +5,6 @@ import { learningGaps, learningSessions, sessionResponses } from "@/db/schema";
 import { getServerClient } from "@/lib/supabase/server";
 import { and, eq } from "drizzle-orm";
 
-// ============================================================================
-// LEARNING SESSION MANAGEMENT
-// ============================================================================
-
 interface CuecardSessionConfig {
 	courseId: string;
 	weeks: string[];
@@ -78,10 +74,6 @@ export async function createLearningSession(
 		return null;
 	}
 }
-
-// ============================================================================
-// SESSION RESPONSE TRACKING
-// ============================================================================
 
 interface CuecardResponseData {
 	feedback: "correct" | "incorrect";
@@ -161,10 +153,6 @@ export async function createSessionResponses(
 		return [];
 	}
 }
-
-// ============================================================================
-// LEARNING GAP DETECTION
-// ============================================================================
 
 interface LearningGapParams {
 	contentType: "cuecard" | "mcq" | "open_question";

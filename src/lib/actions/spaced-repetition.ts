@@ -182,18 +182,3 @@ export async function updateCuecardScheduling({
 		return null;
 	}
 }
-
-// TODO: Implement when spaced repetition dashboard is needed
-// export async function getCardsForReview(userId: string): Promise<CuecardWithScheduling[]>
-// Purpose: Get cards due for review for a specific user
-// Returns: Array of cuecards with their scheduling data for review session
-
-// TODO: Implement when cuecard initialization is needed
-// export async function initializeCuecardScheduling(cardId: string, userId: string): Promise<CuecardScheduling | null>
-// Purpose: Initialize scheduling for a new card
-// Returns: New scheduling record with initial SuperMemo parameters
-
-// TODO: Implement when dashboard statistics are needed
-// export async function getSchedulingStats(userId: string): Promise<SchedulingStats>
-// Purpose: Get scheduling statistics for user dashboard
-// Returns: Statistics about total cards, due today/tomorrow, and average factors

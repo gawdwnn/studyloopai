@@ -280,7 +280,7 @@ export async function getSessionAnalytics(
 				(acc, r) => {
 					const difficulty =
 						r.timeSpent > 10000
-							? "hard"
+							? "hard"			
 							: r.timeSpent > 5000
 								? "medium"
 								: "easy";
