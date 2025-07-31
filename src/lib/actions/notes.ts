@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { courseWeeks, goldenNotes, summaries } from "@/db/schema";
 import { getServerClient } from "@/lib/supabase/server";
 import { withErrorHandling } from "@/lib/utils/error-handling";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { asc, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 
 // Validation schemas
@@ -14,7 +14,6 @@ const UpdateGoldenNoteSchema = z.object({
 	content: z.string().min(1).optional(),
 	category: z.string().max(100).optional(),
 	priority: z.number().min(1).max(5).optional(),
-	version: z.number().int().min(1),
 });
 
 export type UpdateGoldenNoteInput = z.infer<typeof UpdateGoldenNoteSchema>;
@@ -22,17 +21,6 @@ export type UpdateGoldenNoteInput = z.infer<typeof UpdateGoldenNoteSchema>;
 type NoteOperationResult<T = unknown> =
 	| { success: true; data: T }
 	| { success: false; data: null };
-
-// Conflict resolution types
-export type ConflictResolutionStrategy = "client" | "server" | "merge";
-
-export type ConflictError = {
-	type: "version_conflict";
-	message: string;
-	serverVersion: number;
-	clientVersion: number;
-	serverData?: unknown;
-};
 
 /**
  * Get ALL golden notes for a course (all weeks)
@@ -155,7 +143,7 @@ export async function getCourseWeeks(courseId: string) {
 }
 
 /**
- * Update a golden note with optimistic locking
+ * Update a golden note
  */
 export async function updateGoldenNote(
 	input: UpdateGoldenNoteInput
@@ -172,43 +160,19 @@ export async function updateGoldenNote(
 			}
 
 			const validatedInput = UpdateGoldenNoteSchema.parse(input);
-			const { id, version, ...updateData } = validatedInput;
+			const { id, ...updateData } = validatedInput;
 
-			// Check current version before updating
-			const currentNote = await db
-				.select({ version: goldenNotes.version })
-				.from(goldenNotes)
-				.where(eq(goldenNotes.id, id))
-				.limit(1);
-
-			if (currentNote.length === 0) {
-				throw new Error("Note not found or access denied");
-			}
-
-			if (currentNote[0].version !== version) {
-				// Version conflict detected
-				const conflictError: ConflictError = {
-					type: "version_conflict",
-					message: `Version conflict: Expected version ${version}, but current version is ${currentNote[0].version}`,
-					serverVersion: currentNote[0].version,
-					clientVersion: version,
-				};
-				throw new Error(JSON.stringify(conflictError));
-			}
-
-			// Optimistic update with version increment
 			const updatedNote = await db
 				.update(goldenNotes)
 				.set({
 					...updateData,
-					version: version + 1,
 					updatedAt: new Date(),
 				})
-				.where(and(eq(goldenNotes.id, id), eq(goldenNotes.version, version)))
+				.where(eq(goldenNotes.id, id))
 				.returning();
 
 			if (updatedNote.length === 0) {
-				throw new Error("Update failed due to concurrent modification");
+				throw new Error("Note not found or access denied");
 			}
 
 			return { success: true, data: updatedNote[0] };

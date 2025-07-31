@@ -10,6 +10,7 @@ import { configurationSource, courseMaterials, courseWeeks } from "@/db/schema";
 import { initializeFeatureTracking } from "@/lib/actions/course-week-features";
 import { persistSelectiveConfig } from "@/lib/actions/generation-config";
 import { getServerClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/utils/logger";
 import { SelectiveGenerationConfigSchema } from "@/lib/validation/generation-config";
 import { tasks } from "@trigger.dev/sdk";
 import { and, eq } from "drizzle-orm";
@@ -109,7 +110,12 @@ export async function POST(req: NextRequest) {
 			publicAccessToken: handle.publicAccessToken,
 		});
 	} catch (error) {
-		console.error("On-demand generation trigger failed:", error);
+		logger.error("On-demand generation trigger failed", {
+			message: error instanceof Error ? error.message : String(error),
+			stack: error instanceof Error ? error.stack : undefined,
+			route: "/api/generation/trigger",
+			method: "POST",
+		});
 
 		return NextResponse.json(
 			{ error: error instanceof Error ? error.message : "Unknown error" },

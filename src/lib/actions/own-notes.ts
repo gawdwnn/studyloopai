@@ -30,22 +30,10 @@ const CreateOwnNoteSchema = z.object({
 
 const UpdateOwnNoteSchema = CreateOwnNoteSchema.partial().extend({
 	id: z.string().uuid(),
-	version: z.number().int().min(1),
 });
 
 export type CreateOwnNoteInput = z.infer<typeof CreateOwnNoteSchema>;
 export type UpdateOwnNoteInput = z.infer<typeof UpdateOwnNoteSchema>;
-
-// Conflict resolution types
-export type ConflictResolutionStrategy = "client" | "server" | "merge";
-
-export type ConflictError = {
-	type: "version_conflict";
-	message: string;
-	serverVersion: number;
-	clientVersion: number;
-	serverData?: unknown;
-};
 
 /**
  * Create a new user note
@@ -81,7 +69,7 @@ export async function createOwnNote(input: CreateOwnNoteInput) {
 }
 
 /**
- * Update an existing user note with optimistic locking
+ * Update an existing user note
  */
 export async function updateOwnNote(input: UpdateOwnNoteInput) {
 	return await withErrorHandling(
@@ -96,43 +84,19 @@ export async function updateOwnNote(input: UpdateOwnNoteInput) {
 			}
 
 			const validatedInput = UpdateOwnNoteSchema.parse(input);
-			const { id, version, ...updateData } = validatedInput;
+			const { id, ...updateData } = validatedInput;
 
-			// Check current version before updating
-			const currentNote = await db
-				.select({ version: ownNotes.version })
-				.from(ownNotes)
-				.where(eq(ownNotes.id, id))
-				.limit(1);
-
-			if (currentNote.length === 0) {
-				throw new Error("Note not found or access denied");
-			}
-
-			if (currentNote[0].version !== version) {
-				// Version conflict detected
-				const conflictError: ConflictError = {
-					type: "version_conflict",
-					message: `Version conflict: Expected version ${version}, but current version is ${currentNote[0].version}`,
-					serverVersion: currentNote[0].version,
-					clientVersion: version,
-				};
-				throw new Error(JSON.stringify(conflictError));
-			}
-
-			// Optimistic update with version increment
 			const updatedNote = await db
 				.update(ownNotes)
 				.set({
 					...updateData,
-					version: version + 1,
 					updatedAt: new Date(),
 				})
-				.where(and(eq(ownNotes.id, id), eq(ownNotes.version, version)))
+				.where(eq(ownNotes.id, id))
 				.returning();
 
 			if (updatedNote.length === 0) {
-				throw new Error("Update failed due to concurrent modification");
+				throw new Error("Note not found or access denied");
 			}
 
 			return updatedNote[0];

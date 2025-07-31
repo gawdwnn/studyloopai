@@ -9,7 +9,7 @@ import {
 	getAllCourseNotesData,
 	updateGoldenNote,
 } from "@/lib/actions/notes";
-import { formatErrorForToast } from "@/lib/utils/error-handling";
+import { logger } from "@/lib/utils/logger";
 
 // Types
 interface GoldenNote {
@@ -115,11 +115,9 @@ export function useUpdateGoldenNote() {
 	return useMutation({
 		mutationFn: ({
 			id,
-			version,
 			...data
-		}: { id: string; version: number } & Partial<
-			Omit<UpdateGoldenNoteInput, "id" | "version">
-		>) => updateGoldenNote({ id, version, ...data }),
+		}: { id: string } & Partial<Omit<UpdateGoldenNoteInput, "id">>) =>
+			updateGoldenNote({ id, ...data }),
 		onSuccess: (result, _variables) => {
 			if (result.success) {
 				toast.success("Note updated successfully!");
@@ -132,8 +130,12 @@ export function useUpdateGoldenNote() {
 			}
 		},
 		onError: (error) => {
-			const message = formatErrorForToast(error, "save note");
-			toast.error(message);
+			logger.error("Failed to save note", {
+				message: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined,
+				action: "updateGoldenNote",
+			});
+			toast.error("Failed to save note. Please try again.");
 		},
 	});
 }
@@ -155,8 +157,12 @@ export function useDeleteGoldenNote() {
 			}
 		},
 		onError: (error) => {
-			const message = formatErrorForToast(error, "delete note");
-			toast.error(message);
+			logger.error("Failed to delete note", {
+				message: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined,
+				action: "deleteGoldenNote",
+			});
+			toast.error("Failed to delete note. Please try again.");
 		},
 	});
 }

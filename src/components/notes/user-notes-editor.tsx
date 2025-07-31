@@ -16,7 +16,6 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-	type ConflictError,
 	type CreateOwnNoteInput,
 	type NoteType,
 	type OwnNote,
@@ -25,9 +24,9 @@ import {
 	useOwnNotes,
 	useUpdateOwnNote,
 } from "@/hooks/use-own-notes";
+import { logger } from "@/lib/utils/logger";
 import { toast } from "sonner";
-import { ConflictResolutionDialog } from "./conflict-resolution-dialog";
-import { NoteEditorDialog } from "./note-editor-dialog";
+import { NoteEditorSheet } from "./note-editor-sheet";
 import { OwnNotesList } from "./own-notes-list";
 
 interface UserNotesEditorProps {
@@ -43,9 +42,6 @@ export function UserNotesEditor({ courseId, weekId }: UserNotesEditorProps) {
 	const debouncedSetSearchQuery = useDebounceCallback(setSearchQuery, 300);
 	const [isEditorOpen, setIsEditorOpen] = useState(false);
 	const [editingNote, setEditingNote] = useState<OwnNote | null>(null);
-	const [conflict, setConflict] = useState<
-		(ConflictError & { localContent: string; noteId: string }) | null
-	>(null);
 
 	const [currentPage, setCurrentPage] = useState(1);
 	const notesPerPage = 5;
@@ -81,7 +77,15 @@ export function UserNotesEditor({ courseId, weekId }: UserNotesEditorProps) {
 			setIsEditorOpen(false);
 		},
 		onError: (error: Error) => {
-			toast.error("Error creating note", { description: error.message });
+			logger.error("Note creation failed", {
+				message: error.message,
+				stack: error.stack,
+				courseId,
+				weekId,
+			});
+			toast.error("Error creating note", {
+				description: "Please try again later.",
+			});
 		},
 	});
 
@@ -92,23 +96,9 @@ export function UserNotesEditor({ courseId, weekId }: UserNotesEditorProps) {
 			setEditingNote(null);
 		},
 		onError: (error: Error) => {
-			try {
-				const conflictError: ConflictError = JSON.parse(error.message);
-				if (conflictError.type === "version_conflict" && editingNote) {
-					setConflict({
-						...conflictError,
-						noteId: editingNote.id,
-						localContent: editingNote.content,
-					});
-					setIsEditorOpen(false);
-				} else {
-					throw error;
-				}
-			} catch {
-				toast.error("Error updating note", {
-					description: "An unexpected error occurred.",
-				});
-			}
+			toast.error("Error updating note", {
+				description: error.message,
+			});
 		},
 	});
 
@@ -117,7 +107,15 @@ export function UserNotesEditor({ courseId, weekId }: UserNotesEditorProps) {
 			toast.success("Note deleted successfully");
 		},
 		onError: (error: Error) => {
-			toast.error("Error deleting note", { description: error.message });
+			logger.error("Note deletion failed", {
+				message: error.message,
+				stack: error.stack,
+				courseId,
+				weekId,
+			});
+			toast.error("Error deleting note", {
+				description: "Please try again later.",
+			});
 		},
 	});
 
@@ -150,7 +148,6 @@ export function UserNotesEditor({ courseId, weekId }: UserNotesEditorProps) {
 			content,
 			title,
 			noteType,
-			version: note.version,
 		});
 	};
 
@@ -166,25 +163,6 @@ export function UserNotesEditor({ courseId, weekId }: UserNotesEditorProps) {
 	const handleOpenEdit = (note: OwnNote) => {
 		setEditingNote(note);
 		setIsEditorOpen(true);
-	};
-
-	const handleConflictResolution = (strategy: "client" | "server") => {
-		if (!conflict) return;
-
-		let contentToSave = "";
-		if (strategy === "client") {
-			contentToSave = conflict.localContent;
-		} else if (strategy === "server" && conflict.serverData) {
-			contentToSave = (conflict.serverData as OwnNote).content;
-		}
-
-		updateNoteMutation.mutate({
-			id: conflict.noteId,
-			content: contentToSave,
-			version: conflict.serverVersion, // Overwrite with server version
-		});
-
-		setConflict(null);
 	};
 
 	const noteTypes = [
@@ -273,7 +251,7 @@ export function UserNotesEditor({ courseId, weekId }: UserNotesEditorProps) {
 					New Note
 				</Button>
 
-				<NoteEditorDialog
+				<NoteEditorSheet
 					isOpen={isEditorOpen}
 					onOpenChange={setIsEditorOpen}
 					note={editingNote}
@@ -287,12 +265,6 @@ export function UserNotesEditor({ courseId, weekId }: UserNotesEditorProps) {
 					isLoading={
 						createNoteMutation.isPending || updateNoteMutation.isPending
 					}
-				/>
-
-				<ConflictResolutionDialog
-					conflict={conflict}
-					onResolve={handleConflictResolution}
-					onCancel={() => setConflict(null)}
 				/>
 			</div>
 

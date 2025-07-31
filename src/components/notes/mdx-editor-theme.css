@@ -1,0 +1,145 @@
+/* MDXEditor Theme Styles */
+/* Light theme styles */
+.mdx-editor-light {
+	/* Base colors for light theme */
+	--accentBase: hsl(var(--primary));
+	--accentBgSubtle: hsl(var(--primary) / 0.1);
+	--accentBg: hsl(var(--primary) / 0.15);
+	--accentBgHover: hsl(var(--primary) / 0.2);
+	--accentBgActive: hsl(var(--primary) / 0.25);
+	--accentLine: hsl(var(--primary) / 0.3);
+	--accentBorder: hsl(var(--primary) / 0.4);
+	--accentBorderHover: hsl(var(--primary) / 0.5);
+	--accentSolid: hsl(var(--primary));
+	--accentSolidHover: hsl(var(--primary) / 0.9);
+	--accentText: hsl(var(--primary));
+	--accentTextContrast: hsl(var(--primary-foreground));
+
+	--baseBase: hsl(var(--background));
+	--baseBgSubtle: hsl(var(--muted));
+	--baseBg: hsl(var(--background));
+	--baseBgHover: hsl(var(--muted) / 0.5);
+	--baseBgActive: hsl(var(--muted) / 0.8);
+	--baseLine: hsl(var(--border));
+	--baseBorder: hsl(var(--border));
+	--baseBorderHover: hsl(var(--border) / 0.7);
+	--baseSolid: hsl(var(--foreground));
+	--baseSolidHover: hsl(var(--foreground) / 0.9);
+	--baseText: hsl(var(--foreground));
+	--baseTextContrast: hsl(var(--background));
+
+	/* Admonition colors */
+	--admonitionTipBg: hsl(var(--accent) / 0.1);
+	--admonitionTipBorder: hsl(var(--accent));
+	--admonitionInfoBg: hsl(var(--primary) / 0.1);
+	--admonitionInfoBorder: hsl(var(--primary));
+	--admonitionCautionBg: hsl(45 93% 95%);
+	--admonitionCautionBorder: hsl(38 92% 50%);
+	--admonitionDangerBg: hsl(var(--destructive) / 0.1);
+	--admonitionDangerBorder: hsl(var(--destructive));
+	--admonitionNoteBg: hsl(var(--muted));
+	--admonitionNoteBorder: hsl(var(--border));
+
+	/* Editor specific styling */
+	color: hsl(var(--foreground));
+	--basePageBg: hsl(var(--background));
+	background: hsl(var(--background));
+
+	/* Font settings */
+	font-family: var(--font-sans), system-ui, -apple-system, BlinkMacSystemFont,
+		"Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue",
+		sans-serif;
+	--font-mono: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco,
+		Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+/* Dark theme styles */
+.mdx-editor-dark {
+	/* Base colors for dark theme */
+	--accentBase: hsl(var(--primary));
+	--accentBgSubtle: hsl(var(--primary) / 0.1);
+	--accentBg: hsl(var(--primary) / 0.15);
+	--accentBgHover: hsl(var(--primary) / 0.2);
+	--accentBgActive: hsl(var(--primary) / 0.25);
+	--accentLine: hsl(var(--primary) / 0.3);
+	--accentBorder: hsl(var(--primary) / 0.4);
+	--accentBorderHover: hsl(var(--primary) / 0.5);
+	--accentSolid: hsl(var(--primary));
+	--accentSolidHover: hsl(var(--primary) / 0.9);
+	--accentText: hsl(var(--primary));
+	--accentTextContrast: hsl(var(--primary-foreground));
+
+	--baseBase: hsl(var(--background));
+	--baseBgSubtle: hsl(var(--muted));
+	--baseBg: hsl(var(--background));
+	--baseBgHover: hsl(var(--muted) / 0.5);
+	--baseBgActive: hsl(var(--muted) / 0.8);
+	--baseLine: hsl(var(--border));
+	--baseBorder: hsl(var(--border));
+	--baseBorderHover: hsl(var(--border) / 0.7);
+	--baseSolid: hsl(var(--foreground));
+	--baseSolidHover: hsl(var(--foreground) / 0.9);
+	--baseText: hsl(var(--foreground));
+	--baseTextContrast: hsl(var(--background));
+
+	/* Admonition colors for dark theme */
+	--admonitionTipBg: hsl(var(--accent) / 0.15);
+	--admonitionTipBorder: hsl(var(--accent));
+	--admonitionInfoBg: hsl(var(--primary) / 0.15);
+	--admonitionInfoBorder: hsl(var(--primary));
+	--admonitionCautionBg: hsl(45 30% 15%);
+	--admonitionCautionBorder: hsl(38 92% 60%);
+	--admonitionDangerBg: hsl(var(--destructive) / 0.15);
+	--admonitionDangerBorder: hsl(var(--destructive));
+	--admonitionNoteBg: hsl(var(--muted));
+	--admonitionNoteBorder: hsl(var(--border));
+
+	/* Editor specific styling for dark mode */
+	color: hsl(var(--foreground));
+	--basePageBg: hsl(var(--background));
+	background: hsl(var(--background));
+
+	/* Font settings */
+	font-family: var(--font-sans), system-ui, -apple-system, BlinkMacSystemFont,
+		"Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue",
+		sans-serif;
+	--font-mono: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco,
+		Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+/* Ensure proper theme inheritance */
+.mdx-editor-light,
+.mdx-editor-dark {
+	--tw-prose-body: var(--baseText);
+	--tw-prose-headings: var(--baseText);
+	--tw-prose-lead: var(--baseText);
+	--tw-prose-links: var(--accentText);
+	--tw-prose-bold: var(--baseText);
+	--tw-prose-counters: var(--baseText);
+	--tw-prose-bullets: var(--baseText);
+	--tw-prose-hr: var(--baseBorder);
+	--tw-prose-quotes: var(--baseText);
+	--tw-prose-quote-borders: var(--baseBorder);
+	--tw-prose-captions: var(--baseText);
+	--tw-prose-code: var(--accentText);
+	--tw-prose-pre-code: var(--baseText);
+	--tw-prose-pre-bg: var(--baseBgSubtle);
+	--tw-prose-th-borders: var(--baseBorder);
+	--tw-prose-td-borders: var(--baseBorder);
+}
+
+/* Read-only renderer specific styles */
+.mdx-renderer .mdxeditor {
+	border: none !important;
+	background: transparent !important;
+}
+
+.mdx-renderer .mdxeditor-rich-text-editor {
+	padding: 0 !important;
+	min-height: auto !important;
+}
+
+/* Minimal z-index fix for popups - no layout interference */
+.mdxeditor-popup-container {
+	z-index: 60 !important;
+}
