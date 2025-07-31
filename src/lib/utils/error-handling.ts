@@ -246,7 +246,6 @@ export interface ErrorFallbackProps {
 	operation?: string;
 }
 
-
 /**
  * Determines if an error should trigger a retry mechanism
  */

@@ -10,8 +10,8 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { GoldenNote, Summary } from "@/hooks/use-notes";
-import { logger } from "@/lib/utils/logger";
 import { type ExportType, exportNotes } from "@/lib/utils/export";
+import { logger } from "@/lib/utils/logger";
 import { Cloud, List, Menu } from "lucide-react";
 
 interface NotesToolbarProps {
@@ -60,7 +60,9 @@ export function NotesToolbar({
 				exportType: type,
 				notesCount: goldenNotes.length + summaries.length,
 			});
-			toast.error(`Failed to export notes as ${type.toUpperCase()}. Please try again.`);
+			toast.error(
+				`Failed to export notes as ${type.toUpperCase()}. Please try again.`
+			);
 		}
 	};
 
