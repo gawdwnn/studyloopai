@@ -2,68 +2,9 @@
 
 import type { ContentType } from "@/components/analytics/chart-layout";
 import type {
-	ChartAnimationConfig,
 	ChartColorScheme,
-	ChartConfig,
 	ContentTypeChartConfig,
-	ResponsiveBreakpoints,
 } from "@/types/chart-types";
-
-// Default animation configurations for different chart types
-export const CHART_ANIMATIONS: Record<string, ChartAnimationConfig> = {
-	timeline: {
-		duration: 1000,
-		easing: "ease-in-out",
-		delay: 100,
-	},
-	pie: {
-		duration: 800,
-		easing: "ease-out",
-		delay: 0,
-	},
-	bar: {
-		duration: 600,
-		easing: "ease-in-out",
-		delay: 50,
-	},
-	line: {
-		duration: 1200,
-		easing: "ease-in-out",
-		delay: 0,
-	},
-	area: {
-		duration: 1000,
-		easing: "ease-out",
-		delay: 0,
-	},
-	radar: {
-		duration: 800,
-		easing: "ease-in-out",
-		delay: 200,
-	},
-} as const;
-
-// Responsive breakpoints for chart sizing
-export const RESPONSIVE_BREAKPOINTS: ResponsiveBreakpoints = {
-	mobile: {
-		width: "100%",
-		height: "75vh",
-		minHeight: 400,
-		maxHeight: 600,
-	},
-	tablet: {
-		width: "100%",
-		height: "80vh",
-		minHeight: 500,
-		maxHeight: 700,
-	},
-	desktop: {
-		width: "100%",
-		height: "85vh",
-		minHeight: 600,
-		maxHeight: 1000,
-	},
-} as const;
 
 // Chart margin configurations for different layouts
 export const CHART_MARGINS = {
@@ -122,25 +63,6 @@ export const CONTENT_TYPE_CHART_CONFIG: ContentTypeChartConfig = {
 	},
 } as const;
 
-// Default chart configuration factory
-export function createChartConfig(contentType: ContentType): ChartConfig {
-	const contentConfig = CONTENT_TYPE_CHART_CONFIG[contentType];
-
-	return {
-		colors: contentConfig.colors,
-		animations: contentType === "cuecard" ? "smooth" : "spring",
-		tooltips: {
-			showDelay: contentType === "open_question" ? 300 : 0,
-			hideDelay: 100,
-		},
-		responsive: true,
-		accessibility: {
-			title: `${contentType} Performance Analytics`,
-			description: `Interactive chart showing ${contentType} session performance data`,
-		},
-	};
-}
-
 // Utility function to get content-type specific colors
 export function getContentTypeColors(
 	contentType: ContentType
@@ -153,27 +75,9 @@ export function getContentTypeThresholds(contentType: ContentType) {
 	return CONTENT_TYPE_CHART_CONFIG[contentType].thresholds;
 }
 
-// Utility function to get content-type specific metrics
-export function getContentTypeMetrics(contentType: ContentType): string[] {
-	return CONTENT_TYPE_CHART_CONFIG[contentType].metrics;
-}
-
-// Chart grid configuration for different layouts
-export const CHART_GRID_CONFIGS = {
-	single: "grid-cols-1",
-	dual: "grid-cols-1 lg:grid-cols-2",
-	triple: "grid-cols-1 md:grid-cols-2 lg:grid-cols-3",
-	quad: "grid-cols-1 md:grid-cols-2 lg:grid-cols-4",
-} as const;
-
 // Common chart formatting utilities
 export const CHART_FORMATTERS = {
 	percentage: (value: number) => `${Math.round(value)}%`,
-	time: (milliseconds: number) => {
-		const seconds = Math.floor(milliseconds / 1000);
-		const minutes = Math.floor(seconds / 60);
-		return minutes > 0 ? `${minutes}m ${seconds % 60}s` : `${seconds}s`;
-	},
 	timeInSeconds: (seconds: number) => {
 		const minutes = Math.floor(seconds / 60);
 		return minutes > 0
@@ -192,73 +96,4 @@ export const CHART_FORMATTERS = {
 			? `${text.substring(0, maxLength)}...`
 			: text;
 	},
-} as const;
-
-// Chart accessibility helpers
-export const CHART_ARIA_LABELS = {
-	timeline:
-		"Performance timeline showing accuracy and response time for each question",
-	difficulty: "Pie chart showing distribution of question difficulty levels",
-	accuracy: "Line chart showing accuracy progression throughout the session",
-	gaps: "Matrix chart highlighting learning gaps and problem areas",
-	radar: "Radar chart displaying performance across multiple metrics",
-	schedule: "Bar chart showing upcoming review schedule for spaced repetition",
-} as const;
-
-// Chart keyboard navigation support
-export const CHART_KEYBOARD_SHORTCUTS = {
-	zoom: {
-		in: ["+=", "NumpadAdd"],
-		out: ["-", "NumpadSubtract"],
-		reset: ["0", "Numpad0"],
-	},
-	navigation: {
-		left: ["ArrowLeft"],
-		right: ["ArrowRight"],
-		up: ["ArrowUp"],
-		down: ["ArrowDown"],
-	},
-	selection: {
-		select: ["Enter", " "],
-		escape: ["Escape"],
-	},
-} as const;
-
-// Export configuration for charts
-export const CHART_EXPORT_CONFIG = {
-	formats: ["png", "jpg", "svg"] as const,
-	defaultFormat: "png" as const,
-	quality: 0.9,
-	scale: 2,
-	backgroundColor: "#ffffff",
-} as const;
-
-// Chart loading skeleton configurations
-export const CHART_SKELETON_CONFIG = {
-	timeline: {
-		elements: [
-			{ type: "rect", width: "100%", height: "20px", y: "10%" },
-			{ type: "rect", width: "100%", height: "60%", y: "25%" },
-			{ type: "rect", width: "80%", height: "10px", y: "90%" },
-		],
-	},
-	pie: {
-		elements: [{ type: "circle", cx: "50%", cy: "50%", r: "40%" }],
-	},
-	bar: {
-		elements: [
-			{ type: "rect", width: "15%", height: "60%", x: "10%", y: "30%" },
-			{ type: "rect", width: "15%", height: "80%", x: "30%", y: "10%" },
-			{ type: "rect", width: "15%", height: "40%", x: "50%", y: "50%" },
-			{ type: "rect", width: "15%", height: "70%", x: "70%", y: "20%" },
-		],
-	},
-} as const;
-
-// Error boundary configuration for charts
-export const CHART_ERROR_CONFIG = {
-	fallbackHeight: 400,
-	retryAttempts: 3,
-	retryDelay: 1000,
-	showDetails: process.env.NODE_ENV === "development",
 } as const;
