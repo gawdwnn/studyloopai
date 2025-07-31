@@ -36,8 +36,7 @@ const features = [
 			"Test your knowledge with AI-generated MCQs tailored to your course materials",
 		icon: CheckCircle,
 		iconColor: "text-blue-600 dark:text-blue-400",
-		available: false,
-		comingSoon: true,
+		available: true,
 	},
 	{
 		id: "open-questions",
@@ -46,8 +45,7 @@ const features = [
 			"Practice critical thinking with written-response questions and AI feedback",
 		icon: QuestionMarkIcon,
 		iconColor: "text-teal-600 dark:text-teal-400",
-		available: false,
-		comingSoon: true,
+		available: true,
 	},
 	{
 		id: "concept-maps",

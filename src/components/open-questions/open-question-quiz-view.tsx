@@ -1,13 +1,13 @@
 "use client";
 
+import { FullscreenButton } from "@/components/fullscreen-button";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { formatHhMmSs } from "@/lib/utils/time-formatter";
 import type { OpenQuestionConfig } from "@/stores/open-question-session/types";
 import { XIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 interface OpenQuestion {
 	id: string;
@@ -32,177 +32,160 @@ type OpenQuestionQuizViewProps = {
 
 export function OpenQuestionQuizView({
 	questions,
-	config,
-	onQuestionAnswer,
 	onEndSession,
 	onClose,
 }: OpenQuestionQuizViewProps) {
 	const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 	const [userAnswer, setUserAnswer] = useState<string>("");
 	const [isAnswered, setIsAnswered] = useState(false);
-	const [showSampleAnswer, setShowSampleAnswer] = useState(false);
-	const [time, setTime] = useState(0);
-	const [questionStartTime, setQuestionStartTime] = useState(Date.now());
+	const [time] = useState(0);
 
-	useEffect(() => {
-		const timer = setInterval(() => {
-			setTime((prevTime) => prevTime + 1);
-		}, 1000);
-		return () => clearInterval(timer);
-	}, []);
+	// Show message if no questions available
+	if (questions.length === 0) {
+		return (
+			<div className="min-h-screen bg-background flex items-center justify-center relative">
+				<div className="absolute top-4 right-4 z-10">
+					<Button
+						variant="ghost"
+						size="icon"
+						onClick={onClose}
+						className="bg-gray-100 hover:bg-gray-200 rounded-full"
+					>
+						<XIcon className="h-6 w-6 text-gray-600" />
+					</Button>
+				</div>
+				<div className="text-center max-w-md mx-auto px-4">
+					<h2 className="text-2xl font-bold mb-4">No Questions Available</h2>
+					<p className="text-muted-foreground text-lg mb-8">
+						Open questions need to be loaded from the database.
+					</p>
+					<Button onClick={onClose} size="lg">
+						Close
+					</Button>
+				</div>
+			</div>
+		);
+	}
 
 	const currentQuestion = questions[currentQuestionIndex];
-
-	// Reset question start time when moving to next question
-	useEffect(() => {
-		setQuestionStartTime(Date.now());
-	}, []);
 
 	const handleSubmitAnswer = () => {
 		if (userAnswer.trim()) {
 			setIsAnswered(true);
-			const timeSpent = Date.now() - questionStartTime;
-
-			// Record answer immediately in practice mode
-			if (config.practiceMode === "practice") {
-				onQuestionAnswer(currentQuestion.id, userAnswer.trim(), timeSpent);
-				setShowSampleAnswer(true);
-			}
+			// TODO: Implement answer handling after database integration
 		}
 	};
 
 	const handleSkipQuestion = () => {
-		const timeSpent = Date.now() - questionStartTime;
-		onQuestionAnswer(currentQuestion.id, null, timeSpent);
+		// TODO: Implement skip functionality after database integration
 		handleNextQuestion();
 	};
 
 	const handleNextQuestion = () => {
-		// Record answer for exam mode or if not already recorded
-		if (config.practiceMode === "exam" && userAnswer.trim()) {
-			const timeSpent = Date.now() - questionStartTime;
-			onQuestionAnswer(currentQuestion.id, userAnswer.trim(), timeSpent);
-		}
-
+		// TODO: Implement navigation after database integration
 		if (currentQuestionIndex < questions.length - 1) {
 			setCurrentQuestionIndex(currentQuestionIndex + 1);
 			setUserAnswer("");
 			setIsAnswered(false);
-			setShowSampleAnswer(false);
 		} else {
-			onEndSession(time * 1000); // Convert to milliseconds
+			onEndSession(time * 1000);
 		}
 	};
 
-	const handleShowSampleAnswer = () => {
-		setShowSampleAnswer(true);
-	};
-
-	const isAnswerProvided = userAnswer.trim().length > 0;
-
 	return (
-		<div className="flex justify-center mt-10">
-			<Card className="w-full max-w-4xl">
-				<CardContent className="p-8 relative">
-					<div className="px-16">
+		<div className="min-h-screen bg-background relative">
+			<div className="absolute top-4 right-4 z-10 flex gap-2">
+				<FullscreenButton />
+				<Button
+					variant="ghost"
+					size="icon"
+					onClick={onClose}
+					className="bg-gray-100 hover:bg-gray-200 rounded-full"
+				>
+					<XIcon className="h-6 w-6 text-gray-600" />
+				</Button>
+			</div>
+
+			<div className="container mx-auto px-4 py-8">
+				<div className="max-w-4xl mx-auto">
+					{/* Progress Bar */}
+					<div className="mb-8">
 						<Progress
 							value={((currentQuestionIndex + 1) / questions.length) * 100}
-							className="mb-4 h-1.5"
+							className="h-2"
 						/>
 					</div>
-					<div className="flex justify-between items-center mb-4">
-						<Button variant="ghost">Pause</Button>
-						<span className="font-mono text-lg">{formatHhMmSs(time)}</span>
-						<Button
-							variant="ghost"
-							size="icon"
-							onClick={onClose}
-							className="absolute top-4 right-4 z-10 bg-muted hover:bg-muted/80 rounded-full"
-						>
-							<XIcon className="h-6 w-6 text-muted-foreground" />
+
+					{/* Timer and Progress */}
+					<div className="flex justify-between items-center mb-8">
+						<Button variant="ghost" className="text-lg">
+							Pause
 						</Button>
+						<span className="font-mono text-xl bg-muted px-4 py-2 rounded-lg">
+							{formatHhMmSs(time)}
+						</span>
+						<div className="text-center">
+							<div className="text-sm text-muted-foreground mb-1">Progress</div>
+							<div className="font-semibold">
+								{currentQuestionIndex + 1} of {questions.length}
+							</div>
+						</div>
 					</div>
 
-					<div className="text-center text-sm text-muted-foreground mb-8">
-						{currentQuestionIndex + 1} / {questions.length}
-					</div>
-
-					<div className="text-center mb-8">
-						<h2 className="text-2xl font-semibold">
+					{/* Question */}
+					<div className="text-center mb-12">
+						<h1 className="text-3xl font-bold mb-4 leading-tight">
 							{currentQuestion.question}
-						</h2>
+						</h1>
 					</div>
 
-					<div className="space-y-6">
-						{/* Answer Input */}
-						<div className="space-y-2">
-							<label htmlFor="answer" className="text-sm font-medium">
-								Your answer:
+					{/* Answer Section */}
+					<div className="space-y-6 mb-12">
+						<div>
+							<label
+								htmlFor="answer-textarea"
+								className="block text-lg font-medium mb-4"
+							>
+								Your Answer
 							</label>
 							<Textarea
-								id="answer"
+								id="answer-textarea"
 								value={userAnswer}
 								onChange={(e) => setUserAnswer(e.target.value)}
 								placeholder="Type your answer here..."
-								rows={4}
-								className="min-h-[100px] resize-none"
-								disabled={isAnswered && config.practiceMode === "practice"}
+								className="min-h-[200px] text-lg p-4"
+								disabled={isAnswered}
 							/>
 						</div>
 
-						{/* Sample Answer Display */}
-						{showSampleAnswer && (
-							<div className="space-y-2 p-4 bg-muted/50 rounded-lg">
-								<h3 className="text-sm font-medium">Sample Answer:</h3>
-								<p className="text-sm text-muted-foreground">
-									{currentQuestion.sampleAnswer}
-								</p>
-							</div>
-						)}
+						{/* TODO: Implement sample answer display after database integration */}
 					</div>
 
-					<div className="flex justify-center space-x-4 mt-8">
-						{/* Skip Button */}
-						{!isAnswered && (
-							<Button variant="outline" onClick={handleSkipQuestion}>
-								Skip
-							</Button>
-						)}
-
-						{/* Submit Answer Button */}
-						{!isAnswered && (
-							<Button
-								onClick={handleSubmitAnswer}
-								disabled={!isAnswerProvided}
-								className="bg-primary text-primary-foreground hover:bg-primary/90"
-							>
-								Submit Answer
-							</Button>
-						)}
-
-						{/* Show Sample Answer Button (Practice Mode) */}
-						{config.practiceMode === "practice" &&
-							isAnswered &&
-							!showSampleAnswer && (
-								<Button variant="outline" onClick={handleShowSampleAnswer}>
-									Show Sample Answer
-								</Button>
-							)}
-
-						{/* Next Question Button */}
-						{isAnswered && (
-							<Button
-								onClick={handleNextQuestion}
-								className="bg-primary text-primary-foreground hover:bg-primary/90"
-							>
-								{currentQuestionIndex < questions.length - 1
-									? "Next Question"
-									: "Finish Session"}
-							</Button>
-						)}
+					{/* Action Buttons */}
+					<div className="flex justify-center space-x-4">
+						<Button variant="outline" size="lg" onClick={handleSkipQuestion}>
+							Skip
+						</Button>
+						<Button
+							size="lg"
+							onClick={handleSubmitAnswer}
+							disabled={!userAnswer.trim() || isAnswered}
+							className="px-8"
+						>
+							Submit Answer
+						</Button>
+						<Button
+							size="lg"
+							onClick={handleNextQuestion}
+							disabled={!isAnswered}
+						>
+							{currentQuestionIndex < questions.length - 1
+								? "Next Question"
+								: "Finish Session"}
+						</Button>
 					</div>
-				</CardContent>
-			</Card>
+				</div>
+			</div>
 		</div>
 	);
 }
