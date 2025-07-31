@@ -4,10 +4,8 @@ import type { OpenQuestionConfig } from "@/stores/open-question-session/types";
 import { useOpenQuestionSession } from "@/stores/open-question-session/use-open-question-session";
 import { useSessionManager } from "@/stores/session-manager/use-session-manager";
 import { differenceInMinutes } from "date-fns";
-import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { SessionProgressIndicator } from "../session";
-import { SessionRecoveryDialog } from "../session/session-recovery-dialog";
 import { OpenQuestionQuizView } from "./open-question-quiz-view";
 import { OpenQuestionResultsView } from "./open-question-results-view";
 import { OpenQuestionSessionSetup } from "./open-question-session-setup";
@@ -33,27 +31,8 @@ export function OpenQuestionSessionManager({
 		submitAnswer,
 		moveToNextQuestion,
 	} = openQuestionSession.actions;
-	const {
-		startSession: startManagerSession,
-		endSession: endManagerSession,
-		recoverSession,
-	} = sessionManager.actions;
-
-	const [showRecoveryDialog, setShowRecoveryDialog] = useState(false);
-	const [hasCheckedRecovery, setHasCheckedRecovery] = useState(false);
-
-	useEffect(() => {
-		if (!hasCheckedRecovery) {
-			const check = async () => {
-				const recoverable = await recoverSession();
-				if (recoverable && recoverable.type === "open-questions") {
-					setShowRecoveryDialog(true);
-				}
-				setHasCheckedRecovery(true);
-			};
-			check();
-		}
-	}, [hasCheckedRecovery, recoverSession]);
+	const { startSession: startManagerSession, endSession: endManagerSession } =
+		sessionManager.actions;
 
 	const handleStartSession = async (config: OpenQuestionConfig) => {
 		try {
@@ -96,27 +75,6 @@ export function OpenQuestionSessionManager({
 		}
 		resetOpenQuestionSession();
 	};
-
-	const handleRecover = () => {
-		setShowRecoveryDialog(false);
-		toast.success("Your session has been successfully recovered.");
-	};
-
-	const handleStartNew = () => {
-		handleEndSession();
-		setShowRecoveryDialog(false);
-	};
-
-	if (showRecoveryDialog) {
-		return (
-			<SessionRecoveryDialog
-				isOpen={showRecoveryDialog}
-				onOpenChange={setShowRecoveryDialog}
-				onRecover={handleRecover}
-				onStartNew={handleStartNew}
-			/>
-		);
-	}
 
 	if (
 		openQuestionSession.status === "idle" ||

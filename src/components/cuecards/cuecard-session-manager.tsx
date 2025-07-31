@@ -3,14 +3,12 @@
 import { env } from "@/env";
 import type { CuecardAvailability, UserCuecard } from "@/lib/actions/cuecard";
 import { useCuecardSession } from "@/stores/cuecard-session/use-cuecard-session";
-import { useSessionManager } from "@/stores/session-manager/use-session-manager";
 import type { Course, CourseWeek } from "@/types/database-types";
 import type { SelectiveGenerationConfig } from "@/types/generation-types";
 import { useRealtimeRun } from "@trigger.dev/react-hooks";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useShallow } from "zustand/react/shallow";
-import { SessionRecoveryDialog } from "../session/session-recovery-dialog";
 import { CuecardDisplay } from "./cuecard-display";
 import { CuecardResultsView } from "./cuecard-results-view";
 import { CuecardSessionSetup } from "./cuecard-session-setup";
@@ -52,10 +50,7 @@ export function CuecardSessionManager({
 		}))
 	);
 	const cuecardActions = useCuecardSession((s) => s.actions);
-	const sessionManagerActions = useSessionManager((s) => s.actions);
 
-	const [hasCheckedRecovery, setHasCheckedRecovery] = useState(false);
-	const [showRecoveryDialog, setShowRecoveryDialog] = useState(false);
 	const [isEndingSession, setIsEndingSession] = useState(false);
 
 	// Realtime tracking for cuecard generation
@@ -69,20 +64,6 @@ export function CuecardSessionManager({
 			),
 		}
 	);
-
-	// Recovery effect
-	useEffect(() => {
-		if (!hasCheckedRecovery) {
-			const check = async () => {
-				const recoverable = await sessionManagerActions.recoverSession();
-				if (recoverable && recoverable.type === "cuecards") {
-					setShowRecoveryDialog(true);
-				}
-				setHasCheckedRecovery(true);
-			};
-			check();
-		}
-	}, [hasCheckedRecovery, sessionManagerActions]);
 
 	// Handle generation completion and progress updates
 	useEffect(() => {
@@ -190,27 +171,6 @@ export function CuecardSessionManager({
 		// Navigate back to the adaptive learning dashboard
 		window.location.href = "/dashboard/adaptive-learning";
 	}, [cuecardActions]);
-
-	const handleRecover = () => {
-		setShowRecoveryDialog(false);
-		toast.success("Your session has been successfully recovered.");
-	};
-
-	const handleStartNew = () => {
-		handleEndSession();
-		setShowRecoveryDialog(false);
-	};
-
-	if (showRecoveryDialog) {
-		return (
-			<SessionRecoveryDialog
-				isOpen={showRecoveryDialog}
-				onOpenChange={setShowRecoveryDialog}
-				onRecover={handleRecover}
-				onStartNew={handleStartNew}
-			/>
-		);
-	}
 
 	// Handle setup states (idle, failed, needs_generation, etc.)
 	if (isSetupState(cuecardState.status)) {

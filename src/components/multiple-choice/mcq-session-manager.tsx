@@ -5,9 +5,7 @@ import type { McqConfig } from "@/stores/mcq-session/types";
 import { useMcqSession } from "@/stores/mcq-session/use-mcq-session";
 import { useSessionManager } from "@/stores/session-manager/use-session-manager";
 import { differenceInMinutes } from "date-fns";
-import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { SessionRecoveryDialog } from "../session/session-recovery-dialog";
 import { McqQuizView } from "./mcq-quiz-view";
 import { McqResultsView } from "./mcq-results-view";
 import { McqSessionSetup } from "./mcq-session-setup";
@@ -31,27 +29,8 @@ export function McqSessionManager({ courses }: McqSessionManagerProps) {
 		submitAnswer,
 		moveToNextQuestion,
 	} = mcqSession.actions;
-	const {
-		startSession: startManagerSession,
-		endSession: endManagerSession,
-		recoverSession,
-	} = sessionManager.actions;
-
-	const [showRecoveryDialog, setShowRecoveryDialog] = useState(false);
-	const [hasCheckedRecovery, setHasCheckedRecovery] = useState(false);
-
-	useEffect(() => {
-		if (!hasCheckedRecovery) {
-			const check = async () => {
-				const recoverable = await recoverSession();
-				if (recoverable && recoverable.type === "multiple-choice") {
-					setShowRecoveryDialog(true);
-				}
-				setHasCheckedRecovery(true);
-			};
-			check();
-		}
-	}, [hasCheckedRecovery, recoverSession]);
+	const { startSession: startManagerSession, endSession: endManagerSession } =
+		sessionManager.actions;
 
 	const handleStartSession = async (config: McqConfig) => {
 		try {
@@ -95,27 +74,6 @@ export function McqSessionManager({ courses }: McqSessionManagerProps) {
 		}
 		resetMcqSession();
 	};
-
-	const handleRecover = () => {
-		setShowRecoveryDialog(false);
-		toast.success("Your session has been successfully recovered.");
-	};
-
-	const handleStartNew = () => {
-		handleEndSession();
-		setShowRecoveryDialog(false);
-	};
-
-	if (showRecoveryDialog) {
-		return (
-			<SessionRecoveryDialog
-				isOpen={showRecoveryDialog}
-				onOpenChange={setShowRecoveryDialog}
-				onRecover={handleRecover}
-				onStartNew={handleStartNew}
-			/>
-		);
-	}
 
 	if (mcqSession.status === "idle" || mcqSession.status === "failed") {
 		return (

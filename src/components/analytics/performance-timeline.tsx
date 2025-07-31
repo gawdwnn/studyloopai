@@ -59,7 +59,17 @@ function CustomDot(props: CustomDotData & { colors: ChartColorScheme }) {
 function CustomTooltip({ active, payload, label }: CustomTooltipData) {
 	if (!active || !payload || !payload[0]) return null;
 
-	const data = payload[0].payload;
+	const data = payload[0].payload as {
+		sequence: number;
+		question: string;
+		accuracy: number;
+		responseTime: number;
+		rollingAccuracy: number;
+		difficulty: "easy" | "medium" | "hard";
+		isCorrect: boolean;
+		contentId: string;
+		contentType: string;
+	};
 
 	return (
 		<div className="bg-background border rounded-lg shadow-lg p-3 space-y-2">

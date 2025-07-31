@@ -93,7 +93,7 @@ async function getSessionResponses(sessionId: string, contentType: string) {
 		timeSpent: r.timeSpent,
 		attemptedAt: r.attemptedAt,
 		question: questionData[r.contentId] || "Unknown question",
-		responseData: r.responseData,
+		responseData: r.responseData as Record<string, unknown> | undefined,
 	}));
 }
 
