@@ -3,8 +3,9 @@
 import { AlertCircle } from "lucide-react";
 import { useEffect, useMemo } from "react";
 
+import { FullscreenProvider } from "@/components/fullscreen-context";
 import { CourseSelectorButton } from "@/components/notes/course-selector-button";
-import { MarkdownRenderer } from "@/components/notes/markdown-renderer";
+import { MDXRenderer } from "@/components/notes/mdx-renderer";
 import { NoteCard } from "@/components/notes/note-card";
 import { NotesSkeletonLoader } from "@/components/notes/notes-skeleton-loader";
 import { NotesToolbar } from "@/components/notes/notes-toolbar";
@@ -229,9 +230,7 @@ export function NotesClient({
 														noteId={note.id}
 														title={note.title}
 														content={note.content}
-														version={note.version}
 														withActions={true}
-														withMarkdown={true}
 													/>
 												))}
 											</div>
@@ -269,7 +268,7 @@ export function NotesClient({
 															</div>
 														</CardHeader>
 														<CardContent>
-															<MarkdownRenderer content={summary.content} />
+															<MDXRenderer content={summary.content} />
 														</CardContent>
 													</Card>
 												))}
@@ -284,10 +283,12 @@ export function NotesClient({
 									</TabsContent>
 
 									<TabsContent value="own-notes" className="pt-6">
-										<UserNotesEditor
-											courseId={selectedCourseId}
-											weekId={selectedWeekId}
-										/>
+										<FullscreenProvider>
+											<UserNotesEditor
+												courseId={selectedCourseId}
+												weekId={selectedWeekId}
+											/>
+										</FullscreenProvider>
 									</TabsContent>
 								</Tabs>
 							)}

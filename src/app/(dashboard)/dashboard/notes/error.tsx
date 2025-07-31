@@ -1,8 +1,10 @@
 "use client";
 
 import { AlertCircle } from "lucide-react";
+import { useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
+import { logger } from "@/lib/utils/logger";
 
 interface NotesErrorProps {
 	error: Error & { digest?: string };
@@ -10,6 +12,15 @@ interface NotesErrorProps {
 }
 
 export default function NotesError({ error, reset }: NotesErrorProps) {
+	useEffect(() => {
+		logger.error("Notes error occurred", {
+			message: error.message,
+			stack: error.stack,
+			digest: error.digest,
+			timestamp: new Date().toISOString(),
+		});
+	}, [error]);
+
 	return (
 		<div className="flex h-[calc(100vh-200px)] items-center justify-center">
 			<div className="text-center max-w-md">
@@ -18,8 +29,7 @@ export default function NotesError({ error, reset }: NotesErrorProps) {
 					Unable to Load Notes
 				</h2>
 				<p className="text-sm text-muted-foreground mb-6 sm:text-base">
-					{error.message ||
-						"Something went wrong while loading your notes. Please try again."}
+					Something went wrong while loading your notes. Please try again.
 				</p>
 				<div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
 					<Button onClick={reset} className="w-full sm:w-auto">

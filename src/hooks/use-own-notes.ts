@@ -10,6 +10,7 @@ import {
 	getOwnNotes,
 	updateOwnNote,
 } from "@/lib/actions/own-notes";
+import { logger } from "@/lib/utils/logger";
 
 export type NoteType = "general" | "summary" | "question" | "annotation";
 
@@ -25,18 +26,9 @@ export interface OwnNote {
 	isPrivate: boolean | null;
 	color: string | null;
 	metadata: unknown;
-	version: number;
 	createdAt: Date;
 	updatedAt: Date;
 }
-
-export type ConflictError = {
-	type: "version_conflict";
-	message: string;
-	serverVersion: number;
-	clientVersion: number;
-	serverData?: unknown;
-};
 
 // Query Keys
 const ownNotesKeys = {
@@ -116,7 +108,11 @@ export function useCreateOwnNote(
 			options?.onSuccess?.(data, variables, context);
 		},
 		onError: (error, variables, context) => {
-			console.error("Failed to create note:", error);
+			logger.error("Failed to create note", {
+				variables,
+				message: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined,
+			});
 			options?.onError?.(error, variables, context);
 		},
 	});
@@ -146,7 +142,11 @@ export function useUpdateOwnNote(
 			options?.onSuccess?.(data, variables, context);
 		},
 		onError: (error, variables, context) => {
-			console.error("Failed to update note:", error);
+			logger.error("Failed to update note", {
+				variables,
+				message: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined,
+			});
 			options?.onError?.(error, variables, context);
 		},
 	});
@@ -168,7 +168,11 @@ export function useDeleteOwnNote(
 			options?.onSuccess?.(data, variables, context);
 		},
 		onError: (error, variables, context) => {
-			console.error("Failed to delete note:", error);
+			logger.error("Failed to delete note", {
+				noteId: variables,
+				message: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined,
+			});
 			options?.onError?.(error, variables, context);
 		},
 	});

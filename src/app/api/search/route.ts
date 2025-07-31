@@ -1,4 +1,5 @@
 import { getServerClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/utils/logger";
 import { searchSimilarChunks } from "@/lib/vector/vector-search";
 import { type NextRequest, NextResponse } from "next/server";
 
@@ -48,7 +49,12 @@ export async function POST(request: NextRequest) {
 			searchTime: searchResult.searchTime,
 		});
 	} catch (error) {
-		console.error("Search API error:", error);
+		logger.error("Search API operation failed", {
+			message: error instanceof Error ? error.message : String(error),
+			stack: error instanceof Error ? error.stack : undefined,
+			route: "/api/search",
+			method: "POST",
+		});
 		return NextResponse.json(
 			{ error: "Internal server error" },
 			{ status: 500 }

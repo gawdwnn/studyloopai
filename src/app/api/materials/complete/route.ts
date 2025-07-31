@@ -6,6 +6,7 @@ import { initializeFeatureTracking } from "@/lib/actions/course-week-features";
 import { persistSelectiveConfig } from "@/lib/actions/generation-config";
 import { getServerClient } from "@/lib/supabase/server";
 import { getUserFriendlyErrorMessage } from "@/lib/utils/error-messages";
+import { logger } from "@/lib/utils/logger";
 import { SelectiveGenerationConfigSchema } from "@/lib/validation/generation-config";
 import type { ingestCourseMaterials } from "@/trigger/ingest-course-materials";
 import { tasks } from "@trigger.dev/sdk";
@@ -116,7 +117,12 @@ export async function POST(req: NextRequest) {
 			courseId: body.courseId,
 		});
 	} catch (err) {
-		console.error("Materials completion error:", err);
+		logger.error("Materials completion operation failed", {
+			message: err instanceof Error ? err.message : String(err),
+			stack: err instanceof Error ? err.stack : undefined,
+			route: "/api/materials/complete",
+			method: "POST",
+		});
 
 		const userMessage = getUserFriendlyErrorMessage(
 			err instanceof Error ? err : "Unknown error occurred"
