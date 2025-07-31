@@ -1,7 +1,8 @@
 "use client";
 
-import { type UserCuecard, updateCuecardProgress } from "@/lib/actions/cuecard";
+import type { UserCuecard } from "@/lib/actions/cuecard";
 import { triggerOnDemandGeneration } from "@/lib/services/on-demand-generation-service";
+import { createLogger } from "@/lib/utils/logger";
 import type { SelectiveGenerationConfig } from "@/types/generation-types";
 import { create } from "zustand";
 import { persist, subscribeWithSelector } from "zustand/middleware";
@@ -12,34 +13,10 @@ import type {
 	CuecardFeedback,
 	CuecardSessionStore,
 	CuecardSetupConfig,
-	SessionStats,
 } from "./types";
 import { initialCuecardState } from "./types";
 
-// Helper function to calculate raw session metrics for internal use
-function calculateRawSessionMetrics(state: CuecardSessionStore): SessionStats {
-	const correct = state.responses.filter(
-		(r) => r.feedback === "correct"
-	).length;
-	const incorrect = state.responses.filter(
-		(r) => r.feedback === "incorrect"
-	).length;
-	const totalTime = state.startTime
-		? Date.now() - state.startTime.getTime()
-		: 0;
-
-	const totalResponses = state.responses.length;
-	const accuracy = totalResponses > 0 ? (correct / totalResponses) * 100 : 0;
-
-	return {
-		totalCards: state.cards.length,
-		correct,
-		incorrect,
-		totalTime,
-		averageTimePerCard: totalResponses > 0 ? totalTime / totalResponses : 0,
-		accuracy,
-	};
-}
+const logger = createLogger("CuecardSession");
 
 const useCuecardSession = create<CuecardSessionStore>()(
 	subscribeWithSelector(
@@ -63,9 +40,9 @@ const useCuecardSession = create<CuecardSessionStore>()(
 						},
 					});
 				} catch (error) {
-					console.warn(
-						"Failed to register callbacks with Session Manager:",
-						error
+					logger.warn(
+						{ error },
+						"Failed to register callbacks with Session Manager"
 					);
 				}
 
@@ -95,7 +72,8 @@ const useCuecardSession = create<CuecardSessionStore>()(
 						// Start session with pre-loaded data (optimized component-driven approach)
 						startSessionWithData: async (
 							config: CuecardConfig,
-							preLoadedCards: UserCuecard[]
+							preLoadedCards: UserCuecard[],
+							useAdaptiveSelection = true
 						) => {
 							try {
 								set({ isLoading: true, error: null, status: "loading" });
@@ -107,9 +85,9 @@ const useCuecardSession = create<CuecardSessionStore>()(
 									const sessionManager = useSessionManager.getState();
 									await sessionManager.actions.startSession("cuecards", config);
 								} catch (e) {
-									console.warn(
-										"Session manager failed to start, continuing...",
-										e
+									logger.warn(
+										{ error: e },
+										"Session manager failed to start, continuing..."
 									);
 								}
 
@@ -123,12 +101,64 @@ const useCuecardSession = create<CuecardSessionStore>()(
 									return;
 								}
 
-								// Start session immediately with pre-loaded cards
+								// ADAPTIVE LEARNING: Smart card selection and ordering
+								let orderedCards = preLoadedCards;
+								if (useAdaptiveSelection) {
+									try {
+										// Import smart selection service dynamically
+										const { selectSmartCardSession } = await import(
+											"@/lib/services/smart-card-selection"
+										);
+
+										// Use smart selection algorithm
+										const selectionResult = await selectSmartCardSession({
+											courseId: config.courseId || "",
+											weekIds: config.weeks,
+											maxCards: preLoadedCards.length,
+											prioritizeGaps: true,
+											includeNewCards: true,
+										});
+
+										if (selectionResult.cards.length > 0) {
+											orderedCards = selectionResult.cards;
+											logger.info(
+												{
+													gaps: selectionResult.metadata.gapCards,
+													reviews: selectionResult.metadata.reviewCards,
+													newCards: selectionResult.metadata.newCards,
+													priority: selectionResult.metadata.priority,
+													totalSelected: selectionResult.cards.length,
+												},
+												"🎯 Smart selection completed"
+											);
+										} else {
+											// Fallback to original cards if smart selection returns empty
+											orderedCards = preLoadedCards;
+											logger.warn(
+												{
+													availableCards: preLoadedCards.length,
+												},
+												"⚠️ Smart selection returned empty, using all cards"
+											);
+										}
+									} catch (error) {
+										logger.warn(
+											{ error },
+											"Smart card selection failed, falling back to randomization"
+										);
+										// Fallback to randomization if smart selection fails
+										orderedCards = [...preLoadedCards].sort(
+											() => Math.random() - 0.5
+										);
+									}
+								}
+
+								// Start session immediately with ordered cards
 								set({
 									id: sessionId,
 									status: "active",
 									config,
-									cards: preLoadedCards,
+									cards: orderedCards,
 									currentIndex: 0,
 									responses: [],
 									startTime: new Date(),
@@ -137,9 +167,9 @@ const useCuecardSession = create<CuecardSessionStore>()(
 									cardStartTime: new Date(),
 								});
 							} catch (error) {
-								console.error(
-									"Failed to start cuecard session with data:",
-									error
+								logger.error(
+									{ error },
+									"Failed to start cuecard session with data"
 								);
 								const errorMessage =
 									error instanceof Error
@@ -153,67 +183,145 @@ const useCuecardSession = create<CuecardSessionStore>()(
 							}
 						},
 
-						// TODO: fix this code!
+						// session end with adaptive learning integration
 						endSession: async () => {
 							const state = get();
-							if (state.status !== "active") return;
+
+							if (state.status !== "active") {
+								logger.warn({ status: state.status }, "❌ Session not active");
+								return;
+							}
 
 							try {
-								const stats = calculateRawSessionMetrics(state);
-
-								// Batch update progress
-								const progressUpdates = state.responses.map((response) => ({
-									cardId: response.cardId,
-									status: "completed",
-									score: response.feedback === "correct" ? 100 : 0,
-									lastAttemptAt: response.attemptedAt,
-								}));
-
-								// TODO: fix this code!
-								// We can batch these updates in a single server action if the API supports it
-								await Promise.all(
-									progressUpdates.map((update) =>
-										updateCuecardProgress(update.cardId, {
-											status: update.status as
-												| "not_started"
-												| "in_progress"
-												| "completed",
-											score: update.score,
-											lastAttemptAt: update.lastAttemptAt,
-										})
-									)
+								const {
+									createLearningSession,
+									createSessionResponses,
+									createOrUpdateLearningGap,
+								} = await import("@/lib/actions/adaptive-learning");
+								const { updateCuecardScheduling } = await import(
+									"@/lib/actions/spaced-repetition"
 								);
 
-								// Session manager integration - now uses callback pattern
-								try {
-									const sessionManager = useSessionManager.getState();
-									if (state.id) {
-										await sessionManager.actions.endSession(state.id, {
-											totalTime: state.startTime
-												? Date.now() - state.startTime.getTime()
-												: 0,
-											itemsCompleted: state.responses.length,
-											accuracy: stats.accuracy,
-										});
+								// Calculate session stats
+								const correct = state.responses.filter(
+									(r) => r.feedback === "correct"
+								).length;
+								const totalResponses = state.responses.length;
+								const accuracy = Math.round(
+									totalResponses > 0 ? (correct / totalResponses) * 100 : 0
+								);
+								const totalTime = state.startTime
+									? Date.now() - state.startTime.getTime()
+									: 0;
+								const sessionRecord = await createLearningSession({
+									contentType: "cuecard",
+									sessionConfig: {
+										courseId:
+											state.config.courseId || state.setupConfig.courseId,
+										weeks: state.config.weeks || [state.setupConfig.week],
+										sessionMode: "practice",
+									},
+									totalTime,
+									itemsCompleted: state.responses.length,
+									accuracy,
+									startedAt: state.startTime || new Date(),
+									completedAt: new Date(),
+								});
+
+								if (sessionRecord) {
+									// Record detailed responses
+									const responseData = state.responses.map((response) => ({
+										contentId: response.cardId,
+										responseData: {
+											feedback: response.feedback,
+											timeSpent: response.timeSpent,
+										},
+										responseTime: response.timeSpent,
+										isCorrect: response.feedback === "correct",
+										attemptedAt: response.attemptedAt,
+									}));
+									await createSessionResponses(sessionRecord.id, responseData);
+
+									// Update spaced repetition scheduling for each card
+									for (const response of state.responses) {
+										try {
+											await updateCuecardScheduling({
+												cardId: response.cardId,
+												userId: sessionRecord.userId,
+												isCorrect: response.feedback === "correct",
+												responseTime: response.timeSpent,
+											});
+										} catch (error) {
+											logger.warn(
+												{
+													error,
+													cardId: response.cardId,
+												},
+												"Failed to update scheduling for card"
+											);
+										}
 									}
-								} catch (e) {
-									console.warn(
-										"Session manager failed to end, continuing...",
-										e
+
+									// Create learning gaps for incorrect responses
+									const incorrectResponses = state.responses.filter(
+										(r) => r.feedback === "incorrect"
 									);
+									for (const incorrect of incorrectResponses) {
+										try {
+											await createOrUpdateLearningGap({
+												contentType: "cuecard",
+												contentId: incorrect.cardId,
+												severity: 5, // Default medium severity
+											});
+										} catch (error) {
+											logger.warn(
+												{
+													error,
+													cardId: incorrect.cardId,
+												},
+												"Failed to create learning gap for card"
+											);
+										}
+									}
+
+									// Session manager integration
+									try {
+										const sessionManager = useSessionManager.getState();
+										if (state.id) {
+											await sessionManager.actions.endSession(state.id, {
+												totalTime,
+												itemsCompleted: state.responses.length,
+												accuracy,
+											});
+										}
+									} catch (e) {
+										logger.warn(
+											{ error: e },
+											"Session manager failed to end, continuing"
+										);
+									}
+
+									set({ status: "completed", cardStartTime: null });
+									return sessionRecord.id;
 								}
 
+								// Fallback if session creation failed
+								logger.error(
+									"❌ Session record creation failed, sessionRecord is null"
+								);
 								set({ status: "completed", cardStartTime: null });
+								return undefined;
 							} catch (error) {
-								console.error("Failed to end cuecard session:", error);
+								logger.error({ error }, "💥 Failed to end cuecard session");
 								const errorMessage =
 									error instanceof Error
 										? error.message
 										: "An unknown error occurred";
 								set({
 									error: `Failed to save session progress: ${errorMessage}`,
-									status: "failed", // Or some other error state
+									status: "failed",
 								});
+								return undefined;
 							}
 						},
 
@@ -269,30 +377,27 @@ const useCuecardSession = create<CuecardSessionStore>()(
 								attemptedAt: new Date(),
 							};
 
-							// ✨ NEW: Immediate progress update
-							const progressData = {
-								status: "completed" as const,
-								score: feedback === "correct" ? 100 : 0,
-								lastAttemptAt: new Date(),
-							};
-
-							try {
-								await updateCuecardProgress(currentCard.id, progressData);
-							} catch (error) {
-								console.warn(
-									`Failed to update progress immediately for card ${currentCard.id}:`,
-									error
-								);
-								// Continue with session - will retry at session end
-							}
-
 							const newResponses = [...state.responses, response];
 							const nextIndex = state.currentIndex + 1;
 
 							// Check if session is complete
 							if (nextIndex >= state.cards.length) {
-								set({ responses: newResponses });
-								await get().actions.endSession();
+								// Update state first
+								set({
+									responses: newResponses,
+									currentIndex: nextIndex, // Update index to prevent loop
+								});
+								// End session and get session ID
+								const sessionId = await get().actions.endSession();
+
+								// Navigate to feedback page with session ID
+								if (sessionId) {
+									window.location.href = `/dashboard/feedback?sessionId=${sessionId}`;
+								} else {
+									logger.warn("⚠️ No sessionId received, navigating without it");
+									// Fallback navigation without session ID
+									window.location.href = "/dashboard/feedback";
+								}
 							} else {
 								// Move to next card and reset card start time
 								set({
@@ -332,7 +437,7 @@ const useCuecardSession = create<CuecardSessionStore>()(
 									publicAccessToken: result.publicAccessToken,
 								};
 							} catch (error) {
-								console.error("Failed to trigger cuecard generation:", error);
+								logger.error({ error }, "Failed to trigger cuecard generation");
 
 								set({
 									isLoading: false,

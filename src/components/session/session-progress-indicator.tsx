@@ -3,6 +3,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { formatMmSs } from "@/lib/utils/time-formatter";
 import { useCuecardSession } from "@/stores/cuecard-session/use-cuecard-session";
 import { useMcqSession } from "@/stores/mcq-session/use-mcq-session";
 import { useOpenQuestionSession } from "@/stores/open-question-session/use-open-question-session";
@@ -195,12 +196,6 @@ export function SessionProgressIndicator() {
 		return (progress.currentIndex / progress.totalItems) * 100;
 	};
 
-	const formatTime = (milliseconds: number) => {
-		const minutes = Math.floor(milliseconds / 60000);
-		const seconds = Math.floor((milliseconds % 60000) / 1000);
-		return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
-	};
-
 	const getSessionTypeLabel = () => {
 		switch (sessionType) {
 			case "cuecards":
@@ -277,7 +272,7 @@ export function SessionProgressIndicator() {
 				<div className="flex items-center gap-2 text-sm">
 					<Clock className="h-4 w-4 text-muted-foreground" />
 					<div>
-						<div className="font-medium">{formatTime(timeSpent)}</div>
+						<div className="font-medium">{formatMmSs(timeSpent)}</div>
 						<div className="text-muted-foreground text-xs">Time</div>
 					</div>
 				</div>

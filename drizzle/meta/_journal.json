@@ -169,6 +169,13 @@
 			"when": 1753682502319,
 			"tag": "0023_icy_may_parker",
 			"breakpoints": true
+		},
+		{
+			"idx": 24,
+			"version": "7",
+			"when": 1753816535034,
+			"tag": "0024_daffy_jack_flag",
+			"breakpoints": true
 		}
 	]
 }

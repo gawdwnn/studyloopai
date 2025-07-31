@@ -13,11 +13,7 @@ export type {
 } from "@/stores/cuecard-session/types";
 
 // Re-exports from action types for convenience
-export type {
-	CuecardProgress,
-	SessionSyncData,
-	UserCuecard,
-} from "@/lib/actions/cuecard";
+export type { UserCuecard } from "@/lib/actions/cuecard";
 
 // Component-specific types
 export interface Course {

@@ -77,7 +77,7 @@ export interface CuecardSessionActions {
 		config: CuecardConfig,
 		preLoadedCards: UserCuecard[]
 	) => Promise<void>;
-	endSession: () => Promise<void>;
+	endSession: () => Promise<string | undefined>;
 	resetSession: () => void;
 
 	// Setup configuration

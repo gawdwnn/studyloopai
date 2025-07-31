@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
+import { formatHhMmSs } from "@/lib/utils/time-formatter";
 import type { McqConfig } from "@/stores/mcq-session/types";
 import { CheckCircle2, XCircle, XIcon } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -50,14 +51,6 @@ export function McqQuizView({
 		}, 1000);
 		return () => clearInterval(timer);
 	}, []);
-
-	const formatTime = (seconds: number) => {
-		const m = Math.floor(seconds / 60)
-			.toString()
-			.padStart(2, "0");
-		const s = (seconds % 60).toString().padStart(2, "0");
-		return `00:${m}:${s}`;
-	};
 
 	const currentQuestion = questions[currentQuestionIndex];
 
@@ -124,7 +117,7 @@ export function McqQuizView({
 					</div>
 					<div className="flex justify-between items-center mb-4">
 						<Button variant="ghost">Pause</Button>
-						<span className="font-mono text-lg">{formatTime(time)}</span>
+						<span className="font-mono text-lg">{formatHhMmSs(time)}</span>
 						<Button
 							variant="ghost"
 							size="icon"

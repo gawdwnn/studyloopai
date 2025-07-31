@@ -124,6 +124,17 @@ export const courseWeeks = pgTable(
 			table.courseId,
 			table.weekNumber
 		),
+		// Adaptive learning indexes
+		index("idx_course_weeks_course_number").using(
+			"btree",
+			table.courseId,
+			table.weekNumber
+		),
+		index("idx_course_weeks_course_active").using(
+			"btree",
+			table.courseId,
+			table.isActive
+		),
 	]
 );
 
@@ -141,7 +152,20 @@ export const courses = pgTable(
 		createdAt: timestamp("created_at").defaultNow().notNull(),
 		updatedAt: timestamp("updated_at").defaultNow().notNull(),
 	},
-	(table) => [index("idx_courses_user_id").using("btree", table.userId)]
+	(table) => [
+		index("idx_courses_user_id").using("btree", table.userId),
+		// Adaptive learning indexes
+		index("idx_courses_user_active").using(
+			"btree",
+			table.userId,
+			table.isActive
+		),
+		index("idx_courses_user_created").using(
+			"btree",
+			table.userId,
+			table.createdAt.desc()
+		),
+	]
 );
 
 // Document chunks table
@@ -661,6 +685,18 @@ export const userProgress = pgTable(
 			table.contentId
 		),
 		index("idx_user_progress_status").using("btree", table.status),
+		// Adaptive learning indexes
+		index("idx_user_progress_user_content_status").using(
+			"btree",
+			table.userId,
+			table.contentType,
+			table.status
+		),
+		index("idx_user_progress_user_last_attempt").using(
+			"btree",
+			table.userId,
+			table.lastAttemptAt.desc()
+		),
 	]
 );
 
@@ -787,5 +823,284 @@ export const courseWeekFeatures = pgTable(
 			foreignColumns: [generationConfigs.id],
 			name: "course_week_features_config_id_fkey",
 		}).onDelete("set null"),
+	]
+);
+
+// =============================================================================
+// ADAPTIVE LEARNING SYSTEM TABLES
+// =============================================================================
+
+// Learning sessions table - Universal session tracking for all adaptive features
+export const learningSessions = pgTable(
+	"learning_sessions",
+	{
+		id: uuid().defaultRandom().primaryKey().notNull(),
+		userId: uuid("user_id").notNull(),
+		contentType: varchar("content_type", { length: 50 }).notNull(), // 'cuecard', 'mcq', 'open_question'
+		sessionConfig: jsonb("session_config").notNull(), // Store session configuration
+		totalTime: integer("total_time").notNull(), // Total session time in milliseconds
+		itemsCompleted: integer("items_completed").notNull(),
+		accuracy: integer().notNull(), // Percentage accuracy (0-100)
+		startedAt: timestamp("started_at").notNull(),
+		completedAt: timestamp("completed_at").notNull(),
+		createdAt: timestamp("created_at").defaultNow().notNull(),
+	},
+	(table) => [
+		index("idx_learning_sessions_user_id").using("btree", table.userId),
+		index("idx_learning_sessions_content_type").using(
+			"btree",
+			table.contentType
+		),
+		index("idx_learning_sessions_completed_at").using(
+			"btree",
+			table.completedAt
+		),
+		index("idx_learning_sessions_user_content").using(
+			"btree",
+			table.userId,
+			table.contentType
+		),
+		// Additional composite index for date range queries
+		index("idx_learning_sessions_user_date").using(
+			"btree",
+			table.userId,
+			table.completedAt.desc()
+		),
+		foreignKey({
+			columns: [table.userId],
+			foreignColumns: [users.userId],
+			name: "learning_sessions_user_id_fkey",
+		}).onDelete("cascade"),
+	]
+);
+
+// Session responses table - Detailed per-item responses within sessions
+export const sessionResponses = pgTable(
+	"session_responses",
+	{
+		id: uuid().defaultRandom().primaryKey().notNull(),
+		sessionId: uuid("session_id").notNull(),
+		contentId: uuid("content_id").notNull(), // References cuecards/mcqs/open_questions
+		responseData: jsonb("response_data").notNull(), // Store response details (feedback, selected_option, etc.)
+		responseTime: integer("response_time").notNull(), // Time spent on this item in milliseconds
+		isCorrect: boolean("is_correct").notNull(),
+		attemptedAt: timestamp("attempted_at").notNull(),
+		createdAt: timestamp("created_at").defaultNow().notNull(),
+	},
+	(table) => [
+		index("idx_session_responses_session_id").using("btree", table.sessionId),
+		index("idx_session_responses_content_id").using("btree", table.contentId),
+		index("idx_session_responses_is_correct").using("btree", table.isCorrect),
+		index("idx_session_responses_attempted_at").using(
+			"btree",
+			table.attemptedAt
+		),
+		// Additional composite index for content performance analysis
+		index("idx_session_responses_content_performance").using(
+			"btree",
+			table.contentId,
+			table.attemptedAt.desc(),
+			table.isCorrect
+		),
+		foreignKey({
+			columns: [table.sessionId],
+			foreignColumns: [learningSessions.id],
+			name: "session_responses_session_id_fkey",
+		}).onDelete("cascade"),
+	]
+);
+
+// Learning gaps table - Universal gap tracking across all content types
+export const learningGaps = pgTable(
+	"learning_gaps",
+	{
+		id: uuid().defaultRandom().primaryKey().notNull(),
+		userId: uuid("user_id").notNull(),
+		contentType: varchar("content_type", { length: 50 }).notNull(), // 'cuecard', 'mcq', 'open_question'
+		contentId: uuid("content_id").notNull(), // References specific content item
+		conceptId: uuid("concept_id"), // Links to concept mappings for cross-content intelligence
+		severity: integer().notNull(), // Gap severity score (1-10)
+		failureCount: integer("failure_count").default(1).notNull(),
+		lastFailureAt: timestamp("last_failure_at").notNull(),
+		identifiedAt: timestamp("identified_at").defaultNow().notNull(),
+		recoveredAt: timestamp("recovered_at"), // When gap was resolved
+		isActive: boolean("is_active").default(true).notNull(),
+		createdAt: timestamp("created_at").defaultNow().notNull(),
+		updatedAt: timestamp("updated_at").defaultNow().notNull(),
+	},
+	(table) => [
+		index("idx_learning_gaps_user_id").using("btree", table.userId),
+		index("idx_learning_gaps_content").using(
+			"btree",
+			table.contentType,
+			table.contentId
+		),
+		index("idx_learning_gaps_concept_id").using("btree", table.conceptId),
+		index("idx_learning_gaps_severity").using("btree", table.severity),
+		index("idx_learning_gaps_is_active").using("btree", table.isActive),
+		index("idx_learning_gaps_user_active").using(
+			"btree",
+			table.userId,
+			table.isActive
+		),
+		// Additional composite index for priority gap detection
+		index("idx_learning_gaps_user_priority").using(
+			"btree",
+			table.userId,
+			table.isActive,
+			table.severity.desc()
+		),
+		foreignKey({
+			columns: [table.userId],
+			foreignColumns: [users.userId],
+			name: "learning_gaps_user_id_fkey",
+		}).onDelete("cascade"),
+	]
+);
+
+// AI recommendations table - Store and track AI-generated adaptive suggestions
+export const aiRecommendations = pgTable(
+	"ai_recommendations",
+	{
+		id: uuid().defaultRandom().primaryKey().notNull(),
+		userId: uuid("user_id").notNull(),
+		recommendationType: varchar("recommendation_type", {
+			length: 50,
+		}).notNull(), // 'review_priority', 'content_focus', 'difficulty_adjustment', 'study_strategy'
+		contentData: jsonb("content_data").notNull(), // Store recommendation details and content references
+		priority: integer().notNull(), // Recommendation priority (1-10)
+		reasoning: text(), // AI explanation for the recommendation
+		isAccepted: boolean("is_accepted"), // Track user acceptance (null = not responded)
+		acceptedAt: timestamp("accepted_at"),
+		dismissedAt: timestamp("dismissed_at"),
+		expiresAt: timestamp("expires_at"), // When recommendation becomes stale
+		createdAt: timestamp("created_at").defaultNow().notNull(),
+		updatedAt: timestamp("updated_at").defaultNow().notNull(),
+	},
+	(table) => [
+		index("idx_ai_recommendations_user_id").using("btree", table.userId),
+		index("idx_ai_recommendations_type").using(
+			"btree",
+			table.recommendationType
+		),
+		index("idx_ai_recommendations_priority").using("btree", table.priority),
+		index("idx_ai_recommendations_is_accepted").using(
+			"btree",
+			table.isAccepted
+		),
+		index("idx_ai_recommendations_expires_at").using("btree", table.expiresAt),
+		index("idx_ai_recommendations_user_active").using(
+			"btree",
+			table.userId,
+			table.expiresAt
+		),
+		// Additional composite index for active recommendations
+		index("idx_ai_recommendations_active").using(
+			"btree",
+			table.userId,
+			table.expiresAt,
+			table.isAccepted,
+			table.priority.desc()
+		),
+		foreignKey({
+			columns: [table.userId],
+			foreignColumns: [users.userId],
+			name: "ai_recommendations_user_id_fkey",
+		}).onDelete("cascade"),
+	]
+);
+
+// Cuecard scheduling table - Spaced repetition scheduling (cuecard-specific)
+export const cuecardScheduling = pgTable(
+	"cuecard_scheduling",
+	{
+		id: uuid().defaultRandom().primaryKey().notNull(),
+		userId: uuid("user_id").notNull(),
+		cardId: uuid("card_id").notNull(),
+		nextReviewAt: timestamp("next_review_at").notNull(),
+		intervalDays: integer("interval_days").notNull(), // Current interval in days
+		easeFactor: integer("ease_factor").default(250).notNull(), // Ease factor * 100 (SuperMemo algorithm)
+		reviewCount: integer("review_count").default(0).notNull(),
+		consecutiveCorrect: integer("consecutive_correct").default(0).notNull(),
+		lastReviewedAt: timestamp("last_reviewed_at"),
+		isActive: boolean("is_active").default(true).notNull(),
+		createdAt: timestamp("created_at").defaultNow().notNull(),
+		updatedAt: timestamp("updated_at").defaultNow().notNull(),
+	},
+	(table) => [
+		unique("cuecard_scheduling_user_card_unique").on(
+			table.userId,
+			table.cardId
+		),
+		index("idx_cuecard_scheduling_user_id").using("btree", table.userId),
+		index("idx_cuecard_scheduling_card_id").using("btree", table.cardId),
+		index("idx_cuecard_scheduling_next_review").using(
+			"btree",
+			table.nextReviewAt
+		),
+		index("idx_cuecard_scheduling_is_active").using("btree", table.isActive),
+		index("idx_cuecard_scheduling_user_due").using(
+			"btree",
+			table.userId,
+			table.nextReviewAt,
+			table.isActive
+		),
+		foreignKey({
+			columns: [table.userId],
+			foreignColumns: [users.userId],
+			name: "cuecard_scheduling_user_id_fkey",
+		}).onDelete("cascade"),
+		foreignKey({
+			columns: [table.cardId],
+			foreignColumns: [cuecards.id],
+			name: "cuecard_scheduling_card_id_fkey",
+		}).onDelete("cascade"),
+	]
+);
+
+// Concept mappings table - Cross-content concept relationships for intelligence
+export const conceptMappings = pgTable(
+	"concept_mappings",
+	{
+		id: uuid().defaultRandom().primaryKey().notNull(),
+		conceptName: varchar("concept_name", { length: 255 }).notNull(),
+		contentType: varchar("content_type", { length: 50 }).notNull(), // 'cuecard', 'mcq', 'open_question'
+		contentId: uuid("content_id").notNull(),
+		courseId: uuid("course_id").notNull(), // For scoping concepts to courses
+		weekId: uuid("week_id"), // Optional week scoping
+		confidenceScore: integer("confidence_score").default(100).notNull(), // Confidence in mapping (0-100)
+		extractedBy: varchar("extracted_by", { length: 50 })
+			.default("ai")
+			.notNull(), // 'ai', 'manual'
+		createdAt: timestamp("created_at").defaultNow().notNull(),
+		updatedAt: timestamp("updated_at").defaultNow().notNull(),
+	},
+	(table) => [
+		index("idx_concept_mappings_concept_name").using(
+			"btree",
+			table.conceptName
+		),
+		index("idx_concept_mappings_content").using(
+			"btree",
+			table.contentType,
+			table.contentId
+		),
+		index("idx_concept_mappings_course_id").using("btree", table.courseId),
+		index("idx_concept_mappings_week_id").using("btree", table.weekId),
+		index("idx_concept_mappings_course_concept").using(
+			"btree",
+			table.courseId,
+			table.conceptName
+		),
+		foreignKey({
+			columns: [table.courseId],
+			foreignColumns: [courses.id],
+			name: "concept_mappings_course_id_fkey",
+		}).onDelete("cascade"),
+		foreignKey({
+			columns: [table.weekId],
+			foreignColumns: [courseWeeks.id],
+			name: "concept_mappings_week_id_fkey",
+		}).onDelete("cascade"),
 	]
 );

@@ -95,7 +95,7 @@ const FEATURE_INFO = {
 	},
 	cuecards: {
 		label: "Cuecards",
-		description: "Interactive flashcards for memorization and quick review",
+		description: "Interactive cuecards for memorization and quick review",
 		tooltip: "Cuecards with Q&A format for memorization and quick review",
 	},
 	mcqs: {

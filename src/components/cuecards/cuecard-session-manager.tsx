@@ -3,14 +3,12 @@
 import { env } from "@/env";
 import type { CuecardAvailability, UserCuecard } from "@/lib/actions/cuecard";
 import { useCuecardSession } from "@/stores/cuecard-session/use-cuecard-session";
-import { useSessionManager } from "@/stores/session-manager/use-session-manager";
 import type { Course, CourseWeek } from "@/types/database-types";
 import type { SelectiveGenerationConfig } from "@/types/generation-types";
 import { useRealtimeRun } from "@trigger.dev/react-hooks";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useShallow } from "zustand/react/shallow";
-import { SessionRecoveryDialog } from "../session/session-recovery-dialog";
 import { CuecardDisplay } from "./cuecard-display";
 import { CuecardResultsView } from "./cuecard-results-view";
 import { CuecardSessionSetup } from "./cuecard-session-setup";
@@ -52,10 +50,8 @@ export function CuecardSessionManager({
 		}))
 	);
 	const cuecardActions = useCuecardSession((s) => s.actions);
-	const sessionManagerActions = useSessionManager((s) => s.actions);
 
-	const [hasCheckedRecovery, setHasCheckedRecovery] = useState(false);
-	const [showRecoveryDialog, setShowRecoveryDialog] = useState(false);
+	const [isEndingSession, setIsEndingSession] = useState(false);
 
 	// Realtime tracking for cuecard generation
 	const { run: runData, error: runError } = useRealtimeRun(
@@ -68,20 +64,6 @@ export function CuecardSessionManager({
 			),
 		}
 	);
-
-	// Recovery effect
-	useEffect(() => {
-		if (!hasCheckedRecovery) {
-			const check = async () => {
-				const recoverable = await sessionManagerActions.recoverSession();
-				if (recoverable && recoverable.type === "cuecards") {
-					setShowRecoveryDialog(true);
-				}
-				setHasCheckedRecovery(true);
-			};
-			check();
-		}
-	}, [hasCheckedRecovery, sessionManagerActions]);
 
 	// Handle generation completion and progress updates
 	useEffect(() => {
@@ -157,15 +139,31 @@ export function CuecardSessionManager({
 
 	const handleCardFeedback = useCallback(
 		async (feedback: CuecardFeedback) => {
+			// Store's submitFeedback now handles everything including session completion
 			await cuecardActions.submitFeedback(feedback);
 		},
 		[cuecardActions]
 	);
 
 	const handleEndSession = useCallback(async () => {
-		await cuecardActions.endSession();
-		cuecardActions.resetSession();
-	}, [cuecardActions]);
+		// Prevent multiple calls
+		if (isEndingSession) return;
+		setIsEndingSession(true);
+
+		try {
+			// Use store's endSession method which now handles all adaptive learning logic
+			await cuecardActions.endSession();
+		} catch (error) {
+			console.error("Failed to end session:", error);
+			// Fallback navigation
+			window.location.href = "/dashboard/feedback";
+		} finally {
+			setIsEndingSession(false);
+		}
+	}, [cuecardActions, isEndingSession]);
+
+	// Session completion is now handled directly in store's submitFeedback method
+	// No need for useEffect to watch for completion
 
 	const handleClose = useCallback(() => {
 		// Reset any active session state
@@ -173,27 +171,6 @@ export function CuecardSessionManager({
 		// Navigate back to the adaptive learning dashboard
 		window.location.href = "/dashboard/adaptive-learning";
 	}, [cuecardActions]);
-
-	const handleRecover = () => {
-		setShowRecoveryDialog(false);
-		toast.success("Your session has been successfully recovered.");
-	};
-
-	const handleStartNew = () => {
-		handleEndSession();
-		setShowRecoveryDialog(false);
-	};
-
-	if (showRecoveryDialog) {
-		return (
-			<SessionRecoveryDialog
-				isOpen={showRecoveryDialog}
-				onOpenChange={setShowRecoveryDialog}
-				onRecover={handleRecover}
-				onStartNew={handleStartNew}
-			/>
-		);
-	}
 
 	// Handle setup states (idle, failed, needs_generation, etc.)
 	if (isSetupState(cuecardState.status)) {
@@ -244,7 +221,7 @@ export function CuecardSessionManager({
 		return (
 			<CuecardResultsView
 				results={resultsData}
-				onNewSession={handleEndSession}
+				onNewSession={() => cuecardActions.resetSession()}
 			/>
 		);
 	}

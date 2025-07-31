@@ -4,19 +4,25 @@
  */
 
 import type {
+	aiRecommendations,
+	conceptMappings,
 	conceptMaps,
 	courseMaterials,
 	courseWeekFeatures,
 	courseWeeks,
 	courses,
+	cuecardScheduling,
 	cuecards,
 	documentChunks,
 	generationConfigs,
 	goldenNotes,
 	institutions,
+	learningGaps,
+	learningSessions,
 	multipleChoiceQuestions,
 	openQuestions,
 	ownNotes,
+	sessionResponses,
 	summaries,
 	userPlans,
 	userProgress,
@@ -92,6 +98,25 @@ export type NewUserPlan = InferInsertModel<typeof userPlans>;
 // Institution types
 export type Institution = InferSelectModel<typeof institutions>;
 export type NewInstitution = InferInsertModel<typeof institutions>;
+
+// Adaptive Learning types
+export type LearningSession = InferSelectModel<typeof learningSessions>;
+export type NewLearningSession = InferInsertModel<typeof learningSessions>;
+
+export type SessionResponse = InferSelectModel<typeof sessionResponses>;
+export type NewSessionResponse = InferInsertModel<typeof sessionResponses>;
+
+export type LearningGap = InferSelectModel<typeof learningGaps>;
+export type NewLearningGap = InferInsertModel<typeof learningGaps>;
+
+export type CuecardScheduling = InferSelectModel<typeof cuecardScheduling>;
+export type NewCuecardScheduling = InferInsertModel<typeof cuecardScheduling>;
+
+export type ConceptMapping = InferSelectModel<typeof conceptMappings>;
+export type NewConceptMapping = InferInsertModel<typeof conceptMappings>;
+
+export type AiRecommendation = InferSelectModel<typeof aiRecommendations>;
+export type NewAiRecommendation = InferInsertModel<typeof aiRecommendations>;
 
 // Note: Processing and generation metadata types removed during metadata cleanup
 

@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { courseWeeks, courses, cuecards, userProgress } from "@/db/schema";
+import { courseWeeks, courses, cuecards } from "@/db/schema";
 import { getServerClient } from "@/lib/supabase/server";
 import { withErrorHandling } from "@/lib/utils/error-handling";
 import { and, eq, inArray } from "drizzle-orm";
@@ -23,108 +23,8 @@ export type CuecardAvailability = {
 	cuecardsByWeek: Record<string, number>;
 };
 
-// Types for session synchronization
-export interface CuecardProgress {
-	cardId: string;
-	status: "not_started" | "in_progress" | "completed";
-	score?: number;
-	attempts: number;
-	lastAttemptAt: Date;
-}
-
-export interface SessionSyncData {
-	sessionId: string;
-	progressData: CuecardProgress[];
-	sessionStats?: {
-		totalTime: number;
-		accuracy: number;
-		cardsCompleted: number;
-	};
-}
-
-/**
- * Update progress for a specific cuecard - simplified version
- * Automatically increments attempts counter
- */
-export async function updateCuecardProgress(
-	cardId: string,
-	progress: Omit<CuecardProgress, "cardId" | "attempts">
-): Promise<{ success: boolean; message: string }> {
-	return await withErrorHandling(
-		async () => {
-			const supabase = await getServerClient();
-			const {
-				data: { user },
-			} = await supabase.auth.getUser();
-
-			if (!user) {
-				throw new Error("Authentication required");
-			}
-
-			// Verify the user owns this cuecard through course ownership
-			const cardExists = await db
-				.select({ id: cuecards.id })
-				.from(cuecards)
-				.innerJoin(courses, eq(cuecards.courseId, courses.id))
-				.where(and(eq(cuecards.id, cardId), eq(courses.userId, user.id)))
-				.limit(1);
-
-			if (cardExists.length === 0) {
-				throw new Error("Cuecard not found or access denied");
-			}
-
-			// Get current progress to increment attempts
-			const existingProgress = await db
-				.select({ attempts: userProgress.attempts })
-				.from(userProgress)
-				.where(
-					and(
-						eq(userProgress.userId, user.id),
-						eq(userProgress.contentType, "cuecard"),
-						eq(userProgress.contentId, cardId)
-					)
-				)
-				.limit(1);
-
-			const currentAttempts = existingProgress[0]?.attempts || 0;
-
-			// Upsert user progress with incremented attempts
-			await db
-				.insert(userProgress)
-				.values({
-					userId: user.id,
-					contentType: "cuecard",
-					contentId: cardId,
-					status: progress.status,
-					score: progress.score,
-					attempts: currentAttempts + 1,
-					lastAttemptAt: progress.lastAttemptAt,
-					updatedAt: new Date(),
-				})
-				.onConflictDoUpdate({
-					target: [
-						userProgress.userId,
-						userProgress.contentType,
-						userProgress.contentId,
-					],
-					set: {
-						status: progress.status,
-						score: progress.score,
-						attempts: currentAttempts + 1,
-						lastAttemptAt: progress.lastAttemptAt,
-						updatedAt: new Date(),
-					},
-				});
-
-			return { success: true, message: "Progress updated successfully" };
-		},
-		"updateCuecardProgress",
-		{ success: false, message: "Failed to update progress" } as {
-			success: boolean;
-			message: string;
-		}
-	);
-}
+// Progress is now tracked via adaptive learning tables (session_responses, learning_sessions)
+// No need for real-time progress updates during sessions
 
 /**
  * OPTIMIZED: Single query to get cuecards with availability info

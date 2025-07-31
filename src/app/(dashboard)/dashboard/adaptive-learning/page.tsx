@@ -1,4 +1,4 @@
-import { ArrowRight, Brain, CheckCircle, Clipboard, Route } from "lucide-react";
+import { ArrowRight, CheckCircle, Clipboard, Route } from "lucide-react";
 import Link from "next/link";
 
 import { PageHeading } from "@/components/page-heading";
@@ -15,16 +15,16 @@ import { QuestionMarkIcon } from "@radix-ui/react-icons";
 export const metadata = {
 	title: "Adaptive Learning - StudyLoop AI",
 	description:
-		"Enhance your learning with AI-powered adaptive features including quizzes, flashcards, and personalized assessments.",
+		"Enhance your learning with AI-powered adaptive features including quizzes, cuecards, and personalized assessments.",
 };
 
 // Feature cards data
 const features = [
 	{
 		id: "cuecards",
-		title: "Smart Cue Cards",
+		title: "Cue Cards",
 		description:
-			"Master key concepts with AI-generated flashcards and spaced repetition",
+			"Master key concepts with AI-generated cuecards and spaced repetition",
 		icon: Clipboard,
 		iconColor: "text-purple-600 dark:text-purple-400",
 		available: true,
@@ -56,16 +56,6 @@ const features = [
 			"Visualize connections between topics with interactive concept mapping",
 		icon: Route,
 		iconColor: "text-orange-600 dark:text-orange-400",
-		available: false,
-		comingSoon: true,
-	},
-	{
-		id: "gap-assessment",
-		title: "Learning Gap Analysis",
-		description:
-			"Identify knowledge gaps and receive personalized learning recommendations",
-		icon: Brain,
-		iconColor: "text-green-600 dark:text-green-400",
 		available: false,
 		comingSoon: true,
 	},

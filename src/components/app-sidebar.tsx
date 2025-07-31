@@ -26,18 +26,18 @@ import { useCurrentUserImage } from "@/hooks/use-current-user-image";
 import { useCurrentUserName } from "@/hooks/use-current-user-name";
 import { signOut } from "@/lib/actions/auth";
 import { cn } from "@/lib/utils";
+import { QuestionMarkIcon } from "@radix-ui/react-icons";
 import {
 	BookOpen,
-	BookOpenCheck,
 	Brain,
 	BrainCog,
+	CheckCircle,
 	ChevronDown,
+	Clipboard,
 	FileText,
-	HelpCircle,
 	Home,
 	LogOut,
 	MessageSquare,
-	PenTool,
 	Route,
 	Settings,
 	User,
@@ -82,17 +82,17 @@ const routes: RouteItem[] = [
 			{
 				label: "Multiple Choice",
 				href: "/dashboard/adaptive-learning/multiple-choice",
-				icon: HelpCircle,
+				icon: CheckCircle,
 			},
 			{
 				label: "Open Questions",
 				href: "/dashboard/adaptive-learning/open-questions",
-				icon: PenTool,
+				icon: QuestionMarkIcon,
 			},
 			{
 				label: "Cue Cards",
 				href: "/dashboard/adaptive-learning/cuecards",
-				icon: BookOpenCheck,
+				icon: Clipboard,
 			},
 			{
 				label: "Concept Maps",
