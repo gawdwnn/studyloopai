@@ -148,8 +148,6 @@ export interface OpenQuestionSessionState {
 export interface OpenQuestionSessionActions {
 	// Session lifecycle
 	startSession: (config: OpenQuestionConfig) => Promise<void>;
-	pauseSession: () => void;
-	resumeSession: () => void;
 	endSession: () => Promise<void>;
 	resetSession: () => void;
 
@@ -157,9 +155,6 @@ export interface OpenQuestionSessionActions {
 	getCurrentQuestion: () => OpenQuestion | null;
 	moveToNextQuestion: () => void;
 	moveToPreviousQuestion: () => void;
-	jumpToQuestion: (index: number) => void;
-	flagQuestion: (questionId: string) => void;
-	unflagQuestion: (questionId: string) => void;
 
 	// Answer management
 	updateCurrentAnswer: (answer: string) => void;

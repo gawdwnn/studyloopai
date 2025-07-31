@@ -1,6 +1,7 @@
 "use client";
 
 import { SelectiveGenerationSettings } from "@/components/course/selective-generation-settings";
+import { FullscreenButton } from "@/components/fullscreen-button";
 import { OnDemandGenerationProgress } from "@/components/on-demand-generation-progress";
 import {
 	Accordion,
@@ -11,13 +12,6 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardFooter,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import {
 	Select,
@@ -303,293 +297,298 @@ export function CuecardSessionSetup({
 
 	if (courses.length === 0) {
 		return (
-			<div className="bg-background flex justify-center mt-10">
-				<Card className="w-full max-w-4xl">
-					<CardHeader className="text-center pb-8">
-						<CardTitle className="text-lg">No Courses Available</CardTitle>
-					</CardHeader>
-					<CardContent className="text-center py-8">
-						<p className="text-muted-foreground">
-							Please create a course and upload course materials to get started.
-						</p>
-					</CardContent>
-				</Card>
+			<div className="min-h-screen bg-background flex items-center justify-center">
+				<div className="text-center max-w-md mx-auto px-4">
+					<h2 className="text-2xl font-bold mb-4">No Courses Available</h2>
+					<p className="text-muted-foreground text-lg">
+						Please create a course and upload course materials to get started.
+					</p>
+				</div>
 			</div>
 		);
 	}
 
 	return (
-		<div className="bg-background flex justify-center mt-10">
-			<Card className="w-full max-w-4xl relative">
+		<div className="min-h-screen bg-background relative">
+			<div className="absolute top-4 right-4 z-10 flex gap-2">
+				<FullscreenButton />
 				<Button
 					variant="ghost"
 					size="icon"
-					className="absolute top-4 right-4 bg-muted hover:bg-muted/80 rounded-full"
+					className="bg-gray-100 hover:bg-gray-200 rounded-full"
 					onClick={onClose}
 				>
-					<X className="h-6 w-6 text-muted-foreground" />
+					<X className="h-6 w-6 text-gray-600" />
 				</Button>
+			</div>
 
-				<CardHeader className="text-center pb-8">
-					<CardTitle className="text-lg">Start a Cue Card Session</CardTitle>
-				</CardHeader>
-
-				<CardContent className="px-8 space-y-6">
-					{showWeekSelectionError && (
-						<Alert variant="destructive">
-							<AlertTriangle className="h-4 w-4" />
-							<AlertDescription>
-								{weeks.length === 0
-									? "No course materials found. Please upload materials to any week first."
-									: "No cuecards available for the selected content. You can generate them using the button below."}
-							</AlertDescription>
-						</Alert>
-					)}
-
-					{/* Course Selection */}
-					<div className="space-y-2">
-						<div className="flex items-center gap-2">
-							<Label htmlFor="course-select" className="text-sm font-medium">
-								Select Course
-							</Label>
-							<TooltipProvider>
-								<Tooltip>
-									<TooltipTrigger asChild>
-										<Info className="h-4 w-4 text-muted-foreground cursor-help" />
-									</TooltipTrigger>
-									<TooltipContent className="max-w-xs">
-										<p>
-											Choose the course you want to practice with cuecards. You
-											can generate multiple types of content for the same course
-											weeks.
-										</p>
-									</TooltipContent>
-								</Tooltip>
-							</TooltipProvider>
-						</div>
-						<Select
-							value={selectedCourse}
-							onValueChange={(value) => setQueryState({ courseId: value })}
-							disabled={!courses || courses.length === 0}
-						>
-							<SelectTrigger className="h-12 w-full">
-								<SelectValue placeholder="Choose a course" />
-							</SelectTrigger>
-							<SelectContent>
-								{courses.map((course) => (
-									<SelectItem key={course.id} value={course.id}>
-										{course.name}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
+			<div className="container mx-auto px-4 py-8">
+				<div className="max-w-4xl mx-auto">
+					{/* Header */}
+					<div className="text-center mb-8">
+						<h1 className="text-3xl font-bold">Start a Cue Card Session</h1>
 					</div>
 
-					{/* Week Selection */}
-					<div className="space-y-2">
-						<div className="flex items-center gap-2">
-							<Label htmlFor="week-select" className="text-sm font-medium">
-								Select Week
-							</Label>
-							<TooltipProvider>
-								<Tooltip>
-									<TooltipTrigger asChild>
-										<Info className="h-4 w-4 text-muted-foreground cursor-help" />
-									</TooltipTrigger>
-									<TooltipContent className="max-w-xs">
-										<p>
-											You can select any week with course materials. If cuecards
-											don't exist yet, we'll generate them on-demand from your
-											uploaded content.
-										</p>
-									</TooltipContent>
-								</Tooltip>
-							</TooltipProvider>
-						</div>
-						<Select
-							value={selectedWeek}
-							onValueChange={(value) => setQueryState({ week: value })}
-							disabled={!isWeeksReady || !selectedCourse}
-						>
-							<SelectTrigger className="h-12 w-full">
-								<SelectValue />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="all-weeks">All weeks selected</SelectItem>
-								{weeks.map((week) => (
-									<SelectItem key={week.id} value={week.id}>
-										{week.title || `Week ${week.weekNumber}`}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-						{!isWeeksReady && (
-							<p className="text-xs text-muted-foreground">Loading weeks...</p>
+					{/* Main Content */}
+					<div className="bg-card rounded-lg p-6 border space-y-6">
+						{showWeekSelectionError && (
+							<Alert variant="destructive">
+								<AlertTriangle className="h-4 w-4" />
+								<AlertDescription>
+									{weeks.length === 0
+										? "No course materials found. Please upload materials to any week first."
+										: "No cuecards available for the selected content. You can generate them using the button below."}
+								</AlertDescription>
+							</Alert>
 						)}
 
-						<div className="mt-3">
-							{combinedLoadingAvailability ? (
-								<div className="flex items-center gap-2 text-sm text-muted-foreground">
-									<Loader2 className="h-4 w-4 animate-spin" />
-									<span>Checking content...</span>
-								</div>
-							) : sessionData.isAvailable ? (
-								selectedWeek === "all-weeks" ? (
-									<div className="flex items-center gap-2 text-sm text-blue-600">
-										<Info className="h-4 w-4" />
-										<span>
-											{sessionData.count} total cuecard
-											{sessionData.count !== 1 ? "s" : ""} across{" "}
-											{sessionData.availableWeeks.length} week
-											{sessionData.availableWeeks.length !== 1 ? "s" : ""}
-										</span>
+						{/* Course Selection */}
+						<div className="space-y-2">
+							<div className="flex items-center gap-2">
+								<Label htmlFor="course-select" className="text-sm font-medium">
+									Select Course
+								</Label>
+								<TooltipProvider>
+									<Tooltip>
+										<TooltipTrigger asChild>
+											<Info className="h-4 w-4 text-muted-foreground cursor-help" />
+										</TooltipTrigger>
+										<TooltipContent className="max-w-xs">
+											<p>
+												Choose the course you want to practice with cuecards.
+												You can generate multiple types of content for the same
+												course weeks.
+											</p>
+										</TooltipContent>
+									</Tooltip>
+								</TooltipProvider>
+							</div>
+							<Select
+								value={selectedCourse}
+								onValueChange={(value) => setQueryState({ courseId: value })}
+								disabled={!courses || courses.length === 0}
+							>
+								<SelectTrigger className="h-12 w-full">
+									<SelectValue placeholder="Choose a course" />
+								</SelectTrigger>
+								<SelectContent>
+									{courses.map((course) => (
+										<SelectItem key={course.id} value={course.id}>
+											{course.name}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+
+						{/* Week Selection */}
+						<div className="space-y-2">
+							<div className="flex items-center gap-2">
+								<Label htmlFor="week-select" className="text-sm font-medium">
+									Select Week
+								</Label>
+								<TooltipProvider>
+									<Tooltip>
+										<TooltipTrigger asChild>
+											<Info className="h-4 w-4 text-muted-foreground cursor-help" />
+										</TooltipTrigger>
+										<TooltipContent className="max-w-xs">
+											<p>
+												You can select any week with course materials. If
+												cuecards don't exist yet, we'll generate them on-demand
+												from your uploaded content.
+											</p>
+										</TooltipContent>
+									</Tooltip>
+								</TooltipProvider>
+							</div>
+							<Select
+								value={selectedWeek}
+								onValueChange={(value) => setQueryState({ week: value })}
+								disabled={!isWeeksReady || !selectedCourse}
+							>
+								<SelectTrigger className="h-12 w-full">
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="all-weeks">All weeks selected</SelectItem>
+									{weeks.map((week) => (
+										<SelectItem key={week.id} value={week.id}>
+											{week.title || `Week ${week.weekNumber}`}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+							{!isWeeksReady && (
+								<p className="text-xs text-muted-foreground">
+									Loading weeks...
+								</p>
+							)}
+
+							<div className="mt-3">
+								{combinedLoadingAvailability ? (
+									<div className="flex items-center gap-2 text-sm text-muted-foreground">
+										<Loader2 className="h-4 w-4 animate-spin" />
+										<span>Checking content...</span>
 									</div>
-								) : (
-									<div className="flex items-center gap-2 text-sm text-green-600">
-										<PlayCircle className="h-4 w-4" />
-										<span>
-											{sessionData.count} cuecard
-											{sessionData.count !== 1 ? "s" : ""} available
-										</span>
-										<Badge variant="secondary" className="text-xs">
-											Ready
-										</Badge>
-									</div>
-								)
-							) : (
-								<div className="space-y-2">
-									{selectedWeek === "all-weeks" ? (
-										<div className="flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
-											<Info className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-											<div className="text-sm">
-												<p className="font-medium text-blue-900 dark:text-blue-100">
-													Select Week for Generation
-												</p>
-												<p className="text-blue-700 dark:text-blue-300 mt-1">
-													Choose a specific week with uploaded course materials
-													to generate and practice cuecards.
-												</p>
-											</div>
+								) : sessionData.isAvailable ? (
+									selectedWeek === "all-weeks" ? (
+										<div className="flex items-center gap-2 text-sm text-blue-600">
+											<Info className="h-4 w-4" />
+											<span>
+												{sessionData.count} total cuecard
+												{sessionData.count !== 1 ? "s" : ""} across{" "}
+												{sessionData.availableWeeks.length} week
+												{sessionData.availableWeeks.length !== 1 ? "s" : ""}
+											</span>
 										</div>
 									) : (
-										<div
-											className={`flex items-start gap-3 p-3 rounded-lg border ${
-												weekFeatureAvailability
-													? "bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800"
-													: "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800"
-											}`}
-										>
-											{weekFeatureAvailability ? (
-												<Zap className="h-4 w-4 text-orange-600 dark:text-orange-400 mt-0.5 flex-shrink-0" />
-											) : (
-												<AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
-											)}
-											<div className="text-sm">
-												{weekFeatureAvailability ? (
-													<>
-														<p className="font-medium text-orange-900 dark:text-orange-100">
-															{weekFeatureAvailability.cuecards.generated
-																? "Cuecards Available"
-																: "Generate Cuecards"}
-														</p>
-														<p className="text-orange-700 dark:text-orange-300 mt-1">
-															{weekFeatureAvailability.cuecards.generated
-																? `${weekFeatureAvailability.cuecards.count} cuecards available from previous generation`
-																: "Ready to generate cuecards from your uploaded course materials"}
-														</p>
-													</>
-												) : (
-													<>
-														<p className="font-medium text-red-900 dark:text-red-100">
-															No Materials Available
-														</p>
-														<p className="text-red-700 dark:text-red-300 mt-1">
-															Please{" "}
-															<a
-																href={"/dashboard/course-materials"}
-																className="underline font-medium hover:text-red-600 dark:hover:text-red-200"
-															>
-																upload course materials
-															</a>{" "}
-															for this week before generating cuecards.
-														</p>
-													</>
-												)}
-											</div>
+										<div className="flex items-center gap-2 text-sm text-green-600">
+											<PlayCircle className="h-4 w-4" />
+											<span>
+												{sessionData.count} cuecard
+												{sessionData.count !== 1 ? "s" : ""} available
+											</span>
+											<Badge variant="secondary" className="text-xs">
+												Ready
+											</Badge>
 										</div>
-									)}
-								</div>
+									)
+								) : (
+									<div className="space-y-2">
+										{selectedWeek === "all-weeks" ? (
+											<div className="flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+												<Info className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+												<div className="text-sm">
+													<p className="font-medium text-blue-900 dark:text-blue-100">
+														Select Week for Generation
+													</p>
+													<p className="text-blue-700 dark:text-blue-300 mt-1">
+														Choose a specific week with uploaded course
+														materials to generate and practice cuecards.
+													</p>
+												</div>
+											</div>
+										) : (
+											<div
+												className={`flex items-start gap-3 p-3 rounded-lg border ${
+													weekFeatureAvailability
+														? "bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800"
+														: "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800"
+												}`}
+											>
+												{weekFeatureAvailability ? (
+													<Zap className="h-4 w-4 text-orange-600 dark:text-orange-400 mt-0.5 flex-shrink-0" />
+												) : (
+													<AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
+												)}
+												<div className="text-sm">
+													{weekFeatureAvailability ? (
+														<>
+															<p className="font-medium text-orange-900 dark:text-orange-100">
+																{weekFeatureAvailability.cuecards.generated
+																	? "Cuecards Available"
+																	: "Generate Cuecards"}
+															</p>
+															<p className="text-orange-700 dark:text-orange-300 mt-1">
+																{weekFeatureAvailability.cuecards.generated
+																	? `${weekFeatureAvailability.cuecards.count} cuecards available from previous generation`
+																	: "Ready to generate cuecards from your uploaded course materials"}
+															</p>
+														</>
+													) : (
+														<>
+															<p className="font-medium text-red-900 dark:text-red-100">
+																No Materials Available
+															</p>
+															<p className="text-red-700 dark:text-red-300 mt-1">
+																Please{" "}
+																<a
+																	href={"/dashboard/course-materials"}
+																	className="underline font-medium hover:text-red-600 dark:hover:text-red-200"
+																>
+																	upload course materials
+																</a>{" "}
+																for this week before generating cuecards.
+															</p>
+														</>
+													)}
+												</div>
+											</div>
+										)}
+									</div>
+								)}
+							</div>
+						</div>
+
+						{showGenerationSettings && (
+							<Accordion type="single" collapsible className="w-full">
+								<AccordionItem value="settings" className="border rounded-lg">
+									<AccordionTrigger className="px-4 py-3 hover:no-underline">
+										<span className="font-medium">Generation Settings</span>
+									</AccordionTrigger>
+									<AccordionContent className="px-4 pb-4">
+										<SelectiveGenerationSettings
+											config={generationConfig}
+											onConfigChange={setGenerationConfig}
+											featuresFilter={["cuecards"]}
+											featureAvailability={getCurrentWeekAvailability()}
+											showAvailabilityStatus={
+												selectedWeek !== "all-weeks" &&
+												!!weekFeatureAvailability
+											}
+										/>
+									</AccordionContent>
+								</AccordionItem>
+							</Accordion>
+						)}
+
+						{/* Action Button */}
+						<div className="pt-4 space-y-4">
+							<OnDemandGenerationProgress
+								isVisible={showGenerationProgress}
+								progress={generationProgress}
+								contentType="cuecards"
+							/>
+
+							{buttonState.text.includes("Generate") ? (
+								<TooltipProvider>
+									<Tooltip>
+										<TooltipTrigger asChild>
+											<Button
+												className="w-full h-14 text-lg"
+												onClick={handleStartSession}
+												disabled={buttonState.disabled}
+												variant={buttonState.variant || "default"}
+											>
+												{buttonState.icon}
+												{buttonState.text}
+											</Button>
+										</TooltipTrigger>
+										<TooltipContent className="max-w-xs">
+											<p>
+												Generate cuecards from your course materials and
+												immediately start practicing. This may take a few
+												minutes depending on content size.
+											</p>
+										</TooltipContent>
+									</Tooltip>
+								</TooltipProvider>
+							) : (
+								<Button
+									className="w-full h-14 text-lg"
+									onClick={handleStartSession}
+									disabled={buttonState.disabled}
+									variant={buttonState.variant || "default"}
+								>
+									{buttonState.icon}
+									{buttonState.text}
+								</Button>
 							)}
 						</div>
 					</div>
-
-					{showGenerationSettings && (
-						<Accordion type="single" collapsible className="w-full">
-							<AccordionItem value="settings" className="border rounded-lg">
-								<AccordionTrigger className="px-4 py-3 hover:no-underline">
-									<span className="font-medium">Generation Settings</span>
-								</AccordionTrigger>
-								<AccordionContent className="px-4 pb-4">
-									<SelectiveGenerationSettings
-										config={generationConfig}
-										onConfigChange={setGenerationConfig}
-										featuresFilter={["cuecards"]}
-										featureAvailability={getCurrentWeekAvailability()}
-										showAvailabilityStatus={
-											selectedWeek !== "all-weeks" && !!weekFeatureAvailability
-										}
-									/>
-								</AccordionContent>
-							</AccordionItem>
-						</Accordion>
-					)}
-				</CardContent>
-
-				<CardFooter className="px-8 p-8">
-					<div className="w-full space-y-4">
-						<OnDemandGenerationProgress
-							isVisible={showGenerationProgress}
-							progress={generationProgress}
-							contentType="cuecards"
-						/>
-
-						{buttonState.text.includes("Generate") ? (
-							<TooltipProvider>
-								<Tooltip>
-									<TooltipTrigger asChild>
-										<Button
-											className="w-full h-12"
-											onClick={handleStartSession}
-											disabled={buttonState.disabled}
-											variant={buttonState.variant || "default"}
-										>
-											{buttonState.icon}
-											{buttonState.text}
-										</Button>
-									</TooltipTrigger>
-									<TooltipContent className="max-w-xs">
-										<p>
-											Generate cuecards from your course materials and
-											immediately start practicing. This may take a few minutes
-											depending on content size.
-										</p>
-									</TooltipContent>
-								</Tooltip>
-							</TooltipProvider>
-						) : (
-							<Button
-								className="w-full h-12"
-								onClick={handleStartSession}
-								disabled={buttonState.disabled}
-								variant={buttonState.variant || "default"}
-							>
-								{buttonState.icon}
-								{buttonState.text}
-							</Button>
-						)}
-					</div>
-				</CardFooter>
-			</Card>
+				</div>
+			</div>
 		</div>
 	);
 }

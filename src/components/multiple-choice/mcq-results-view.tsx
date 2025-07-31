@@ -1,5 +1,6 @@
 "use client";
 
+import { FullscreenButton } from "@/components/fullscreen-button";
 import {
 	Accordion,
 	AccordionContent,
@@ -7,7 +8,6 @@ import {
 	AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
 import { CheckCircle2, SparklesIcon, XCircle, XIcon } from "lucide-react";
@@ -84,93 +84,117 @@ export function McqResultsView({ results, onRestart }: McqResultsViewProps) {
 	};
 
 	return (
-		<div className="flex justify-center mt-10">
-			<Card className="w-full max-w-5xl relative">
+		<div className="min-h-screen bg-background relative">
+			<div className="absolute top-4 right-4 z-10 flex gap-2">
+				<FullscreenButton />
 				<Button
 					variant="ghost"
 					size="icon"
-					className="absolute top-4 right-4 z-10 bg-gray-100 hover:bg-gray-200 rounded-full"
+					className="bg-gray-100 hover:bg-gray-200 rounded-full"
 					onClick={onRestart}
 				>
 					<XIcon className="h-6 w-6 text-gray-600" />
 				</Button>
-				<CardHeader className="text-center">
-					<CardTitle className="text-2xl font-semibold">
-						Nice! But try to do a few more next time! 👋
-					</CardTitle>
-				</CardHeader>
-				<CardContent>
-					<div className="grid md:grid-cols-3 gap-8 items-center py-8">
-						<div className="text-center md:text-left">
-							<p className="text-xl font-bold">
-								You skipped {results.skipped} exercises
-							</p>
-							<p className="text-sm text-muted-foreground mt-1">
-								Don&apos;t worry, they won&apos;t count in the feedback
-							</p>
-						</div>
+			</div>
 
-						<div className="flex flex-col items-center relative">
-							<div className="w-56 h-56 relative">
-								<ResponsiveContainer width="100%" height="100%">
-									<PieChart>
-										<Pie
-											data={chartData}
-											cx="50%"
-											cy="50%"
-											innerRadius={80}
-											outerRadius={100}
-											startAngle={90}
-											endAngle={450}
-											paddingAngle={0}
-											dataKey="value"
-											stroke="none"
-										>
-											{chartData.map((entry, index) => (
-												<Cell
-													key={`cell-${entry.name}`}
-													fill={COLORS[index % COLORS.length]}
-												/>
-											))}
-										</Pie>
-									</PieChart>
-								</ResponsiveContainer>
-								<div className="absolute inset-0 flex flex-col justify-center items-center pointer-events-none">
-									<span className="text-4xl font-bold">{results.score}%</span>
-									<span className="text-muted-foreground text-sm">
-										CORRECT ANSWERS
-									</span>
+			<div className="container mx-auto px-4 py-8">
+				<div className="max-w-6xl mx-auto">
+					{/* Header */}
+					<div className="text-center mb-12">
+						<h1 className="text-4xl font-bold mb-4">Session Complete! 🎉</h1>
+						<p className="text-xl text-muted-foreground">
+							Great work! Here's how you performed.
+						</p>
+					</div>
+					{/* Performance Overview */}
+					<div className="bg-card rounded-2xl p-8 border mb-12">
+						<div className="grid md:grid-cols-3 gap-8 items-center">
+							<div className="text-center md:text-left">
+								<p className="text-2xl font-bold mb-2">
+									{results.skipped} Questions Skipped
+								</p>
+								<p className="text-muted-foreground">
+									Don&apos;t worry, they won&apos;t count in the feedback
+								</p>
+							</div>
+
+							<div className="flex flex-col items-center relative">
+								<div className="w-64 h-64 relative">
+									<ResponsiveContainer width="100%" height="100%">
+										<PieChart>
+											<Pie
+												data={chartData}
+												cx="50%"
+												cy="50%"
+												innerRadius={90}
+												outerRadius={120}
+												startAngle={90}
+												endAngle={450}
+												paddingAngle={0}
+												dataKey="value"
+												stroke="none"
+											>
+												{chartData.map((entry, index) => (
+													<Cell
+														key={`cell-${entry.name}`}
+														fill={COLORS[index % COLORS.length]}
+													/>
+												))}
+											</Pie>
+										</PieChart>
+									</ResponsiveContainer>
+									<div className="absolute inset-0 flex flex-col justify-center items-center pointer-events-none">
+										<span className="text-5xl font-bold text-primary">
+											{results.score}%
+										</span>
+										<span className="text-muted-foreground text-sm font-medium">
+											ACCURACY
+										</span>
+									</div>
 								</div>
 							</div>
-						</div>
-						<div className="space-y-4 text-center md:text-left">
-							<div className="flex flex-col items-center md:items-start">
-								<p className="text-2xl font-bold">{results.totalTime}</p>
-								<p className="text-xs text-muted-foreground">TOTAL TIME</p>
-							</div>
-							<div className="flex flex-col items-center md:items-start">
-								<p className="text-2xl font-bold">{results.timeOnExercise}</p>
-								<p className="text-xs text-muted-foreground">
-									TIME ON EXERCISE
-								</p>
-							</div>
-							<div className="flex flex-col items-center md:items-start">
-								<p className="text-2xl font-bold">{results.avgPerExercise}</p>
-								<p className="text-xs text-muted-foreground">
-									AVERAGE PER EXERCISE
-								</p>
+
+							<div className="space-y-6 text-center md:text-left">
+								<div className="bg-muted rounded-lg p-4">
+									<p className="text-3xl font-bold text-primary">
+										{results.totalTime}
+									</p>
+									<p className="text-sm text-muted-foreground font-medium">
+										TOTAL TIME
+									</p>
+								</div>
+								<div className="bg-muted rounded-lg p-4">
+									<p className="text-3xl font-bold text-primary">
+										{results.timeOnExercise}
+									</p>
+									<p className="text-sm text-muted-foreground font-medium">
+										TIME ON EXERCISE
+									</p>
+								</div>
+								<div className="bg-muted rounded-lg p-4">
+									<p className="text-3xl font-bold text-primary">
+										{results.avgPerExercise}
+									</p>
+									<p className="text-sm text-muted-foreground font-medium">
+										AVG PER QUESTION
+									</p>
+								</div>
 							</div>
 						</div>
 					</div>
 
-					<div className="mt-8 border-t pt-6">
-						<div className="flex justify-end space-x-2 mb-4">
-							<Button variant="link" size="sm" onClick={handleShowAll}>
-								Show all
-							</Button>
-							<Button variant="link" size="sm" onClick={handleHideAll}>
-								Hide all
-							</Button>
+					{/* Question Review */}
+					<div className="bg-card rounded-2xl p-8 border">
+						<div className="flex justify-between items-center mb-6">
+							<h2 className="text-2xl font-bold">Question Review</h2>
+							<div className="flex gap-2">
+								<Button variant="outline" size="sm" onClick={handleShowAll}>
+									Show All
+								</Button>
+								<Button variant="outline" size="sm" onClick={handleHideAll}>
+									Hide All
+								</Button>
+							</div>
 						</div>
 						<Accordion
 							type="multiple"
@@ -182,6 +206,7 @@ export function McqResultsView({ results, onRestart }: McqResultsViewProps) {
 								<AccordionItem
 									value={`item-${index}`}
 									key={`${q.question}-${index}`}
+									className="border rounded-lg mb-4 last:mb-0"
 								>
 									<AccordionTrigger className="hover:bg-muted/50 px-4 rounded-md">
 										<div className="flex justify-between w-full items-center gap-4">
@@ -263,8 +288,15 @@ export function McqResultsView({ results, onRestart }: McqResultsViewProps) {
 							))}
 						</Accordion>
 					</div>
-				</CardContent>
-			</Card>
+
+					{/* Action Buttons */}
+					<div className="flex justify-center mt-12">
+						<Button onClick={onRestart} size="lg" className="px-8 py-4 text-lg">
+							Start New Session
+						</Button>
+					</div>
+				</div>
+			</div>
 		</div>
 	);
 }

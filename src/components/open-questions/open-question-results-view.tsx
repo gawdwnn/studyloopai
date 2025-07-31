@@ -1,5 +1,6 @@
 "use client";
 
+import { FullscreenButton } from "@/components/fullscreen-button";
 import {
 	Accordion,
 	AccordionContent,
@@ -7,16 +8,9 @@ import {
 	AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-// import { generateAnswerFeedback } from "@/lib/ai/answer-feedback-service";
-import confetti from "canvas-confetti";
-import { SparklesIcon, XIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { XIcon } from "lucide-react";
+import { useState } from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
-import {
-	AnswerFeedbackAnalysis,
-	type AnswerFeedbackData,
-} from "./answer-feedback-analysis";
 
 interface OpenQuestionResultsData {
 	answered: number;
@@ -46,265 +40,193 @@ export function OpenQuestionResultsView({
 }: OpenQuestionResultsViewProps) {
 	const [openItems, setOpenItems] = useState<string[]>([]);
 
-	// Dummy feedback data for static UI
-	const getDummyFeedback = (): AnswerFeedbackData => ({
-		factualCorrectness: {
-			score: 85,
-			feedback:
-				"Your answer demonstrates strong factual accuracy with correct concepts and terminology.",
-			strengths: [
-				"Accurate use of technical terms",
-				"Correct identification of key concepts",
-			],
-			improvements: [
-				"Could include more specific examples",
-				"Consider citing relevant sources",
-			],
-		},
-		logicalStructure: {
-			score: 78,
-			feedback:
-				"The logical flow is generally clear, though some transitions could be smoother.",
-			strengths: [
-				"Clear introduction and conclusion",
-				"Good paragraph organization",
-			],
-			improvements: [
-				"Improve transitions between ideas",
-				"Consider using more structured argumentation",
-			],
-		},
-		depthOfInsight: {
-			score: 72,
-			feedback:
-				"Shows good understanding but could benefit from deeper analysis of implications.",
-			strengths: [
-				"Demonstrates understanding of core concepts",
-				"Makes relevant connections",
-			],
-			improvements: [
-				"Explore underlying causes and effects",
-				"Consider multiple perspectives",
-			],
-		},
-		supportingEvidence: {
-			score: 68,
-			feedback:
-				"Limited use of supporting evidence and examples to strengthen arguments.",
-			strengths: ["Uses some relevant examples", "References course material"],
-			improvements: [
-				"Include more specific evidence",
-				"Use data or statistics where appropriate",
-			],
-		},
-		overallScore: 76,
-		overallFeedback:
-			"Your answer shows solid understanding with room for improvement in depth and evidence. Focus on providing more specific examples and exploring implications more thoroughly.",
-	});
-
-	useEffect(() => {
-		// Trigger confetti animation when component mounts
-		const timer = setTimeout(() => {
-			confetti({
-				particleCount: 100,
-				spread: 70,
-				origin: { y: 0.6 },
-				colors: [
-					"hsl(var(--chart-1))",
-					"hsl(var(--chart-2))",
-					"hsl(var(--chart-3))",
-					"hsl(var(--chart-4))",
-					"hsl(var(--chart-5))",
-				],
-			});
-		}, 500);
-
-		return () => clearTimeout(timer);
-	}, []);
-
-	const totalQuestions = results.answered + results.skipped;
-	const completionRate =
-		totalQuestions > 0
-			? Math.round((results.answered / totalQuestions) * 100)
-			: 0;
-
-	// Create chart data from results
-	const chartData = [
-		{ name: "Answered", value: completionRate },
-		{ name: "Skipped", value: 100 - completionRate },
+	const pieData = [
+		{ name: "Answered", value: results.answered, color: COLORS[0] },
+		{ name: "Skipped", value: results.skipped, color: COLORS[1] },
 	];
 
-	const handleShowAll = () => {
-		setOpenItems(results.questions.map((_, index) => `item-${index}`));
-	};
-
-	const handleHideAll = () => {
-		setOpenItems([]);
+	const handleToggleItem = (value: string) => {
+		setOpenItems((prev) =>
+			prev.includes(value)
+				? prev.filter((item) => item !== value)
+				: [...prev, value]
+		);
 	};
 
 	return (
-		<div className="flex justify-center mt-10">
-			<Card className="w-full max-w-5xl relative">
+		<div className="min-h-screen bg-background relative">
+			<div className="absolute top-4 right-4 z-10 flex gap-2">
+				<FullscreenButton />
 				<Button
 					variant="ghost"
 					size="icon"
-					className="absolute top-4 right-4 z-10 bg-muted hover:bg-muted/80 rounded-full"
+					className="bg-gray-100 hover:bg-gray-200 rounded-full"
 					onClick={onRestart}
 				>
-					<XIcon className="h-6 w-6 text-muted-foreground" />
+					<XIcon className="h-6 w-6 text-gray-600" />
 				</Button>
-				<CardHeader className="text-center">
-					<CardTitle className="text-2xl font-semibold">
-						Great work! Keep practicing with open-ended questions! 👋
-					</CardTitle>
-				</CardHeader>
-				<CardContent>
-					<div className="grid md:grid-cols-3 gap-8 items-center py-8">
-						<div className="text-center md:text-left">
-							<p className="text-xl font-bold">
-								You answered {results.answered} questions
-							</p>
-							<p className="text-sm text-muted-foreground mt-1">
-								{results.skipped > 0 &&
-									`You skipped ${results.skipped} questions`}
-							</p>
-						</div>
+			</div>
 
-						<div className="flex flex-col items-center relative">
-							<div className="w-56 h-56 relative">
-								<ResponsiveContainer width="100%" height="100%">
-									<PieChart>
-										<Pie
-											data={chartData}
-											cx="50%"
-											cy="50%"
-											innerRadius={80}
-											outerRadius={100}
-											startAngle={90}
-											endAngle={450}
-											paddingAngle={0}
-											dataKey="value"
-											stroke="none"
-										>
-											{chartData.map((entry, index) => (
-												<Cell
-													key={`cell-${entry.name}`}
-													fill={COLORS[index % COLORS.length]}
-												/>
-											))}
-										</Pie>
-									</PieChart>
-								</ResponsiveContainer>
-								<div className="absolute inset-0 flex flex-col justify-center items-center pointer-events-none">
-									<span className="text-4xl font-bold">{completionRate}%</span>
-									<span className="text-muted-foreground text-sm">
-										COMPLETION RATE
-									</span>
+			<div className="container mx-auto px-4 py-8">
+				<div className="max-w-6xl mx-auto">
+					{/* Header */}
+					<div className="text-center mb-12">
+						<h1 className="text-4xl font-bold mb-4">Session Complete! 🎉</h1>
+						<p className="text-xl text-muted-foreground">
+							Great work! Here's how you performed.
+						</p>
+					</div>
+
+					{/* Performance Overview */}
+					<div className="bg-card rounded-2xl p-8 border mb-12">
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+							{/* Stats */}
+							<div className="space-y-6">
+								<h3 className="text-2xl font-bold">Performance Summary</h3>
+
+								<div className="grid grid-cols-2 gap-4">
+									<div className="text-center p-6 bg-muted rounded-lg">
+										<div className="text-3xl font-bold text-primary mb-2">
+											{results.answered}
+										</div>
+										<div className="text-sm text-muted-foreground font-medium">
+											ANSWERED
+										</div>
+									</div>
+									<div className="text-center p-6 bg-muted rounded-lg">
+										<div className="text-3xl font-bold text-orange-500 mb-2">
+											{results.skipped}
+										</div>
+										<div className="text-sm text-muted-foreground font-medium">
+											SKIPPED
+										</div>
+									</div>
+								</div>
+
+								<div className="space-y-4">
+									<div className="bg-muted rounded-lg p-4">
+										<p className="text-2xl font-bold text-primary">
+											{results.totalTime}
+										</p>
+										<p className="text-sm text-muted-foreground font-medium">
+											TOTAL TIME
+										</p>
+									</div>
+									<div className="bg-muted rounded-lg p-4">
+										<p className="text-2xl font-bold text-primary">
+											{results.avgPerExercise}
+										</p>
+										<p className="text-sm text-muted-foreground font-medium">
+											AVG PER QUESTION
+										</p>
+									</div>
 								</div>
 							</div>
-						</div>
-						<div className="space-y-4 text-center md:text-left">
-							<div className="flex flex-col items-center md:items-start">
-								<p className="text-2xl font-bold">{results.totalTime}</p>
-								<p className="text-xs text-muted-foreground">TOTAL TIME</p>
-							</div>
-							<div className="flex flex-col items-center md:items-start">
-								<p className="text-2xl font-bold">{results.timeOnExercise}</p>
-								<p className="text-xs text-muted-foreground">
-									TIME ON EXERCISE
-								</p>
-							</div>
-							<div className="flex flex-col items-center md:items-start">
-								<p className="text-2xl font-bold">{results.avgPerExercise}</p>
-								<p className="text-xs text-muted-foreground">
-									AVERAGE PER EXERCISE
-								</p>
+
+							{/* Chart */}
+							<div className="flex flex-col items-center justify-center">
+								<h3 className="text-2xl font-bold mb-6">Question Breakdown</h3>
+								<div className="w-64 h-64 relative">
+									<ResponsiveContainer width="100%" height="100%">
+										<PieChart>
+											<Pie
+												data={pieData}
+												cx="50%"
+												cy="50%"
+												innerRadius={60}
+												outerRadius={100}
+												dataKey="value"
+												stroke="none"
+											>
+												{pieData.map((entry) => (
+													<Cell key={entry.name} fill={entry.color} />
+												))}
+											</Pie>
+										</PieChart>
+									</ResponsiveContainer>
+								</div>
+								<div className="flex justify-center gap-6 mt-4">
+									{pieData.map((entry) => (
+										<div key={entry.name} className="flex items-center gap-2">
+											<div
+												className="w-4 h-4 rounded-full"
+												style={{ backgroundColor: entry.color }}
+											/>
+											<span className="font-medium">{entry.name}</span>
+										</div>
+									))}
+								</div>
 							</div>
 						</div>
 					</div>
 
-					<div className="mt-8 border-t pt-6">
-						<div className="flex justify-end space-x-2 mb-4">
-							<Button variant="link" size="sm" onClick={handleShowAll}>
-								Show all
-							</Button>
-							<Button variant="link" size="sm" onClick={handleHideAll}>
-								Hide all
-							</Button>
-						</div>
-						<Accordion
-							type="multiple"
-							className="w-full"
-							value={openItems}
-							onValueChange={setOpenItems}
-						>
+					{/* Question Review */}
+					<div className="bg-card rounded-2xl p-8 border">
+						<h2 className="text-2xl font-bold mb-6">Question Review</h2>
+						<Accordion type="multiple" value={openItems}>
 							{results.questions.map((q, index) => (
 								<AccordionItem
-									value={`item-${index}`}
-									key={`${q.question}-${index}`}
+									key={`q-${index}-${q.question.slice(0, 20)}`}
+									value={`question-${index}`}
+									className="border rounded-lg mb-4 last:mb-0"
 								>
-									<AccordionTrigger className="hover:bg-muted/50 px-4 rounded-md">
-										<div className="flex justify-between w-full items-center gap-4">
-											<div className="flex-1 text-left">{q.question}</div>
-											<div className="flex items-center space-x-4 flex-shrink-0">
-												<span className="text-sm text-muted-foreground">
-													{q.time}
-												</span>
-												<span className="text-sm text-muted-foreground">
-													{q.userAnswer ? "Answered" : "Skipped"}
-												</span>
-												<span className="text-sm text-muted-foreground">
-													({index + 1}/{results.questions.length})
-												</span>
-											</div>
+									<AccordionTrigger
+										onClick={() => handleToggleItem(`question-${index}`)}
+										className="hover:bg-muted/50 px-4 rounded-md"
+									>
+										<div className="flex items-center justify-between w-full mr-4">
+											<span className="font-medium text-left">
+												Question {index + 1}
+											</span>
+											<span className="text-sm text-muted-foreground">
+												{q.time}
+											</span>
 										</div>
 									</AccordionTrigger>
-									<AccordionContent className="px-4 pt-4 pb-2">
-										<div className="space-y-4">
-											{/* Your Answer */}
-											{q.userAnswer && (
-												<div className="p-3 bg-muted/30 rounded-md">
-													<h4 className="font-medium text-sm mb-2">
-														Your Answer:
-													</h4>
-													<p className="text-sm">{q.userAnswer}</p>
-												</div>
-											)}
+									<AccordionContent className="px-4 pt-4 pb-2 space-y-4">
+										<div>
+											<h4 className="font-medium mb-2">Question:</h4>
+											<p className="text-muted-foreground">{q.question}</p>
+										</div>
 
-											{/* Sample Answer */}
-											<div className="p-3 bg-accent/50 rounded-md">
-												<h4 className="font-medium text-sm mb-2">
-													Sample Answer:
-												</h4>
-												<p className="text-sm text-muted-foreground">
-													{q.sampleAnswer}
-												</p>
+										{q.userAnswer ? (
+											<div>
+												<h4 className="font-medium mb-2">Your Answer:</h4>
+												<div className="p-4 bg-muted rounded-lg">
+													<p>{q.userAnswer}</p>
+												</div>
 											</div>
+										) : (
+											<div>
+												<h4 className="font-medium mb-2">Status:</h4>
+												<p className="text-orange-500 font-medium">Skipped</p>
+											</div>
+										)}
 
-											{/* Feedback - Always show for answered questions */}
-											{q.userAnswer && (
-												<div className="space-y-4">
-													<h4 className="font-medium">Feedback</h4>
-													<AnswerFeedbackAnalysis
-														feedback={getDummyFeedback()}
-													/>
+										{results.practiceMode === "practice" && (
+											<div>
+												<h4 className="font-medium mb-2">Sample Answer:</h4>
+												<div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+													<p>{q.sampleAnswer}</p>
 												</div>
-											)}
-										</div>
+											</div>
+										)}
 
-										<div className="mt-4 flex justify-center">
-											<Button variant="ghost" className="text-primary">
-												<SparklesIcon className="mr-2 h-4 w-4" />
-												Chat Feedback
-											</Button>
-										</div>
+										{/* TODO: Add AI feedback analysis after database integration */}
 									</AccordionContent>
 								</AccordionItem>
 							))}
 						</Accordion>
 					</div>
-				</CardContent>
-			</Card>
+
+					{/* Action Buttons */}
+					<div className="flex justify-center mt-12">
+						<Button onClick={onRestart} size="lg" className="px-8 py-4 text-lg">
+							Start New Session
+						</Button>
+					</div>
+				</div>
+			</div>
 		</div>
 	);
 }

@@ -1,13 +1,12 @@
 "use client";
 
+import { FullscreenButton } from "@/components/fullscreen-button";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { formatHhMmSs } from "@/lib/utils/time-formatter";
 import type { McqConfig } from "@/stores/mcq-session/types";
-import { CheckCircle2, XCircle, XIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { XIcon } from "lucide-react";
+import { useState } from "react";
 
 interface McqQuestion {
 	id: string;
@@ -34,165 +33,134 @@ type McqQuizViewProps = {
 
 export function McqQuizView({
 	questions,
-	config,
-	onQuestionAnswer,
 	onEndSession,
 	onClose,
 }: McqQuizViewProps) {
 	const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-	const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
 	const [isAnswered, setIsAnswered] = useState(false);
-	const [time, setTime] = useState(0);
-	const [questionStartTime, setQuestionStartTime] = useState(Date.now());
+	const [time] = useState(0);
 
-	useEffect(() => {
-		const timer = setInterval(() => {
-			setTime((prevTime) => prevTime + 1);
-		}, 1000);
-		return () => clearInterval(timer);
-	}, []);
+	// Show message if no questions available
+	if (questions.length === 0) {
+		return (
+			<div className="min-h-screen bg-background flex items-center justify-center relative">
+				<div className="absolute top-4 right-4 z-10">
+					<Button
+						variant="ghost"
+						size="icon"
+						onClick={onClose}
+						className="bg-gray-100 hover:bg-gray-200 rounded-full"
+					>
+						<XIcon className="h-6 w-6 text-gray-600" />
+					</Button>
+				</div>
+				<div className="text-center max-w-md mx-auto px-4">
+					<h2 className="text-2xl font-bold mb-4">No Questions Available</h2>
+					<p className="text-muted-foreground text-lg mb-8">
+						MCQ questions need to be loaded from the database.
+					</p>
+					<Button onClick={onClose} size="lg">
+						Close
+					</Button>
+				</div>
+			</div>
+		);
+	}
 
 	const currentQuestion = questions[currentQuestionIndex];
 
-	// Reset question start time when moving to next question
-	useEffect(() => {
-		setQuestionStartTime(Date.now());
-	}, []);
-
-	const handleSelectAnswer = (answer: string) => {
+	const handleSelectAnswer = () => {
 		if (isAnswered) return;
-		setSelectedAnswer(answer);
 		setIsAnswered(true);
-
-		// Record answer immediately in practice mode
-		if (config.practiceMode === "practice") {
-			const timeSpent = Date.now() - questionStartTime;
-			onQuestionAnswer(currentQuestion.id, answer, timeSpent);
-		}
+		// TODO: Implement answer handling after database integration
 	};
 
 	const handleNextQuestion = () => {
-		// Record answer for exam mode or if not already recorded
-		if (config.practiceMode === "exam" || !selectedAnswer) {
-			const timeSpent = Date.now() - questionStartTime;
-			onQuestionAnswer(currentQuestion.id, selectedAnswer, timeSpent);
-		}
-
+		// TODO: Implement navigation after database integration
 		if (currentQuestionIndex < questions.length - 1) {
 			setCurrentQuestionIndex(currentQuestionIndex + 1);
-			setSelectedAnswer(null);
 			setIsAnswered(false);
 		} else {
-			onEndSession(time * 1000); // Convert to milliseconds
+			onEndSession(time * 1000);
 		}
-	};
-
-	const getOptionState = (option: string) => {
-		// In exam mode, don't show correct/incorrect until end
-		if (config.practiceMode === "exam" && !isAnswered) {
-			return "default";
-		}
-
-		if (!isAnswered) {
-			return "default";
-		}
-		if (option === currentQuestion.correctAnswer) {
-			return "correct";
-		}
-		if (option === selectedAnswer && option !== currentQuestion.correctAnswer) {
-			return "incorrect";
-		}
-		return "default";
 	};
 
 	return (
-		<div className="flex justify-center mt-10">
-			<Card className="w-full max-w-4xl">
-				<CardContent className="p-8 relative">
-					<div className="px-16">
-						<Progress
-							value={((currentQuestionIndex + 1) / questions.length) * 100}
-							className="mb-4 h-1.5"
-						/>
-					</div>
-					<div className="flex justify-between items-center mb-4">
-						<Button variant="ghost">Pause</Button>
-						<span className="font-mono text-lg">{formatHhMmSs(time)}</span>
-						<Button
-							variant="ghost"
-							size="icon"
-							onClick={onClose}
-							className="absolute top-4 right-4 z-10 bg-gray-100 hover:bg-gray-200 rounded-full"
-						>
-							<XIcon className="h-6 w-6 text-gray-600" />
-						</Button>
+		<div className="min-h-screen bg-background relative">
+			<div className="absolute top-4 right-4 z-10 flex gap-2">
+				<FullscreenButton />
+				<Button
+					variant="ghost"
+					size="icon"
+					onClick={onClose}
+					className="bg-gray-100 hover:bg-gray-200 rounded-full"
+				>
+					<XIcon className="h-6 w-6 text-gray-600" />
+				</Button>
+			</div>
+
+			<div className="container mx-auto px-4 py-8">
+				<div className="max-w-4xl mx-auto">
+					{/* Timer and Progress */}
+					<div className="flex justify-between items-center mb-8">
+						<span className="font-mono text-xl bg-muted px-4 py-2 rounded-lg">
+							{formatHhMmSs(time)}
+						</span>
+						<div className="text-center">
+							<div className="text-sm text-muted-foreground mb-1">Progress</div>
+							<div className="font-semibold">
+								{currentQuestionIndex + 1} of {questions.length}
+							</div>
+						</div>
 					</div>
 
-					<div className="text-center text-sm text-muted-foreground mb-8">
-						{currentQuestionIndex + 1} / {questions.length}
-					</div>
-
-					<div className="text-center mb-8">
-						<h2 className="text-2xl font-semibold">
+					{/* Question */}
+					<div className="text-center mb-12">
+						<h1 className="text-3xl font-bold mb-4 leading-tight">
 							{currentQuestion.question}
-						</h2>
+						</h1>
 					</div>
 
-					<div className="space-y-4">
-						{currentQuestion.options.map((option) => {
-							const state = getOptionState(option);
-							return (
-								<button
-									type="button"
-									key={option}
-									onClick={() => handleSelectAnswer(option)}
-									disabled={isAnswered}
-									aria-pressed={selectedAnswer === option}
-									className={cn(
-										"p-4 flex items-center w-full space-x-4 rounded-lg border text-left transition-all",
-										isAnswered
-											? "cursor-not-allowed"
-											: "cursor-pointer hover:bg-muted/50",
-										state === "correct" && "border-green-500",
-										state === "incorrect" && "border-red-500"
-									)}
-								>
-									<div
-										className={cn(
-											"w-6 h-6 rounded-full border border-primary flex-shrink-0 flex items-center justify-center",
-											state !== "default" && "border-transparent"
-										)}
-									>
-										{state === "correct" && (
-											<CheckCircle2 className="text-green-500 w-full h-full" />
-										)}
-										{state === "incorrect" && (
-											<XCircle className="text-red-500 w-full h-full" />
-										)}
-									</div>
-									<span>{option}</span>
-								</button>
-							);
-						})}
+					{/* Options */}
+					<div className="space-y-4 mb-12">
+						{currentQuestion.options.map((option, index) => (
+							<button
+								type="button"
+								key={option}
+								onClick={() => handleSelectAnswer()}
+								disabled={isAnswered}
+								className={cn(
+									"p-6 flex items-center w-full space-x-4 rounded-xl border-2 text-left transition-all text-lg",
+									isAnswered
+										? "cursor-not-allowed opacity-60"
+										: "cursor-pointer hover:bg-muted/50 hover:border-primary/50"
+								)}
+							>
+								<div className="w-8 h-8 rounded-full border-2 border-primary flex-shrink-0 flex items-center justify-center font-bold text-primary">
+									{String.fromCharCode(65 + index)}
+								</div>
+								<span className="flex-1">{option}</span>
+							</button>
+						))}
 					</div>
 
-					<div className="flex justify-center space-x-4 mt-8">
-						{config.practiceMode === "practice" &&
-							currentQuestion.explanation && (
-								<Button variant="outline" disabled={!isAnswered}>
-									Get explanation
-								</Button>
-							)}
-						<Button onClick={handleNextQuestion} disabled={!isAnswered}>
+					{/* Action Button */}
+					<div className="flex justify-center">
+						<Button
+							onClick={handleNextQuestion}
+							disabled={!isAnswered}
+							size="lg"
+							className="px-8 py-4 text-lg"
+						>
 							{isAnswered
 								? currentQuestionIndex < questions.length - 1
-									? "Next question"
+									? "Next Question"
 									: "Finish Session"
-								: "Next"}
+								: "Answer to Continue"}
 						</Button>
 					</div>
-				</CardContent>
-			</Card>
+				</div>
+			</div>
 		</div>
 	);
 }
