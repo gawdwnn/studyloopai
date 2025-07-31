@@ -2,6 +2,7 @@
 
 import { env } from "@/env";
 import type { CuecardAvailability, UserCuecard } from "@/lib/actions/cuecard";
+import { logger } from "@/lib/utils/logger";
 import { useCuecardSession } from "@/stores/cuecard-session/use-cuecard-session";
 import type { Course, CourseWeek } from "@/types/database-types";
 import type { SelectiveGenerationConfig } from "@/types/generation-types";
@@ -88,7 +89,11 @@ export function CuecardSessionManager({
 			status === "TIMED_OUT"
 		) {
 			// Generation failed
-			console.error("Generation failed:", output?.error);
+			logger.error("Cuecard generation failed", {
+				status,
+				error: output?.error,
+				runId: cuecardState.generationRunId,
+			});
 			toast.error("Generation failed, please try again.");
 		} else if (
 			status === "EXECUTING" ||
@@ -103,9 +108,14 @@ export function CuecardSessionManager({
 	// Handle generation errors
 	useEffect(() => {
 		if (runError) {
-			console.error("Realtime tracking error:", runError);
+			logger.error("Realtime tracking error during cuecard generation", {
+				message:
+					runError instanceof Error ? runError.message : String(runError),
+				stack: runError instanceof Error ? runError.stack : undefined,
+				runId: cuecardState.generationRunId,
+			});
 		}
-	}, [runError]);
+	}, [runError, cuecardState.generationRunId]);
 
 	const handleTriggerGeneration = useCallback(
 		async (
@@ -130,7 +140,13 @@ export function CuecardSessionManager({
 					toast.error("Failed to start cuecard generation. Please try again.");
 				}
 			} catch (error) {
-				console.error("Cuecard generation error:", error);
+				logger.error("Failed to trigger cuecard generation", {
+					message: error instanceof Error ? error.message : String(error),
+					stack: error instanceof Error ? error.stack : undefined,
+					courseId,
+					weekIds,
+					generationConfig,
+				});
 				toast.error("Failed to start cuecard generation. Please try again.");
 			}
 		},
@@ -154,13 +170,23 @@ export function CuecardSessionManager({
 			// Use store's endSession method which now handles all adaptive learning logic
 			await cuecardActions.endSession();
 		} catch (error) {
-			console.error("Failed to end session:", error);
+			logger.error("Failed to end cuecard session", {
+				message: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined,
+				sessionStatus: cuecardState.status,
+				currentIndex: cuecardState.currentIndex,
+			});
 			// Fallback navigation
 			window.location.href = "/dashboard/feedback";
 		} finally {
 			setIsEndingSession(false);
 		}
-	}, [cuecardActions, isEndingSession]);
+	}, [
+		cuecardActions,
+		isEndingSession,
+		cuecardState.status,
+		cuecardState.currentIndex,
+	]);
 
 	// Session completion is now handled directly in store's submitFeedback method
 	// No need for useEffect to watch for completion

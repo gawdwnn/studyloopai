@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { EmbeddingCache } from "@/lib/cache/redis-cache";
+import { logger } from "@/lib/utils/logger";
 import { embed } from "ai";
 import { getEmbeddingModel } from "./config";
 
@@ -86,7 +87,12 @@ export async function generateEmbeddings(
 			embeddings: finalEmbeddings,
 		};
 	} catch (error) {
-		console.error("Embedding generation failed:", error);
+		logger.error("Embedding generation failed", {
+			message: error instanceof Error ? error.message : String(error),
+			stack: error instanceof Error ? error.stack : undefined,
+			textsCount: texts.length,
+			options,
+		});
 		return {
 			success: false,
 			error: error instanceof Error ? error.message : "Unknown error",
@@ -119,7 +125,13 @@ async function processBatch(
 				embeddings,
 			};
 		} catch (error) {
-			console.error(`Batch attempt ${attempt} failed:`, error);
+			logger.error(`Batch attempt ${attempt} failed`, {
+				message: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined,
+				attempt,
+				maxRetries,
+				textsCount: texts.length,
+			});
 			if (attempt === maxRetries) {
 				return { success: false, error: "Max retries exceeded" };
 			}

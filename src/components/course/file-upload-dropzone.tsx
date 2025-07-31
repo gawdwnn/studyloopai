@@ -5,6 +5,7 @@ import {
 	FILE_UPLOAD_LIMITS,
 } from "@/lib/config/file-upload";
 import { cn } from "@/lib/utils";
+import { logger } from "@/lib/utils/logger";
 import { FileIcon, UploadCloudIcon, XIcon } from "lucide-react";
 import { useCallback } from "react";
 import { type FileRejection, useDropzone } from "react-dropzone";
@@ -32,8 +33,7 @@ export function FileUploadDropzone({
 			if (fileRejections.length > 0) {
 				for (const rejection of fileRejections) {
 					for (const error of rejection.errors) {
-						// Log validation errors to console for debugging
-						console.warn("File validation error:", {
+						logger.warn("File validation error", {
 							fileName: rejection.file.name,
 							fileSize: rejection.file.size,
 							errorCode: error.code,
@@ -45,7 +45,7 @@ export function FileUploadDropzone({
 						} else if (error.code === "file-invalid-type") {
 							toast.error("Invalid file type. Only PDFs are accepted.");
 						} else {
-							toast.error(error.message);
+							toast.error("File upload failed. Please try again.");
 						}
 					}
 				}

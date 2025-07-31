@@ -1,7 +1,9 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { logger } from "@/lib/utils/logger";
 import { AlertCircle, Home, RotateCcw } from "lucide-react";
+import { useEffect } from "react";
 
 interface ErrorPageProps {
 	error: Error & { digest?: string };
@@ -9,6 +11,15 @@ interface ErrorPageProps {
 }
 
 export default function ErrorPage({ error, reset }: ErrorPageProps) {
+	useEffect(() => {
+		logger.error("Feedback error occurred", {
+			message: error.message,
+			stack: error.stack,
+			digest: error.digest,
+			timestamp: new Date().toISOString(),
+		});
+	}, [error]);
+
 	const handleBackToDashboard = () => {
 		window.location.href = "/dashboard";
 	};
@@ -22,8 +33,8 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
 						Unable to Load Session Feedback
 					</h2>
 					<p className="text-muted-foreground mb-6 text-sm sm:text-base">
-						{error.message ||
-							"Something went wrong while loading your session analytics. Please try again."}
+						Something went wrong while loading your session analytics. Please
+						try again.
 					</p>
 					<div className="flex flex-col sm:flex-row gap-3 justify-center">
 						<Button onClick={reset} className="w-full sm:w-auto">

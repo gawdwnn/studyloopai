@@ -10,7 +10,7 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { GoldenNote, Summary } from "@/hooks/use-notes";
-import { formatErrorForToast } from "@/lib/utils/error-handling";
+import { logger } from "@/lib/utils/logger";
 import { type ExportType, exportNotes } from "@/lib/utils/export";
 import { Cloud, List, Menu } from "lucide-react";
 
@@ -34,15 +34,15 @@ export function NotesToolbar({
 	materialTitle,
 }: NotesToolbarProps) {
 	const handleExport = async (type: ExportType) => {
-		try {
-			const exportData = {
-				goldenNotes,
-				summaries,
-				courseName,
-				weekNumber,
-				materialTitle,
-			};
+		const exportData = {
+			goldenNotes,
+			summaries,
+			courseName,
+			weekNumber,
+			materialTitle,
+		};
 
+		try {
 			// Check if there's data to export
 			if (goldenNotes.length === 0 && summaries.length === 0) {
 				toast.error(
@@ -54,11 +54,13 @@ export function NotesToolbar({
 			exportNotes(type, exportData);
 			toast.success(`Notes exported as ${type.toUpperCase()} successfully!`);
 		} catch (error) {
-			const message = formatErrorForToast(
-				error,
-				`export notes as ${type.toUpperCase()}`
-			);
-			toast.error(message);
+			logger.error("Failed to export notes", {
+				message: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined,
+				exportType: type,
+				notesCount: goldenNotes.length + summaries.length,
+			});
+			toast.error(`Failed to export notes as ${type.toUpperCase()}. Please try again.`);
 		}
 	};
 

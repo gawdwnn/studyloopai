@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { logger } from "@/lib/utils/logger";
 import { AlertCircle, Home, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { useEffect } from "react";
@@ -13,8 +14,12 @@ export default function DashboardError({
 	reset: () => void;
 }) {
 	useEffect(() => {
-		// Log the error to an error reporting service
-		console.error("Dashboard error:", error);
+		logger.error("Dashboard error occurred", {
+			message: error.message,
+			stack: error.stack,
+			digest: error.digest,
+			timestamp: new Date().toISOString(),
+		});
 	}, [error]);
 
 	return (
@@ -26,8 +31,7 @@ export default function DashboardError({
 				Something went wrong!
 			</h2>
 			<p className="text-sm text-muted-foreground mb-6 max-w-md sm:text-base">
-				{error.message ||
-					"We encountered an error loading your dashboard. Please try again."}
+				We encountered an error loading your dashboard. Please try again.
 			</p>
 			<div className="flex flex-col sm:flex-row gap-3">
 				<Button onClick={reset} variant="default">

@@ -1,4 +1,5 @@
 import { getCombinedChunks } from "@/lib/services/background-job-db-service";
+import { logger } from "@/lib/utils/logger";
 import type {
 	ConceptMapsConfig,
 	CuecardsConfig,
@@ -127,7 +128,13 @@ export async function generateContent<T>(
 		) {
 			await insertFunction(dataToInsert, courseId, weekId);
 		} else {
-			console.warn(`AI generated empty content for ${contentType}`);
+			logger.warn(`AI generated empty content for ${contentType}`, {
+				contentType,
+				courseId,
+				weekId,
+				materialIds,
+				dataLength: dataToInsert.length,
+			});
 		}
 
 		return {
@@ -136,7 +143,15 @@ export async function generateContent<T>(
 			generatedCount: dataToInsert.length,
 		};
 	} catch (error) {
-		console.error(`${contentType} generation for week failed:`, error);
+		logger.error(`${contentType} generation for week failed`, {
+			message: error instanceof Error ? error.message : String(error),
+			stack: error instanceof Error ? error.stack : undefined,
+			contentType,
+			courseId,
+			weekId,
+			materialIds,
+			config,
+		});
 		return {
 			success: false,
 			contentType,

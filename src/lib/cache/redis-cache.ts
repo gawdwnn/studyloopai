@@ -1,3 +1,4 @@
+import { logger } from "@/lib/utils/logger";
 import { Redis } from "@upstash/redis";
 
 const CACHE_TTL_EMBEDDINGS = 7 * 24 * 60 * 60; // 7 days
@@ -17,7 +18,10 @@ const createRedisClient = () => {
 	try {
 		return Redis.fromEnv();
 	} catch (error) {
-		console.error("Failed to create Redis client:", error);
+		logger.error("Failed to create Redis client", {
+			message: error instanceof Error ? error.message : String(error),
+			stack: error instanceof Error ? error.stack : undefined,
+		});
 		return null;
 	}
 };
@@ -62,9 +66,17 @@ export class EmbeddingCache {
 
 					results.set(textHashes[index], embedding);
 				} catch (parseError) {
-					console.error(
-						`Failed to parse cached embedding for hash ${textHashes[index]}:`,
-						parseError
+					logger.error(
+						`Failed to parse cached embedding for hash ${textHashes[index]}`,
+						{
+							message:
+								parseError instanceof Error
+									? parseError.message
+									: String(parseError),
+							stack: parseError instanceof Error ? parseError.stack : undefined,
+							hash: textHashes[index],
+							valueType: typeof value,
+						}
 					);
 
 					// Remove corrupted cache entry to avoid repeated failures
@@ -74,7 +86,11 @@ export class EmbeddingCache {
 				}
 			});
 		} catch (error) {
-			console.error("Failed to get batch embeddings from cache:", error);
+			logger.error("Failed to get batch embeddings from cache", {
+				message: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined,
+				textHashesCount: textHashes.length,
+			});
 		}
 
 		return results;
@@ -94,7 +110,11 @@ export class EmbeddingCache {
 
 			await pipeline.exec();
 		} catch (error) {
-			console.error("Failed to set batch embeddings in cache:", error);
+			logger.error("Failed to set batch embeddings in cache", {
+				message: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined,
+				embeddingsCount: embeddings.size,
+			});
 		}
 	}
 }

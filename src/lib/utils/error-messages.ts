@@ -3,6 +3,8 @@
  * Prevents raw server errors from being displayed to users
  */
 
+import { logger } from "@/lib/utils/logger";
+
 export interface ErrorClassification {
 	type:
 		| "validation"
@@ -191,8 +193,14 @@ export function handleErrorWithLogging(
 
 	// Log full error details for debugging (only in development or server-side)
 	if (typeof window === "undefined" || process.env.NODE_ENV === "development") {
-		console.error(`[${context}] ${classification.type.toUpperCase()} Error:`, {
-			originalError: error,
+		logger.error(`[${context}] ${classification.type.toUpperCase()} Error`, {
+			message:
+				typeof error === "string"
+					? error
+					: error instanceof Error
+						? error.message
+						: String(error),
+			stack: error instanceof Error ? error.stack : undefined,
 			classification,
 			context,
 			...additionalInfo,

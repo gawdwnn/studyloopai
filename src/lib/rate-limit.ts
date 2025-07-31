@@ -1,4 +1,5 @@
 import { env } from "@/env";
+import { logger } from "@/lib/utils/logger";
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 
@@ -28,7 +29,10 @@ const createRedisClient = (): Promise<Redis | null> => {
 			});
 			return redis;
 		} catch (error) {
-			console.error("Failed to create Redis client for rate limiting:", error);
+			logger.error("Failed to create Redis client for rate limiting", {
+				message: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined,
+			});
 			return null;
 		}
 	})();
@@ -103,7 +107,12 @@ export class RateLimiter {
 				resetTime: reset,
 			};
 		} catch (error) {
-			console.error(`Rate limit check failed for action '${action}':`, error);
+			logger.error(`Rate limit check failed for action '${action}'`, {
+				message: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined,
+				action,
+				identifier,
+			});
 			return { isAllowed: true, remainingAttempts: limit };
 		}
 	}
@@ -134,7 +143,13 @@ export class RateLimiter {
 		try {
 			await redis.del(key);
 		} catch (error) {
-			console.error(`Failed to reset rate limit for key "${key}":`, error);
+			logger.error(`Failed to reset rate limit for key "${key}"`, {
+				message: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined,
+				key,
+				action,
+				identifier,
+			});
 		}
 	}
 }

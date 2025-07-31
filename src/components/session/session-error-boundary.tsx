@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { logger } from "@/lib/utils/logger";
 import { AlertTriangle } from "lucide-react";
 import { Component, type ErrorInfo, type ReactNode } from "react";
 
@@ -28,9 +29,12 @@ class SessionErrorBoundary extends Component<
 	}
 
 	componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-		console.error("Uncaught error in session component:", error, errorInfo);
-		// In a real app, you would log this to an error reporting service
-		// e.g., Sentry, LogRocket, etc.
+		logger.error("Uncaught error in session component", {
+			message: error.message,
+			stack: error.stack,
+			errorInfo: errorInfo.componentStack,
+		});
+		// log this to an error reporting service
 	}
 
 	handleRetry = () => {
