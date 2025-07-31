@@ -35,68 +35,127 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { env } from "@/env";
 import { databaseUrl } from "@/lib/database/db";
-import { Separator, confirm, input, select } from "@inquirer/prompts";
+import { Separator, confirm, select } from "@inquirer/prompts";
 import chalk from "chalk";
 import { Command } from "commander";
 import { execa } from "execa";
 import { Listr } from "listr2";
 import pMap from "p-map";
-import pRetry from "p-retry";
-import pino from "pino";
 import postgres from "postgres";
-
-// Configure logger with the ability to silence it during prompts
-const baseLogger = pino(
-	{
-		transport: {
-			target: "pino-pretty",
-			options: {
-				colorize: true,
-				translateTime: "HH:MM:ss",
-				ignore: "pid,hostname",
-			},
-		},
-	},
-	// Send logs to stderr so they don't interfere with interactive prompts
-	pino.destination({ fd: 2, sync: true }) // sync: true ensures immediate flushing
-);
-
-// Create a logger wrapper that can be silenced
-let loggerSilenced = false;
-const logger = new Proxy(baseLogger, {
-	get(target, prop) {
-		if (
-			loggerSilenced &&
-			typeof target[prop as keyof typeof target] === "function"
-		) {
-			// Return no-op function when silenced
-			return () => {};
-		}
-		return target[prop as keyof typeof target];
-	},
-});
 
 // Types
 type ProjectKey = "dev" | "prod";
 type DatabaseClient = postgres.Sql;
+type UIMode = "interactive" | "cli" | "silent";
 
-// Helper function to run interactive prompts without logger interference
-async function withSilentLogger<T>(fn: () => Promise<T>): Promise<T> {
-	// Ensure we're on a new line
-	process.stderr.write("\n");
-
-	// Flush any pending logs with a longer delay
-	await new Promise((resolve) => setTimeout(resolve, 200));
-
-	// Silence logger during prompt
-	loggerSilenced = true;
-	try {
-		return await fn();
-	} finally {
-		// Re-enable logger after prompt
-		loggerSilenced = false;
-	}
+interface OutputHandler {
+	info: (message: string, ...args: unknown[]) => void;
+	warn: (message: string, ...args: unknown[]) => void;
+	error: (message: string, ...args: unknown[]) => void;
+	success: (message: string, ...args: unknown[]) => void;
+	prompt: <T>(fn: () => Promise<T>) => Promise<T>;
 }
+
+interface DatabaseHandler {
+	getPool: (key: ProjectKey) => postgres.Sql;
+	withConnection: <T>(
+		key: ProjectKey,
+		operation: (client: DatabaseClient) => Promise<T>
+	) => Promise<T>;
+	cleanup: () => Promise<void>;
+}
+
+interface CacheEntry<T> {
+	value: T;
+	timestamp: number;
+}
+
+interface Context {
+	mode: UIMode;
+	output: OutputHandler;
+	db: DatabaseHandler;
+	cache: Map<string, CacheEntry<unknown>>;
+}
+
+// Context creation
+const createOutputHandler = (mode: UIMode): OutputHandler => {
+	const shouldLog = mode !== "silent";
+
+	return {
+		info: shouldLog
+			? (msg, ...args) => console.log(chalk.blue("ℹ"), msg, ...args)
+			: () => {},
+		warn: shouldLog
+			? (msg, ...args) => console.warn(chalk.yellow("⚠"), msg, ...args)
+			: () => {},
+		error: (msg, ...args) => console.error(chalk.red("✗"), msg, ...args),
+		success: shouldLog
+			? (msg, ...args) => console.log(chalk.green("✓"), msg, ...args)
+			: () => {},
+		prompt: async <T>(fn: () => Promise<T>): Promise<T> => {
+			if (mode === "interactive") {
+				process.stderr.write("\n");
+				await new Promise((resolve) => setTimeout(resolve, 50));
+			}
+			return fn();
+		},
+	};
+};
+
+const createDatabaseHandler = (): DatabaseHandler => {
+	const pools = new Map<ProjectKey, postgres.Sql>();
+
+	return {
+		getPool: (key: ProjectKey) => {
+			if (!pools.has(key)) {
+				const dbUrl = getDatabaseUrl(key);
+				pools.set(
+					key,
+					postgres(dbUrl, {
+						max: 5,
+						idle_timeout: 30,
+						connect_timeout: 10,
+					})
+				);
+			}
+			return pools.get(key) as postgres.Sql;
+		},
+
+		withConnection: async <T>(
+			key: ProjectKey,
+			operation: (client: DatabaseClient) => Promise<T>
+		): Promise<T> => {
+			const pool =
+				pools.get(key) ||
+				(() => {
+					const dbUrl = getDatabaseUrl(key);
+					const newPool = postgres(dbUrl, {
+						max: 5,
+						idle_timeout: 30,
+						connect_timeout: 10,
+					});
+					pools.set(key, newPool);
+					return newPool;
+				})();
+
+			// Test connection
+			await pool`SELECT 1`;
+			return operation(pool);
+		},
+
+		cleanup: async () => {
+			await Promise.all(Array.from(pools.values()).map((pool) => pool.end()));
+			pools.clear();
+		},
+	};
+};
+
+const createContext = (mode: UIMode = "cli"): Context => ({
+	mode,
+	output: createOutputHandler(mode),
+	db: createDatabaseHandler(),
+	cache: new Map(),
+});
 
 interface ProjectConfig {
 	ref: string | undefined;
@@ -135,67 +194,53 @@ const PROJECTS: Record<ProjectKey, ProjectConfig> = {
 	},
 };
 
-// Automated table discovery
-const getManagedTables = async (): Promise<string[]> => {
-	const schemaPath = resolve(join(process.cwd(), "drizzle", "schema.ts"));
-	if (!existsSync(schemaPath)) {
-		logger.warn("drizzle/schema.ts not found. RLS validation will be skipped.");
-		return [];
+// Cache utilities
+const withCache = async <T>(
+	ctx: Context,
+	key: string,
+	ttlMs: number,
+	fn: () => Promise<T>
+): Promise<T> => {
+	const cached = ctx.cache.get(key) as CacheEntry<T> | undefined;
+	if (cached && Date.now() - cached.timestamp < ttlMs) {
+		return cached.value;
 	}
-	const schemaContent = readFileSync(schemaPath, "utf-8");
-	const tableRegex =
-		/export const \w+ = pgTable\(\s*["\\]'(["\\]'\\]+)\\["\\]'\\]/g;
-	const tables = new Set<string>();
-	const matches = schemaContent.matchAll(tableRegex);
-	for (const match of matches) {
-		tables.add(match[1]);
-	}
-	const discoveredTables = Array.from(tables).sort();
-	logger.info(`Discovered ${discoveredTables.length} tables from schema.ts`);
-	return discoveredTables;
+
+	const value = await fn();
+	ctx.cache.set(key, { value, timestamp: Date.now() });
+	return value;
+};
+
+// Automated table discovery with caching
+const getManagedTables = async (ctx: Context): Promise<string[]> => {
+	return withCache(ctx, "managed-tables", 5000, async () => {
+		const schemaPath = resolve(join(process.cwd(), "drizzle", "schema.ts"));
+		if (!existsSync(schemaPath)) {
+			ctx.output.warn(
+				"drizzle/schema.ts not found. RLS validation will be skipped."
+			);
+			return [];
+		}
+		const schemaContent = readFileSync(schemaPath, "utf-8");
+		const tableRegex = /export const \w+ = pgTable\(\s*["']([^"']+)["']/g;
+		const tables = new Set<string>();
+		const matches = schemaContent.matchAll(tableRegex);
+		for (const match of matches) {
+			tables.add(match[1]);
+		}
+		const discoveredTables = Array.from(tables).sort();
+		ctx.output.info(
+			`Discovered ${discoveredTables.length} tables from schema.ts`
+		);
+		return discoveredTables;
+	});
 };
 
 const POLICIES_DIR = resolve(join(process.cwd(), "drizzle", "policies"));
 
 // Functional utilities
-const withRetry = <T extends (...args: unknown[]) => Promise<unknown>>(
-	fn: T,
-	options?: { retries?: number; factor?: number }
-): T => {
-	return (async (...args: Parameters<T>) => {
-		return pRetry(() => fn(...args), {
-			retries: options?.retries ?? 3,
-			factor: options?.factor ?? 2,
-			onFailedAttempt: (error) => {
-				logger.warn(
-					`Attempt ${error.attemptNumber} failed. ${error.retriesLeft} retries left: ${error.message}`
-				);
-			},
-		});
-	}) as T;
-};
 
-const withDatabase = async <T>(
-	projectKey: ProjectKey,
-	operation: (client: DatabaseClient) => Promise<T>
-): Promise<T> => {
-	const dbUrl = getDatabaseUrl(projectKey);
-	const client = postgres(dbUrl, {
-		max: 10,
-		idle_timeout: 20,
-		connect_timeout: 10,
-	});
-
-	try {
-		// Test connection
-		await client`SELECT 1`;
-		logger.info(`Connected to ${PROJECTS[projectKey].name} database`);
-		return await operation(client);
-	} finally {
-		await client.end();
-		logger.info(`Disconnected from ${PROJECTS[projectKey].name} database`);
-	}
-};
+// Database operations are now handled by ctx.db.withConnection
 
 // Core functions
 const getDatabaseUrl = (projectKey: ProjectKey): string => {
@@ -212,34 +257,37 @@ const getDatabaseUrl = (projectKey: ProjectKey): string => {
 	return databaseUrl.replace(currentDevRef, project.ref);
 };
 
-const getCurrentProject = withRetry(async (): Promise<ProjectKey | null> => {
-	try {
-		const { stdout } = await execa("bunx", [
-			"supabase",
-			"projects",
-			"list",
-			"--output",
-			"json",
-		]);
+const getCurrentProject = async (ctx: Context): Promise<ProjectKey | null> => {
+	return withCache(ctx, "current-project", 10000, async () => {
+		try {
+			const { stdout } = await execa("bunx", [
+				"supabase",
+				"projects",
+				"list",
+				"--output",
+				"json",
+			]);
 
-		const projects = JSON.parse(stdout);
-		const linkedProject = projects.find(
-			(p: { linked: boolean; id: string }) => p.linked
-		);
+			const projects = JSON.parse(stdout);
+			const linkedProject = projects.find(
+				(p: { linked: boolean; id: string }) => p.linked
+			);
 
-		if (!linkedProject) return null;
+			if (!linkedProject) return null;
 
-		if (linkedProject.id === PROJECTS.dev.ref) return "dev";
-		if (linkedProject.id === PROJECTS.prod.ref) return "prod";
+			if (linkedProject.id === PROJECTS.dev.ref) return "dev";
+			if (linkedProject.id === PROJECTS.prod.ref) return "prod";
 
-		return null;
-	} catch (error) {
-		logger.error("Failed to get current project", error);
-		return null;
-	}
-});
+			return null;
+		} catch (error) {
+			ctx.output.error("Failed to get current project", error);
+			return null;
+		}
+	});
+};
 
 const linkProject = async (
+	ctx: Context,
 	projectKey: ProjectKey,
 	dbPassword: string
 ): Promise<void> => {
@@ -257,30 +305,35 @@ const linkProject = async (
 		dbPassword,
 	]);
 
-	logger.info(`Successfully linked to ${project.name}`);
+	// Clear project cache since we just changed it
+	ctx.cache.delete("current-project");
+	ctx.output.success(`Successfully linked to ${project.name}`);
 };
 
-const unlinkProject = withRetry(async (): Promise<void> => {
+const unlinkProject = async (ctx: Context): Promise<void> => {
 	await execa("bunx", ["supabase", "unlink"]);
-	logger.info("Successfully unlinked project");
-});
+	ctx.cache.delete("current-project");
+	ctx.output.success("Successfully unlinked project");
+};
 
 // Policy management functions
 
-const getPolicyFiles = async (): Promise<string[]> => {
-	if (!existsSync(POLICIES_DIR)) {
-		logger.warn("Policies directory not found", { dir: POLICIES_DIR });
-		return [];
-	}
+const getPolicyFiles = async (ctx: Context): Promise<string[]> => {
+	return withCache(ctx, "policy-files", 30000, async () => {
+		if (!existsSync(POLICIES_DIR)) {
+			ctx.output.warn("Policies directory not found", { dir: POLICIES_DIR });
+			return [];
+		}
 
-	const files = readdirSync(POLICIES_DIR)
-		.filter(
-			(file) => file.endsWith(".sql") && /^[a-zA-Z0-9_-]+\.sql$/.test(file)
-		)
-		.sort();
+		const files = readdirSync(POLICIES_DIR)
+			.filter(
+				(file) => file.endsWith(".sql") && /^[a-zA-Z0-9_-]+\.sql$/.test(file)
+			)
+			.sort();
 
-	logger.info(`Found ${files.length} policy files`);
-	return files;
+		ctx.output.info(`Found ${files.length} policy files`);
+		return files;
+	});
 };
 
 const checkRLSStatus = async (
@@ -316,24 +369,19 @@ const checkRLSStatus = async (
 };
 
 const applyPolicyFile = async (
+	ctx: Context,
 	client: DatabaseClient,
 	filename: string
 ): Promise<{ status: "success" | "warning" | "error"; message?: string }> => {
 	const filePath = join(POLICIES_DIR, filename);
 	const sql = readFileSync(filePath, "utf8");
 
-	// Skip SQL validation - PostgreSQL will validate the SQL when executed
-	// The previous validation was too restrictive for the variety of SQL in policy files
-
 	try {
 		await client.unsafe(sql);
-		logger.info(`Applied policy file: ${filename}`);
+		ctx.output.info(`Applied policy file: ${filename}`);
 		return { status: "success" };
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : String(error);
-
-		// Log the actual error for debugging
-		logger.warn(`Policy application error for ${filename}: ${errorMessage}`);
 
 		// Handle specific PostgreSQL error types
 		if (error instanceof Error && "code" in error) {
@@ -341,25 +389,24 @@ const applyPolicyFile = async (
 
 			switch (pgError.code) {
 				case "42710": // duplicate_object - policy already exists
-					logger.warn(`⚠️  Policy in ${filename} already exists - skipping`);
+					ctx.output.warn(`Policy in ${filename} already exists - skipping`);
 					return { status: "warning", message: "Policy already exists" };
 
 				case "42P01": // undefined_table - table does not exist
-					logger.warn(
-						`⚠️  Table referenced in ${filename} does not exist - skipping`
+					ctx.output.warn(
+						`Table referenced in ${filename} does not exist - skipping`
 					);
 					return { status: "warning", message: "Table does not exist" };
 
 				case "42501": {
 					// insufficient_privilege
 					const permError = `Permission denied: Cannot apply policy from ${filename}. Check database permissions.`;
-					logger.error(permError);
+					ctx.output.error(permError);
 					return { status: "error", message: permError };
 				}
 
 				default:
-					// Log unknown PostgreSQL error codes for future handling
-					logger.error(
+					ctx.output.error(
 						`Unknown PostgreSQL error code ${pgError.code} for ${filename}: ${errorMessage}`
 					);
 			}
@@ -367,24 +414,27 @@ const applyPolicyFile = async (
 
 		// Fallback to message-based detection for non-PostgreSQL errors
 		if (errorMessage.includes("already exists")) {
-			logger.warn(`⚠️  Policy in ${filename} already exists - skipping`);
+			ctx.output.warn(`Policy in ${filename} already exists - skipping`);
 			return { status: "warning", message: "Policy already exists" };
 		}
 
 		// Return error for unexpected errors
-		logger.error(`Failed to apply policy file ${filename}: ${errorMessage}`);
+		ctx.output.error(
+			`Failed to apply policy file ${filename}: ${errorMessage}`
+		);
 		return { status: "error", message: errorMessage };
 	}
 };
 
 const runCommand = async (
+	ctx: Context,
 	command: string,
 	args: string[],
 	description: string
 ): Promise<string> => {
-	logger.info(`Running: ${description}`);
+	ctx.output.info(`Running: ${description}`);
 	const { stdout } = await execa(command, args);
-	logger.info(`Completed: ${description}`);
+	ctx.output.success(`Completed: ${description}`);
 	return stdout;
 };
 
@@ -417,26 +467,18 @@ const getEnvironmentOperations = (projectKey: ProjectKey) => {
 };
 
 const confirmProductionOperation = async (
+	ctx: Context,
 	operation: string
 ): Promise<boolean> => {
-	logger.info(chalk.red.bold("\n🚨 PRODUCTION ENVIRONMENT"));
-	logger.info(chalk.yellow(`You are about to ${operation} on PRODUCTION.`));
-	logger.info(chalk.gray("This operation may affect live users and data.\n"));
-
-	const confirmation = await withSilentLogger(() =>
-		input({
-			message: `Type "PRODUCTION" to confirm ${operation}:`,
-		})
+	ctx.output.info(chalk.red.bold("\n🚨 PRODUCTION ENVIRONMENT"));
+	ctx.output.info(chalk.yellow(`You are about to ${operation} on PRODUCTION.`));
+	ctx.output.info(
+		chalk.gray("This operation may affect live users and data.\n")
 	);
 
-	if (confirmation !== "PRODUCTION") {
-		logger.warn("Operation cancelled - confirmation text did not match");
-		return false;
-	}
-
-	const finalConfirm = await withSilentLogger(() =>
+	const finalConfirm = await ctx.output.prompt(() =>
 		confirm({
-			message: "Are you absolutely sure you want to continue?",
+			message: "Are you sure you want to continue?",
 			default: false,
 		})
 	);
@@ -446,6 +488,7 @@ const confirmProductionOperation = async (
 
 // Main execution functions
 const executeOperation = async (
+	ctx: Context,
 	projectKey: ProjectKey,
 	operation: string,
 	targetFile?: string
@@ -460,7 +503,7 @@ const executeOperation = async (
 	];
 
 	if (isProduction && destructiveOps.includes(operation)) {
-		const confirmed = await confirmProductionOperation(operation);
+		const confirmed = await confirmProductionOperation(ctx, operation);
 		if (!confirmed) return;
 	}
 
@@ -470,7 +513,12 @@ const executeOperation = async (
 				{
 					title: "Generating migrations",
 					task: () =>
-						runCommand("bun", ["run", "db:generate"], "Generating migrations"),
+						runCommand(
+							ctx,
+							"bun",
+							["run", "db:generate"],
+							"Generating migrations"
+						),
 				},
 			]);
 			await tasks.run();
@@ -482,8 +530,8 @@ const executeOperation = async (
 				{
 					title: "Validating RLS coverage",
 					task: async () => {
-						await withDatabase(projectKey, async (client) => {
-							const managedTables = await getManagedTables();
+						await ctx.db.withConnection(projectKey, async (client) => {
+							const managedTables = await getManagedTables(ctx);
 							const { rlsStatus } = await checkRLSStatus(client, managedTables);
 
 							const missingRLS = managedTables.filter(
@@ -494,19 +542,19 @@ const executeOperation = async (
 							);
 
 							if (missingRLS.length === 0) {
-								logger.info(
+								ctx.output.success(
 									chalk.green(
-										`\n✅ All ${managedTables.length} discovered tables have RLS enabled`
+										`All ${managedTables.length} discovered tables have RLS enabled`
 									)
 								);
 							} else {
-								logger.error(
+								ctx.output.error(
 									chalk.red(
-										`\n❌ ${missingRLS.length} of ${managedTables.length} tables are missing RLS:`
+										`${missingRLS.length} of ${managedTables.length} tables are missing RLS:`
 									)
 								);
 								for (const table of missingRLS) {
-									logger.error(`   - ${table}`);
+									ctx.output.error(`   - ${table}`);
 								}
 							}
 						});
@@ -522,7 +570,12 @@ const executeOperation = async (
 				{
 					title: "Applying migrations",
 					task: () =>
-						runCommand("bun", ["run", "db:migrate"], "Applying migrations"),
+						runCommand(
+							ctx,
+							"bun",
+							["run", "db:migrate"],
+							"Applying migrations"
+						),
 				},
 			]);
 			await tasks.run();
@@ -531,10 +584,10 @@ const executeOperation = async (
 
 		case "apply-policy": {
 			try {
-				const policyFiles = await getPolicyFiles();
+				const policyFiles = await getPolicyFiles(ctx);
 				const fileToApply =
 					targetFile ??
-					(await withSilentLogger(() =>
+					(await ctx.output.prompt(() =>
 						select({
 							message: "Select policy file to apply:",
 							choices: policyFiles.map((file) => ({ name: file, value: file })),
@@ -542,7 +595,7 @@ const executeOperation = async (
 					));
 
 				if (!fileToApply) {
-					logger.warn("No policy file selected or specified.");
+					ctx.output.warn("No policy file selected or specified.");
 					return;
 				}
 
@@ -550,12 +603,12 @@ const executeOperation = async (
 					{
 						title: `Applying policy file: ${fileToApply}`,
 						task: async () => {
-							await withDatabase(projectKey, async (client) => {
-								const result = await applyPolicyFile(client, fileToApply);
+							await ctx.db.withConnection(projectKey, async (client) => {
+								const result = await applyPolicyFile(ctx, client, fileToApply);
 								if (result.status === "success") {
-									logger.info(
+									ctx.output.success(
 										chalk.green(
-											`✅ Policy file ${fileToApply} applied successfully`
+											`Policy file ${fileToApply} applied successfully`
 										)
 									);
 								} else if (result.status === "warning") {
@@ -569,15 +622,15 @@ const executeOperation = async (
 				]);
 				await tasks.run();
 			} catch {
-				logger.warn("Operation cancelled by user.");
+				ctx.output.warn("Operation cancelled by user.");
 			}
 			break;
 		}
 
 		case "apply-policies": {
-			const files = await getPolicyFiles();
+			const files = await getPolicyFiles(ctx);
 			if (files.length === 0) {
-				logger.warn("No policy files found");
+				ctx.output.warn("No policy files found");
 				return;
 			}
 
@@ -587,13 +640,13 @@ const executeOperation = async (
 
 			const tasks = new Listr([
 				{
-					title: `Processing ${files.length} policy files`,
+					title: `Processing ${files.length} policy files (parallel)`,
 					task: () =>
-						withDatabase(projectKey, async (client) => {
+						ctx.db.withConnection(projectKey, async (client) => {
 							await pMap(
 								files,
 								async (file) => {
-									const result = await applyPolicyFile(client, file);
+									const result = await applyPolicyFile(ctx, client, file);
 
 									if (result.status === "success") {
 										successCount++;
@@ -601,12 +654,15 @@ const executeOperation = async (
 										warningCount++;
 									} else {
 										errorCount++;
-										logger.error(`Failed to apply ${file}:`, result.message);
+										ctx.output.error(
+											`Failed to apply ${file}:`,
+											result.message
+										);
 									}
 
 									return { file, ...result };
 								},
-								{ concurrency: 1 }
+								{ concurrency: 3 }
 							);
 						}),
 				},
@@ -616,22 +672,20 @@ const executeOperation = async (
 
 			// Summary output
 			if (errorCount > 0) {
-				logger.error(
+				ctx.output.error(
 					chalk.red(
-						`❌ ${errorCount} policies failed, ${successCount} succeeded, ${warningCount} skipped`
+						`${errorCount} policies failed, ${successCount} succeeded, ${warningCount} skipped`
 					)
 				);
 			} else if (warningCount > 0) {
-				logger.warn(
+				ctx.output.warn(
 					chalk.yellow(
-						`⚠️  ${successCount} policies applied, ${warningCount} already existed (skipped)`
+						`${successCount} policies applied, ${warningCount} already existed (skipped)`
 					)
 				);
 			} else {
-				logger.info(
-					chalk.green(
-						`✅ All ${successCount} policy files applied successfully`
-					)
+				ctx.output.success(
+					chalk.green(`All ${successCount} policy files applied successfully`)
 				);
 			}
 			break;
@@ -639,11 +693,13 @@ const executeOperation = async (
 
 		case "reset-dev-database": {
 			if (projectKey !== "dev") {
-				logger.error("This operation is only available in dev environment.");
+				ctx.output.error(
+					"This operation is only available in dev environment."
+				);
 				return;
 			}
 
-			const confirmed = await withSilentLogger(() =>
+			const confirmed = await ctx.output.prompt(() =>
 				confirm({
 					message:
 						"Are you sure you want to truncate all tables? This will delete ALL data.",
@@ -652,7 +708,7 @@ const executeOperation = async (
 			);
 
 			if (!confirmed) {
-				logger.warn("Operation cancelled");
+				ctx.output.warn("Operation cancelled");
 				return;
 			}
 
@@ -660,28 +716,31 @@ const executeOperation = async (
 				{
 					title: "Truncating all tables in development database",
 					task: () =>
-						withDatabase(projectKey, async (client: DatabaseClient) => {
-							const tables = await getManagedTables();
-							if (tables.length === 0) {
-								logger.warn("No managed tables found to truncate.");
-								return;
-							}
-							const tableList = tables.map((t) => `"${t}"`).join(", ");
-							const sql = `TRUNCATE TABLE ${tableList} RESTART IDENTITY CASCADE;`;
+						ctx.db.withConnection(
+							projectKey,
+							async (client: DatabaseClient) => {
+								const tables = await getManagedTables(ctx);
+								if (tables.length === 0) {
+									ctx.output.warn("No managed tables found to truncate.");
+									return;
+								}
+								const tableList = tables.map((t) => `"${t}"`).join(", ");
+								const sql = `TRUNCATE TABLE ${tableList} RESTART IDENTITY CASCADE;`;
 
-							logger.info(`Executing: ${sql}`);
-							await client.unsafe(sql);
-						}),
+								ctx.output.info(`Executing: ${sql}`);
+								await client.unsafe(sql);
+							}
+						),
 				},
 			]);
 
 			await tasks.run();
-			logger.info(chalk.green("✅ All tables truncated successfully"));
+			ctx.output.success(chalk.green("All tables truncated successfully"));
 			break;
 		}
 
 		default:
-			logger.error(chalk.red(`Unknown operation: ${operation}`));
+			ctx.output.error(chalk.red(`Unknown operation: ${operation}`));
 	}
 };
 
@@ -691,43 +750,103 @@ const program = new Command()
 	.description("Supabase environment and policy manager")
 	.version("1.0.0");
 
+// Global context - will be initialized based on CLI args
+let globalContext: Context;
+
+// Initialize context helper
+const initContext = (mode: UIMode = "cli"): Context => {
+	if (!globalContext) {
+		globalContext = createContext(mode);
+	}
+	return globalContext;
+};
+
 // Status command
 program
 	.command("status")
 	.description("Show current project status")
 	.action(async () => {
+		const ctx = initContext();
 		try {
-			const current = await getCurrentProject();
+			const current = await getCurrentProject(ctx);
 
-			logger.info(
+			ctx.output.info(
 				chalk.blue("\n📊 Current Supabase Project Status (Remote)\n")
 			);
 
 			if (current) {
 				const project = PROJECTS[current];
-				logger.info(`Environment: ${project.color(project.environment)}`);
-				logger.info(`Project: ${project.name}`);
-				logger.info(`Reference: ${project.ref}`);
-				logger.info(chalk.green("✓ Remote project linked"));
+				ctx.output.info(`Environment: ${project.color(project.environment)}`);
+				ctx.output.info(`Project: ${project.name}`);
+				ctx.output.info(`Reference: ${project.ref}`);
+				ctx.output.success("Remote project linked");
 
 				if (current === "prod") {
-					logger.warn("⚠️  You are in production mode");
+					ctx.output.warn("You are in production mode");
 				}
 			} else {
-				logger.warn("No remote project currently linked");
-				logger.info(chalk.gray("Use 'switch' command to link a project"));
+				ctx.output.warn("No remote project currently linked");
+				ctx.output.info(chalk.gray("Use 'switch' command to link a project"));
 			}
 
-			logger.info(chalk.blue("\nAvailable Projects:"));
+			ctx.output.info(chalk.blue("\nAvailable Projects:"));
 			for (const [key, project] of Object.entries(PROJECTS)) {
 				const indicator = current === key ? "●" : "○";
-				logger.info(`${indicator} ${project.name} (${project.environment})`);
+				ctx.output.info(
+					`${indicator} ${project.name} (${project.environment})`
+				);
 			}
 		} catch (error) {
-			logger.error("Failed to get status", error);
+			ctx.output.error("Failed to get status", error);
 			process.exit(1);
+		} finally {
+			await ctx.db.cleanup();
 		}
 	});
+
+// Generic environment linking function
+const linkToEnvironment = async (
+	ctx: Context,
+	targetProject: ProjectKey,
+	options: { force?: boolean } = {}
+) => {
+	const current = await getCurrentProject(ctx);
+
+	if (current === targetProject) {
+		ctx.output.success(`Already connected to ${PROJECTS[targetProject].name}`);
+		return;
+	}
+
+	// Production confirmation if not forced
+	if (targetProject === "prod" && !options.force) {
+		const confirmed = await confirmProductionOperation(
+			ctx,
+			"switch to production"
+		);
+		if (!confirmed) return;
+	}
+
+	const dbPassword =
+		targetProject === "dev"
+			? env.DEV_DATABASE_PASSWORD
+			: env.PROD_DATABASE_PASSWORD;
+
+	if (!dbPassword) {
+		throw new Error(
+			`Database password for ${targetProject} not found in environment variables. Please set DEV_DATABASE_PASSWORD and PROD_DATABASE_PASSWORD.`
+		);
+	}
+
+	const tasks = new Listr([
+		{
+			title: `Linking to ${PROJECTS[targetProject].name}`,
+			task: () => linkProject(ctx, targetProject, dbPassword),
+		},
+	]);
+
+	await tasks.run();
+	ctx.output.success(`Successfully linked to ${PROJECTS[targetProject].name}`);
+};
 
 // Switch command
 program
@@ -735,14 +854,13 @@ program
 	.description("Switch between environments")
 	.option("-e, --env <environment>", "Target environment (dev/prod)")
 	.action(async (options) => {
+		const ctx = initContext();
 		try {
-			const current = await getCurrentProject();
-
 			let targetProject: ProjectKey;
 			if (options.env && ["dev", "prod"].includes(options.env)) {
 				targetProject = options.env as ProjectKey;
 			} else {
-				targetProject = await withSilentLogger(() =>
+				targetProject = await ctx.output.prompt(() =>
 					select({
 						message: "Select target environment:",
 						choices: [
@@ -753,38 +871,12 @@ program
 				);
 			}
 
-			if (current === targetProject) {
-				logger.info(
-					chalk.green(`✓ Already connected to ${PROJECTS[targetProject].name}`)
-				);
-				return;
-			}
-
-			const dbPassword =
-				targetProject === "dev"
-					? env.DEV_DATABASE_PASSWORD
-					: env.PROD_DATABASE_PASSWORD;
-
-			if (!dbPassword) {
-				throw new Error(
-					`Database password for ${targetProject} not found in environment variables. Please set DEV_DATABASE_PASSWORD and PROD_DATABASE_PASSWORD.`
-				);
-			}
-
-			const tasks = new Listr([
-				{
-					title: `Linking to ${PROJECTS[targetProject].name}`,
-					task: () => linkProject(targetProject, dbPassword),
-				},
-			]);
-
-			await tasks.run();
-			logger.info(
-				chalk.green(`✅ Successfully linked to ${PROJECTS[targetProject].name}`)
-			);
+			await linkToEnvironment(ctx, targetProject);
 		} catch (error) {
-			logger.error("Failed to switch project", error);
+			ctx.output.error("Failed to switch project", error);
 			process.exit(1);
+		} finally {
+			await ctx.db.cleanup();
 		}
 	});
 
@@ -793,14 +885,13 @@ program
 	.description("Link to a Supabase project")
 	.option("-e, --env <environment>", "Target environment (dev/prod)")
 	.action(async (options) => {
+		const ctx = initContext();
 		try {
-			const current = await getCurrentProject();
-
 			let targetProject: ProjectKey;
 			if (options.env && ["dev", "prod"].includes(options.env)) {
 				targetProject = options.env as ProjectKey;
 			} else {
-				targetProject = await withSilentLogger(() =>
+				targetProject = await ctx.output.prompt(() =>
 					select({
 						message: "Select target environment to link:",
 						choices: [
@@ -811,38 +902,12 @@ program
 				);
 			}
 
-			if (current === targetProject) {
-				logger.info(
-					chalk.green(`✓ Already connected to ${PROJECTS[targetProject].name}`)
-				);
-				return;
-			}
-
-			const dbPassword =
-				targetProject === "dev"
-					? env.DEV_DATABASE_PASSWORD
-					: env.PROD_DATABASE_PASSWORD;
-
-			if (!dbPassword) {
-				throw new Error(
-					`Database password for ${targetProject} not found in environment variables. Please set DEV_DATABASE_PASSWORD and PROD_DATABASE_PASSWORD.`
-				);
-			}
-
-			const tasks = new Listr([
-				{
-					title: `Linking to ${PROJECTS[targetProject].name}`,
-					task: () => linkProject(targetProject, dbPassword),
-				},
-			]);
-
-			await tasks.run();
-			logger.info(
-				chalk.green(`✅ Successfully linked to ${PROJECTS[targetProject].name}`)
-			);
+			await linkToEnvironment(ctx, targetProject);
 		} catch (error) {
-			logger.error("Failed to link project", error);
+			ctx.output.error("Failed to link project", error);
 			process.exit(1);
+		} finally {
+			await ctx.db.cleanup();
 		}
 	});
 
@@ -851,16 +916,17 @@ program
 	.command("unlink")
 	.description("Unlink current project")
 	.action(async () => {
+		const ctx = initContext();
 		try {
-			const current = await getCurrentProject();
+			const current = await getCurrentProject(ctx);
 
 			if (!current) {
-				logger.warn("No project is currently linked");
+				ctx.output.warn("No project is currently linked");
 				return;
 			}
 
 			const project = PROJECTS[current];
-			const confirmed = await withSilentLogger(() =>
+			const confirmed = await ctx.output.prompt(() =>
 				confirm({
 					message: `Are you sure you want to unlink from ${project.color(
 						project.name
@@ -870,114 +936,74 @@ program
 			);
 
 			if (!confirmed) {
-				logger.warn("Operation cancelled");
+				ctx.output.warn("Operation cancelled");
 				return;
 			}
 
 			const tasks = new Listr([
 				{
 					title: `Unlinking from ${project.name}`,
-					task: () => unlinkProject(),
+					task: () => unlinkProject(ctx),
 				},
 			]);
 
 			await tasks.run();
-			logger.info(
-				chalk.green(
-					`✅ Successfully unlinked from ${project.color(project.name)}`
-				)
+			ctx.output.success(
+				`Successfully unlinked from ${project.color(project.name)}`
 			);
 		} catch (error) {
-			logger.error("Failed to unlink project", error);
+			ctx.output.error("Failed to unlink project", error);
 			process.exit(1);
+		} finally {
+			await ctx.db.cleanup();
 		}
 	});
 
-// Dev command
-program
-	.command("dev")
-	.description(
-		"Manage the development environment (migrations, policies, DB reset)"
-	)
-	.argument("[operation]", "The operation to run directly")
-	.action(async (operation) => {
-		try {
-			const current = await getCurrentProject();
+// Generic environment command handler
+const createEnvironmentCommand = (env: ProjectKey) => {
+	const envName = env === "dev" ? "development" : "production";
+	const envDesc =
+		env === "dev" ? "migrations, policies, DB reset" : "migrations, policies";
 
-			if (current !== "dev") {
-				logger.info(chalk.blue("🔧 Switching to Development Environment"));
+	return program
+		.command(env)
+		.description(`Manage the ${envName} environment (${envDesc})`)
+		.argument("[operation]", "The operation to run directly")
+		.option("--force", "Skip confirmation prompts")
+		.action(async (operation, options) => {
+			const ctx = initContext();
+			try {
+				const current = await getCurrentProject(ctx);
 
-				const dbPassword = env.DEV_DATABASE_PASSWORD;
-				if (!dbPassword) {
-					throw new Error(
-						"DEV_DATABASE_PASSWORD not found in environment variables."
-					);
-				}
-				await linkProject("dev", dbPassword);
-				logger.info(chalk.green("✅ Linked to development environment"));
-			}
-
-			if (operation) {
-				await executeOperation("dev", operation);
-			} else {
-				const selectedOperation = await withSilentLogger(() =>
-					select({
-						message: "Select development operation:",
-						choices: getEnvironmentOperations("dev"),
-					})
-				);
-				await executeOperation("dev", selectedOperation);
-			}
-		} catch (error) {
-			logger.error("Development command failed", error);
-			process.exit(1);
-		}
-	});
-
-// Prod command
-program
-	.command("prod")
-	.description("Manage the production environment (migrations, policies)")
-	.argument("[operation]", "The operation to run directly")
-	.option("--force", "Skip confirmation prompts for direct operations")
-	.action(async (operation, options) => {
-		try {
-			const current = await getCurrentProject();
-
-			if (current !== "prod") {
-				if (!options.force) {
-					const confirmed = await confirmProductionOperation(
-						"switch to production"
-					);
-					if (!confirmed) return;
+				if (current !== env) {
+					ctx.output.info(chalk.blue(`🔧 Switching to ${envName} environment`));
+					await linkToEnvironment(ctx, env, { force: options.force });
+					ctx.output.success(`Linked to ${envName} environment`);
 				}
 
-				const dbPassword = env.PROD_DATABASE_PASSWORD;
-				if (!dbPassword) {
-					throw new Error(
-						"PROD_DATABASE_PASSWORD not found in environment variables."
+				if (operation) {
+					await executeOperation(ctx, env, operation);
+				} else {
+					const selectedOperation = await ctx.output.prompt(() =>
+						select({
+							message: `Select ${envName} operation:`,
+							choices: getEnvironmentOperations(env),
+						})
 					);
+					await executeOperation(ctx, env, selectedOperation);
 				}
-				await linkProject("prod", dbPassword);
-				logger.info(chalk.red("✅ Linked to production environment"));
+			} catch (error) {
+				ctx.output.error(`${envName} command failed`, error);
+				process.exit(1);
+			} finally {
+				await ctx.db.cleanup();
 			}
+		});
+};
 
-			if (operation) {
-				await executeOperation("prod", operation);
-			} else {
-				const selectedOperation = await withSilentLogger(() =>
-					select({
-						message: "Select production operation:",
-						choices: getEnvironmentOperations("prod"),
-					})
-				);
-				await executeOperation("prod", selectedOperation);
-			}
-		} catch (error) {
-			logger.error("Production command failed", error);
-			process.exit(1);
-		}
-	});
+// Create dev and prod commands
+createEnvironmentCommand("dev");
+createEnvironmentCommand("prod");
 
 // Policies command
 program
@@ -986,8 +1012,9 @@ program
 	.option("-a, --apply [file]", "Apply policy file(s)")
 	.option("-v, --validate", "Validate RLS coverage")
 	.action(async (options) => {
+		const ctx = initContext();
 		try {
-			const projectKey = await getCurrentProject();
+			const projectKey = await getCurrentProject(ctx);
 			if (!projectKey) {
 				throw new Error("No project linked. Use 'switch' command first.");
 			}
@@ -995,29 +1022,37 @@ program
 			if (options.apply !== undefined) {
 				if (typeof options.apply === "string") {
 					// Apply a single, specified file
-					await executeOperation(projectKey, "apply-policy", options.apply);
+					await executeOperation(
+						ctx,
+						projectKey,
+						"apply-policy",
+						options.apply
+					);
 				} else {
 					// Apply all policies
-					await executeOperation(projectKey, "apply-policies");
+					await executeOperation(ctx, projectKey, "apply-policies");
 				}
 			} else if (options.validate) {
-				await executeOperation(projectKey, "validate-rls");
+				await executeOperation(ctx, projectKey, "validate-rls");
 			} else {
 				program.help();
 			}
 		} catch (error) {
-			logger.error("Policy command failed", error);
+			ctx.output.error("Policy command failed", error);
 			process.exit(1);
+		} finally {
+			await ctx.db.cleanup();
 		}
 	});
 
 // Interactive mode (no command)
 program.action(async () => {
+	const ctx = initContext("interactive");
 	try {
 		// Don't output anything before the prompt to avoid interference
-		await getCurrentProject();
+		await getCurrentProject(ctx);
 
-		const mainOperation = await withSilentLogger(() =>
+		const mainOperation = await ctx.output.prompt(() =>
 			select({
 				message: "What would you like to do?",
 				choices: [
@@ -1059,17 +1094,31 @@ program.action(async () => {
 			case "exit":
 				return;
 			default:
-				logger.error(chalk.red(`Unknown operation: ${mainOperation}`));
+				ctx.output.error(chalk.red(`Unknown operation: ${mainOperation}`));
 		}
 	} catch {
-		logger.warn("Operation cancelled by user.");
+		ctx.output.warn("Operation cancelled by user.");
+	} finally {
+		await ctx.db.cleanup();
 	}
 });
 
-// Error handling
+// Error handling and cleanup
 process.on("unhandledRejection", (error) => {
-	logger.error("Unhandled error", error);
-	process.exit(1);
+	console.error(chalk.red("✗ Unhandled error"), error);
+	if (globalContext) {
+		globalContext.db.cleanup().finally(() => process.exit(1));
+	} else {
+		process.exit(1);
+	}
+});
+
+process.on("SIGINT", async () => {
+	console.info(chalk.yellow("\n👋 Gracefully shutting down..."));
+	if (globalContext) {
+		await globalContext.db.cleanup();
+	}
+	process.exit(0);
 });
 
 // Parse arguments - this automatically triggers interactive mode if no args
