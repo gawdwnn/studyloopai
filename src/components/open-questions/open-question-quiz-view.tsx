@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
+import { formatHhMmSs } from "@/lib/utils/time-formatter";
 import type { OpenQuestionConfig } from "@/stores/open-question-session/types";
 import { XIcon } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -49,14 +50,6 @@ export function OpenQuestionQuizView({
 		}, 1000);
 		return () => clearInterval(timer);
 	}, []);
-
-	const formatTime = (seconds: number) => {
-		const m = Math.floor(seconds / 60)
-			.toString()
-			.padStart(2, "0");
-		const s = (seconds % 60).toString().padStart(2, "0");
-		return `00:${m}:${s}`;
-	};
 
 	const currentQuestion = questions[currentQuestionIndex];
 
@@ -119,7 +112,7 @@ export function OpenQuestionQuizView({
 					</div>
 					<div className="flex justify-between items-center mb-4">
 						<Button variant="ghost">Pause</Button>
-						<span className="font-mono text-lg">{formatTime(time)}</span>
+						<span className="font-mono text-lg">{formatHhMmSs(time)}</span>
 						<Button
 							variant="ghost"
 							size="icon"

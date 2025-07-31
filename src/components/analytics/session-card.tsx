@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/card";
 import type { SessionSummary } from "@/lib/actions/session-analytics";
 import { cn } from "@/lib/utils";
+import { formatDuration } from "@/lib/utils/time-formatter";
 import { differenceInDays, format, isToday, isYesterday } from "date-fns";
 import {
 	BookOpen,
@@ -56,13 +57,6 @@ const CONTENT_TYPE_CONFIG = {
 export function SessionCard({ session, className }: SessionCardProps) {
 	const router = useRouter();
 	const config = CONTENT_TYPE_CONFIG[session.contentType];
-
-	// Format time display
-	const formatTime = (milliseconds: number) => {
-		const seconds = Math.floor(milliseconds / 1000);
-		const minutes = Math.floor(seconds / 60);
-		return minutes > 0 ? `${minutes}m ${seconds % 60}s` : `${seconds}s`;
-	};
 
 	// Format date display
 	const formatDate = (date: Date) => {
@@ -186,7 +180,7 @@ export function SessionCard({ session, className }: SessionCardProps) {
 						<Clock className="w-4 h-4 text-muted-foreground" />
 						<div>
 							<div className="text-lg font-semibold">
-								{formatTime(session.totalTime)}
+								{formatDuration(session.totalTime)}
 							</div>
 							<div className="text-xs text-muted-foreground">Duration</div>
 						</div>

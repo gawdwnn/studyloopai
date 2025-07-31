@@ -14,6 +14,7 @@ import {
 	getContentTypeColors,
 	getContentTypeThresholds,
 } from "@/lib/charts/recharts-config";
+import { formatDuration } from "@/lib/utils/time-formatter";
 import type { SessionAnalytics } from "@/types/session-analytics";
 import {
 	AlertTriangle,
@@ -177,13 +178,6 @@ export function SessionFeedback({
 		};
 	}
 
-	// Format time display
-	const formatTime = (milliseconds: number) => {
-		const seconds = Math.floor(milliseconds / 1000);
-		const minutes = Math.floor(seconds / 60);
-		return minutes > 0 ? `${minutes}m ${seconds % 60}s` : `${seconds}s`;
-	};
-
 	// Use chart data adapters for content-type aware difficulty data with filtered analytics
 	const difficultyPieData = transformToDifficultyData(
 		filteredAnalytics,
@@ -233,7 +227,7 @@ export function SessionFeedback({
 							/>
 							<div>
 								<p className="text-2xl font-bold">
-									{formatTime(filteredAnalytics.session.totalTime)}
+									{formatDuration(filteredAnalytics.session.totalTime)}
 								</p>
 								<p className="text-sm text-muted-foreground">Total Time</p>
 							</div>
