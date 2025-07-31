@@ -3,6 +3,7 @@
 import { db } from "@/db";
 import { learningGaps, learningSessions, sessionResponses } from "@/db/schema";
 import { getServerClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/utils/logger";
 import { and, eq } from "drizzle-orm";
 
 interface CuecardSessionConfig {
@@ -70,7 +71,13 @@ export async function createLearningSession(
 			.returning();
 		return session;
 	} catch (error) {
-		console.error("💥 createLearningSession failed:", error);
+		logger.error("Failed to create learning session", {
+			message: error instanceof Error ? error.message : String(error),
+			stack: error instanceof Error ? error.stack : undefined,
+			action: "createLearningSession",
+			contentType: params.contentType,
+			courseId: params.sessionConfig.courseId,
+		});
 		return null;
 	}
 }
@@ -149,7 +156,13 @@ export async function createSessionResponses(
 			.returning();
 		return insertedResponses;
 	} catch (error) {
-		console.error("💥 createSessionResponses failed:", error);
+		logger.error("Failed to create session responses", {
+			message: error instanceof Error ? error.message : String(error),
+			stack: error instanceof Error ? error.stack : undefined,
+			action: "createSessionResponses",
+			sessionId,
+			responseCount: responses.length,
+		});
 		return [];
 	}
 }
@@ -209,7 +222,13 @@ export async function createOrUpdateLearningGap(params: LearningGapParams) {
 			.returning();
 		return newGap;
 	} catch (error) {
-		console.error("💥 createOrUpdateLearningGap failed:", error);
+		logger.error("Failed to create or update learning gap", {
+			message: error instanceof Error ? error.message : String(error),
+			stack: error instanceof Error ? error.stack : undefined,
+			action: "createOrUpdateLearningGap",
+			contentType: params.contentType,
+			contentId: params.contentId,
+		});
 		return null;
 	}
 }

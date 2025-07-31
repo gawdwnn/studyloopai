@@ -1,3 +1,5 @@
+import { logger } from "@/lib/utils/logger";
+
 export interface QueuedOperation {
 	id: string;
 	type: "upload" | "api_call" | "content_generation";
@@ -145,7 +147,13 @@ class OfflineHandler {
 					operation.resolve(result);
 				}
 			} catch (error) {
-				console.warn("Queued operation failed:", error);
+				logger.warn("Queued operation failed", {
+					message: error instanceof Error ? error.message : String(error),
+					stack: error instanceof Error ? error.stack : undefined,
+					operationId: operation.id,
+					operationType: operation.type,
+					retries: operation.retries,
+				});
 				operation.retries++;
 
 				// Retry if under max retries
@@ -154,7 +162,13 @@ class OfflineHandler {
 					this.queue.unshift(operation); // Put back at front
 				} else {
 					const maxRetries = operation.maxRetries;
-					console.error(`Operation failed after ${maxRetries} retries`);
+					logger.error(`Operation failed after ${maxRetries} retries`, {
+						message: error instanceof Error ? error.message : String(error),
+						stack: error instanceof Error ? error.stack : undefined,
+						operationId: operation.id,
+						operationType: operation.type,
+						maxRetries,
+					});
 
 					// Reject the original promise
 					if (operation.reject) {
@@ -227,7 +241,10 @@ class OfflineHandler {
 			try {
 				listener(status);
 			} catch (error) {
-				console.error("Error in offline status listener:", error);
+				logger.error("Error in offline status listener", {
+					message: error instanceof Error ? error.message : String(error),
+					stack: error instanceof Error ? error.stack : undefined,
+				});
 			}
 		}
 	}

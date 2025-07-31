@@ -1,4 +1,5 @@
 import { removeCourseMaterials } from "@/lib/supabase/storage";
+import { logger } from "@/lib/utils/logger";
 
 export interface StorageCleanupResult {
 	filesDeleted: number;
@@ -30,15 +31,21 @@ export async function cleanupStorageFiles(
 			filesDeleted = filePaths.length;
 		} else {
 			storageErrors.push(storageResult.error || "Unknown storage error");
-			console.error(
-				"Failed to delete files from storage:",
-				storageResult.error
-			);
+			logger.error("Failed to delete files from storage", {
+				filePaths,
+				errorMessage: storageResult.error,
+				filesCount: filePaths.length,
+			});
 		}
 	} catch (error) {
 		const errorMsg = error instanceof Error ? error.message : "Unknown error";
 		storageErrors.push(errorMsg);
-		console.error("Exception deleting files from storage:", error);
+		logger.error("Exception deleting files from storage", {
+			filePaths,
+			filesCount: filePaths.length,
+			message: error instanceof Error ? error.message : String(error),
+			stack: error instanceof Error ? error.stack : undefined,
+		});
 	}
 
 	return {

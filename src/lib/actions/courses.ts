@@ -9,6 +9,7 @@ import {
 } from "@/lib/services/storage-cleanup-service";
 import { getServerClient } from "@/lib/supabase/server";
 import { withErrorHandling } from "@/lib/utils/error-handling";
+import { logger } from "@/lib/utils/logger";
 import {
 	type CourseCreationData,
 	CourseCreationSchema,
@@ -52,7 +53,15 @@ export async function createCourse(formData: CourseCreationData) {
 		revalidatePath("/dashboard");
 		return newCourse;
 	} catch (error) {
-		console.error("Failed to create course:", error);
+		logger.error("Failed to create course", {
+			message: error instanceof Error ? error.message : String(error),
+			stack: error instanceof Error ? error.stack : undefined,
+			action: "createCourse",
+			courseData: {
+				name: formData.name,
+				durationWeeks: formData.durationWeeks,
+			},
+		});
 
 		// Re-throw for UI error handling, but with user-friendly message
 		if (error instanceof Error && error.message.includes("logged in")) {
@@ -194,7 +203,13 @@ export async function updateCourse(
 		revalidatePath("/dashboard");
 		return updatedCourse;
 	} catch (error) {
-		console.error("Failed to update course:", error);
+		logger.error("Failed to update course", {
+			message: error instanceof Error ? error.message : String(error),
+			stack: error instanceof Error ? error.stack : undefined,
+			action: "updateCourse",
+			courseId,
+			updateData: data,
+		});
 
 		// Re-throw for UI error handling, but with user-friendly message
 		if (error instanceof Error && error.message.includes("logged in")) {
@@ -288,8 +303,10 @@ export async function deleteCourse(courseId: string) {
 		const errorMessage =
 			error instanceof Error ? error.message : "Unknown error occurred";
 
-		console.error(`Failed to delete course ${courseId}:`, {
-			error: errorMessage,
+		logger.error("Failed to delete course", {
+			message: errorMessage,
+			stack: error instanceof Error ? error.stack : undefined,
+			action: "deleteCourse",
 			courseId,
 			userId: user.id,
 			courseExists: !!course,

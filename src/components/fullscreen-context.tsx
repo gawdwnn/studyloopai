@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/utils/logger";
 import { createContext, useContext, useEffect, useState } from "react";
 import screenfull from "screenfull";
 
@@ -32,7 +33,11 @@ export function FullscreenProvider({ children }: FullscreenProviderProps) {
 
 		screenfull.on("change", handleFullscreenChange);
 		screenfull.on("error", (event) => {
-			console.error("Fullscreen error:", event);
+			logger.error("Fullscreen API error occurred", {
+				event: String(event),
+				isFullscreen: screenfull.isFullscreen,
+				isEnabled: screenfull.isEnabled,
+			});
 		});
 
 		// Set initial state
@@ -49,7 +54,12 @@ export function FullscreenProvider({ children }: FullscreenProviderProps) {
 		try {
 			await screenfull.toggle();
 		} catch (error) {
-			console.error("Failed to toggle fullscreen:", error);
+			logger.error("Failed to toggle fullscreen mode", {
+				message: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined,
+				isFullscreen: screenfull.isFullscreen,
+				isEnabled: screenfull.isEnabled,
+			});
 		}
 	};
 
@@ -59,7 +69,12 @@ export function FullscreenProvider({ children }: FullscreenProviderProps) {
 		try {
 			await screenfull.request();
 		} catch (error) {
-			console.error("Failed to enter fullscreen:", error);
+			logger.error("Failed to enter fullscreen mode", {
+				message: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined,
+				isFullscreen: screenfull.isFullscreen,
+				isEnabled: screenfull.isEnabled,
+			});
 		}
 	};
 
@@ -69,7 +84,12 @@ export function FullscreenProvider({ children }: FullscreenProviderProps) {
 		try {
 			await screenfull.exit();
 		} catch (error) {
-			console.error("Failed to exit fullscreen:", error);
+			logger.error("Failed to exit fullscreen mode", {
+				message: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined,
+				isFullscreen: screenfull.isFullscreen,
+				isEnabled: screenfull.isEnabled,
+			});
 		}
 	};
 

@@ -8,6 +8,7 @@ import {
 	extractFilePaths,
 } from "@/lib/services/storage-cleanup-service";
 import { getServerClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/utils/logger";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
@@ -95,7 +96,12 @@ export async function markMaterialsUploadFailed(materialIds: string[]) {
 		const result = await response.json();
 		return result;
 	} catch (error) {
-		console.error("Failed to mark materials upload as failed:", error);
+		logger.error("Failed to mark materials upload as failed", {
+			message: error instanceof Error ? error.message : String(error),
+			stack: error instanceof Error ? error.stack : undefined,
+			action: "markMaterialsUploadFailed",
+			materialIds,
+		});
 		throw error;
 	}
 }
@@ -214,12 +220,13 @@ export async function deleteCourseMaterial(
 		const errorMessage =
 			error instanceof Error ? error.message : "Unknown error occurred";
 
-		console.error(`Failed to delete course material ${materialId}:`, {
-			error: errorMessage,
+		logger.error("Failed to delete course material", {
+			message: errorMessage,
+			stack: error instanceof Error ? error.stack : undefined,
+			action: "deleteCourseMaterial",
 			materialId,
 			userId: user.id,
 			materialExists: !!material,
-			// Note: runId tracking removed in metadata cleanup
 		});
 
 		// Re-throw with user-friendly message

@@ -3,6 +3,8 @@
  * Following the error handling rules in .cursor/rules/error-handling.mdc
  */
 
+import { logger } from "@/lib/utils/logger";
+
 export enum ErrorType {
 	NETWORK = "network",
 	VALIDATION = "validation",
@@ -96,7 +98,11 @@ export const isRateLimitError = (error: unknown): boolean => {
 export const handleApiError = (error: unknown, operation: string): string => {
 	// Log the full error for debugging (server-side only in production)
 	if (process.env.NODE_ENV === "development") {
-		console.error(`${operation} failed:`, error);
+		logger.error(`${operation} failed`, {
+			message: error instanceof Error ? error.message : String(error),
+			stack: error instanceof Error ? error.stack : undefined,
+			operation,
+		});
 	}
 
 	// Network errors
@@ -240,23 +246,6 @@ export interface ErrorFallbackProps {
 	operation?: string;
 }
 
-/**
- * Formats errors for toast notifications
- */
-export const formatErrorForToast = (
-	error: unknown,
-	operation: string
-): string => {
-	const message = getOperationErrorMessage(operation, error);
-
-	// Keep toast messages concise but informative
-	if (message.length > 100) {
-		const shortMessage = handleApiError(error, operation);
-		return shortMessage.length <= 100 ? shortMessage : `Failed to ${operation}`;
-	}
-
-	return message;
-};
 
 /**
  * Determines if an error should trigger a retry mechanism
@@ -337,8 +326,8 @@ export async function withErrorHandling<T>(
 	} catch (error) {
 		// Use centralized error logging
 		if (process.env.NODE_ENV === "development") {
-			console.error(`Database operation failed: ${operationName}`, {
-				error: error instanceof Error ? error.message : String(error),
+			logger.error(`Database operation failed: ${operationName}`, {
+				message: error instanceof Error ? error.message : String(error),
 				stack: error instanceof Error ? error.stack : undefined,
 				operation: operationName,
 				timestamp: new Date().toISOString(),

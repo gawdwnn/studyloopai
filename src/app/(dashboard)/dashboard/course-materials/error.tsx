@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { logger } from "@/lib/utils/logger";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { useEffect } from "react";
 
@@ -12,8 +13,12 @@ export default function CourseMaterialsError({
 	reset: () => void;
 }) {
 	useEffect(() => {
-		// Log the error to an error reporting service
-		console.error("Course materials error:", error);
+		logger.error("Course materials error occurred", {
+			message: error.message,
+			stack: error.stack,
+			digest: error.digest,
+			timestamp: new Date().toISOString(),
+		});
 	}, [error]);
 
 	return (
@@ -25,8 +30,7 @@ export default function CourseMaterialsError({
 				Something went wrong!
 			</h2>
 			<p className="text-sm text-muted-foreground mb-6 max-w-md sm:text-base">
-				{error.message ||
-					"We encountered an error loading your course materials. Please try again."}
+				We encountered an error loading your course materials. Please try again.
 			</p>
 			<div className="flex gap-3">
 				<Button onClick={reset} variant="default">

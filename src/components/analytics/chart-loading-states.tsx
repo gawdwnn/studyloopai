@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { logger } from "@/lib/utils/logger";
 import type { ChartErrorProps, ChartLoadingProps } from "@/types/chart-types";
 import { AlertCircle, RefreshCw } from "lucide-react";
 
@@ -175,7 +176,11 @@ export function ChartWrapper({
 export function useChartErrorBoundary() {
 	return {
 		onError: (error: Error, errorInfo: React.ErrorInfo) => {
-			console.error("Chart error:", error, errorInfo);
+			logger.error("Chart rendering error occurred", {
+				message: error.message,
+				stack: error.stack,
+				componentStack: errorInfo.componentStack,
+			});
 			// Could integrate with error reporting service here
 		},
 	};

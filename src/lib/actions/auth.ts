@@ -4,6 +4,7 @@ import { type AuthErrorDetails, getAuthErrorMessage } from "@/lib/auth/errors";
 import type { MagicLinkFormData } from "@/lib/auth/validation";
 import { RateLimitError, rateLimiter } from "@/lib/rate-limit";
 import { getServerClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/utils/logger";
 import { getSiteUrl } from "@/lib/utils/site-url";
 import { redirect } from "next/navigation";
 
@@ -84,7 +85,12 @@ export async function signInWithOAuth(
 			throw error;
 		}
 
-		console.error("Unknown error in signInWithOAuth:", error);
+		logger.error("OAuth sign-in failed", {
+			message: error instanceof Error ? error.message : String(error),
+			stack: error instanceof Error ? error.stack : undefined,
+			action: "signInWithOAuth",
+			provider: "google",
+		});
 		return {
 			error: getAuthErrorMessage(error),
 		};
@@ -96,7 +102,11 @@ export async function signOut() {
 	const { error } = await supabase.auth.signOut();
 
 	if (error) {
-		console.error("Sign out error:", error);
+		logger.error("Sign out failed", {
+			message: error instanceof Error ? error.message : String(error),
+			stack: error instanceof Error ? error.stack : undefined,
+			action: "signOut",
+		});
 		throw new Error("Could not sign out.");
 	}
 

@@ -1,4 +1,5 @@
 import { getServerClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/utils/logger";
 import type { NextRequest } from "next/server";
 
 /**
@@ -25,7 +26,11 @@ export async function POST(request: NextRequest) {
 
 		return new Response(null, { status: 200 });
 	} catch (err) {
-		console.error("Auth cookie route error", err);
+		logger.error("Auth cookie route error", {
+			message: err instanceof Error ? err.message : String(err),
+			stack: err instanceof Error ? err.stack : undefined,
+			route: "/auth/cookie",
+		});
 		return new Response("Auth cookie error", { status: 500 });
 	}
 }

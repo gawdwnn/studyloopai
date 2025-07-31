@@ -30,6 +30,7 @@ import { useCourseWeeks } from "@/hooks/use-course-week";
 import { useFeatureAvailability } from "@/hooks/use-feature-availability";
 import { useQueryState } from "@/hooks/use-query-state";
 import type { CuecardAvailability, UserCuecard } from "@/lib/actions/cuecard";
+import { logger } from "@/lib/utils/logger";
 import type { Course, CourseWeek } from "@/types/database-types";
 import type { SelectiveGenerationConfig } from "@/types/generation-types";
 import { getDefaultCuecardsConfig } from "@/types/generation-types";
@@ -187,7 +188,16 @@ export function CuecardSessionSetup({
 						cuecardConfig
 					);
 				} catch (error) {
-					console.error("Generation failed:", error);
+					logger.error(
+						"Failed to trigger cuecard generation from session setup",
+						{
+							message: error instanceof Error ? error.message : String(error),
+							stack: error instanceof Error ? error.stack : undefined,
+							courseId: selectedCourse,
+							weekId: selectedWeek,
+							generationConfig,
+						}
+					);
 					toast.error("Failed to generate cuecards. Please try again.");
 				}
 			}
@@ -210,7 +220,13 @@ export function CuecardSessionSetup({
 			await sessionData.startSessionInstantly(config);
 			toast.success("Cuecard session started!");
 		} catch (error) {
-			console.error("Failed to start session:", error);
+			logger.error("Failed to start cuecard session", {
+				message: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined,
+				sessionConfig: config,
+				isAvailable: sessionData.isAvailable,
+				cuecardCount: sessionData.count,
+			});
 			toast.error("Failed to start session. Please try again.");
 		}
 	};

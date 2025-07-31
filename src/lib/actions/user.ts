@@ -3,6 +3,7 @@
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { getServerClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/utils/logger";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
@@ -25,7 +26,12 @@ export async function skipOnboarding() {
 		revalidatePath("/", "layout");
 		return { success: true };
 	} catch (error) {
-		console.error("Error skipping onboarding:", error);
+		logger.error("Failed to skip onboarding", {
+			message: error instanceof Error ? error.message : String(error),
+			stack: error instanceof Error ? error.stack : undefined,
+			action: "skipOnboarding",
+			userId: user.id,
+		});
 		return { error: "Could not update your onboarding status." };
 	}
 }
@@ -49,7 +55,12 @@ export async function completeOnboarding() {
 		revalidatePath("/", "layout");
 		return { success: true };
 	} catch (error) {
-		console.error("Error completing onboarding:", error);
+		logger.error("Failed to complete onboarding", {
+			message: error instanceof Error ? error.message : String(error),
+			stack: error instanceof Error ? error.stack : undefined,
+			action: "completeOnboarding",
+			userId: user.id,
+		});
 		return { error: "Could not update your onboarding status." };
 	}
 }

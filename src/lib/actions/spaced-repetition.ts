@@ -3,6 +3,7 @@
 import { db } from "@/db";
 import { cuecardScheduling } from "@/db/schema";
 import { getServerClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/utils/logger";
 import type { CuecardScheduling } from "@/types/database-types";
 import { and, eq } from "drizzle-orm";
 
@@ -178,7 +179,15 @@ export async function updateCuecardScheduling({
 			.returning();
 		return newScheduling;
 	} catch (error) {
-		console.error("💥 updateCuecardScheduling failed:", error);
+		logger.error("Failed to update cuecard scheduling", {
+			message: error instanceof Error ? error.message : String(error),
+			stack: error instanceof Error ? error.stack : undefined,
+			action: "updateCuecardScheduling",
+			cardId,
+			userId,
+			isCorrect,
+			responseTime,
+		});
 		return null;
 	}
 }

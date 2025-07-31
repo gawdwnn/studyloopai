@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import { logger } from "@/lib/utils/logger";
 import { useEffect, useState } from "react";
 
 export const useCurrentUserName = () => {
@@ -9,7 +10,10 @@ export const useCurrentUserName = () => {
 			const supabase = createClient();
 			const { data, error } = await supabase.auth.getSession();
 			if (error) {
-				console.error(error);
+				logger.error("Failed to fetch user session for name", {
+					message: error.message,
+					code: error.code,
+				});
 			}
 
 			setName(data.session?.user.user_metadata.full_name ?? "?");

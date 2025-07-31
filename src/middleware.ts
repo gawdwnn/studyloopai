@@ -1,4 +1,5 @@
 import { getAdminClient, getServerClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/utils/logger";
 import { type NextRequest, NextResponse } from "next/server";
 
 async function isOnboardingComplete(userId: string): Promise<boolean> {
@@ -11,7 +12,11 @@ async function isOnboardingComplete(userId: string): Promise<boolean> {
 		.single();
 
 	if (error) {
-		console.error("Error checking onboarding status:", error);
+		logger.error("Error checking onboarding status", {
+			userId,
+			message: error.message,
+			code: error.code,
+		});
 		// Fail safe: if we can't check, assume not onboarded to force the flow.
 		return false;
 	}
@@ -74,7 +79,11 @@ export async function middleware(request: NextRequest) {
 			return response;
 		}
 	} catch (error) {
-		console.error("Middleware error:", error);
+		logger.error("Middleware error", {
+			pathname: request.nextUrl.pathname,
+			message: error instanceof Error ? error.message : String(error),
+			stack: error instanceof Error ? error.stack : undefined,
+		});
 	}
 
 	return supabaseResponse;

@@ -1,5 +1,6 @@
 "use server";
 
+import { logger } from "@/lib/utils/logger";
 import { runs } from "@trigger.dev/sdk/v3";
 
 /**
@@ -44,7 +45,11 @@ export async function cancelTriggerRun(runId: string) {
 			cancelledAt: new Date().toISOString(),
 		};
 	} catch (error) {
-		console.error(`Failed to cancel trigger run ${runId}:`, error);
+		logger.error("Failed to cancel trigger run", {
+			runId,
+			message: error instanceof Error ? error.message : String(error),
+			stack: error instanceof Error ? error.stack : undefined,
+		});
 		return {
 			success: false,
 			error: error instanceof Error ? error.message : "Unknown error",
@@ -80,7 +85,11 @@ export async function getTriggerRunStatus(runId: string) {
 			),
 		};
 	} catch (error) {
-		console.error(`Failed to get trigger run status ${runId}:`, error);
+		logger.error("Failed to get trigger run status", {
+			runId,
+			message: error instanceof Error ? error.message : String(error),
+			stack: error instanceof Error ? error.stack : undefined,
+		});
 		return {
 			success: false,
 			error: error instanceof Error ? error.message : "Unknown error",

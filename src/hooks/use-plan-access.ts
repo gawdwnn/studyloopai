@@ -1,5 +1,6 @@
 import { hasFeatureAccess, isPlanActive } from "@/lib/actions/plans";
 import type { FeatureId } from "@/lib/database/types";
+import { logger } from "@/lib/utils/logger";
 import { useCallback, useEffect, useState } from "react";
 
 export function usePlanAccess() {
@@ -12,7 +13,10 @@ export function usePlanAccess() {
 				const active = await isPlanActive();
 				setIsActive(active);
 			} catch (error) {
-				console.error("Failed to check plan status:", error);
+				logger.error("Failed to check plan status", {
+					message: error instanceof Error ? error.message : String(error),
+					stack: error instanceof Error ? error.stack : undefined,
+				});
 				setIsActive(false);
 			} finally {
 				setLoading(false);
@@ -26,7 +30,11 @@ export function usePlanAccess() {
 		try {
 			return await hasFeatureAccess(featureId);
 		} catch (error) {
-			console.error("Failed to check feature access:", error);
+			logger.error("Failed to check feature access", {
+				featureId,
+				message: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined,
+			});
 			return false;
 		}
 	}, []);

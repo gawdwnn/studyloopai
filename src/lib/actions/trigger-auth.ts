@@ -1,5 +1,6 @@
 "use server";
 
+import { logger } from "@/lib/utils/logger";
 import { auth } from "@trigger.dev/sdk";
 
 export async function generatePublicToken(
@@ -17,7 +18,13 @@ export async function generatePublicToken(
 		});
 		return { success: true, token: publicToken };
 	} catch (error) {
-		console.error("Failed to generate public token:", error);
+		logger.error("Failed to generate public token", {
+			message: error instanceof Error ? error.message : String(error),
+			stack: error instanceof Error ? error.stack : undefined,
+			action: "generatePublicToken",
+			runId,
+			expirationTime,
+		});
 		return {
 			success: false,
 			error:

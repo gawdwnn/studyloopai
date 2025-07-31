@@ -8,6 +8,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import { logger } from "@/lib/utils/logger";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import React from "react";
 
@@ -38,7 +39,12 @@ export class ErrorBoundary extends React.Component<
 	}
 
 	componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-		console.error("ErrorBoundary caught an error:", error, errorInfo);
+		logger.error("ErrorBoundary caught an error", {
+			message: error.message,
+			stack: error.stack,
+			componentStack: errorInfo.componentStack,
+			retryCount: this.state.retryCount,
+		});
 
 		// TODO: Add Sentry error reporting here
 		this.props.onError?.(error, errorInfo);
@@ -136,7 +142,11 @@ function ErrorFallback({ error, onRetry }: ErrorFallbackProps) {
 // Hook-based error boundary for simpler usage
 export function useErrorHandler() {
 	return (error: Error) => {
-		console.error("Handled error:", error);
+		logger.error("Manual error handler invoked", {
+			message: error.message,
+			stack: error.stack,
+			name: error.name,
+		});
 		// You could also dispatch to a global error state here
 	};
 }

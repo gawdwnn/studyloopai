@@ -1,3 +1,4 @@
+import { logger } from "@/lib/utils/logger";
 import { and, cosineDistance, desc, eq, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { courseMaterials, documentChunks } from "../../db/schema";
@@ -104,7 +105,12 @@ export async function searchSimilarChunks(
 			searchTime,
 		};
 	} catch (error) {
-		console.error("Vector search failed:", error);
+		logger.error("Vector search failed", {
+			message: error instanceof Error ? error.message : String(error),
+			stack: error instanceof Error ? error.stack : undefined,
+			query,
+			options,
+		});
 		return {
 			success: false,
 			error: error instanceof Error ? error.message : "Unknown error",
@@ -185,7 +191,12 @@ export async function findSimilarChunks(
 			totalResults: results.length,
 		};
 	} catch (error) {
-		console.error("Similar chunks search failed:", error);
+		logger.error("Similar chunks search failed", {
+			message: error instanceof Error ? error.message : String(error),
+			stack: error instanceof Error ? error.stack : undefined,
+			chunkId,
+			options,
+		});
 		return {
 			success: false,
 			error: error instanceof Error ? error.message : "Unknown error",
@@ -231,7 +242,12 @@ export async function getChunksForMaterial(
 			totalResults: results.length,
 		};
 	} catch (error) {
-		console.error("Failed to get chunks for material:", error);
+		logger.error("Failed to get chunks for material", {
+			message: error instanceof Error ? error.message : String(error),
+			stack: error instanceof Error ? error.stack : undefined,
+			materialId,
+			options,
+		});
 		return {
 			success: false,
 			error: error instanceof Error ? error.message : "Unknown error",
