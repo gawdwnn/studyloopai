@@ -1,5 +1,6 @@
 /**
  * Pino-based logging utility with environment-aware levels and browser compatibility.
+ * Patched for Next.js SSR compatibility.
  */
 
 import pino from "pino";
@@ -7,10 +8,12 @@ import type { Logger as PinoLogger, WriteFn } from "pino";
 
 /**
  * Creates a namespaced logger. Debug/info only in development, warn/error always shown.
+ * SSR-safe implementation that avoids worker thread issues.
  */
 const createLogger = (namespace?: string): PinoLogger => {
 	const isDev = process.env.NODE_ENV === "development";
 	const isBrowser = typeof window !== "undefined";
+	const isSSR = typeof window === "undefined" && typeof global !== "undefined";
 
 	const config: pino.LoggerOptions = {
 		name: namespace || "StudyLoopAI",
@@ -51,35 +54,61 @@ const createLogger = (namespace?: string): PinoLogger => {
 			},
 		}),
 
-		// Server-side pretty printing in development
-		...(!isBrowser &&
-			isDev && {
-				transport: {
-					target: "pino-pretty",
-					options: {
-						colorize: true,
-						translateTime: "HH:MM:ss.l",
-						ignore: "pid,hostname",
+		// Server-side configuration - avoid pino-pretty in SSR to prevent worker issues
+		...(!isBrowser && {
+			...(isDev &&
+				!isSSR && {
+					// Only use pino-pretty in pure Node.js, not during SSR
+					transport: {
+						target: "pino-pretty",
+						options: {
+							colorize: true,
+							translateTime: "HH:MM:ss.l",
+							ignore: "pid,hostname",
+						},
 					},
-				},
-			}),
-
-		// Production JSON logging (server-side only)
-		...(!isBrowser &&
-			!isDev && {
+				}),
+			// Fallback for SSR or production - simple JSON logging
+			...((!isDev || isSSR) && {
 				formatters: {
 					level: (label: string) => ({ level: label }),
 				},
 			}),
+		}),
 	};
 
-	return pino(config);
+	try {
+		return pino(config);
+	} catch (error) {
+		// Fallback to basic pino config if transport fails
+		console.warn("Pino transport failed, falling back to basic config:", error);
+		return pino({
+			name: namespace || "StudyLoopAI",
+			level: isDev ? "debug" : "info",
+			...(isBrowser && {
+				browser: {
+					write: ((obj: object) => {
+						console.info(JSON.stringify(obj));
+					}) as WriteFn,
+				},
+			}),
+		});
+	}
 };
 
 /**
  * Default logger instance for general use.
+ * Made lazy to avoid SSR issues with pino-pretty worker threads.
  */
-const logger = createLogger();
+let _logger: PinoLogger | null = null;
+const logger = new Proxy({} as PinoLogger, {
+	get(_target, prop) {
+		if (!_logger) {
+			_logger = createLogger();
+		}
+		return (_logger as PinoLogger)[prop as keyof PinoLogger];
+	},
+});
 
 export { createLogger, logger };
 export type { Logger } from "pino";
