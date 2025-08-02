@@ -1,6 +1,9 @@
 // MCQ Session Store Types
 // Focused on multiple choice question functionality with strong typing
 
+import type { UserMCQ } from "@/lib/actions/mcq";
+import type { SelectiveGenerationConfig } from "@/types/generation-types";
+
 export type DifficultyLevel = "easy" | "medium" | "hard" | "mixed";
 
 export type FocusType =
@@ -11,10 +14,14 @@ export type FocusType =
 
 export type SessionStatus =
 	| "idle"
+	| "loading"
 	| "active"
 	| "paused"
 	| "completed"
-	| "failed";
+	| "failed"
+	| "needs_generation"
+	| "no_content_for_weeks"
+	| "generating";
 
 export type PracticeMode = "practice" | "exam";
 
@@ -108,24 +115,19 @@ export interface McqSessionState {
 	error: string | null;
 	isLoading: boolean;
 	lastSyncedAt: Date | null;
+	generationRunId?: string;
+	generationToken?: string;
 }
 
 // Store actions interface
 export interface McqSessionActions {
 	// Session lifecycle
-	startSession: (config: McqConfig) => Promise<void>;
-	pauseSession: () => void;
-	resumeSession: () => void;
+	startSessionWithData: (
+		config: McqConfig,
+		preLoadedMCQs: UserMCQ[]
+	) => Promise<void>;
 	endSession: () => Promise<void>;
 	resetSession: () => void;
-
-	// Question management
-	getCurrentQuestion: () => McqQuestion | null;
-	moveToNextQuestion: () => void;
-	moveToPreviousQuestion: () => void;
-	jumpToQuestion: (index: number) => void;
-	flagQuestion: (questionId: string) => void;
-	unflagQuestion: (questionId: string) => void;
 
 	// Answer submission
 	submitAnswer: (
@@ -134,29 +136,22 @@ export interface McqSessionActions {
 		timeSpent: number,
 		confidenceLevel?: number
 	) => void;
-	changeAnswer: (questionId: string, newAnswer: string | null) => void;
-	skipQuestion: () => void;
-
-	// Progress tracking
-	calculateProgress: () => McqProgress;
-	calculatePerformance: () => McqPerformance;
-	getSessionStats: () => {
-		totalTime: number;
-		questionsAnswered: number;
-		accuracy: number;
-		questionsRemaining: number;
-		averageTimePerQuestion: number;
-	};
-
-	// Review and navigation
-	getAnsweredQuestions: () => McqAnswer[];
-	getUnansweredQuestions: () => McqQuestion[];
-	getFlaggedQuestions: () => McqQuestion[];
-	getIncorrectAnswers: () => McqAnswer[];
 
 	// Error handling
 	setError: (error: string | null) => void;
 	clearError: () => void;
+
+	// Generation support
+	triggerGeneration: (
+		courseId: string,
+		weekIds: string[],
+		generationConfig: SelectiveGenerationConfig
+	) => Promise<{
+		success: boolean;
+		runId?: string;
+		publicAccessToken?: string;
+		error?: string;
+	}>;
 }
 
 // Complete store interface

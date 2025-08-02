@@ -45,7 +45,8 @@ const features = [
 			"Practice critical thinking with written-response questions and AI feedback",
 		icon: QuestionMarkIcon,
 		iconColor: "text-teal-600 dark:text-teal-400",
-		available: true,
+		available: false,
+		comingSoon: true,
 	},
 	{
 		id: "concept-maps",
