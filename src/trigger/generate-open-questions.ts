@@ -1,6 +1,4 @@
 import { generateContent } from "@/lib/ai/generation";
-import { OpenQuestionsArraySchema } from "@/lib/ai/generation/schemas";
-import { insertOpenQuestions } from "@/lib/services/persist-generated-content-service";
 import { logger, schemaTask, tags } from "@trigger.dev/sdk";
 import { z } from "zod";
 
@@ -11,6 +9,7 @@ const GenerateOpenQuestionsPayload = z.object({
 		.array(z.string())
 		.min(1, "At least one material ID is required"),
 	configId: z.string().uuid("Config ID must be a valid UUID"),
+	cacheKey: z.string().optional(), // Cache key for pre-fetched chunks
 });
 
 const GenerateOpenQuestionsOutput = z.object({
@@ -26,7 +25,7 @@ export const generateOpenQuestions = schemaTask({
 	schema: GenerateOpenQuestionsPayload,
 	maxDuration: 300, // 5 minutes for individual content type
 	run: async (payload: GenerateOpenQuestionsPayloadType, { ctx: _ctx }) => {
-		const { weekId, courseId, materialIds, configId } = payload;
+		const { weekId, courseId, materialIds, configId, cacheKey } = payload;
 
 		await tags.add([
 			`weekId:${payload.weekId}`,
@@ -48,21 +47,19 @@ export const generateOpenQuestions = schemaTask({
 					"Openquestions configuration not found or feature not enabled"
 				);
 			}
-			logger.info("📋 Using selective configuration for open questions", {
+			logger.info("Using selective configuration for open questions", {
 				weekId,
 				courseId,
 				openQuestionsConfig,
 			});
 
 			const result = await generateContent({
+				contentType: "openQuestions",
 				courseId,
 				weekId,
 				materialIds,
 				config: openQuestionsConfig,
-				contentType: "openQuestions",
-				schema: OpenQuestionsArraySchema,
-				insertFunction: insertOpenQuestions,
-				responseType: "array",
+				cacheKey,
 			});
 
 			if (!result.success) {
@@ -75,7 +72,7 @@ export const generateOpenQuestions = schemaTask({
 		} catch (error) {
 			const errorMessage =
 				error instanceof Error ? error.message : "An unknown error occurred";
-			logger.error("❌ Open questions generation failed", {
+			logger.error("Open questions generation failed", {
 				weekId,
 				courseId,
 				configId,
@@ -89,13 +86,13 @@ export const generateOpenQuestions = schemaTask({
 	}: {
 		output: z.infer<typeof GenerateOpenQuestionsOutput>;
 	}) => {
-		logger.info("✅ Open questions generation completed successfully", {
+		logger.info("Open questions generation completed successfully", {
 			success: output.success,
 		});
 	},
 	onFailure: async ({ error }: { error: unknown }) => {
 		const errorMessage = error instanceof Error ? error.message : String(error);
-		logger.error("❌ Open questions generation failed permanently", {
+		logger.error("Open questions generation failed permanently", {
 			error: errorMessage,
 		});
 	},

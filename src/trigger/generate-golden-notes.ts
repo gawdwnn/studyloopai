@@ -1,6 +1,4 @@
 import { generateContent } from "@/lib/ai/generation";
-import { GoldenNotesArraySchema } from "@/lib/ai/generation/schemas";
-import { insertGoldenNotes } from "@/lib/services/persist-generated-content-service";
 import { logger, schemaTask, tags } from "@trigger.dev/sdk";
 import { z } from "zod";
 
@@ -11,6 +9,7 @@ const GenerateGoldenNotesPayload = z.object({
 		.array(z.string())
 		.min(1, "At least one material ID is required"),
 	configId: z.string().uuid("Config ID must be a valid UUID"),
+	cacheKey: z.string().optional(), // Cache key for pre-fetched chunks
 });
 
 const GenerateGoldenNotesOutput = z.object({
@@ -26,7 +25,7 @@ export const generateGoldenNotes = schemaTask({
 	schema: GenerateGoldenNotesPayload,
 	maxDuration: 300, // 5 minutes for individual content type
 	run: async (payload: GenerateGoldenNotesPayloadType, { ctx: _ctx }) => {
-		const { weekId, courseId, materialIds, configId } = payload;
+		const { weekId, courseId, materialIds, configId, cacheKey } = payload;
 
 		await tags.add([
 			`weekId:${payload.weekId}`,
@@ -48,7 +47,7 @@ export const generateGoldenNotes = schemaTask({
 					"Golden notes configuration not found or feature not enabled"
 				);
 			}
-			logger.info("📝 Using selective configuration for golden notes", {
+			logger.info("Using selective configuration for golden notes", {
 				weekId,
 				courseId,
 				goldenNotesConfig,
@@ -56,14 +55,12 @@ export const generateGoldenNotes = schemaTask({
 			});
 
 			const result = await generateContent({
+				contentType: "goldenNotes",
 				courseId,
 				weekId,
 				materialIds,
 				config: goldenNotesConfig,
-				contentType: "goldenNotes",
-				schema: GoldenNotesArraySchema,
-				insertFunction: insertGoldenNotes,
-				responseType: "array",
+				cacheKey,
 			});
 
 			if (!result.success) {
@@ -76,7 +73,7 @@ export const generateGoldenNotes = schemaTask({
 		} catch (error) {
 			const errorMessage =
 				error instanceof Error ? error.message : "An unknown error occurred";
-			logger.error("❌ Golden notes generation failed", {
+			logger.error("Golden notes generation failed", {
 				weekId,
 				courseId,
 				configId,
@@ -91,7 +88,7 @@ export const generateGoldenNotes = schemaTask({
 		payload: GenerateGoldenNotesPayloadType;
 		output: z.infer<typeof GenerateGoldenNotesOutput>;
 	}) => {
-		logger.info("✅ Golden notes generation completed successfully", {
+		logger.info("Golden notes generation completed successfully", {
 			success: output.success,
 		});
 	},
@@ -102,7 +99,7 @@ export const generateGoldenNotes = schemaTask({
 		error: unknown;
 	}) => {
 		const errorMessage = error instanceof Error ? error.message : String(error);
-		logger.error("❌ Golden notes generation failed permanently", {
+		logger.error("Golden notes generation failed permanently", {
 			error: errorMessage,
 		});
 	},

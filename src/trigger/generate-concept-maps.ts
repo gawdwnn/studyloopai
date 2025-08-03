@@ -1,6 +1,4 @@
-import { ConceptMapSchema } from "@/lib/ai/generation";
-import { generateContent } from "@/lib/ai/generation/generic-generator";
-import { insertConceptMaps } from "@/lib/services/persist-generated-content-service";
+import { generateContent } from "@/lib/ai/generation";
 import { logger, schemaTask, tags } from "@trigger.dev/sdk";
 import { z } from "zod";
 
@@ -11,6 +9,7 @@ const GenerateConceptMapsPayload = z.object({
 		.array(z.string())
 		.min(1, "At least one material ID is required"),
 	configId: z.string().uuid("Config ID must be a valid UUID"),
+	cacheKey: z.string().optional(), // Cache key for pre-fetched chunks
 });
 
 const GenerateConceptMapsOutput = z.object({
@@ -26,7 +25,7 @@ export const generateConceptMaps = schemaTask({
 	schema: GenerateConceptMapsPayload,
 	maxDuration: 300, // 5 minutes for individual content type
 	run: async (payload: GenerateConceptMapsPayloadType, { ctx: _ctx }) => {
-		const { weekId, courseId, materialIds, configId } = payload;
+		const { weekId, courseId, materialIds, configId, cacheKey } = payload;
 
 		await tags.add([
 			`weekId:${payload.weekId}`,
@@ -48,22 +47,22 @@ export const generateConceptMaps = schemaTask({
 					"Conceptmaps configuration not found or feature not enabled"
 				);
 			}
-			logger.info("🗺️ Using selective configuration for concept maps", {
+			logger.info("Using selective configuration for concept maps", {
 				weekId,
 				courseId,
 				conceptMapsConfig,
 			});
 
 			const result = await generateContent({
+				contentType: "conceptMaps",
 				courseId,
 				weekId,
 				materialIds,
 				config: conceptMapsConfig,
-				contentType: "conceptMaps",
-				schema: ConceptMapSchema,
-				insertFunction: insertConceptMaps,
-				responseType: "object",
-				maxTokens: 4000,
+				cacheKey,
+				options: {
+					maxTokens: 4000,
+				},
 			});
 
 			if (!result.success) {
@@ -76,7 +75,7 @@ export const generateConceptMaps = schemaTask({
 		} catch (error) {
 			const errorMessage =
 				error instanceof Error ? error.message : "An unknown error occurred";
-			logger.error("❌ Concept maps generation failed", {
+			logger.error("Concept maps generation failed", {
 				weekId,
 				courseId,
 				configId,
@@ -91,7 +90,7 @@ export const generateConceptMaps = schemaTask({
 		payload: GenerateConceptMapsPayloadType;
 		output: z.infer<typeof GenerateConceptMapsOutput>;
 	}) => {
-		logger.info("✅ Concept maps generation completed successfully", {
+		logger.info("Concept maps generation completed successfully", {
 			success: output.success,
 		});
 	},
@@ -102,7 +101,7 @@ export const generateConceptMaps = schemaTask({
 		error: unknown;
 	}) => {
 		const errorMessage = error instanceof Error ? error.message : String(error);
-		logger.error("❌ Concept maps generation failed permanently", {
+		logger.error("Concept maps generation failed permanently", {
 			error: errorMessage,
 		});
 	},

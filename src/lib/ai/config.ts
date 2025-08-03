@@ -18,11 +18,42 @@ export function getTextGenerationModel() {
 	);
 }
 
-export function getEmbeddingModel() {
+/**
+ * Get embedding model with fallback support
+ * @param preferredModel - Preferred model name, defaults to text-embedding-3-small
+ * @returns Embedding model instance
+ */
+export function getEmbeddingModel(preferredModel?: string) {
 	if (!openaiProvider) {
 		throw new Error(
 			"OpenAI API key required for embeddings. Set OPENAI_API_KEY."
 		);
 	}
-	return openaiProvider.textEmbeddingModel("text-embedding-3-small");
+
+	// Model hierarchy: try preferred -> 3-small -> 3-large -> ada-002
+	const modelHierarchy = [
+		preferredModel,
+		"text-embedding-3-small",
+		"text-embedding-3-large",
+		"text-embedding-ada-002",
+	].filter(Boolean);
+
+	// For now, use the first available model since we can't detect failures beforehand
+	// In production, you'd implement retry logic with different models
+	const model = modelHierarchy[0] || "text-embedding-3-small";
+
+	return openaiProvider.textEmbeddingModel(model as string);
+}
+
+/**
+ * Get embedding model dimensions based on model name
+ */
+export function getEmbeddingDimensions(model: string): number {
+	const dimensions: Record<string, number> = {
+		"text-embedding-3-small": 1536,
+		"text-embedding-3-large": 3072,
+		"text-embedding-ada-002": 1536,
+	};
+
+	return dimensions[model] || 1536;
 }

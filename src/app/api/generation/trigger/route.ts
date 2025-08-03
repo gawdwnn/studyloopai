@@ -9,6 +9,7 @@ import { db } from "@/db";
 import { configurationSource, courseMaterials, courseWeeks } from "@/db/schema";
 import { initializeFeatureTracking } from "@/lib/actions/course-week-features";
 import { persistSelectiveConfig } from "@/lib/actions/generation-config";
+import { checkAIRateLimit } from "@/lib/rate-limit";
 import { getServerClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/utils/logger";
 import { SelectiveGenerationConfigSchema } from "@/lib/validation/generation-config";
@@ -48,6 +49,35 @@ export async function POST(req: NextRequest) {
 
 		if (!user) {
 			return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
+		}
+
+		// Apply rate limiting for AI content generation - token bucket algorithm
+		const rateLimitResult = await checkAIRateLimit(user.id);
+
+		if (!rateLimitResult.success) {
+			const resetMinutes = rateLimitResult.reset
+				? Math.ceil((rateLimitResult.reset - Date.now()) / 60000)
+				: 60;
+
+			return NextResponse.json(
+				{
+					error: "Rate limit exceeded",
+					message: `Too many AI generation requests. Try again in ${resetMinutes} minutes.`,
+					remainingAttempts: rateLimitResult.remaining,
+					resetTime: rateLimitResult.reset,
+				},
+				{
+					status: 429,
+					headers: {
+						"X-RateLimit-Limit": rateLimitResult.limit.toString(),
+						"X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
+						"X-RateLimit-Reset": rateLimitResult.reset?.toString() || "",
+						"Retry-After": Math.ceil(
+							((rateLimitResult.reset || Date.now()) - Date.now()) / 1000
+						).toString(),
+					},
+				}
+			);
 		}
 
 		// Get materials for this courseId and weekId, ensuring week has course materials
@@ -104,11 +134,26 @@ export async function POST(req: NextRequest) {
 		// Initialize feature tracking
 		await initializeFeatureTracking(body.courseId, body.weekId, configId);
 
-		return NextResponse.json({
+		const response = NextResponse.json({
 			success: true,
 			runId: handle.id,
 			publicAccessToken: handle.publicAccessToken,
 		});
+
+		// Add rate limit headers to successful responses
+		response.headers.set("X-RateLimit-Limit", rateLimitResult.limit.toString());
+		response.headers.set(
+			"X-RateLimit-Remaining",
+			rateLimitResult.remaining.toString()
+		);
+		if (rateLimitResult.reset) {
+			response.headers.set(
+				"X-RateLimit-Reset",
+				rateLimitResult.reset.toString()
+			);
+		}
+
+		return response;
 	} catch (error) {
 		logger.error("On-demand generation trigger failed", {
 			message: error instanceof Error ? error.message : String(error),
