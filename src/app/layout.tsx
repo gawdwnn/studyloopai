@@ -2,6 +2,7 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { ReactQueryProvider } from "@/components/providers/react-query-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { PostHogProvider } from "@/lib/analytics/posthog-provider";
 import { getSiteUrl } from "@/lib/utils/site-url";
 import type { Metadata } from "next";
 import { Geist_Mono, Montserrat } from "next/font/google";
@@ -36,17 +37,19 @@ export default function RootLayout({
 			<body
 				className={`${montserrat.variable} ${geistMono.variable} antialiased`}
 			>
-				<ReactQueryProvider>
-					<ThemeProvider
-						attribute="class"
-						defaultTheme="system"
-						enableSystem
-						disableTransitionOnChange
-					>
-						<ErrorBoundary>{children}</ErrorBoundary>
-						<Toaster />
-					</ThemeProvider>
-				</ReactQueryProvider>
+				<PostHogProvider>
+					<ReactQueryProvider>
+						<ThemeProvider
+							attribute="class"
+							defaultTheme="system"
+							enableSystem
+							disableTransitionOnChange
+						>
+							<ErrorBoundary>{children}</ErrorBoundary>
+							<Toaster />
+						</ThemeProvider>
+					</ReactQueryProvider>
+				</PostHogProvider>
 			</body>
 		</html>
 	);
