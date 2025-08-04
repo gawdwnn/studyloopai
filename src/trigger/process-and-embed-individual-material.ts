@@ -44,7 +44,7 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 	}: {
 		payload: ProcessAndEmbedIndividualPayloadType;
 	}) => {
-		logger.info("📄 Material processing task started", {
+		logger.info("Material processing task started", {
 			materialId: payload.materialId,
 			filePath: payload.filePath,
 			contentType: payload.contentType,
@@ -65,7 +65,7 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 			const downloadResult = await downloadCourseMaterial(filePath);
 
 			if (!downloadResult.success) {
-				logger.error("❌ Download failed", {
+				logger.error("Download failed", {
 					materialId,
 					filePath,
 					error: downloadResult.error,
@@ -77,7 +77,7 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 			}
 
 			if (!downloadResult.buffer) {
-				logger.error("❌ No buffer data received", {
+				logger.error("No buffer data received", {
 					materialId,
 					filePath,
 					step: "download",
@@ -99,7 +99,7 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 				if (pdfResult.success && pdfResult.text && pdfResult.text.trim()) {
 					extractedText = pdfResult.text;
 				} else {
-					logger.error("❌ PDF text extraction failed", {
+					logger.error("PDF text extraction failed", {
 						materialId,
 						filePath,
 						error: pdfResult.error,
@@ -110,7 +110,7 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 					);
 				}
 			} else {
-				logger.error("❌ Unsupported content type", {
+				logger.error("Unsupported content type", {
 					materialId,
 					filePath,
 					contentType,
@@ -124,7 +124,7 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 			}
 
 			if (!extractedText.trim()) {
-				logger.error("❌ No extractable text found", {
+				logger.error("No extractable text found", {
 					materialId,
 					filePath,
 					textLength: extractedText.length,
@@ -148,7 +148,7 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 			);
 
 			if (!result.success) {
-				logger.error("❌ Embedding generation failed", {
+				logger.error("Embedding generation failed", {
 					materialId,
 					chunksCount: chunks.length,
 					error: result.error,
@@ -176,7 +176,7 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 				processingCompletedAt: new Date(),
 			});
 
-			logger.info("✅ Material processing pipeline completed successfully", {
+			logger.info("Material processing pipeline completed successfully", {
 				materialId,
 				filePath,
 				contentType,
@@ -190,7 +190,7 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 		} catch (error) {
 			// log error as it
 
-			logger.error("❌ Material processing failed", {});
+			logger.error("Material processing failed", {});
 
 			await updateCourseMaterialStatus(payload.materialId, "failed", {
 				processingCompletedAt: new Date(),
@@ -206,7 +206,7 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 		payload: ProcessAndEmbedIndividualPayloadType;
 		output: z.infer<typeof ProcessAndEmbedIndividualOutput>;
 	}) => {
-		logger.info("✅ Material processing completed successfully", {
+		logger.info("Material processing completed successfully", {
 			materialId: payload.materialId,
 			filePath: payload.filePath,
 			contentType: payload.contentType,
@@ -220,7 +220,7 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 	}) => {
 		//log error as is
 
-		logger.error("❌ Material processing failed permanently", {
+		logger.error("Material processing failed permanently", {
 			materialId: payload.materialId,
 			filePath: payload.filePath,
 			contentType: payload.contentType,

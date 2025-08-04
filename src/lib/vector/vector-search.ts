@@ -3,12 +3,16 @@ import { and, cosineDistance, desc, eq, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { courseMaterials, documentChunks } from "../../db/schema";
 import { generateEmbeddings } from "../ai/embeddings";
+import { VectorSearchError } from "../ai/errors";
+import { processAIError } from "../ai/quota-handler";
 
 interface SearchOptions {
 	limit?: number; // Default: 10
 	threshold?: number; // Similarity threshold (0-1)
 	materialIds?: string[]; // Filter by specific materials
 	includeMetadata?: boolean; // Include chunk metadata
+	useHybridSearch?: boolean; // Enable hybrid search (vector + text)
+	textWeight?: number; // Weight for text search (0-1, default: 0.3)
 }
 
 interface SearchResult {
@@ -30,6 +34,32 @@ interface VectorSearchResponse {
 }
 
 /**
+ * Preprocess and normalize search queries for better results
+ */
+function preprocessQuery(query: string): string {
+	return query
+		.toLowerCase()
+		.trim()
+		.replace(/\s+/g, " ") // Normalize whitespace
+		.replace(/[^\w\s-]/g, "") // Remove special characters except hyphens
+		.slice(0, 200); // Limit query length for embedding performance
+}
+
+/**
+ * Prepare query for PostgreSQL full text search
+ */
+function prepareTextSearchQuery(query: string): string {
+	// Split into tokens and join with & for AND search
+	const tokens = preprocessQuery(query)
+		.split(" ")
+		.filter((token) => token.length > 2) // Ignore very short words
+		.map((token) => `${token}:*`) // Add prefix matching
+		.join(" & ");
+
+	return tokens || query; // Fallback to original if no valid tokens
+}
+
+/**
  * Perform semantic search across document chunks
  */
 export async function searchSimilarChunks(
@@ -42,17 +72,24 @@ export async function searchSimilarChunks(
 		threshold = 0.7,
 		materialIds,
 		includeMetadata = true,
+		useHybridSearch = false,
+		textWeight = 0.3,
 	} = options;
 
 	try {
-		// Generate embedding for the query
-		const embeddingResult = await generateEmbeddings([query]);
+		// Preprocess the query for better results
+		const processedQuery = preprocessQuery(query);
+
+		// Generate embedding for the preprocessed query
+		const embeddingResult = await generateEmbeddings([processedQuery]);
 
 		if (!embeddingResult.success || !embeddingResult.embeddings) {
-			return {
-				success: false,
-				error: "Failed to generate query embedding",
-			};
+			throw new VectorSearchError(
+				"Failed to generate query embedding",
+				processedQuery,
+				useHybridSearch ? "hybrid" : "vector",
+				{ originalQuery: query }
+			);
 		}
 
 		const queryEmbedding = embeddingResult.embeddings[0];
@@ -60,33 +97,86 @@ export async function searchSimilarChunks(
 		// Build the search query using cosine similarity with Drizzle helper
 		const similarity = sql<number>`1 - ${cosineDistance(documentChunks.embedding, queryEmbedding)}`;
 
-		const searchQuery = db
-			.select({
-				id: documentChunks.id,
-				content: documentChunks.content,
-				similarity,
-				materialId: documentChunks.materialId,
-				chunkIndex: documentChunks.chunkIndex,
-				metadata: includeMetadata ? documentChunks.metadata : sql`NULL`,
-				materialTitle: courseMaterials.title,
-			})
-			.from(documentChunks)
-			.leftJoin(
-				courseMaterials,
-				eq(documentChunks.materialId, courseMaterials.id)
-			)
-			.where(
-				and(
-					sql`1 - ${cosineDistance(documentChunks.embedding, queryEmbedding)} > ${threshold}`,
-					materialIds
-						? sql`${documentChunks.materialId} = ANY(${materialIds})`
-						: undefined
-				)
-			)
-			.orderBy(desc(similarity))
-			.limit(limit);
+		let results: Array<{
+			id: string;
+			content: string;
+			similarity: number;
+			materialId: string;
+			chunkIndex: number;
+			metadata: unknown;
+			materialTitle: string | null;
+		}>;
 
-		const results = await searchQuery;
+		if (useHybridSearch) {
+			// Hybrid search: combine vector similarity with text search
+			const textSearchQuery = prepareTextSearchQuery(query);
+			const vectorWeight = 1 - textWeight;
+
+			// Calculate combined score
+			const combinedScore = sql<number>`
+				(${vectorWeight} * (1 - ${cosineDistance(documentChunks.embedding, queryEmbedding)})) +
+				(${textWeight} * 
+					CASE 
+						WHEN to_tsvector('english', ${documentChunks.content}) @@ to_tsquery('english', ${textSearchQuery})
+						THEN ts_rank(to_tsvector('english', ${documentChunks.content}), to_tsquery('english', ${textSearchQuery}))
+						ELSE 0
+					END
+				)
+			`;
+
+			results = await db
+				.select({
+					id: documentChunks.id,
+					content: documentChunks.content,
+					similarity: combinedScore,
+					materialId: documentChunks.materialId,
+					chunkIndex: documentChunks.chunkIndex,
+					metadata: includeMetadata ? documentChunks.metadata : sql`NULL`,
+					materialTitle: courseMaterials.title,
+				})
+				.from(documentChunks)
+				.leftJoin(
+					courseMaterials,
+					eq(documentChunks.materialId, courseMaterials.id)
+				)
+				.where(
+					and(
+						sql`${combinedScore} > ${threshold}`,
+						materialIds
+							? sql`${documentChunks.materialId} = ANY(${materialIds})`
+							: undefined
+					)
+				)
+				.orderBy(desc(combinedScore))
+				.limit(limit);
+		} else {
+			// Pure vector search
+			results = await db
+				.select({
+					id: documentChunks.id,
+					content: documentChunks.content,
+					similarity,
+					materialId: documentChunks.materialId,
+					chunkIndex: documentChunks.chunkIndex,
+					metadata: includeMetadata ? documentChunks.metadata : sql`NULL`,
+					materialTitle: courseMaterials.title,
+				})
+				.from(documentChunks)
+				.leftJoin(
+					courseMaterials,
+					eq(documentChunks.materialId, courseMaterials.id)
+				)
+				.where(
+					and(
+						sql`1 - ${cosineDistance(documentChunks.embedding, queryEmbedding)} > ${threshold}`,
+						materialIds
+							? sql`${documentChunks.materialId} = ANY(${materialIds})`
+							: undefined
+					)
+				)
+				.orderBy(desc(similarity))
+				.limit(limit);
+		}
 
 		const searchTime = Date.now() - startTime;
 
@@ -105,6 +195,24 @@ export async function searchSimilarChunks(
 			searchTime,
 		};
 	} catch (error) {
+		// Handle quota exhaustion specifically
+		const { isQuotaIssue, notification } = processAIError(error);
+
+		if (isQuotaIssue && notification) {
+			logger.error("Vector search failed due to quota exhaustion", {
+				userMessage: notification.userMessage,
+				technicalMessage: notification.technicalMessage,
+				provider: notification.provider,
+				query,
+				options,
+			});
+
+			return {
+				success: false,
+				error: notification.userMessage,
+			};
+		}
+
 		logger.error("Vector search failed", {
 			message: error instanceof Error ? error.message : String(error),
 			stack: error instanceof Error ? error.stack : undefined,

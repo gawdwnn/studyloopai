@@ -1,10 +1,10 @@
-// Session Manager Types
-// Coordinates and manages multiple session types
-
-import type { SelectiveGenerationConfig } from "@/types/generation-types";
 import type { SessionStatus } from "../cuecard-session/types";
 
-export type SessionType = "cuecards" | "multiple-choice" | "open-questions";
+export type SessionType =
+	| "cuecards"
+	| "multiple-choice"
+	| "open-questions"
+	| "mcqs";
 
 export type { SessionStatus };
 
@@ -158,8 +158,6 @@ export interface SessionManagerActions {
 	) => Promise<void>;
 	pauseSession: (sessionId: string) => void;
 	resumeSession: (sessionId: string) => void;
-	switchSessionType: (newType: SessionType) => Promise<void>;
-	recoverSession: () => Promise<ActiveSessionInfo | null>;
 
 	// Session history
 	getSessionHistory: (filter?: {
@@ -174,17 +172,6 @@ export interface SessionManagerActions {
 
 	// Recommendations
 	generateRecommendations: () => Promise<SessionRecommendation[]>;
-
-	// Synchronization - Session Metadata Only
-	syncSessionMetadata: () => Promise<{ success: boolean; message: string }>;
-	syncAllSessionData: () => Promise<{
-		success: boolean;
-		message: string;
-		results: Array<{
-			store: string;
-			result: { success: boolean; message: string };
-		}>;
-	}>;
 
 	// Preferences
 	updatePreferences: (
@@ -207,11 +194,6 @@ export interface SessionManagerActions {
 		percentage: number;
 	};
 
-	// Generation config inference
-	inferGenerationConfig: (
-		courseId: string,
-		sessionType: SessionType
-	) => Promise<SelectiveGenerationConfig | null>;
 	// Error handling
 	setError: (error: string | null) => void;
 	clearError: () => void;
@@ -253,6 +235,12 @@ export const initialCrossSessionAnalytics: CrossSessionAnalytics = {
 			averageScore: 0,
 			totalTime: 0,
 		},
+		mcqs: {
+			count: 0,
+			averageAccuracy: 0,
+			averageScore: 0,
+			totalTime: 0,
+		},
 	},
 	learningPatterns: {
 		mostProductiveTimeOfDay: 14, // 2 PM default
@@ -276,7 +264,12 @@ export const initialSessionManagerState: SessionManagerState = {
 	recommendations: [],
 	preferences: {
 		defaultSessionLength: 20,
-		preferredSessionTypes: ["cuecards", "multiple-choice", "open-questions"],
+		preferredSessionTypes: [
+			"cuecards",
+			"multiple-choice",
+			"open-questions",
+			"mcqs",
+		],
 		autoSaveInterval: 5,
 		reminderSettings: {
 			enabled: false,

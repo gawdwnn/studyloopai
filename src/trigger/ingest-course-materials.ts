@@ -49,7 +49,7 @@ export const ingestCourseMaterials = schemaTask({
 				{}
 			);
 
-		logger.info("🧩 All embeddings complete, triggering AI generation", {
+		logger.info("All embeddings complete, triggering AI generation", {
 			embeddingResult,
 		});
 
@@ -84,7 +84,7 @@ export const ingestCourseMaterials = schemaTask({
 		const weekId = weekIds[0];
 		const courseId = courseIds[0];
 
-		logger.info("🧩 All embeddings complete, triggering AI generation", {
+		logger.info("All embeddings complete, triggering AI generation", {
 			userId,
 			materialIds,
 			weekId,

@@ -1,13 +1,10 @@
 import { getAdminDatabaseAccess } from "@/db";
-import type {
-	ConceptMapSchema,
-	CuecardsArraySchema,
-	GoldenNotesArraySchema,
-	MCQsArraySchema,
-	OpenQuestionsArraySchema,
-	SummarySchema,
-} from "@/lib/ai/generation/schemas";
-import type { z } from "zod";
+import type { ConceptMap } from "@/lib/ai/generation/schemas/concept-maps";
+import type { Cuecard } from "@/lib/ai/generation/schemas/cuecards";
+import type { GoldenNote } from "@/lib/ai/generation/schemas/golden-notes";
+import type { MCQ } from "@/lib/ai/generation/schemas/mcq";
+import type { OpenQuestion } from "@/lib/ai/generation/schemas/open-questions";
+import type { Summary } from "@/lib/ai/generation/schemas/summaries";
 
 /**
  * Content insertion functions using Supabase admin client for background jobs
@@ -74,13 +71,13 @@ async function updateFeatureCountsAdmin(
 }
 
 export async function insertGoldenNotes(
-	data: z.infer<typeof GoldenNotesArraySchema>,
+	data: GoldenNote[],
 	courseId: string,
 	weekId: string
 ): Promise<void> {
 	const admin = getAdminDatabaseAccess();
 
-	const notesToInsert = data.map((note) => ({
+	const notesToInsert = data.map((note: GoldenNote) => ({
 		course_id: courseId,
 		week_id: weekId,
 		title: note.title,
@@ -108,13 +105,13 @@ export async function insertGoldenNotes(
 }
 
 export async function insertCuecards(
-	data: z.infer<typeof CuecardsArraySchema>,
+	data: Cuecard[],
 	courseId: string,
 	weekId: string
 ): Promise<void> {
 	const admin = getAdminDatabaseAccess();
 
-	const cuecardsToInsert = data.map((fc) => ({
+	const cuecardsToInsert = data.map((fc: Cuecard) => ({
 		course_id: courseId,
 		week_id: weekId,
 		question: fc.question,
@@ -141,13 +138,13 @@ export async function insertCuecards(
 }
 
 export async function insertMCQs(
-	data: z.infer<typeof MCQsArraySchema>,
+	data: MCQ[],
 	courseId: string,
 	weekId: string
 ): Promise<void> {
 	const admin = getAdminDatabaseAccess();
 
-	const mcqsToInsert = data.map((q) => ({
+	const mcqsToInsert = data.map((q: MCQ) => ({
 		course_id: courseId,
 		week_id: weekId,
 		question: q.question,
@@ -176,13 +173,13 @@ export async function insertMCQs(
 }
 
 export async function insertOpenQuestions(
-	data: z.infer<typeof OpenQuestionsArraySchema>,
+	data: OpenQuestion[],
 	courseId: string,
 	weekId: string
 ): Promise<void> {
 	const admin = getAdminDatabaseAccess();
 
-	const questionsToInsert = data.map((q) => ({
+	const questionsToInsert = data.map((q: OpenQuestion) => ({
 		course_id: courseId,
 		week_id: weekId,
 		question: q.question,
@@ -212,13 +209,13 @@ export async function insertOpenQuestions(
 }
 
 export async function insertSummaries(
-	data: z.infer<typeof SummarySchema>[],
+	data: Summary[],
 	courseId: string,
 	weekId: string
 ): Promise<void> {
 	const admin = getAdminDatabaseAccess();
 
-	const summaryToInsert = data.map((s) => ({
+	const summaryToInsert = data.map((s: Summary) => ({
 		course_id: courseId,
 		week_id: weekId,
 		title: s.title,
@@ -246,13 +243,13 @@ export async function insertSummaries(
 }
 
 export async function insertConceptMaps(
-	data: z.infer<typeof ConceptMapSchema>[],
+	data: ConceptMap[],
 	courseId: string,
 	weekId: string
 ): Promise<void> {
 	const admin = getAdminDatabaseAccess();
 
-	const conceptMapsToInsert = data.map((cm) => ({
+	const conceptMapsToInsert = data.map((cm: ConceptMap) => ({
 		course_id: courseId,
 		week_id: weekId,
 		title: cm.title,
