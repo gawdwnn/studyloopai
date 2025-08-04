@@ -1,4 +1,4 @@
-import { IS_RATE_LIMIT_ERROR } from "@/lib/rate-limit";
+import { isRateLimitError } from "@/lib/utils/error-handling";
 import { AuthError } from "@supabase/supabase-js";
 
 export type AuthErrorType =
@@ -20,17 +20,6 @@ export interface AuthErrorDetails {
 	field?: string;
 	resetTime?: number;
 	remainingAttempts?: number;
-}
-
-function isRateLimitError(error: unknown): error is {
-	[IS_RATE_LIMIT_ERROR]: true;
-	message: string;
-	remainingAttempts: number;
-	resetTime?: number;
-} {
-	return (
-		typeof error === "object" && error !== null && IS_RATE_LIMIT_ERROR in error
-	);
 }
 
 export function getAuthErrorMessage(error: unknown): AuthErrorDetails {
