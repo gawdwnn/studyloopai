@@ -1,17 +1,19 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { useOnboardingStore } from "@/stores/onboarding-store";
+import { getOnboardingProgress } from "@/lib/actions/user";
 import { motion } from "framer-motion";
-import {
-	ArrowRight,
-	BookOpen,
-	Brain,
-	CheckCircle,
-	Sparkles,
-	Target,
-} from "lucide-react";
+import { BookOpen, Brain, CheckCircle, Target } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+
+interface OnboardingData {
+	firstName?: string;
+	lastName?: string;
+	studyGoals?: string[];
+	selectedPlan?: string;
+}
 
 const nextSteps = [
 	{
@@ -38,17 +40,40 @@ const nextSteps = [
 ];
 
 export function CompletionStep() {
-	const { profileData, planSelection, completeOnboarding } =
-		useOnboardingStore();
+	const searchParams = useSearchParams();
+	const [onboardingData, setOnboardingData] = useState<OnboardingData>({});
 
-	const handleGetStarted = () => {
-		completeOnboarding();
-		// The modal will automatically close when onboarding is completed
-	};
+	// Load onboarding data on component mount
+	useEffect(() => {
+		async function loadProgress() {
+			const result = await getOnboardingProgress();
+			if (result.success) {
+				setOnboardingData({
+					...result.data,
+					firstName: result.data.firstName ?? undefined,
+					lastName: result.data.lastName ?? undefined,
+				});
+			}
+		}
+		loadProgress();
 
-	const hasProfile = profileData.firstName || profileData.lastName;
-	const hasGoals = profileData.studyGoals && profileData.studyGoals.length > 0;
-	const hasPlan = planSelection.selectedPlan;
+		// Check if user came from successful payment
+		const paymentSuccess = searchParams.get("payment_success");
+		const checkoutId = searchParams.get("checkout_id");
+
+		if (paymentSuccess === "true" && checkoutId) {
+			toast.success("Payment successful!", {
+				description:
+					"Your subscription is now active. Welcome to StudyLoop Pro!",
+				duration: 5000,
+			});
+		}
+	}, [searchParams]);
+
+	const hasProfile = onboardingData.firstName || onboardingData.lastName;
+	const hasGoals =
+		onboardingData.studyGoals && onboardingData.studyGoals.length > 0;
+	const hasPlan = onboardingData.selectedPlan;
 
 	const containerVariants = {
 		hidden: { opacity: 0 },
@@ -127,7 +152,7 @@ export function CompletionStep() {
 							</div>
 							<div className="text-xs text-muted-foreground mt-1">
 								{hasGoals
-									? `${profileData.studyGoals?.length} selected`
+									? `${onboardingData.studyGoals?.length} selected`
 									: "Skipped"}
 							</div>
 						</CardContent>
@@ -146,7 +171,7 @@ export function CompletionStep() {
 								Plan
 							</div>
 							<div className="text-xs text-muted-foreground mt-1">
-								{hasPlan ? planSelection.selectedPlan : "Free Plan"}
+								{hasPlan ? onboardingData.selectedPlan : "Free Plan"}
 							</div>
 						</CardContent>
 					</Card>
@@ -186,20 +211,10 @@ export function CompletionStep() {
 				</div>
 			</motion.div>
 
-			{/* Action button */}
-			<motion.div variants={itemVariants} className="text-center space-y-4">
-				<Button
-					onClick={handleGetStarted}
-					size="lg"
-					className="min-w-[200px] gap-2"
-				>
-					<Sparkles className="h-4 w-4" />
-					Start Learning
-					<ArrowRight className="h-4 w-4" />
-				</Button>
-
+			{/* Helper text */}
+			<motion.div variants={itemVariants} className="text-center">
 				<p className="text-xs text-muted-foreground">
-					🎉 You can always revisit these settings in your profile
+					You can always revisit these settings in your profile
 				</p>
 			</motion.div>
 		</motion.div>

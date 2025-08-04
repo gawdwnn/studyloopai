@@ -1,28 +1,20 @@
 "use client";
 
+import { BillingStep } from "@/components/onboarding/steps/billing-step";
 import { CompletionStep } from "@/components/onboarding/steps/completion-step";
 import { PersonalizationStep } from "@/components/onboarding/steps/personalization-step";
 import { WelcomeProfileStep } from "@/components/onboarding/steps/welcome-profile-step";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-	ONBOARDING_STEPS,
-	useOnboardingStore,
-} from "@/stores/onboarding-store";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect } from "react";
 
 const stepComponents: Record<string, React.ComponentType> = {
 	"welcome-profile": WelcomeProfileStep,
 	personalization: PersonalizationStep,
+	billing: BillingStep,
 	completion: CompletionStep,
 };
 
 const stepSlugs = Object.keys(stepComponents);
-const stepMap: { [key: string]: number } = {
-	"welcome-profile": ONBOARDING_STEPS.WELCOME_PROFILE,
-	personalization: ONBOARDING_STEPS.PERSONALIZATION,
-	completion: ONBOARDING_STEPS.COMPLETION,
-};
 
 function OnboardingStepSkeleton() {
 	return (
@@ -49,19 +41,15 @@ function OnboardingStepSkeleton() {
 export default function OnboardingStepPage() {
 	const router = useRouter();
 	const params = useParams();
-	const goToStep = useOnboardingStore((state) => state.goToStep);
 
 	const stepSlug = Array.isArray(params.step) ? params.step[0] : params.step;
 	const StepComponent = stepSlug ? stepComponents[stepSlug] : null;
 
-	useEffect(() => {
-		if (stepSlug && stepMap[stepSlug]) {
-			goToStep(stepMap[stepSlug]);
-		} else {
-			// Redirect to the first step if the slug is invalid
-			router.replace(`/onboarding/${stepSlugs[0]}`);
-		}
-	}, [stepSlug, goToStep, router]);
+	// If the step is invalid, redirect to the first step
+	if (stepSlug && !stepComponents[stepSlug]) {
+		router.replace(`/onboarding/${stepSlugs[0]}`);
+		return <OnboardingStepSkeleton />;
+	}
 
 	if (!StepComponent) {
 		return <OnboardingStepSkeleton />;
