@@ -67,19 +67,6 @@ export default function SettingsPage() {
 					<p className="text-muted-foreground">Language settings</p>
 				</CardContent>
 			</Card>
-
-			{/* Audio Settings Placeholder */}
-			<Card>
-				<CardHeader>
-					<CardTitle>Audio Settings</CardTitle>
-					<CardDescription>
-						Configure audio and sound preferences
-					</CardDescription>
-				</CardHeader>
-				<CardContent>
-					<p className="text-muted-foreground">Audio settings</p>
-				</CardContent>
-			</Card>
 		</div>
 	);
 }

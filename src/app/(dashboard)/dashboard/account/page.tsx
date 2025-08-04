@@ -1,4 +1,4 @@
-import { AccountBillingSettings } from "@/components/billing/account-billing-settings";
+import { AccountBillingWrapper } from "@/components/billing/account-billing-wrapper";
 import {
 	Card,
 	CardContent,
@@ -31,7 +31,7 @@ export default function AccountPage() {
 			</Card>
 
 			{/* Billing Section - Already implemented */}
-			<AccountBillingSettings />
+			<AccountBillingWrapper />
 
 			{/* Security Placeholder */}
 			<Card>
@@ -43,19 +43,6 @@ export default function AccountPage() {
 				</CardHeader>
 				<CardContent>
 					<p className="text-muted-foreground">Security settings</p>
-				</CardContent>
-			</Card>
-
-			{/* Usage Analytics Placeholder */}
-			<Card>
-				<CardHeader>
-					<CardTitle>Usage & Analytics</CardTitle>
-					<CardDescription>
-						Track your study progress and insights
-					</CardDescription>
-				</CardHeader>
-				<CardContent>
-					<p className="text-muted-foreground">Usage analytics</p>
 				</CardContent>
 			</Card>
 		</div>
