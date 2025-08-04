@@ -83,7 +83,7 @@ const createOutputHandler = (mode: UIMode): OutputHandler => {
 
 	return {
 		info: shouldLog
-			? (msg, ...args) => console.log(chalk.blue("ℹ"), msg, ...args)
+			? (msg, ...args) => console.info(chalk.cyan("ℹ"), msg, ...args)
 			: () => {},
 		warn: shouldLog
 			? (msg, ...args) => console.warn(chalk.yellow("⚠"), msg, ...args)

@@ -6,7 +6,7 @@ import { getServerClient } from "@/lib/supabase/server";
 import type { FeatureAvailability } from "@/types/generation-types";
 import { and, eq } from "drizzle-orm";
 
-// TODO: fix server actions
+// TODO: fix server actions used in use-feature-availability hook
 /**
  * Get feature availability status for a course
  */
@@ -17,7 +17,8 @@ export async function getFeatureAvailability(
 		data: { user },
 	} = await (await getServerClient()).auth.getUser();
 	if (!user) {
-		throw new Error("Authentication required");
+		// Return empty availability for unauthenticated users (data fetching)
+		return {};
 	}
 
 	// Get all course week features for this course
@@ -65,7 +66,7 @@ export async function getFeatureAvailability(
 
 	return availability;
 }
-// TODO: fix server actions
+// TODO: fix server actions used in use-feature-availability hook
 /**
  * Get feature availability status for a specific course week (optimized single query)
  */

@@ -1,30 +1,66 @@
 "use client";
-
-import { Button } from "@/components/ui/button";
+import { useStepValidation } from "@/components/step-validation-context";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useOnboardingStore } from "@/stores/onboarding-store";
+import { useProfileStepData } from "@/hooks/use-onboarding-progress";
 import { motion } from "framer-motion";
 import { User, Users } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export function WelcomeProfileStep() {
-	const { profileData, updateProfileData, markStepCompleted, goToNextStep } =
-		useOnboardingStore();
+	const { setStepValid, setStepData } = useStepValidation();
+	const { firstName, lastName, isLoading, hasValidProfile } =
+		useProfileStepData();
 
 	const [formData, setFormData] = useState({
-		firstName: profileData.firstName || "",
-		lastName: profileData.lastName || "",
+		firstName: "",
+		lastName: "",
 	});
 
-	const handleInputChange = (field: string, value: string) => {
-		setFormData((prev) => ({ ...prev, [field]: value }));
-	};
+	// Initialize form data from hook when data loads
+	useEffect(() => {
+		if (!isLoading) {
+			const newFormData = {
+				firstName: firstName || "",
+				lastName: lastName || "",
+			};
+			setFormData(newFormData);
 
-	const handleContinue = () => {
-		updateProfileData(formData);
-		markStepCompleted(1); // Welcome & Profile step
-		goToNextStep();
+			// Set initial validation state
+			const isValid = hasValidProfile;
+			setStepValid(isValid);
+
+			if (isValid) {
+				setStepData({
+					firstName: newFormData.firstName,
+					lastName: newFormData.lastName,
+				});
+			}
+		}
+	}, [
+		firstName,
+		lastName,
+		isLoading,
+		hasValidProfile,
+		setStepValid,
+		setStepData,
+	]);
+
+	const handleInputChange = (field: string, value: string) => {
+		const newFormData = { ...formData, [field]: value };
+		setFormData(newFormData);
+
+		// Update validation state and step data
+		const isValid =
+			newFormData.firstName.trim() !== "" && newFormData.lastName.trim() !== "";
+		setStepValid(isValid);
+
+		if (isValid) {
+			setStepData({
+				firstName: newFormData.firstName,
+				lastName: newFormData.lastName,
+			});
+		}
 	};
 
 	const containerVariants = {
@@ -96,16 +132,6 @@ export function WelcomeProfileStep() {
 						</div>
 					</div>
 				</div>
-			</motion.div>
-
-			{/* Action button */}
-			<motion.div variants={itemVariants} className="flex justify-center pt-4">
-				<Button
-					onClick={handleContinue}
-					disabled={!formData.firstName || !formData.lastName}
-				>
-					Continue
-				</Button>
 			</motion.div>
 		</motion.div>
 	);

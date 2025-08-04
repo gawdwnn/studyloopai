@@ -1,9 +1,17 @@
-import { FEATURE_IDS, type Plan } from "@/lib/database/types";
+import { FEATURE_IDS, PLAN_IDS, type Plan } from "@/lib/database/types";
+
+/**
+ * UNIFIED PLAN CONFIGURATION - SINGLE SOURCE OF TRUTH
+ *
+ * This configuration contains the correct pricing as specified:
+ * - Monthly: $4.99
+ * - Yearly: $3.99 (per month, billed annually)
+ */
 
 export const PLANS: Plan[] = [
 	{
-		id: "free",
-		name: "Hustler Plan",
+		id: PLAN_IDS.FREE,
+		name: "Free",
 		price: 0,
 		billingPeriod: "",
 		description: "Perfect for trying out StudyLoop",
@@ -46,38 +54,12 @@ export const PLANS: Plan[] = [
 		],
 	},
 	{
-		id: "yearly",
-		name: "Yearly Plan",
-		price: 9.99,
-		billingPeriod: "/month",
-		description: "Best value for serious students",
-		savingsInfo: "Save $120/year • 50% off monthly price",
-		isPopular: true,
-		features: [
-			{
-				id: FEATURE_IDS.BASIC_AI_TOOLS,
-				name: "Everything in Monthly plan, plus:",
-				included: true,
-			},
-			{
-				id: FEATURE_IDS.EARLY_ACCESS,
-				name: "Early access to new features",
-				included: true,
-			},
-			{
-				id: FEATURE_IDS.ANALYTICS,
-				name: "Study analytics & insights",
-				included: true,
-			},
-		],
-	},
-	{
-		id: "monthly",
-		name: "Monthly Plan",
-		price: 19.99,
+		id: PLAN_IDS.MONTHLY,
+		name: "Pro",
+		price: 4.99,
 		billingPeriod: "/month",
 		description: "Flexible monthly billing",
-		savingsInfo: "Switch to yearly to save 50%",
+		savingsInfo: "Switch to yearly to save $1.00/month",
 		features: [
 			{
 				id: FEATURE_IDS.BASIC_AI_TOOLS,
@@ -106,4 +88,62 @@ export const PLANS: Plan[] = [
 			},
 		],
 	},
+	{
+		id: PLAN_IDS.YEARLY,
+		name: "Pro",
+		price: 3.99,
+		billingPeriod: "/month",
+		annualPrice: 47.88,
+		description: "Best value • Annual billing",
+		savingsInfo: "Save $1.00/month vs monthly plan",
+		isPopular: true,
+		features: [
+			{
+				id: FEATURE_IDS.BASIC_AI_TOOLS,
+				name: "Everything in Monthly plan, plus:",
+				included: true,
+			},
+			{
+				id: FEATURE_IDS.EARLY_ACCESS,
+				name: "Early access to new features",
+				included: true,
+			},
+			{
+				id: FEATURE_IDS.ANALYTICS,
+				name: "Study analytics & insights",
+				included: true,
+			},
+		],
+	},
 ];
+
+// Utility functions for price conversion
+export const priceUtils = {
+	/**
+	 * Convert dollars to cents for Polar API
+	 */
+	toCents: (dollars: number): number => Math.round(dollars * 100),
+
+	/**
+	 * Convert cents to dollars for display
+	 */
+	toDollars: (cents: number): number => cents / 100,
+
+	/**
+	 * Format price for display
+	 */
+	formatDisplay: (dollars: number, interval?: string): string => {
+		return interval
+			? `$${dollars.toFixed(2)}/${interval}`
+			: `$${dollars.toFixed(2)}`;
+	},
+
+	/**
+	 * Convert plan to Polar API format
+	 */
+	toPolarFormat: (plan: Plan) => ({
+		amountType: "fixed" as const,
+		priceAmount: Math.round(plan.price * 100), // Convert to cents
+		priceCurrency: "usd",
+	}),
+};

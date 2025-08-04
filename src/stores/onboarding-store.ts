@@ -1,6 +1,5 @@
 "use client";
 
-import type { PlanId } from "@/lib/database/types";
 import { useRouter } from "next/navigation";
 import { useCallback } from "react";
 import { create } from "zustand";
@@ -11,20 +10,6 @@ export interface OnboardingState {
 	isVisible: boolean;
 	currentStep: number;
 	totalSteps: number;
-
-	// Step completion tracking
-	completedSteps: Set<number>;
-
-	// User data collection
-	profileData: {
-		firstName?: string;
-		lastName?: string;
-		studyGoals?: string[];
-	};
-
-	planSelection: {
-		selectedPlan?: PlanId;
-	};
 }
 
 export interface OnboardingActions {
@@ -34,9 +19,7 @@ export interface OnboardingActions {
 	goToPreviousStep: () => void;
 	goToStep: (step: number) => void;
 	completeOnboarding: () => void;
-	updateProfileData: (data: Partial<OnboardingState["profileData"]>) => void;
 	getStepInfo: (step: number) => { title: string; slug: string };
-	markStepCompleted: (step: number) => void;
 	restartOnboarding: () => void;
 }
 
@@ -45,7 +28,8 @@ export type OnboardingStore = OnboardingState & OnboardingActions;
 export const ONBOARDING_STEPS = {
 	WELCOME_PROFILE: 1,
 	PERSONALIZATION: 2,
-	COMPLETION: 3,
+	BILLING: 3,
+	COMPLETION: 4,
 } as const;
 
 export const TOTAL_STEPS = Object.keys(ONBOARDING_STEPS).length;
@@ -53,27 +37,23 @@ export const TOTAL_STEPS = Object.keys(ONBOARDING_STEPS).length;
 export const STEP_SLUGS: Record<number, string> = {
 	[ONBOARDING_STEPS.WELCOME_PROFILE]: "welcome-profile",
 	[ONBOARDING_STEPS.PERSONALIZATION]: "personalization",
+	[ONBOARDING_STEPS.BILLING]: "billing",
 	[ONBOARDING_STEPS.COMPLETION]: "completion",
 };
 
 export const STUDY_GOALS = [
-	{ id: "exam_prep", label: "Exam Preparation", icon: "📝" },
-	{ id: "skill_building", label: "Skill Building", icon: "🎯" },
-	{ id: "career_advancement", label: "Career Advancement", icon: "🚀" },
-	{ id: "academic_research", label: "Academic Research", icon: "🔬" },
-	{ id: "personal_interest", label: "Personal Interest", icon: "💡" },
-	{ id: "certification", label: "Professional Certification", icon: "🏆" },
+	{ id: "exam_prep", label: "Exam Preparation" },
+	{ id: "skill_building", label: "Skill Building" },
+	{ id: "career_advancement", label: "Career Advancement" },
+	{ id: "academic_research", label: "Academic Research" },
+	{ id: "personal_interest", label: "Personal Interest" },
+	{ id: "certification", label: "Professional Certification" },
 ] as const;
 
 const initialState: OnboardingState = {
 	isVisible: false,
 	currentStep: ONBOARDING_STEPS.WELCOME_PROFILE,
 	totalSteps: TOTAL_STEPS,
-	completedSteps: new Set(),
-	profileData: {},
-	planSelection: {
-		selectedPlan: "free",
-	},
 };
 
 export const useOnboardingStore = create<OnboardingStore>()(
@@ -104,35 +84,18 @@ export const useOnboardingStore = create<OnboardingStore>()(
 				set({ isVisible: false, currentStep: TOTAL_STEPS });
 			},
 
-			updateProfileData: (data) =>
-				set((state) => ({
-					profileData: { ...state.profileData, ...data },
-				})),
-
 			getStepInfo: (step) => {
-				const stepInfo: Record<number, { title: string; slug: string }> = {
-					[ONBOARDING_STEPS.WELCOME_PROFILE]: {
-						title: "Welcome & Profile",
-						slug: "welcome-profile",
-					},
-					[ONBOARDING_STEPS.PERSONALIZATION]: {
-						title: "Personalization",
-						slug: "personalization",
-					},
-					[ONBOARDING_STEPS.COMPLETION]: {
-						title: "Completion",
-						slug: "completion",
-					},
+				const stepTitles: Record<number, string> = {
+					[ONBOARDING_STEPS.WELCOME_PROFILE]: "Welcome & Profile",
+					[ONBOARDING_STEPS.PERSONALIZATION]: "Personalization",
+					[ONBOARDING_STEPS.BILLING]: "Choose Your Plan",
+					[ONBOARDING_STEPS.COMPLETION]: "Completion",
 				};
-				return (
-					stepInfo[step] || { title: "Unknown Step", slug: "welcome-profile" }
-				);
-			},
 
-			markStepCompleted: (step) => {
-				set((state) => ({
-					completedSteps: new Set(state.completedSteps).add(step),
-				}));
+				return {
+					title: stepTitles[step] || "Unknown Step",
+					slug: STEP_SLUGS[step] || "welcome-profile",
+				};
 			},
 
 			restartOnboarding: () => {
@@ -141,31 +104,6 @@ export const useOnboardingStore = create<OnboardingStore>()(
 		}),
 		{
 			name: "onboarding-store",
-			storage: {
-				getItem: (name) => {
-					const str = localStorage.getItem(name);
-					if (!str) return null;
-					const { state, version } = JSON.parse(str);
-					return {
-						state: {
-							...state,
-							completedSteps: new Set(state.completedSteps),
-						},
-						version,
-					};
-				},
-				setItem: (name, newValue) => {
-					const str = JSON.stringify({
-						state: {
-							...newValue.state,
-							completedSteps: Array.from(newValue.state.completedSteps),
-						},
-						version: newValue.version,
-					});
-					localStorage.setItem(name, str);
-				},
-				removeItem: (name) => localStorage.removeItem(name),
-			},
 		}
 	)
 );

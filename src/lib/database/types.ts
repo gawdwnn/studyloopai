@@ -1,5 +1,12 @@
 export type PlanId = "free" | "yearly" | "monthly";
 
+// Plan IDs for easy reference and type safety
+export const PLAN_IDS = {
+	FREE: "free" as const,
+	MONTHLY: "monthly" as const,
+	YEARLY: "yearly" as const,
+} as const;
+
 export interface PlanFeature {
 	id: string;
 	name: string;
@@ -12,6 +19,7 @@ export interface Plan {
 	name: string;
 	price: number;
 	billingPeriod: string;
+	annualPrice?: number;
 	description: string;
 	savingsInfo?: string;
 	isPopular?: boolean;

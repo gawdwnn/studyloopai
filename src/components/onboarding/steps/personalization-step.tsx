@@ -1,19 +1,35 @@
 "use client";
-import { Button } from "@/components/ui/button";
+import { useStepValidation } from "@/components/step-validation-context";
 import { Card, CardContent } from "@/components/ui/card";
+import { usePersonalizationStepData } from "@/hooks/use-onboarding-progress";
 import { cn } from "@/lib/utils";
-import { STUDY_GOALS, useOnboardingStore } from "@/stores/onboarding-store";
 import { motion } from "framer-motion";
 import { Check, Target } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+const STUDY_GOALS = [
+	{ id: "exam_prep", label: "Exam Preparation" },
+	{ id: "skill_building", label: "Skill Building" },
+	{ id: "career_advancement", label: "Career Advancement" },
+	{ id: "academic_research", label: "Academic Research" },
+	{ id: "personal_interest", label: "Personal Interest" },
+	{ id: "certification", label: "Professional Certification" },
+] as const;
 
 export function PersonalizationStep() {
-	const { profileData, updateProfileData, markStepCompleted, goToNextStep } =
-		useOnboardingStore();
+	const { setStepValid, setStepData } = useStepValidation();
+	const { studyGoals, isLoading } = usePersonalizationStepData();
+	const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
 
-	const [selectedGoals, setSelectedGoals] = useState<string[]>(
-		profileData.studyGoals || []
-	);
+	// Initialize selected goals from hook when data loads
+	useEffect(() => {
+		if (!isLoading) {
+			setSelectedGoals(studyGoals);
+			// This step is always valid (can proceed with no goals selected)
+			setStepValid(true);
+			setStepData({ studyGoals });
+		}
+	}, [studyGoals, isLoading, setStepValid, setStepData]);
 
 	const toggleGoal = (goalId: string) => {
 		const newGoals = selectedGoals.includes(goalId)
@@ -21,12 +37,9 @@ export function PersonalizationStep() {
 			: [...selectedGoals, goalId];
 
 		setSelectedGoals(newGoals);
-		updateProfileData({ studyGoals: newGoals });
-	};
 
-	const handleComplete = () => {
-		markStepCompleted(2); // Personalization step
-		goToNextStep();
+		// Update step data
+		setStepData({ studyGoals: newGoals });
 	};
 
 	const containerVariants = {
@@ -93,13 +106,6 @@ export function PersonalizationStep() {
 							>
 								<CardContent className="p-4">
 									<div className="flex items-center gap-3">
-										<div
-											className="text-2xl"
-											role="img"
-											aria-label={goal.label}
-										>
-											{goal.icon}
-										</div>
 										<div className="flex-1">
 											<h3 className="font-medium text-sm">{goal.label}</h3>
 										</div>
@@ -120,15 +126,10 @@ export function PersonalizationStep() {
 				})}
 			</motion.div>
 
-			{/* Action button */}
-			<motion.div variants={itemVariants} className="flex justify-center pt-2">
-				<Button onClick={handleComplete}>Continue</Button>
-			</motion.div>
-
 			{/* Help text */}
 			<motion.div variants={itemVariants} className="text-center">
 				<p className="text-xs text-muted-foreground">
-					💡 You can always update your goals later in your profile settings
+					You can always update your goals later in your profile settings
 				</p>
 			</motion.div>
 		</motion.div>

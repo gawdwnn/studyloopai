@@ -1,11 +1,19 @@
 "use client";
 
+import {
+	STEP_CONFIGS,
+	StepValidationContext,
+} from "@/components/step-validation-context";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
 	completeOnboarding as completeOnboardingAction,
 	skipOnboarding,
+	trackStepSkipped,
+	trackStepStarted,
+	updateOnboardingStep,
 } from "@/lib/actions/user";
+import { logger } from "@/lib/utils/logger";
 import {
 	TOTAL_STEPS,
 	useOnboardingProgress,
@@ -15,7 +23,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { toast } from "sonner";
 
 export default function OnboardingLayout({
 	children,
@@ -26,14 +35,58 @@ export default function OnboardingLayout({
 	const pathname = usePathname();
 	const [isPending, startTransition] = useTransition();
 
+	// Step validation state
+	const [isStepValid, setIsStepValid] = useState(true);
+	const [stepData, setStepData] = useState<Record<string, unknown> | null>(
+		null
+	);
+
 	const currentStep = useOnboardingStore((state) => state.currentStep);
+	const goToStep = useOnboardingStore((state) => state.goToStep);
 	const completeOnboarding = useOnboardingStore(
 		(state) => state.completeOnboarding
 	);
 	const getStepInfo = useOnboardingStore((state) => state.getStepInfo);
 
+	// Synchronize store with URL pathname and track step starts
+	useEffect(() => {
+		const pathSegments = pathname.split("/");
+		const stepSlug = pathSegments[pathSegments.length - 1];
+
+		// Map step slug to step number
+		const stepMapping: Record<string, number> = {
+			"welcome-profile": 1,
+			personalization: 2,
+			billing: 3,
+			completion: 4,
+		};
+
+		const urlStep = stepMapping[stepSlug];
+		if (urlStep && urlStep !== currentStep) {
+			goToStep(urlStep);
+
+			// Track step start analytics
+			trackStepStarted(urlStep).catch((error) => {
+				logger.error("Failed to track step start analytics", {
+					error: error instanceof Error ? error.message : String(error),
+					step: urlStep,
+				});
+			});
+		}
+	}, [pathname, currentStep, goToStep]);
+
 	const progress = useOnboardingProgress();
 	const { title } = getStepInfo(currentStep);
+
+	// Reset validation state when step changes - using a different approach
+	const previousStep = useRef(currentStep);
+	useEffect(() => {
+		if (previousStep.current !== currentStep) {
+			setIsStepValid(true);
+			setStepData(null);
+			previousStep.current = currentStep;
+		}
+	});
 
 	const handleNext = () => {
 		if (currentStep === TOTAL_STEPS) {
@@ -43,8 +96,26 @@ export default function OnboardingLayout({
 				router.push("/dashboard");
 			});
 		} else {
-			const nextSlug = getStepInfo(currentStep + 1).slug;
-			router.push(`/onboarding/${nextSlug}`);
+			startTransition(async () => {
+				// Save current step data if available
+				if (stepData) {
+					try {
+						await updateOnboardingStep(currentStep + 1, stepData);
+					} catch (error) {
+						logger.error("Failed to save onboarding progress", {
+							error: error instanceof Error ? error.message : String(error),
+							stack: error instanceof Error ? error.stack : undefined,
+							currentStep,
+							stepData,
+						});
+						toast.error("Unable to save your progress. Please try again.");
+						return;
+					}
+				}
+
+				const nextSlug = getStepInfo(currentStep + 1).slug;
+				router.push(`/onboarding/${nextSlug}`);
+			});
 		}
 	};
 
@@ -55,15 +126,64 @@ export default function OnboardingLayout({
 		}
 	};
 
-	const handleSkip = () => {
+	const handleSkipAll = () => {
 		startTransition(async () => {
 			await skipOnboarding();
 			router.push("/dashboard");
 		});
 	};
 
+	const handleSkipCurrentStep = () => {
+		if (currentStep === TOTAL_STEPS) {
+			// Can't skip completion step, redirect to finish
+			handleNext();
+			return;
+		}
+
+		startTransition(async () => {
+			try {
+				// Track step skip analytics
+				await trackStepSkipped(currentStep, "user_skip");
+
+				// Save current step data with skip marker if available
+				const currentData = stepData || {};
+				const skippedData = {
+					...currentData,
+					[`step${currentStep}Skipped`]: true,
+				};
+
+				// Move to next step with skip data
+				await updateOnboardingStep(currentStep + 1, skippedData);
+
+				const nextSlug = getStepInfo(currentStep + 1).slug;
+				router.push(`/onboarding/${nextSlug}`);
+			} catch (error) {
+				logger.error("Failed to skip onboarding step", {
+					error: error instanceof Error ? error.message : String(error),
+					stack: error instanceof Error ? error.stack : undefined,
+					currentStep,
+					stepData,
+				});
+				toast.error("Unable to skip this step. Please try again.");
+			}
+		});
+	};
+
 	const isLastStep = currentStep === TOTAL_STEPS;
 	const canGoBack = currentStep > 1;
+	const currentStepConfig = STEP_CONFIGS[currentStep];
+	const canSkipCurrentStep = currentStepConfig?.canSkip ?? false;
+
+	// Context value for step validation
+	const validationContextValue = {
+		setStepValid: setIsStepValid,
+		getStepData: () => stepData,
+		setStepData,
+		// Enhanced skip functionality
+		canSkipStep: canSkipCurrentStep,
+		skipCurrentStep: handleSkipCurrentStep,
+		skipAllOnboarding: handleSkipAll,
+	};
 
 	return (
 		<div className="flex flex-col min-h-screen bg-background">
@@ -76,11 +196,11 @@ export default function OnboardingLayout({
 						</Link>
 						<Button
 							variant="outline"
-							onClick={handleSkip}
+							onClick={handleSkipAll}
 							disabled={isPending}
 							className="border-2 hover:bg-accent font-medium"
 						>
-							{isPending ? "Skipping..." : "Skip for now →"}
+							{isPending ? "Skipping..." : "Skip entire setup →"}
 						</Button>
 					</div>
 				</div>
@@ -89,7 +209,7 @@ export default function OnboardingLayout({
 
 			{/* Main Content */}
 			<main className="flex-1 flex flex-col items-center justify-center pt-16">
-				<div className="w-full max-w-2xl px-4 py-16">
+				<div className="w-full max-w-6xl px-4 py-16">
 					<AnimatePresence mode="wait">
 						<motion.div
 							key={pathname}
@@ -104,7 +224,9 @@ export default function OnboardingLayout({
 								</p>
 								<h1 className="text-3xl font-bold mt-2">{title}</h1>
 							</div>
-							{children}
+							<StepValidationContext.Provider value={validationContextValue}>
+								{children}
+							</StepValidationContext.Provider>
 						</motion.div>
 					</AnimatePresence>
 				</div>
@@ -122,9 +244,28 @@ export default function OnboardingLayout({
 								</Button>
 							)}
 						</div>
-						<div className="flex items-center gap-4">
-							<Button onClick={handleNext} disabled={isPending}>
-								{isLastStep ? (isPending ? "Finishing..." : "Finish") : "Next"}
+						<div className="flex items-center gap-3">
+							{/* Step-specific skip button */}
+							{canSkipCurrentStep && !isLastStep && (
+								<Button
+									variant="outline"
+									onClick={handleSkipCurrentStep}
+									disabled={isPending}
+									className="text-sm"
+									title={`Skip ${currentStepConfig?.title || "this step"} and continue`}
+								>
+									Skip this step
+								</Button>
+							)}
+							{/* Main Next/Finish button */}
+							<Button onClick={handleNext} disabled={isPending || !isStepValid}>
+								{isLastStep
+									? isPending
+										? "Finishing..."
+										: "Finish"
+									: isPending
+										? "Saving..."
+										: "Next"}
 								{!isLastStep && <ArrowRight className="h-4 w-4 ml-2" />}
 							</Button>
 						</div>

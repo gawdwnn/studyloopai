@@ -1,13 +1,38 @@
+import { cacheGet, cacheSet } from "@/lib/cache";
+import {
+	getOnboardingCacheKey,
+	shouldSkipOnboardingCheck,
+	slugToStep,
+	stepSlugs,
+} from "@/lib/middleware/onboarding";
 import { getAdminClient, getServerClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/utils/logger";
 import { type NextRequest, NextResponse } from "next/server";
 
-async function isOnboardingComplete(userId: string): Promise<boolean> {
-	// Use admin client to bypass RLS policies for middleware checks
+interface OnboardingStatus {
+	isComplete: boolean;
+	currentStep: number | null;
+	shouldRedirectToStep?: string;
+}
+
+async function getOnboardingStatus(userId: string): Promise<OnboardingStatus> {
+	const cacheKey = getOnboardingCacheKey(userId);
+
+	// Try to get from cache first
+	const cachedResult = await cacheGet<OnboardingStatus>(
+		cacheKey,
+		"onboardingIncomplete"
+	);
+
+	if (cachedResult !== null) {
+		return cachedResult;
+	}
+
+	// Cache miss - fetch from database
 	const supabase = getAdminClient();
 	const { data: user, error } = await supabase
 		.from("users")
-		.select("onboarding_completed, onboarding_skipped")
+		.select("onboarding_completed, onboarding_skipped, current_onboarding_step")
 		.eq("user_id", userId)
 		.single();
 
@@ -17,12 +42,37 @@ async function isOnboardingComplete(userId: string): Promise<boolean> {
 			message: error.message,
 			code: error.code,
 		});
-		// Fail safe: if we can't check, assume not onboarded to force the flow.
-		return false;
+		// Fail safe: assume not onboarded to force the flow
+		return {
+			isComplete: false,
+			currentStep: null,
+			shouldRedirectToStep: "welcome-profile",
+		};
 	}
 
-	// Onboarding is considered "done" if it's either completed or explicitly skipped.
-	return user?.onboarding_completed || user?.onboarding_skipped || false;
+	// Onboarding is "done" if completed or skipped
+	const isComplete =
+		user?.onboarding_completed || user?.onboarding_skipped || false;
+	const currentStep = user?.current_onboarding_step;
+
+	// Determine redirect step for incomplete onboarding
+	let shouldRedirectToStep: string | undefined;
+	if (!isComplete) {
+		if (currentStep && stepSlugs[currentStep]) {
+			shouldRedirectToStep = stepSlugs[currentStep];
+		} else {
+			// Start from beginning if no step is set
+			shouldRedirectToStep = "welcome-profile";
+		}
+	}
+
+	const result = { isComplete, currentStep, shouldRedirectToStep };
+
+	// Cache with appropriate TTL based on completion status
+	const cacheType = isComplete ? "onboardingComplete" : "onboardingIncomplete";
+	await cacheSet(cacheKey, result, cacheType);
+
+	return result;
 }
 
 export async function middleware(request: NextRequest) {
@@ -30,12 +80,18 @@ export async function middleware(request: NextRequest) {
 		request,
 	});
 
+	const pathname = request.nextUrl.pathname;
+
 	try {
+		// Skip onboarding checks for static assets and API routes
+		if (shouldSkipOnboardingCheck(pathname)) {
+			return supabaseResponse;
+		}
+
 		const supabase = await getServerClient();
 		const {
 			data: { user },
 		} = await supabase.auth.getUser();
-		const pathname = request.nextUrl.pathname;
 
 		// Route protection for unauthenticated users
 		if (!user) {
@@ -51,25 +107,8 @@ export async function middleware(request: NextRequest) {
 			return supabaseResponse;
 		}
 
-		// Onboarding flow for authenticated but not-yet-onboarded users
-		const onboardingComplete = await isOnboardingComplete(user.id);
-		const isOnboardingPage = pathname.startsWith("/onboarding");
-
-		if (!onboardingComplete && !isOnboardingPage) {
-			const url = request.nextUrl.clone();
-			url.pathname = "/onboarding/welcome-profile";
-			return NextResponse.redirect(url);
-		}
-
-		if (onboardingComplete && isOnboardingPage) {
-			const url = request.nextUrl.clone();
-			url.pathname = "/dashboard";
-			return NextResponse.redirect(url);
-		}
-
-		// Handle authenticated users on auth pages
-		const onAuthPage = pathname.startsWith("/auth/signin");
-		if (user && onAuthPage) {
+		// Redirect authenticated users away from signin
+		if (pathname.startsWith("/auth/signin")) {
 			const redirectUrl = request.nextUrl.clone();
 			redirectUrl.pathname = "/dashboard";
 			const response = NextResponse.redirect(redirectUrl);
@@ -78,12 +117,61 @@ export async function middleware(request: NextRequest) {
 			}
 			return response;
 		}
+
+		// Only check onboarding for protected routes
+		const needsOnboardingCheck =
+			pathname.startsWith("/dashboard") || pathname.startsWith("/onboarding");
+		if (!needsOnboardingCheck) {
+			return supabaseResponse;
+		}
+
+		// Get onboarding status (cached)
+		const onboardingStatus = await getOnboardingStatus(user.id);
+		const isOnboardingPage = pathname.startsWith("/onboarding");
+
+		// Redirect incomplete users to onboarding
+		if (!onboardingStatus.isComplete && !isOnboardingPage) {
+			const url = request.nextUrl.clone();
+			url.pathname = `/onboarding/${onboardingStatus.shouldRedirectToStep}`;
+			return NextResponse.redirect(url);
+		}
+
+		// Redirect completed users away from onboarding
+		if (onboardingStatus.isComplete && isOnboardingPage) {
+			const url = request.nextUrl.clone();
+			url.pathname = "/dashboard";
+			return NextResponse.redirect(url);
+		}
+
+		// Onboarding step validation - prevent jumping ahead
+		if (
+			!onboardingStatus.isComplete &&
+			isOnboardingPage &&
+			onboardingStatus.shouldRedirectToStep
+		) {
+			const currentPageStep = pathname.split("/onboarding/")[1];
+			const currentStepNum = onboardingStatus.currentStep || 1;
+
+			// Check if trying to access invalid or future steps
+			const pageStepNum = slugToStep[currentPageStep];
+
+			// Only redirect if:
+			// 1. Invalid step slug, OR
+			// 2. Trying to access steps too far ahead (more than 1 step ahead)
+			if (!pageStepNum || pageStepNum > currentStepNum + 1) {
+				const url = request.nextUrl.clone();
+				url.pathname = `/onboarding/${onboardingStatus.shouldRedirectToStep}`;
+				return NextResponse.redirect(url);
+			}
+		}
 	} catch (error) {
 		logger.error("Middleware error", {
-			pathname: request.nextUrl.pathname,
+			pathname,
 			message: error instanceof Error ? error.message : String(error),
 			stack: error instanceof Error ? error.stack : undefined,
 		});
+	} finally {
+		// Log slow middleware execution for performance monitoring
 	}
 
 	return supabaseResponse;

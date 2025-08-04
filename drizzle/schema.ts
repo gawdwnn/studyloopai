@@ -711,14 +711,16 @@ export const userPlans = pgTable(
 		isActive: boolean("is_active").default(true).notNull(),
 		createdAt: timestamp("created_at").defaultNow().notNull(),
 		updatedAt: timestamp("updated_at").defaultNow().notNull(),
-		stripeSubscriptionId: varchar("stripe_subscription_id", { length: 255 }),
-		stripePriceId: varchar("stripe_price_id", { length: 255 }),
+		polarSubscriptionId: varchar("polar_subscription_id", { length: 255 }),
+		polarPriceId: varchar("polar_price_id", { length: 255 }),
+		polarCheckoutId: varchar("polar_checkout_id", { length: 255 }),
+		polarOrderId: varchar("polar_order_id", { length: 255 }),
 		subscriptionStatus: subscriptionStatus("subscription_status"),
 		currentPeriodEnd: timestamp("current_period_end"),
 	},
 	(table) => [
-		unique("user_plans_stripe_subscription_id_unique").on(
-			table.stripeSubscriptionId
+		unique("user_plans_polar_subscription_id_unique").on(
+			table.polarSubscriptionId
 		),
 	]
 );
@@ -739,17 +741,19 @@ export const users = pgTable(
 		lastLoginAt: timestamp("last_login_at"),
 		createdAt: timestamp("created_at").defaultNow().notNull(),
 		updatedAt: timestamp("updated_at").defaultNow().notNull(),
-		stripeCustomerId: varchar("stripe_customer_id", { length: 255 }),
+		polarCustomerId: varchar("polar_customer_id", { length: 255 }),
 		country: varchar({ length: 100 }),
 		onboardingCompleted: boolean("onboarding_completed")
 			.default(false)
 			.notNull(),
 		onboardingSkipped: boolean("onboarding_skipped").default(false).notNull(),
+		currentOnboardingStep: integer("current_onboarding_step"),
+		onboardingData: jsonb("onboarding_data"),
 		institutionId: uuid("institution_id"),
 	},
 	(table) => [
 		unique("users_email_unique").on(table.email),
-		unique("users_stripe_customer_id_unique").on(table.stripeCustomerId),
+		unique("users_polar_customer_id_unique").on(table.polarCustomerId),
 		foreignKey({
 			columns: [table.institutionId],
 			foreignColumns: [institutions.id],
