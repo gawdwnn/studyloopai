@@ -1,196 +1,172 @@
 # StudyLoopAI
 
-## Overview
+AI-powered adaptive learning platform that transforms course materials into personalized study experiences with vector search, content generation, and performance analytics.
 
-StudyLoopAI transforms course materials into personalized adaptive learning experiences. Upload PDFs, slides, or notes, and our AI instantly generates summaries, cuecards, quizzes, and study plans that adapt to your performance and learning gaps.
+## Features
 
-## Key Features
+- **Adaptive Learning Engine**: AI-driven personalized study paths based on performance analytics
+- **Content Generation**: Auto-generate summaries, flashcards, quizzes, and study notes from PDFs
+- **Vector Search**: Semantic search across all course materials using pgvector embeddings  
+- **Real-time Processing**: Background document processing with live progress updates
+- **Learning Analytics**: Progress tracking, knowledge gap identification, and study optimization
+- **Security-First**: Comprehensive Row Level Security policies protecting user data
 
-- **Adaptive Learning**: AI-powered personalized study paths that evolve with your performance
-- **Smart Content Generation**: Auto-generate summaries, cuecards, MCQs, and study notes
-- **Semantic Search**: Vector-powered search through all your course materials
-- **Learning Analytics**: Track progress, identify knowledge gaps, and optimize study time
-- **Real-time Generation**: Background processing with live progress updates
-- **Responsive Design**: Seamless experience across desktop, tablet, and mobile
-- **Privacy-First**: Your data stays secure with comprehensive Row Level Security
+## Technology Stack
 
-## Tech Stack
-
-- **Framework**: Next.js 15 with App Router & React Server Components
-- **Database**: PostgreSQL with Drizzle ORM & pgvector for semantic search
-- **Authentication**: Supabase Auth with Magic Links & Google OAuth
-- **AI Integration**: Vercel AI SDK with OpenAI GPT & xAI Grok models
-- **Vector Search**: pgvector with OpenAI embeddings (1536-dim)
-- **Background Jobs**: Trigger.dev v4 for document processing workflows
-- **Cache & Rate Limiting**: Upstash Redis for performance & API protection
-- **Styling**: Tailwind CSS v4 with Shadcn UI components
-- **State Management**: Zustand + TanStack Query
-- **Code Quality**: Biome.js for linting, formatting & import organization
-- **Deployment**: Vercel with optimized build pipeline
-- **Package Manager**: Bun for fast dependency management
+**Frontend**: Next.js 15 • React Server Components • Tailwind CSS v4 • Shadcn UI • Framer Motion  
+**Backend**: PostgreSQL • Drizzle ORM • Supabase Auth • Row Level Security  
+**AI/ML**: Vercel AI SDK • OpenAI GPT-4 • xAI Grok • pgvector embeddings (1536-dim)  
+**Processing**: Trigger.dev v4 • PDF-parse • Text chunking • Semantic embedding  
+**Infrastructure**: Vercel • Upstash Redis • Polar.sh payments • PostHog analytics  
+**State**: Zustand • TanStack Query • Server Actions • Real-time subscriptions  
+**DevTools**: Bun • Biome.js • TypeScript • Drizzle Studio
 
 ## Quick Start
 
-1. **Clone and install dependencies**:
-
-   ```bash
-   git clone <repository-url>
-   cd studyloopai
-   bun install
-   ```
-
-2. **Set up environment variables**:
-
-   ```bash
-   cp .env.example .env.local
-   # Edit .env.local with your configuration
-   ```
-
-3. **Set up the database**:
-
-   ```bash
-   # Apply database migrations
-   bun run db:migrate
-   
-   # Apply RLS policies (security)
-   bun run supabase:manager
-   ```
-
-4. **Start development server**:
-
-   ```bash
-   bun dev
-   ```
-
-## Development Commands
-
-### **Essential Workflow**
-
 ```bash
-# Start development server (with Turbopack)
-bun dev
+# 1. Install dependencies
+bun install
 
-# Format, lint, and organize imports (run before commits)
-bun run check
+# 2. Configure environment
+cp .env.example .env.local
+# Edit .env.local with your API keys and database URLs
 
-# Build for production
-bun run build
-```
-
-### **Database Operations**
-
-```bash
-# Generate new migration from schema changes
-bun run db:generate
-
-# Apply pending migrations
+# 3. Setup database
 bun run db:migrate
+bun run supabase:manager  # Apply RLS policies
 
-# Open database studio for inspection
-bun run db:studio
-
-# Introspect existing database schema
-bun run db:introspect
+# 4. Start development
+bun dev
 ```
 
-### **Supabase Environment Management**
+## Development
+
+### Essential Commands
 
 ```bash
-# Interactive Supabase manager (unified interface)
-bun run supabase:manager
-
-# Quick policy status check
-bun scripts/supabase-manager.ts policies --check
-
-# Switch environments
-bun scripts/supabase-manager.ts switch --env dev
-bun scripts/supabase-manager.ts switch --env prod
+bun dev                 # Development server with Turbopack
+bun run check          # Format, lint, organize imports (pre-commit)
+bun run build          # Production build
 ```
 
-### **Background Jobs (Trigger.dev)**
+### Database Management
 
 ```bash
-# Start background job development server
-bun run trigger:dev
-
-# Deploy jobs to production
-bun run trigger:deploy
+bun run db:generate    # Generate migration from schema changes
+bun run db:migrate     # Apply pending migrations  
+bun run db:studio      # Open Drizzle Studio
 ```
 
-### **Code Quality**
+### Supabase Operations
 
 ```bash
-# Fix everything (format + lint + organize imports)
-bun run check
-
-# Format code only
-bun run format
-
-# Fix linting issues only  
-bun run lint:fix
-
-# CI check (read-only, exits with error if issues found)
-bun run check:ci
+bun run supabase:manager                        # Interactive manager
+bun scripts/supabase-manager.ts switch --env dev   # Switch environment
+bun scripts/supabase-manager.ts policies --check   # Check RLS policies
 ```
 
-## Architecture Overview
+### Background Jobs
 
-### **Core Patterns**
+```bash
+bun run trigger:dev    # Start Trigger.dev development
+bun run trigger:deploy # Deploy jobs to production
+```
 
-- **Server-First Architecture**: React Server Components with selective client hydration
-- **Database Security**: Comprehensive Row Level Security (RLS) policies for all 14+ tables
-- **Background Processing**: Trigger.dev orchestrates PDF parsing, embedding generation, and content creation
-- **Adaptive Learning Engine**: AI-driven personalization based on performance analytics and learning gaps
-- **Vector Search**: pgvector with OpenAI embeddings for semantic content discovery
+## System Architecture
 
-### **Key Systems**
+### Document Processing Pipeline
 
-- **Document Processing Pipeline**: Upload → Parse → Chunk → Embed → Generate → Store
-- **Session Management**: Zustand stores manage adaptive learning sessions with real-time progress
-- **Content Generation**: On-demand AI generation with template-based configuration
-- **Analytics Engine**: Track learning patterns, identify knowledge gaps, optimize study paths
+```
+Upload → Ingestor → Processor → Content Generator → Storage
+```
 
-### **Security & Performance**
+**1. Document Ingestor**
 
-- **Row Level Security**: 34+ RLS policies ensure users only access their own data
-- **Rate Limiting**: Upstash Redis protects against API abuse with intelligent quotas
-- **Caching Layer**: Multi-level caching for database queries, AI responses, and static content
-- **Error Boundaries**: Comprehensive error handling with graceful fallbacks
+- Multi-format support (PDF, DOCX, TXT, images)
+- File validation and security scanning
+- Metadata extraction and indexing
+
+**2. Document Processor**  
+
+- PDF parsing with structure preservation
+- Intelligent text chunking with overlap
+- Content cleaning and normalization
+- Progress tracking with real-time updates
+
+**3. Content Generator**
+
+- **Vercel AI SDK** orchestrates multi-model AI generation
+- **OpenAI GPT-4** for summaries, quizzes, and explanations
+- **xAI Grok** for alternative perspectives and advanced reasoning
+- **Template system** for consistent content structure
+- **Batch processing** for efficient resource utilization
+
+**4. Vector Storage & Search**
+
+- **pgvector** with 1536-dimensional OpenAI embeddings
+- **HNSW indexing** for sub-second semantic search
+- **Similarity scoring** with configurable thresholds
+- **Contextual retrieval** for adaptive learning
+
+### Learning Engine Architecture
+
+- **Adaptive Algorithms**: Performance-based content difficulty adjustment
+- **Knowledge Graph**: Concept relationships and learning dependencies  
+- **Progress Analytics**: Real-time learning pattern analysis
+- **Personalization**: Individual learning style adaptation
+
+### Security & Performance
+
+- **Row Level Security**: 34+ RLS policies for multi-tenant data isolation
+- **Rate Limiting**: Upstash Redis with user-specific quotas and burst handling
+- **Multi-level Caching**: Database queries, AI responses, embeddings, static assets
+- **Background Jobs**: Trigger.dev with retry logic, error recovery, and scaling
+- **Error Boundaries**: Comprehensive error handling with graceful degradation
 
 ## Project Structure
 
-```
+```bash
 src/
-├── app/                    # Next.js App Router (route groups)
-│   ├── (dashboard)/        # Protected dashboard routes
-│   ├── (auth)/            # Authentication flow
-│   └── api/               # API endpoints
-├── components/             # React components by feature
-├── lib/                   # Core utilities & services
-│   ├── actions/           # Server Actions
-│   ├── ai/               # AI integration & prompts
-│   ├── services/         # Business logic layer
-│   └── supabase/         # Database clients
-├── stores/                # Zustand state management
-├── trigger/               # Background job definitions
-└── types/                 # TypeScript definitions
+├── app/
+│   ├── (auth)/
+│   ├── (dashboard)/
+│   ├── (onboarding)/
+│   ├── api/
+│   │   ├── ai/
+│   │   ├── webhooks/polar/
+│   │   └── health/
+│   └── globals.css
+├── components/
+├── lib/
+│   ├── actions/
+│   ├── ai/
+│   ├── analytics/
+│   ├── auth/
+│   ├── cache/
+│   ├── config/
+│   ├── database/
+│   ├── polar/
+│   ├── rate-limit/
+│   ├── services/
+│   ├── supabase/
+│   ├── utils/
+│   └── vector/
+├── stores/
+├── trigger/
+├── types/
+├── contexts/
+└── hooks/
 
 drizzle/
-├── schema.ts              # Database schema
-├── policies/              # RLS security policies
-└── migrations/            # Database migrations
+├── schema.ts
+├── policies/
+└── migrations/
+
+scripts/
+├── supabase-manager.ts
+├── create-polar-products.ts
 ```
-
-## Security & Performance Features
-
-- **Row Level Security**: Multi-pattern RLS policies (ownership, course-based, material-based)
-- **Rate Limiting**: Intelligent API protection with user-specific quotas
-- **Vector Search**: pgvector with HNSW indexing for sub-second semantic search
-- **Real-time Analytics**: Live progress tracking and performance insights
-- **Background Jobs**: Resilient document processing with retry logic and progress updates
-
-## Additional Resources
 
 ---
 
-**Built for the modern web** • Next.js 15 • AISDK • React Server Components • TypeScript • Tailwind CSS v4 • Drizzle ORM • pgvector • Trigger.dev v4 • Upstash Redis • Polar.sh
+**Modern AI-powered learning platform** built with Next.js 15, React Server Components, pgvector, OpenAI, and Trigger.dev.
