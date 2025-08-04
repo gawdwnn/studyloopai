@@ -176,6 +176,20 @@
 			"when": 1753816535034,
 			"tag": "0024_daffy_jack_flag",
 			"breakpoints": true
+		},
+		{
+			"idx": 25,
+			"version": "7",
+			"when": 1754247259723,
+			"tag": "0025_supreme_angel",
+			"breakpoints": true
+		},
+		{
+			"idx": 26,
+			"version": "7",
+			"when": 1754264917710,
+			"tag": "0026_blue_swarm",
+			"breakpoints": true
 		}
 	]
 }
