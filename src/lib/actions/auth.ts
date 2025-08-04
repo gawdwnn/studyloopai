@@ -2,30 +2,16 @@
 
 import { type AuthErrorDetails, getAuthErrorMessage } from "@/lib/auth/errors";
 import type { MagicLinkFormData } from "@/lib/auth/validation";
-import { RateLimitError, rateLimiter } from "@/lib/rate-limit";
+import { checkAuthRateLimit, enforceRateLimit } from "@/lib/rate-limit";
 import { getServerClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/utils/logger";
 import { getSiteUrl } from "@/lib/utils/site-url";
 import { redirect } from "next/navigation";
 
 export async function sendMagicLink(formData: MagicLinkFormData) {
-	const rateLimitResult = await rateLimiter.checkMagicLinkRateLimit(
-		formData.email
-	);
+	const rateLimitResult = await checkAuthRateLimit(formData.email);
 
-	if (!rateLimitResult.isAllowed) {
-		const resetMinutes = rateLimitResult.resetTime
-			? Math.ceil((rateLimitResult.resetTime - Date.now()) / 60000)
-			: 5;
-
-		throw new RateLimitError(
-			`Too many magic link requests. Please try again in ${resetMinutes} minute${
-				resetMinutes !== 1 ? "s" : ""
-			}.`,
-			rateLimitResult.remainingAttempts,
-			rateLimitResult.resetTime
-		);
-	}
+	await enforceRateLimit(async () => rateLimitResult, "magic link");
 
 	const supabase = await getServerClient();
 
@@ -44,7 +30,7 @@ export async function sendMagicLink(formData: MagicLinkFormData) {
 	return {
 		success: true,
 		data,
-		remainingAttempts: rateLimitResult.remainingAttempts,
+		remainingAttempts: rateLimitResult.remaining,
 	};
 }
 

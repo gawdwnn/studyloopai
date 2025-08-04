@@ -84,7 +84,7 @@ export async function getUserCourses() {
 	const {
 		data: { user },
 	} = await (await getServerClient()).auth.getUser();
-	if (!user) throw new Error("Authentication required");
+	if (!user) return []; // Return empty array for unauthenticated users
 
 	return await withErrorHandling(
 		async () => {
@@ -116,7 +116,7 @@ export async function getAllUserMaterials() {
 	const {
 		data: { user },
 	} = await (await getServerClient()).auth.getUser();
-	if (!user) throw new Error("Authentication required");
+	if (!user) return []; // Return empty array for unauthenticated users
 
 	return await withErrorHandling(
 		async () => {

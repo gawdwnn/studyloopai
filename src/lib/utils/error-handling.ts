@@ -2,6 +2,7 @@
  * Centralized error handling utility for consistent, user-friendly error messages
  * Following the error handling rules in .cursor/rules/error-handling.mdc
  */
+// TODO: clean up this file
 
 import { logger } from "@/lib/utils/logger";
 
@@ -79,7 +80,12 @@ export const isNotFoundError = (error: unknown): boolean => {
 	);
 };
 
-export const isRateLimitError = (error: unknown): boolean => {
+interface RateLimitError extends Error {
+	remainingAttempts?: number;
+	resetTime?: number;
+}
+
+export const isRateLimitError = (error: unknown): error is RateLimitError => {
 	return (
 		(hasProperty(error, "status") && error.status === 429) ||
 		(hasProperty(error, "code") && error.code === "RATE_LIMIT_EXCEEDED") ||

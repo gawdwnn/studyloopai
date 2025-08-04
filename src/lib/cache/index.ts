@@ -13,6 +13,8 @@ const CACHE_TTL = {
 	dbQuery: 300, // 5 minutes
 	embedding: 86400, // 24 hours
 	chunks: 3600, // 1 hour - for content generation chunks
+	onboardingIncomplete: 300, // 5 minutes - for incomplete onboarding (may change frequently)
+	onboardingComplete: 86400, // 24 hours - for completed onboarding (rarely changes)
 } as const;
 
 // Generic cache get
@@ -50,14 +52,13 @@ export const cacheAside = async <T>(
 ): Promise<T> => {
 	// Try cache first
 	const cached = await cacheGet<T>(key, cacheType);
-	if (cached !== null) return cached;
+	if (cached !== null) {
+		return cached;
+	}
 
-	// Generate new value
+	// Cache miss - generate and store
 	const value = await generator();
-
-	// Cache it for next time
 	await cacheSet(key, value, cacheType);
-
 	return value;
 };
 
@@ -69,7 +70,7 @@ export const cacheInvalidate = async (pattern: string): Promise<void> => {
 			await redis.del(...keys);
 		}
 	} catch (error) {
-		console.error("Cache invalidation error:", error);
+		console.error("Cache invalidation failed:", error);
 	}
 };
 
