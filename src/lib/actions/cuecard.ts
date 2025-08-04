@@ -18,7 +18,7 @@ export type UserCuecard = Cuecard & {
 export type CuecardAvailability = {
 	available: boolean;
 	count: number;
-	hasWeeksWithContent: boolean;
+	hasCourseWeeksWithContent: boolean;
 	availableWeeks: Array<{ id: string; weekNumber: number }>;
 	cuecardsByWeek: Record<string, number>;
 };
@@ -104,7 +104,7 @@ export async function getUserCuecardsWithAvailability(
 			const availability: CuecardAvailability = {
 				available: cards.length > 0,
 				count: cards.length,
-				hasWeeksWithContent: availableWeeks.length > 0,
+				hasCourseWeeksWithContent: availableWeeks.length > 0,
 				availableWeeks,
 				cuecardsByWeek,
 			};
@@ -120,7 +120,7 @@ export async function getUserCuecardsWithAvailability(
 			availability: {
 				available: false,
 				count: 0,
-				hasWeeksWithContent: false,
+				hasCourseWeeksWithContent: false,
 				availableWeeks: [],
 				cuecardsByWeek: {},
 			} as CuecardAvailability,

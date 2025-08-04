@@ -26,7 +26,7 @@ export type UserMCQ = {
 export type MCQAvailability = {
 	available: boolean;
 	count: number;
-	hasWeeksWithContent: boolean;
+	hasCourseWeeksWithContent: boolean;
 	availableWeeks: Array<{ id: string; weekNumber: number }>;
 	mcqsByWeek: Record<string, number>;
 	difficultyBreakdown: Record<string, number>;
@@ -130,7 +130,7 @@ export async function getUserMCQsWithAvailability(
 			const availability: MCQAvailability = {
 				available: mcqs.length > 0,
 				count: mcqs.length,
-				hasWeeksWithContent: availableWeeks.length > 0,
+				hasCourseWeeksWithContent: availableWeeks.length > 0,
 				availableWeeks,
 				mcqsByWeek,
 				difficultyBreakdown,
@@ -147,7 +147,7 @@ export async function getUserMCQsWithAvailability(
 			availability: {
 				available: false,
 				count: 0,
-				hasWeeksWithContent: false,
+				hasCourseWeeksWithContent: false,
 				availableWeeks: [],
 				mcqsByWeek: {},
 				difficultyBreakdown: {},
