@@ -43,7 +43,7 @@ import {
 	X,
 	Zap,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useCuecardSessionData } from "./hooks";
 import type { CuecardConfig } from "./types";
@@ -117,8 +117,8 @@ export function CuecardSessionSetup({
 	const weeks = shouldUseInitialData ? initialData?.weeks || [] : fetchedWeeks;
 	const isWeeksReady = shouldUseInitialData || !loadingWeeks;
 
-	// Only fetch session data after weeks are ready to prevent race conditions
-	const sessionData = useCuecardSessionData({
+	// Existing cuecards data - checks database for ready-to-use cuecards
+	const existingCuecardsData = useCuecardSessionData({
 		courseId: selectedCourse,
 		weekIds: selectedWeek === "all-weeks" ? [] : [selectedWeek],
 		enabled: Boolean(selectedCourse) && isWeeksReady,
@@ -130,21 +130,53 @@ export function CuecardSessionSetup({
 			: undefined,
 	});
 
-	// Feature availability - will be filtered by isWeeksReady in combined loading
-	const { data: weekFeatureAvailability, isLoading: isLoadingAvailability } =
+	// Generation history data - tracks feature generation status and history
+	const { data: generationHistoryData, isLoading: isLoadingAvailability } =
 		useFeatureAvailability(
 			selectedCourse,
 			selectedWeek === "all-weeks" ? null : selectedWeek
 		);
 
+	// Extract explicit boolean flags based on data source
+	const hasExistingCuecards = existingCuecardsData.isAvailable;
+	const hasUploadedMaterials = existingCuecardsData.hasCourseWeeksWithContent;
+	const hasGenerationHistory =
+		generationHistoryData?.cuecards.generated ?? false;
+	const existingCuecardsCount = existingCuecardsData.count;
+	const generatedCuecardsCount = generationHistoryData?.cuecards.count ?? 0;
+
 	// Combine all loading states for consistent UI
 	const combinedLoadingAvailability =
-		!isWeeksReady || sessionData.isLoading || isLoadingAvailability;
+		!isWeeksReady || existingCuecardsData.isLoading || isLoadingAvailability;
 
-	// Helper to get current week's feature availability
-	const getCurrentWeekAvailability = useCallback(() => {
-		return weekFeatureAvailability;
-	}, [weekFeatureAvailability]);
+	// Define all possible UI states for cleaner conditional logic
+	type CuecardUIState =
+		| "loading"
+		| "ready-to-start" // Has existing cuecards
+		| "can-generate" // Has materials, no cuecards
+		| "needs-materials" // No materials uploaded
+		| "needs-specific-week" // All weeks selected
+		| "cannot-generate"; // Error state
+
+	// Computed state replaces complex nested conditionals
+	const cuecardUIState = useMemo((): CuecardUIState => {
+		if (combinedLoadingAvailability) return "loading";
+		if (hasExistingCuecards) return "ready-to-start";
+
+		const isAllWeeksSelected = selectedWeek === "all-weeks";
+		if (isAllWeeksSelected) return "needs-specific-week";
+
+		if (!hasUploadedMaterials) return "needs-materials";
+		if (hasUploadedMaterials && !hasGenerationHistory) return "can-generate";
+
+		return "cannot-generate";
+	}, [
+		combinedLoadingAvailability,
+		hasExistingCuecards,
+		selectedWeek,
+		hasUploadedMaterials,
+		hasGenerationHistory,
+	]);
 
 	// Reset to "all-weeks" if selected week no longer exists (only after weeks are fully loaded)
 	useEffect(() => {
@@ -162,11 +194,11 @@ export function CuecardSessionSetup({
 		if (!selectedCourse) return;
 
 		const isAllWeeksSelected = selectedWeek === "all-weeks";
-		const isContentUnavailable = !sessionData.isAvailable;
+		const isContentUnavailable = !existingCuecardsData.isAvailable;
 
 		// Handle on-demand generation for specific weeks without existing content
 		if (isContentUnavailable && !isAllWeeksSelected) {
-			const weekFeature = getCurrentWeekAvailability();
+			const weekFeature = generationHistoryData;
 			const canGenerate = weekFeature && !weekFeature.cuecards.generated;
 
 			// Trigger generation if course materials exist but cuecards don't
@@ -217,30 +249,29 @@ export function CuecardSessionSetup({
 
 		// Start the cuecard session with existing content
 		try {
-			await sessionData.startSessionInstantly(config);
+			await existingCuecardsData.startSessionInstantly(config);
 			toast.success("Cuecard session started!");
 		} catch (error) {
 			logger.error("Failed to start cuecard session", {
 				message: error instanceof Error ? error.message : String(error),
 				stack: error instanceof Error ? error.stack : undefined,
 				sessionConfig: config,
-				isAvailable: sessionData.isAvailable,
-				cuecardCount: sessionData.count,
+				isAvailable: existingCuecardsData.isAvailable,
+				cuecardCount: existingCuecardsData.count,
 			});
 			toast.error("Failed to start session. Please try again.");
 		}
 	};
 
+	// State-based button configuration - replaces complex nested conditionals
 	const buttonState = useMemo(() => {
-		const isAllWeeksSelected = selectedWeek === "all-weeks";
-		const isContentUnavailable = !sessionData.isAvailable;
-
-		// Disable button during generation
+		// Special states that override UI state
 		if (showGenerationProgress) {
 			return {
 				disabled: true,
 				text: "Generating...",
 				icon: <Loader2 className="mr-2 h-4 w-4 animate-spin" />,
+				variant: "default" as const,
 			};
 		}
 
@@ -248,68 +279,147 @@ export function CuecardSessionSetup({
 			return {
 				disabled: true,
 				text: "Select a Course",
+				variant: "default" as const,
 			};
 		}
-		if (combinedLoadingAvailability) {
-			return {
+
+		// State-based button configuration
+		const buttonConfigs: Record<
+			CuecardUIState,
+			{
+				disabled: boolean;
+				text: string;
+				icon?: React.ReactNode;
+				variant?: "default" | "secondary";
+			}
+		> = {
+			loading: {
 				disabled: true,
 				text: "Checking Content...",
 				icon: <Loader2 className="mr-2 h-4 w-4 animate-spin" />,
-			};
-		}
-		if (isContentUnavailable && !isAllWeeksSelected) {
-			const weekFeature = getCurrentWeekAvailability();
-			const canGenerate = weekFeature && !weekFeature.cuecards.generated;
-
-			if (canGenerate) {
-				return {
-					disabled: false,
-					text: "Generate & Start Session",
-					icon: <Sparkles className="mr-2 h-4 w-4" />,
-				};
-			}
-
-			if (!weekFeature) {
-				return {
-					disabled: true,
-					text: "Upload Course Materials First",
-					variant: "secondary" as const,
-				};
-			}
-
-			return {
+				variant: "default",
+			},
+			"ready-to-start": {
+				disabled: false,
+				text: "Start Session",
+				icon: <PlayCircle className="mr-2 h-4 w-4" />,
+				variant: "default",
+			},
+			"can-generate": {
+				disabled: false,
+				text: "Generate & Start Session",
+				icon: <Sparkles className="mr-2 h-4 w-4" />,
+				variant: "default",
+			},
+			"needs-materials": {
 				disabled: true,
-				text: "Cannot Generate",
-				variant: "secondary" as const,
-			};
-		}
-
-		if (isContentUnavailable && isAllWeeksSelected) {
-			return {
+				text: "Upload Course Materials First",
+				variant: "secondary",
+			},
+			"needs-specific-week": {
 				disabled: true,
 				text: "Select Specific Week",
-				variant: "secondary" as const,
-			};
-		}
-		return {
-			disabled: false,
-			text: "Start Session",
-			icon: <PlayCircle className="mr-2 h-4 w-4" />,
+				variant: "secondary",
+			},
+			"cannot-generate": {
+				disabled: true,
+				text: "Cannot Generate",
+				variant: "secondary",
+			},
 		};
+
+		return buttonConfigs[cuecardUIState];
+	}, [selectedCourse, cuecardUIState, showGenerationProgress]);
+
+	// Show generation settings only when user can generate cuecards
+	const showGenerationSettings = cuecardUIState === "can-generate";
+
+	// State-based status display configuration
+	const statusDisplayConfig = useMemo(() => {
+		const configs: Record<
+			CuecardUIState,
+			{
+				type: "loading" | "success" | "warning" | "error" | "info";
+				icon: React.ReactNode;
+				title: string;
+				description: string;
+				className: string;
+			}
+		> = {
+			loading: {
+				type: "loading",
+				icon: <Loader2 className="h-4 w-4 animate-spin" />,
+				title: "Checking content...",
+				description: "Loading available cuecards and materials",
+				className: "text-muted-foreground",
+			},
+			"ready-to-start": {
+				type: "success",
+				icon: <PlayCircle className="h-4 w-4" />,
+				title: `${existingCuecardsCount} cuecard${existingCuecardsCount !== 1 ? "s" : ""} available`,
+				description: "Ready to start your practice session",
+				className: "text-green-600",
+			},
+			"can-generate": {
+				type: "warning",
+				icon: <Zap className="h-4 w-4" />,
+				title: hasGenerationHistory
+					? "Cuecards Available"
+					: "Generate Cuecards",
+				description: hasGenerationHistory
+					? `${generatedCuecardsCount} cuecards available from previous generation`
+					: "Ready to generate cuecards from your uploaded course materials",
+				className: "text-orange-600",
+			},
+			"needs-materials": {
+				type: "error",
+				icon: <AlertTriangle className="h-4 w-4" />,
+				title: "No Materials Available",
+				description:
+					"Please upload course materials for this week before generating cuecards",
+				className: "text-red-600",
+			},
+			"needs-specific-week": {
+				type: "info",
+				icon: <Info className="h-4 w-4" />,
+				title: "Select Week for Generation",
+				description:
+					"Choose a specific week with uploaded course materials to generate and practice cuecards",
+				className: "text-blue-600",
+			},
+			"cannot-generate": {
+				type: "error",
+				icon: <AlertTriangle className="h-4 w-4" />,
+				title: "Cannot Generate",
+				description: "Unable to generate cuecards for the selected week",
+				className: "text-red-600",
+			},
+		};
+
+		return configs[cuecardUIState];
 	}, [
-		selectedCourse,
-		combinedLoadingAvailability,
-		sessionData,
-		selectedWeek,
-		getCurrentWeekAvailability,
-		showGenerationProgress,
+		cuecardUIState,
+		existingCuecardsCount,
+		hasGenerationHistory,
+		generatedCuecardsCount,
 	]);
 
-	// Show generation settings only for specific weeks that need content generation
-	const showGenerationSettings =
-		selectedWeek !== "all-weeks" &&
-		!sessionData.isAvailable &&
-		!combinedLoadingAvailability;
+	// Helper function for status display styling
+	const getStatusStyling = (
+		type: "loading" | "success" | "warning" | "error" | "info"
+	) => {
+		const styles = {
+			loading:
+				"bg-gray-50 dark:bg-gray-950/20 border-gray-200 dark:border-gray-800",
+			success:
+				"bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800",
+			warning:
+				"bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800",
+			error: "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800",
+			info: "bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800",
+		};
+		return styles[type];
+	};
 
 	if (courses.length === 0) {
 		return (
@@ -331,10 +441,10 @@ export function CuecardSessionSetup({
 				<Button
 					variant="ghost"
 					size="icon"
-					className="bg-gray-100 hover:bg-gray-200 rounded-full"
+					className="bg-background/80 hover:bg-background/90 dark:bg-background/80 dark:hover:bg-background/90 rounded-full border shadow-sm h-10 w-10"
 					onClick={onClose}
 				>
-					<X className="h-6 w-6 text-gray-600" />
+					<X className="h-6 w-6 text-foreground" />
 				</Button>
 			</div>
 
@@ -442,96 +552,69 @@ export function CuecardSessionSetup({
 							)}
 
 							<div className="mt-3">
-								{combinedLoadingAvailability ? (
-									<div className="flex items-center gap-2 text-sm text-muted-foreground">
-										<Loader2 className="h-4 w-4 animate-spin" />
-										<span>Checking content...</span>
+								{/* State-based status display - replaces 94 lines of complex conditionals */}
+								{cuecardUIState === "ready-to-start" &&
+								selectedWeek === "all-weeks" ? (
+									<div className="flex items-center gap-2 text-sm text-blue-600">
+										<Info className="h-4 w-4" />
+										<span>
+											{existingCuecardsData.count} total cuecard
+											{existingCuecardsData.count !== 1 ? "s" : ""} across{" "}
+											{existingCuecardsData.availableWeeks.length} week
+											{existingCuecardsData.availableWeeks.length !== 1
+												? "s"
+												: ""}
+										</span>
 									</div>
-								) : sessionData.isAvailable ? (
-									selectedWeek === "all-weeks" ? (
-										<div className="flex items-center gap-2 text-sm text-blue-600">
-											<Info className="h-4 w-4" />
-											<span>
-												{sessionData.count} total cuecard
-												{sessionData.count !== 1 ? "s" : ""} across{" "}
-												{sessionData.availableWeeks.length} week
-												{sessionData.availableWeeks.length !== 1 ? "s" : ""}
-											</span>
+								) : cuecardUIState === "ready-to-start" ? (
+									<div className="flex items-center gap-2 text-sm text-green-600">
+										<PlayCircle className="h-4 w-4" />
+										<span>
+											{existingCuecardsData.count} cuecard
+											{existingCuecardsData.count !== 1 ? "s" : ""} available
+										</span>
+										<Badge variant="secondary" className="text-xs">
+											Ready
+										</Badge>
+									</div>
+								) : cuecardUIState === "needs-materials" ? (
+									<div
+										className={`flex items-start gap-3 p-3 rounded-lg border ${getStatusStyling(statusDisplayConfig.type)}`}
+									>
+										{statusDisplayConfig.icon}
+										<div className="text-sm">
+											<p className="font-medium text-red-900 dark:text-red-100">
+												{statusDisplayConfig.title}
+											</p>
+											<p className="text-red-700 dark:text-red-300 mt-1">
+												Please{" "}
+												<a
+													href={"/dashboard/course-materials"}
+													className="underline font-medium hover:text-red-600 dark:hover:text-red-200"
+												>
+													upload course materials
+												</a>{" "}
+												for this week before generating cuecards.
+											</p>
 										</div>
-									) : (
-										<div className="flex items-center gap-2 text-sm text-green-600">
-											<PlayCircle className="h-4 w-4" />
-											<span>
-												{sessionData.count} cuecard
-												{sessionData.count !== 1 ? "s" : ""} available
-											</span>
-											<Badge variant="secondary" className="text-xs">
-												Ready
-											</Badge>
-										</div>
-									)
+									</div>
 								) : (
-									<div className="space-y-2">
-										{selectedWeek === "all-weeks" ? (
-											<div className="flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
-												<Info className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-												<div className="text-sm">
-													<p className="font-medium text-blue-900 dark:text-blue-100">
-														Select Week for Generation
-													</p>
-													<p className="text-blue-700 dark:text-blue-300 mt-1">
-														Choose a specific week with uploaded course
-														materials to generate and practice cuecards.
-													</p>
-												</div>
-											</div>
-										) : (
-											<div
-												className={`flex items-start gap-3 p-3 rounded-lg border ${
-													weekFeatureAvailability
-														? "bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800"
-														: "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800"
-												}`}
+									<div
+										className={`flex items-start gap-3 p-3 rounded-lg border ${getStatusStyling(statusDisplayConfig.type)}`}
+									>
+										{statusDisplayConfig.icon}
+										<div className="text-sm">
+											<p
+												className={`font-medium ${statusDisplayConfig.className.replace("600", "900")} dark:${statusDisplayConfig.className.replace("600", "100")}`}
 											>
-												{weekFeatureAvailability ? (
-													<Zap className="h-4 w-4 text-orange-600 dark:text-orange-400 mt-0.5 flex-shrink-0" />
-												) : (
-													<AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
-												)}
-												<div className="text-sm">
-													{weekFeatureAvailability ? (
-														<>
-															<p className="font-medium text-orange-900 dark:text-orange-100">
-																{weekFeatureAvailability.cuecards.generated
-																	? "Cuecards Available"
-																	: "Generate Cuecards"}
-															</p>
-															<p className="text-orange-700 dark:text-orange-300 mt-1">
-																{weekFeatureAvailability.cuecards.generated
-																	? `${weekFeatureAvailability.cuecards.count} cuecards available from previous generation`
-																	: "Ready to generate cuecards from your uploaded course materials"}
-															</p>
-														</>
-													) : (
-														<>
-															<p className="font-medium text-red-900 dark:text-red-100">
-																No Materials Available
-															</p>
-															<p className="text-red-700 dark:text-red-300 mt-1">
-																Please{" "}
-																<a
-																	href={"/dashboard/course-materials"}
-																	className="underline font-medium hover:text-red-600 dark:hover:text-red-200"
-																>
-																	upload course materials
-																</a>{" "}
-																for this week before generating cuecards.
-															</p>
-														</>
-													)}
-												</div>
-											</div>
-										)}
+												{statusDisplayConfig.title}
+											</p>
+											<p
+												className={`${statusDisplayConfig.className.replace("600", "700")} dark:${statusDisplayConfig.className.replace("600", "300")} mt-1`}
+											>
+												{statusDisplayConfig.description}
+											</p>
+										</div>
 									</div>
 								)}
 							</div>
@@ -548,10 +631,9 @@ export function CuecardSessionSetup({
 											config={generationConfig}
 											onConfigChange={setGenerationConfig}
 											featuresFilter={["cuecards"]}
-											featureAvailability={getCurrentWeekAvailability()}
+											featureAvailability={generationHistoryData}
 											showAvailabilityStatus={
-												selectedWeek !== "all-weeks" &&
-												!!weekFeatureAvailability
+												selectedWeek !== "all-weeks" && !!generationHistoryData
 											}
 										/>
 									</AccordionContent>
@@ -575,7 +657,7 @@ export function CuecardSessionSetup({
 												className="w-full h-14 text-lg"
 												onClick={handleStartSession}
 												disabled={buttonState.disabled}
-												variant={buttonState.variant || "default"}
+												variant={buttonState.variant}
 											>
 												{buttonState.icon}
 												{buttonState.text}
@@ -595,7 +677,7 @@ export function CuecardSessionSetup({
 									className="w-full h-14 text-lg"
 									onClick={handleStartSession}
 									disabled={buttonState.disabled}
-									variant={buttonState.variant || "default"}
+									variant={buttonState.variant}
 								>
 									{buttonState.icon}
 									{buttonState.text}

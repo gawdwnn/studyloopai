@@ -26,7 +26,7 @@ interface MCQSessionData {
 	isAvailable: boolean;
 	count: number;
 	canStartSession: boolean;
-	hasWeeksWithContent: boolean;
+	hasCourseWeeksWithContent: boolean;
 
 	// Enhanced data
 	availableWeeks: Array<{ id: string; weekNumber: number }>;
@@ -128,7 +128,7 @@ export function useMCQSessionData({
 		isAvailable: availability?.available || false,
 		count: availability?.count || 0,
 		canStartSession: mcqs.length > 0,
-		hasWeeksWithContent: availability?.hasWeeksWithContent || false,
+		hasCourseWeeksWithContent: availability?.hasCourseWeeksWithContent || false,
 
 		// Enhanced data from query
 		availableWeeks: availability?.availableWeeks || [],

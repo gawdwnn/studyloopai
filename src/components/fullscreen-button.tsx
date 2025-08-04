@@ -33,14 +33,14 @@ export function FullscreenButton({
 			size={size}
 			onClick={toggleFullscreen}
 			className={cn(
-				"bg-gray-100 hover:bg-gray-200 rounded-full",
+				"bg-background/80 hover:bg-background/90 dark:bg-background/80 dark:hover:bg-background/90 rounded-full border shadow-sm",
 				size === "icon" && "h-10 w-10",
 				className
 			)}
 			title={buttonTitle}
 			aria-label={buttonTitle}
 		>
-			<Icon className="h-6 w-6 text-gray-600" />
+			<Icon className="h-6 w-6 text-foreground" />
 			{showLabel && (
 				<span className="ml-2">
 					{isFullscreen ? "Exit fullscreen" : "Fullscreen"}

@@ -30,12 +30,7 @@ import { useCourseWeeks } from "@/hooks/use-course-week";
 import { useFeatureAvailability } from "@/hooks/use-feature-availability";
 import { useQueryState } from "@/hooks/use-query-state";
 import { logger } from "@/lib/utils/logger";
-import type {
-	DifficultyLevel,
-	FocusType,
-	McqConfig,
-	PracticeMode,
-} from "@/stores/mcq-session/types";
+import type { McqConfig } from "@/stores/mcq-session/types";
 import { getDefaultMcqsConfig } from "@/types/generation-types";
 import {
 	AlertTriangle,
@@ -46,7 +41,7 @@ import {
 	X,
 	Zap,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useMCQSessionData } from "./hooks/use-mcq-session-data";
 
@@ -94,12 +89,6 @@ export function McqSessionSetup({
 		initialData?.courseId ||
 		(courses.length > 0 ? courses[0].id : "");
 	const selectedWeek = searchParams.get("week") || "all-weeks";
-	const numQuestions = searchParams.get("count") || "20";
-	const difficulty =
-		(searchParams.get("difficulty") as DifficultyLevel) || "mixed";
-	const focus = (searchParams.get("focus") as FocusType) || "tailored-for-me";
-	const practiceMode =
-		(searchParams.get("practiceMode") as PracticeMode) || "practice";
 
 	const [generationConfig, setGenerationConfig] =
 		useState<SelectiveGenerationConfig>({
@@ -131,8 +120,8 @@ export function McqSessionSetup({
 	const weeks = shouldUseInitialData ? initialData?.weeks || [] : fetchedWeeks;
 	const isWeeksReady = shouldUseInitialData || !loadingWeeks;
 
-	// Only fetch session data after weeks are ready to prevent race conditions
-	const sessionData = useMCQSessionData({
+	// Existing MCQs data - checks database for ready-to-use MCQs
+	const existingMCQsData = useMCQSessionData({
 		courseId: selectedCourse,
 		weekIds: selectedWeek === "all-weeks" ? [] : [selectedWeek],
 		enabled: Boolean(selectedCourse) && isWeeksReady,
@@ -144,8 +133,8 @@ export function McqSessionSetup({
 			: undefined,
 	});
 
-	// Feature availability - will be filtered by isWeeksReady in combined loading
-	const { data: weekFeatureAvailability, isLoading: isLoadingAvailability } =
+	// Generation history data - tracks feature generation status and history
+	const { data: generationHistoryData, isLoading: isLoadingAvailability } =
 		useFeatureAvailability(
 			selectedCourse,
 			selectedWeek === "all-weeks" ? null : selectedWeek
@@ -153,12 +142,41 @@ export function McqSessionSetup({
 
 	// Combine all loading states for consistent UI
 	const combinedLoadingAvailability =
-		!isWeeksReady || sessionData.isLoading || isLoadingAvailability;
+		!isWeeksReady || existingMCQsData.isLoading || isLoadingAvailability;
 
-	// Helper to get current week's feature availability
-	const getCurrentWeekAvailability = useCallback(() => {
-		return weekFeatureAvailability;
-	}, [weekFeatureAvailability]);
+	// Computed UI state based on data sources
+	type MCQUIState =
+		| "loading"
+		| "ready-to-start"
+		| "can-generate"
+		| "needs-materials"
+		| "needs-specific-week"
+		| "cannot-generate";
+
+	const mcqUIState: MCQUIState = useMemo(() => {
+		if (combinedLoadingAvailability || !selectedCourse) return "loading";
+
+		const isAllWeeksSelected = selectedWeek === "all-weeks";
+		const hasExistingContent = existingMCQsData.isAvailable;
+		const hasUploadedMaterials = existingMCQsData.hasCourseWeeksWithContent;
+		const canGenerateForWeek =
+			generationHistoryData && !generationHistoryData.mcqs.generated;
+
+		if (hasExistingContent) return "ready-to-start";
+		if (isAllWeeksSelected && !hasExistingContent) return "needs-specific-week";
+		if (!isAllWeeksSelected && hasUploadedMaterials && canGenerateForWeek)
+			return "can-generate";
+		if (!hasUploadedMaterials) return "needs-materials";
+
+		return "cannot-generate";
+	}, [
+		combinedLoadingAvailability,
+		selectedCourse,
+		selectedWeek,
+		existingMCQsData.isAvailable,
+		existingMCQsData.hasCourseWeeksWithContent,
+		generationHistoryData,
+	]);
 
 	// Reset to "all-weeks" if selected week no longer exists (only after weeks are fully loaded)
 	useEffect(() => {
@@ -172,156 +190,169 @@ export function McqSessionSetup({
 		}
 	}, [weeks, selectedWeek, isWeeksReady, setQueryState]);
 
+	// State-based action configuration
+	type StateActionConfig = {
+		action: () => Promise<void>;
+		canExecute: boolean;
+	};
+
+	const stateActionConfigs: Record<MCQUIState, StateActionConfig> = useMemo(
+		() => ({
+			loading: {
+				action: async () => {},
+				canExecute: false,
+			},
+			"ready-to-start": {
+				action: async () => {
+					const isAllWeeksSelected = selectedWeek === "all-weeks";
+					const config: McqConfig = {
+						courseId: selectedCourse,
+						weeks: isAllWeeksSelected ? [] : [selectedWeek],
+						numQuestions: 10,
+						difficulty: "mixed",
+						focus: "comprehensive",
+						practiceMode: "practice",
+					};
+					try {
+						await existingMCQsData.startSessionInstantly(config);
+						toast.success("MCQ session started!");
+					} catch (error) {
+						logger.error("Failed to start MCQ session", {
+							message: error instanceof Error ? error.message : String(error),
+							stack: error instanceof Error ? error.stack : undefined,
+							sessionConfig: config,
+						});
+						toast.error("Failed to start session. Please try again.");
+					}
+				},
+				canExecute: true,
+			},
+			"can-generate": {
+				action: async () => {
+					if (!onTriggerGeneration) return;
+					try {
+						const mcqConfig: SelectiveGenerationConfig = {
+							selectedFeatures: { mcqs: true },
+							featureConfigs: { mcqs: generationConfig.featureConfigs.mcqs },
+						};
+						await onTriggerGeneration(
+							selectedCourse,
+							[selectedWeek],
+							mcqConfig
+						);
+					} catch (error) {
+						logger.error(
+							"Failed to trigger MCQ generation from session setup",
+							{
+								message: error instanceof Error ? error.message : String(error),
+								stack: error instanceof Error ? error.stack : undefined,
+								courseId: selectedCourse,
+								weekId: selectedWeek,
+								generationConfig,
+							}
+						);
+						toast.error("Failed to generate MCQs. Please try again.");
+					}
+				},
+				canExecute: true,
+			},
+			"needs-materials": {
+				action: async () => {},
+				canExecute: false,
+			},
+			"needs-specific-week": {
+				action: async () => {},
+				canExecute: false,
+			},
+			"cannot-generate": {
+				action: async () => {},
+				canExecute: false,
+			},
+		}),
+		[
+			selectedCourse,
+			selectedWeek,
+			existingMCQsData,
+			onTriggerGeneration,
+			generationConfig,
+		]
+	);
+
 	const handleStartSession = async () => {
 		if (!selectedCourse) return;
 
-		const isAllWeeksSelected = selectedWeek === "all-weeks";
-		const isContentUnavailable = !sessionData.isAvailable;
-
-		// Handle on-demand generation for specific weeks without existing content
-		if (isContentUnavailable && !isAllWeeksSelected) {
-			const weekFeature = getCurrentWeekAvailability();
-			const canGenerate = weekFeature && !weekFeature.mcqs.generated;
-
-			// Trigger generation if course materials exist but MCQs don't
-			if (canGenerate && onTriggerGeneration) {
-				try {
-					// Create focused config for MCQ generation only
-					const mcqConfig: SelectiveGenerationConfig = {
-						selectedFeatures: {
-							mcqs: true,
-						},
-						featureConfigs: {
-							mcqs: generationConfig.featureConfigs.mcqs,
-						},
-					};
-
-					await onTriggerGeneration(selectedCourse, [selectedWeek], mcqConfig);
-				} catch (error) {
-					logger.error("Failed to trigger MCQ generation from session setup", {
-						message: error instanceof Error ? error.message : String(error),
-						stack: error instanceof Error ? error.stack : undefined,
-						courseId: selectedCourse,
-						weekId: selectedWeek,
-						generationConfig,
-					});
-					toast.error("Failed to generate MCQs. Please try again.");
-				}
-			}
-			return;
-		}
-
-		// Guard clause: button should be disabled for this case
-		if (isContentUnavailable && isAllWeeksSelected) {
-			return;
-		}
-
-		// Configure session based on week selection
-		const config: McqConfig = {
-			courseId: selectedCourse,
-			weeks: isAllWeeksSelected ? [] : [selectedWeek], // Empty array means all available weeks
-			difficulty: difficulty,
-			focus,
-			practiceMode,
-			numQuestions: Number.parseInt(numQuestions),
-		};
-
-		// Start the MCQ session with existing content
-		try {
-			await sessionData.startSessionInstantly(config);
-			toast.success("MCQ session started!");
-		} catch (error) {
-			logger.error("Failed to start MCQ session", {
-				message: error instanceof Error ? error.message : String(error),
-				stack: error instanceof Error ? error.stack : undefined,
-				sessionConfig: config,
-				isAvailable: sessionData.isAvailable,
-				mcqCount: sessionData.count,
-			});
-			toast.error("Failed to start session. Please try again.");
+		const actionConfig = stateActionConfigs[mcqUIState];
+		if (actionConfig.canExecute) {
+			await actionConfig.action();
 		}
 	};
 
-	// Smart button state logic
+	// State-based button configuration using computed UI state
 	const buttonState = useMemo(() => {
-		const isAllWeeksSelected = selectedWeek === "all-weeks";
-		const isContentUnavailable = !sessionData.isAvailable;
-
-		// Disable button during generation
+		// Override state during generation
 		if (showGenerationProgress) {
 			return {
 				disabled: true,
 				text: "Generating...",
 				icon: <Loader2 className="mr-2 h-4 w-4 animate-spin" />,
+				variant: "default" as const,
 			};
 		}
 
-		if (!selectedCourse) {
-			return {
-				disabled: true,
-				text: "Select a Course",
-			};
-		}
-		if (combinedLoadingAvailability) {
-			return {
-				disabled: true,
-				text: "Checking Content...",
-				icon: <Loader2 className="mr-2 h-4 w-4 animate-spin" />,
-			};
-		}
-		if (isContentUnavailable && !isAllWeeksSelected) {
-			const weekFeature = getCurrentWeekAvailability();
-			const canGenerate = weekFeature && !weekFeature.mcqs.generated;
-
-			if (canGenerate) {
+		// Map UI state to button configuration
+		switch (mcqUIState) {
+			case "loading":
+				return {
+					disabled: true,
+					text: selectedCourse ? "Checking Content..." : "Select a Course",
+					icon: selectedCourse ? (
+						<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+					) : undefined,
+					variant: "default" as const,
+				};
+			case "ready-to-start":
+				return {
+					disabled: false,
+					text: "Start Session",
+					icon: <PlayCircle className="mr-2 h-4 w-4" />,
+					variant: "default" as const,
+				};
+			case "can-generate":
 				return {
 					disabled: false,
 					text: "Generate & Start Session",
 					icon: <Sparkles className="mr-2 h-4 w-4" />,
+					variant: "default" as const,
 				};
-			}
-
-			if (!weekFeature) {
+			case "needs-materials":
 				return {
 					disabled: true,
 					text: "Upload Course Materials First",
 					variant: "secondary" as const,
 				};
-			}
-
-			return {
-				disabled: true,
-				text: "Cannot Generate",
-				variant: "secondary" as const,
-			};
+			case "needs-specific-week":
+				return {
+					disabled: true,
+					text: "Select Specific Week",
+					variant: "secondary" as const,
+				};
+			case "cannot-generate":
+				return {
+					disabled: true,
+					text: "Cannot Generate",
+					variant: "secondary" as const,
+				};
+			default:
+				return {
+					disabled: true,
+					text: "Unknown State",
+					variant: "secondary" as const,
+				};
 		}
+	}, [mcqUIState, selectedCourse, showGenerationProgress]);
 
-		if (isContentUnavailable && isAllWeeksSelected) {
-			return {
-				disabled: true,
-				text: "Select Specific Week",
-				variant: "secondary" as const,
-			};
-		}
-		return {
-			disabled: false,
-			text: "Start Session",
-			icon: <PlayCircle className="mr-2 h-4 w-4" />,
-		};
-	}, [
-		selectedCourse,
-		combinedLoadingAvailability,
-		sessionData,
-		selectedWeek,
-		getCurrentWeekAvailability,
-		showGenerationProgress,
-	]);
-
-	// Show generation settings only for specific weeks that need content generation
-	const showGenerationSettings =
-		selectedWeek !== "all-weeks" &&
-		!sessionData.isAvailable &&
-		!combinedLoadingAvailability;
+	// Show generation settings based on UI state
+	const showGenerationSettings = mcqUIState === "can-generate";
 
 	if (courses.length === 0) {
 		return (
@@ -343,10 +374,10 @@ export function McqSessionSetup({
 				<Button
 					variant="ghost"
 					size="icon"
-					className="bg-gray-100 hover:bg-gray-200 rounded-full"
+					className="bg-background/80 hover:bg-background/90 text-foreground rounded-full border shadow-sm"
 					onClick={onClose}
 				>
-					<X className="h-6 w-6 text-gray-600" />
+					<X className="h-6 w-6" />
 				</Button>
 			</div>
 
@@ -461,23 +492,25 @@ export function McqSessionSetup({
 										<Loader2 className="h-4 w-4 animate-spin" />
 										<span>Checking content...</span>
 									</div>
-								) : sessionData.isAvailable ? (
+								) : existingMCQsData.isAvailable ? (
 									selectedWeek === "all-weeks" ? (
 										<div className="flex items-center gap-2 text-sm text-blue-600">
 											<Info className="h-4 w-4" />
 											<span>
-												{sessionData.count} total MCQ
-												{sessionData.count !== 1 ? "s" : ""} across{" "}
-												{sessionData.availableWeeks.length} week
-												{sessionData.availableWeeks.length !== 1 ? "s" : ""}
+												{existingMCQsData.count} total MCQ
+												{existingMCQsData.count !== 1 ? "s" : ""} across{" "}
+												{existingMCQsData.availableWeeks.length} week
+												{existingMCQsData.availableWeeks.length !== 1
+													? "s"
+													: ""}
 											</span>
 										</div>
 									) : (
 										<div className="flex items-center gap-2 text-sm text-green-600">
 											<PlayCircle className="h-4 w-4" />
 											<span>
-												{sessionData.count} MCQ
-												{sessionData.count !== 1 ? "s" : ""} available
+												{existingMCQsData.count} MCQ
+												{existingMCQsData.count !== 1 ? "s" : ""} available
 											</span>
 											<Badge variant="secondary" className="text-xs">
 												Ready
@@ -502,27 +535,27 @@ export function McqSessionSetup({
 										) : (
 											<div
 												className={`flex items-start gap-3 p-3 rounded-lg border ${
-													weekFeatureAvailability
+													generationHistoryData
 														? "bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800"
 														: "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800"
 												}`}
 											>
-												{weekFeatureAvailability ? (
+												{generationHistoryData ? (
 													<Zap className="h-4 w-4 text-orange-600 dark:text-orange-400 mt-0.5 flex-shrink-0" />
 												) : (
 													<AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
 												)}
 												<div className="text-sm">
-													{weekFeatureAvailability ? (
+													{generationHistoryData ? (
 														<>
 															<p className="font-medium text-orange-900 dark:text-orange-100">
-																{weekFeatureAvailability.mcqs.generated
+																{generationHistoryData.mcqs.generated
 																	? "MCQs Available"
 																	: "Generate MCQs"}
 															</p>
 															<p className="text-orange-700 dark:text-orange-300 mt-1">
-																{weekFeatureAvailability.mcqs.generated
-																	? `${weekFeatureAvailability.mcqs.count} MCQs available from previous generation`
+																{generationHistoryData.mcqs.generated
+																	? `${generationHistoryData.mcqs.count} MCQs available from previous generation`
 																	: "Ready to generate MCQs from your uploaded course materials"}
 															</p>
 														</>
@@ -562,10 +595,9 @@ export function McqSessionSetup({
 											config={generationConfig}
 											onConfigChange={setGenerationConfig}
 											featuresFilter={["mcqs"]}
-											featureAvailability={getCurrentWeekAvailability()}
+											featureAvailability={generationHistoryData}
 											showAvailabilityStatus={
-												selectedWeek !== "all-weeks" &&
-												!!weekFeatureAvailability
+												selectedWeek !== "all-weeks" && !!generationHistoryData
 											}
 										/>
 									</AccordionContent>
