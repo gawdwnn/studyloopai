@@ -1,6 +1,4 @@
-import { generateContent } from "@/lib/ai/generation/generic-generator";
-import { SummarySchema } from "@/lib/ai/generation/schemas";
-import { insertSummaries } from "@/lib/services/persist-generated-content-service";
+import { generateContent } from "@/lib/ai/generation";
 import { logger, schemaTask, tags } from "@trigger.dev/sdk";
 import { z } from "zod";
 
@@ -11,6 +9,7 @@ const GenerateSummariesPayload = z.object({
 		.array(z.string())
 		.min(1, "At least one material ID is required"),
 	configId: z.string().uuid("Config ID must be a valid UUID"),
+	cacheKey: z.string().optional(), // Cache key for pre-fetched chunks
 });
 
 const GenerateSummariesOutput = z.object({
@@ -24,7 +23,7 @@ export const generateSummaries = schemaTask({
 	schema: GenerateSummariesPayload,
 	maxDuration: 300, // 5 minutes for individual content type
 	run: async (payload: GenerateSummariesPayloadType, { ctx: _ctx }) => {
-		const { weekId, courseId, materialIds, configId } = payload;
+		const { weekId, courseId, materialIds, configId, cacheKey } = payload;
 
 		await tags.add([
 			`weekId:${payload.weekId}`,
@@ -46,21 +45,19 @@ export const generateSummaries = schemaTask({
 					"Summaries configuration not found or feature not enabled"
 				);
 			}
-			logger.info("📄 Using selective configuration for summaries", {
+			logger.info("Using selective configuration for summaries", {
 				weekId,
 				courseId,
 				summariesConfig,
 			});
 
 			const result = await generateContent({
+				contentType: "summaries",
 				courseId,
 				weekId,
 				materialIds,
 				config: summariesConfig,
-				contentType: "summaries",
-				schema: SummarySchema,
-				insertFunction: insertSummaries,
-				responseType: "object",
+				cacheKey,
 			});
 
 			if (!result.success) {
@@ -73,7 +70,7 @@ export const generateSummaries = schemaTask({
 		} catch (error) {
 			const errorMessage =
 				error instanceof Error ? error.message : "An unknown error occurred";
-			logger.error("❌ Summaries generation failed", {
+			logger.error("Summaries generation failed", {
 				weekId,
 				courseId,
 				configId,
@@ -87,13 +84,13 @@ export const generateSummaries = schemaTask({
 	}: {
 		output: z.infer<typeof GenerateSummariesOutput>;
 	}) => {
-		logger.info("✅ Summaries generation completed successfully", {
+		logger.info("Summaries generation completed successfully", {
 			success: output.success,
 		});
 	},
 	onFailure: async ({ error }: { error: unknown }) => {
 		const errorMessage = error instanceof Error ? error.message : String(error);
-		logger.error("❌ Summaries generation failed permanently", {
+		logger.error("Summaries generation failed permanently", {
 			error: errorMessage,
 		});
 	},

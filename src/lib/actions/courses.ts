@@ -2,6 +2,8 @@
 
 import { db } from "@/db";
 import { courseMaterials, courseWeeks, courses } from "@/db/schema";
+import { cacheInvalidate } from "@/lib/cache";
+import { checkCourseRateLimit, enforceRateLimit } from "@/lib/rate-limit";
 import { deleteContentForCourse } from "@/lib/services/content-deletion-service";
 import {
 	cleanupStorageFiles,
@@ -27,6 +29,12 @@ export async function createCourse(formData: CourseCreationData) {
 		if (!user) {
 			throw new Error("You must be logged in to create a course.");
 		}
+
+		// Rate limit course creation - prevent spam courses
+		await enforceRateLimit(
+			() => checkCourseRateLimit(user.id),
+			"course_creation"
+		);
 
 		const validatedData = CourseCreationSchema.parse(formData);
 
@@ -290,7 +298,9 @@ export async function deleteCourse(courseId: string) {
 		const allFilePaths = extractFilePaths(materialsData);
 		await cleanupStorageFiles(allFilePaths);
 
-		// Step 5: Revalidate related pages
+		// Step 5: Invalidate caches and revalidate pages
+		await cacheInvalidate(`*${courseId}*`);
+
 		revalidatePath("/dashboard");
 		revalidatePath("/dashboard/courses");
 

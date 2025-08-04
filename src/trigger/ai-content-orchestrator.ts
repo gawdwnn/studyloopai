@@ -1,4 +1,8 @@
-import { updateGenerationConfigStatus } from "@/lib/services/background-job-db-service";
+import { cacheChunks, generateChunkCacheKey } from "@/lib/cache";
+import {
+	getCombinedChunks,
+	updateGenerationConfigStatus,
+} from "@/lib/services/background-job-db-service";
 import { logger, schemaTask, tags } from "@trigger.dev/sdk";
 import { z } from "zod";
 import { generateConceptMaps } from "./generate-concept-maps";
@@ -15,6 +19,7 @@ const AiContentOrchestratorPayload = z.object({
 		.array(z.string().uuid())
 		.min(1, "At least one material ID is required"),
 	configId: z.string().uuid().optional(),
+	cacheKey: z.string().optional(), // Cache key for pre-fetched chunks
 });
 
 const AiContentOrchestratorOutput = z.object({
@@ -43,7 +48,7 @@ export const aiContentOrchestrator = schemaTask({
 	}: {
 		payload: AiContentOrchestratorPayloadType;
 	}) => {
-		logger.info("🚀 AI Content Generation orchestrator started", {
+		logger.info("AI Content Generation orchestrator started", {
 			weekId: payload.weekId,
 			courseId: payload.courseId,
 			configId: payload.configId,
@@ -69,9 +74,31 @@ export const aiContentOrchestrator = schemaTask({
 				generationStartedAt: new Date(),
 			});
 
-			logger.info("🔄 Updated generation config status to processing", {
+			logger.info("Updated generation config status to processing", {
 				configId,
 				weekId,
+			});
+
+			// CHUNK CACHING OPTIMIZATION
+			// Fetch chunks once and cache them for all parallel generators
+			const chunks = await getCombinedChunks(materialIds);
+
+			if (chunks.length === 0) {
+				throw new Error(
+					`No content chunks found for courseId: ${courseId}, weekId: ${weekId}`
+				);
+			}
+
+			// Generate cache key and store chunks
+			const cacheKey = generateChunkCacheKey(courseId, weekId, materialIds);
+			await cacheChunks(chunks, cacheKey);
+
+			logger.info("Cached chunks for parallel generation", {
+				cacheKey,
+				chunkCount: chunks.length,
+				courseId,
+				weekId,
+				materialIds: materialIds.length,
 			});
 
 			const batchRuns: Record<string, { batchId: string } | undefined> = {};
@@ -86,10 +113,13 @@ export const aiContentOrchestrator = schemaTask({
 				throw new Error("Configuration not found or inactive");
 			}
 
+			// payload with cache key for all generators
+			const payload = { weekId, courseId, materialIds, configId, cacheKey };
+
 			if (selectiveConfig.selectedFeatures.goldenNotes) {
 				batchRuns.goldenNotes = await generateGoldenNotes.batchTrigger([
 					{
-						payload: { weekId, courseId, materialIds, configId },
+						payload,
 					},
 				]);
 			}
@@ -97,7 +127,7 @@ export const aiContentOrchestrator = schemaTask({
 			if (selectiveConfig.selectedFeatures.cuecards) {
 				batchRuns.cuecards = await generateCuecards.batchTrigger([
 					{
-						payload: { weekId, courseId, materialIds, configId },
+						payload,
 					},
 				]);
 			}
@@ -105,7 +135,7 @@ export const aiContentOrchestrator = schemaTask({
 			if (selectiveConfig.selectedFeatures.mcqs) {
 				batchRuns.mcqs = await generateMCQs.batchTrigger([
 					{
-						payload: { weekId, courseId, materialIds, configId },
+						payload,
 					},
 				]);
 			}
@@ -113,7 +143,7 @@ export const aiContentOrchestrator = schemaTask({
 			if (selectiveConfig.selectedFeatures.openQuestions) {
 				batchRuns.openQuestions = await generateOpenQuestions.batchTrigger([
 					{
-						payload: { weekId, courseId, materialIds, configId },
+						payload,
 					},
 				]);
 			}
@@ -121,7 +151,7 @@ export const aiContentOrchestrator = schemaTask({
 			if (selectiveConfig.selectedFeatures.summaries) {
 				batchRuns.summaries = await generateSummaries.batchTrigger([
 					{
-						payload: { weekId, courseId, materialIds, configId },
+						payload,
 					},
 				]);
 			}
@@ -129,7 +159,7 @@ export const aiContentOrchestrator = schemaTask({
 			if (selectiveConfig.selectedFeatures.conceptMaps) {
 				batchRuns.conceptMaps = await generateConceptMaps.batchTrigger([
 					{
-						payload: { weekId, courseId, materialIds, configId },
+						payload,
 					},
 				]);
 			}
@@ -158,7 +188,7 @@ export const aiContentOrchestrator = schemaTask({
 				generationCompletedAt: new Date(),
 			});
 
-			logger.info("✅ Updated generation config status to completed", {
+			logger.info("Updated generation config status to completed", {
 				results,
 			});
 
@@ -177,7 +207,7 @@ export const aiContentOrchestrator = schemaTask({
 						failedFeatures: [],
 					});
 
-					logger.error("❌ Updated generation config status to failed", {
+					logger.error("Updated generation config status to failed", {
 						configId,
 						weekId,
 						error: errorMessage,
@@ -207,7 +237,7 @@ export const aiContentOrchestrator = schemaTask({
 		payload: AiContentOrchestratorPayloadType;
 		output: z.infer<typeof AiContentOrchestratorOutput>;
 	}) => {
-		logger.info("✅ AI content generation orchestration completed", {
+		logger.info("AI content generation orchestration completed", {
 			weekId: payload.weekId,
 			courseId: payload.courseId,
 			configId: payload.configId,
@@ -223,7 +253,7 @@ export const aiContentOrchestrator = schemaTask({
 		error: unknown;
 	}) => {
 		const errorMessage = error instanceof Error ? error.message : String(error);
-		logger.error("❌ AI content generation orchestration failed", {
+		logger.error("AI content generation orchestration failed", {
 			weekId: payload.weekId,
 			courseId: payload.courseId,
 			configId: payload.configId,
