@@ -26,7 +26,6 @@ import { useCurrentUserImage } from "@/hooks/use-current-user-image";
 import { useCurrentUserName } from "@/hooks/use-current-user-name";
 import { signOut } from "@/lib/actions/auth";
 import { cn } from "@/lib/utils";
-import { QuestionMarkIcon } from "@radix-ui/react-icons";
 import {
 	BookOpen,
 	Brain,
@@ -38,7 +37,6 @@ import {
 	Home,
 	LogOut,
 	MessageSquare,
-	Route,
 	Settings,
 	User,
 } from "lucide-react";
@@ -85,20 +83,21 @@ const routes: RouteItem[] = [
 				icon: CheckCircle,
 			},
 			{
-				label: "Open Questions",
-				href: "/dashboard/adaptive-learning/open-questions",
-				icon: QuestionMarkIcon,
-			},
-			{
 				label: "Cue Cards",
 				href: "/dashboard/adaptive-learning/cuecards",
 				icon: Clipboard,
 			},
-			{
-				label: "Concept Maps",
-				href: "/dashboard/adaptive-learning/concept-maps",
-				icon: Route,
-			},
+			// not supported yet
+			// {
+			// 	label: "Open Questions",
+			// 	href: "/dashboard/adaptive-learning/open-questions",
+			// 	icon: QuestionMarkIcon,
+			// },
+			// {
+			// 	label: "Concept Maps",
+			// 	href: "/dashboard/adaptive-learning/concept-maps",
+			// 	icon: Route,
+			// },
 		],
 	},
 	{

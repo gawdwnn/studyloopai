@@ -1,50 +1,40 @@
-import {
-	getCourseWeekFeatureAvailability,
-	getFeatureAvailability,
-} from "@/lib/actions/course-week-features";
+import { getFeatureAvailability } from "@/lib/actions/course-week-features";
+import type { FeatureAvailability } from "@/types/generation-types";
 import { useQuery } from "@tanstack/react-query";
 
-// TODO: fix server actions used in this hook
+/**
+ * Hook for fetching feature availability data
+ * Uses unified server action for both single week and full course queries
+ */
 export function useFeatureAvailability(
 	courseId: string | null,
 	weekId: string | null
 ) {
-	// Use the optimized single week query when both IDs are provided
-	const singleWeekQuery = useQuery({
-		queryKey: ["course-week-feature-availability", courseId, weekId],
-		queryFn: () => {
-			if (!courseId || !weekId) {
-				throw new Error("Both courseId and weekId required");
-			}
-			return getCourseWeekFeatureAvailability(courseId, weekId);
-		},
-		enabled: !!(courseId && weekId),
-		staleTime: 1000 * 60 * 5,
-		gcTime: 1000 * 60 * 10,
-	});
-
-	// Fallback to course query when weekId is null
-	const courseQuery = useQuery({
-		queryKey: ["course-feature-availability", courseId],
-		queryFn: () => {
+	return useQuery({
+		queryKey: ["feature-availability", courseId, weekId || "all"],
+		queryFn: async () => {
 			if (!courseId) {
 				throw new Error("Course ID required");
 			}
-			return getFeatureAvailability(courseId);
+
+			// Pass weekId as undefined (not null) for full course query
+			const result = await getFeatureAvailability(
+				courseId,
+				weekId ?? undefined
+			);
+
+			// Handle the response based on query type
+			if (weekId) {
+				// Single week query returns FeatureAvailability | null
+				return result as FeatureAvailability | null;
+			}
+
+			// Full course query returns Record<string, FeatureAvailability>
+			// But we return null to maintain existing behavior when weekId is null
+			return null;
 		},
-		enabled: !!(courseId && !weekId),
-		staleTime: 1000 * 60 * 5,
-		gcTime: 1000 * 60 * 10,
+		enabled: !!courseId,
+		staleTime: 1000 * 60 * 5, // 5 minutes
+		gcTime: 1000 * 60 * 10, // 10 minutes
 	});
-
-	// Return consistent interface
-	if (weekId) {
-		return singleWeekQuery;
-	}
-
-	// When no weekId, return null data but preserve query state
-	return {
-		...courseQuery,
-		data: null,
-	};
 }
