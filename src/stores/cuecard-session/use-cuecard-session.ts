@@ -6,7 +6,6 @@ import { createLogger } from "@/lib/utils/logger";
 import type { SelectiveGenerationConfig } from "@/types/generation-types";
 import { create } from "zustand";
 import { persist, subscribeWithSelector } from "zustand/middleware";
-import { useSessionManager } from "../session-manager/use-session-manager";
 import type {
 	CardResponse,
 	CuecardConfig,
@@ -22,30 +21,6 @@ const useCuecardSession = create<CuecardSessionStore>()(
 	subscribeWithSelector(
 		persist(
 			(set, get) => {
-				// Initialize callback registration with Session Manager
-				try {
-					const sessionManager = useSessionManager.getState();
-					sessionManager.actions.registerSessionCallbacks("cuecards", {
-						onStart: (_sessionId) => {
-							// Session Manager handles coordination, no action needed here
-							// Callback confirms session started successfully
-						},
-						onEnd: (_sessionId, _stats) => {
-							// Session Manager handles analytics, no action needed here
-							// Callback confirms session ended and stats were recorded
-						},
-						onProgress: (_sessionId, _progress) => {
-							// Session Manager handles progress tracking, no action needed here
-							// Callback confirms progress was updated
-						},
-					});
-				} catch (error) {
-					logger.warn(
-						{ error },
-						"Failed to register callbacks with Session Manager"
-					);
-				}
-
 				return {
 					...initialCuecardState,
 
@@ -79,17 +54,6 @@ const useCuecardSession = create<CuecardSessionStore>()(
 								set({ isLoading: true, error: null, status: "loading" });
 
 								const sessionId = `cuecard_${Date.now()}`;
-
-								// Session manager integration
-								try {
-									const sessionManager = useSessionManager.getState();
-									await sessionManager.actions.startSession("cuecards", config);
-								} catch (e) {
-									logger.warn(
-										{ error: e },
-										"Session manager failed to start, continuing..."
-									);
-								}
 
 								// Use pre-loaded data - no database fetch needed
 								if (preLoadedCards.length === 0) {
@@ -188,7 +152,7 @@ const useCuecardSession = create<CuecardSessionStore>()(
 							const state = get();
 
 							if (state.status !== "active") {
-								logger.warn({ status: state.status }, "❌ Session not active");
+								logger.warn({ status: state.status }, "Session not active");
 								return;
 							}
 
@@ -284,35 +248,18 @@ const useCuecardSession = create<CuecardSessionStore>()(
 										}
 									}
 
-									// Session manager integration
-									try {
-										const sessionManager = useSessionManager.getState();
-										if (state.id) {
-											await sessionManager.actions.endSession(state.id, {
-												totalTime,
-												itemsCompleted: state.responses.length,
-												accuracy,
-											});
-										}
-									} catch (e) {
-										logger.warn(
-											{ error: e },
-											"Session manager failed to end, continuing"
-										);
-									}
-
 									set({ status: "completed", cardStartTime: null });
 									return sessionRecord.id;
 								}
 
 								// Fallback if session creation failed
 								logger.error(
-									"❌ Session record creation failed, sessionRecord is null"
+									"Session record creation failed, sessionRecord is null"
 								);
 								set({ status: "completed", cardStartTime: null });
 								return undefined;
 							} catch (error) {
-								logger.error({ error }, "💥 Failed to end cuecard session");
+								logger.error({ error }, "Failed to end cuecard session");
 								const errorMessage =
 									error instanceof Error
 										? error.message
@@ -394,7 +341,7 @@ const useCuecardSession = create<CuecardSessionStore>()(
 								if (sessionId) {
 									window.location.href = `/dashboard/feedback?sessionId=${sessionId}`;
 								} else {
-									logger.warn("⚠️ No sessionId received, navigating without it");
+									logger.warn("No sessionId received, navigating without it");
 									// Fallback navigation without session ID
 									window.location.href = "/dashboard/feedback";
 								}

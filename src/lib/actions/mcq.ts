@@ -96,7 +96,26 @@ export async function getUserMCQsWithAvailability(
 
 			const mcqs = await baseQuery;
 
-			// Calculate availability from the results
+			// Separate query to check for weeks with materials (for generation capability)
+			const weeksWithMaterialsQuery = db
+				.select({
+					id: courseWeeks.id,
+					weekNumber: courseWeeks.weekNumber,
+				})
+				.from(courseWeeks)
+				.innerJoin(courses, eq(courseWeeks.courseId, courses.id))
+				.where(
+					and(
+						eq(courses.userId, user.id), // RLS protection
+						eq(courseWeeks.courseId, courseId),
+						eq(courseWeeks.hasMaterials, true),
+						shouldFilterByWeeks ? inArray(courseWeeks.id, weekIds) : undefined
+					)
+				);
+
+			const weeksWithMaterials = await weeksWithMaterialsQuery;
+
+			// Calculate availability from MCQ results (for existing MCQs)
 			const uniqueWeeks = new Map<string, { id: string; weekNumber: number }>();
 			for (const mcq of mcqs) {
 				uniqueWeeks.set(mcq.weekId, {
@@ -130,7 +149,8 @@ export async function getUserMCQsWithAvailability(
 			const availability: MCQAvailability = {
 				available: mcqs.length > 0,
 				count: mcqs.length,
-				hasCourseWeeksWithContent: availableWeeks.length > 0,
+				// Fix: Check for weeks with materials (for generation), not just weeks with existing MCQs
+				hasCourseWeeksWithContent: weeksWithMaterials.length > 0,
 				availableWeeks,
 				mcqsByWeek,
 				difficultyBreakdown,

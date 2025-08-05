@@ -2,7 +2,6 @@
 
 import type { UserCuecard } from "@/lib/actions/cuecard";
 import type { SelectiveGenerationConfig } from "@/types/generation-types";
-import type { BaseSessionConfig } from "../session-manager/types";
 
 export type CuecardFeedback = "correct" | "incorrect";
 
@@ -17,8 +16,9 @@ export type SessionStatus =
 	| "generating";
 
 // Cuecard-specific configuration for an active session
-export interface CuecardConfig extends BaseSessionConfig {
-	// Simplified configuration for binary feedback system
+export interface CuecardConfig {
+	courseId: string;
+	weeks: string[];
 }
 
 // Configuration used on the setup screen
