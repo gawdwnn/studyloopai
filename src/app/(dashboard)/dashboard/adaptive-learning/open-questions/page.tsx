@@ -1,9 +1,10 @@
-import { OpenQuestionSessionManager } from "@/components/open-questions/open-question-session-manager";
-import { getUserCourses } from "@/lib/actions/courses";
-
-export default async function OpenQuestionsPage() {
-	// Server-side data fetching
-	const courses = await getUserCourses();
-
-	return <OpenQuestionSessionManager courses={courses} />;
+export default function OpenQuestionsPage() {
+	return (
+		<div className="space-y-4">
+			<h1 className="text-2xl font-bold">Open Questions</h1>
+			<p className="text-muted-foreground">
+				Practice your open-ended questions with our open-ended question session.
+			</p>
+		</div>
+	);
 }

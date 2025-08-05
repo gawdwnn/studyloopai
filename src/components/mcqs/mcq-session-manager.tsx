@@ -9,7 +9,6 @@ import { env } from "@/env";
 import type { MCQAvailability, UserMCQ } from "@/lib/actions/mcq";
 import type { McqConfig } from "@/stores/mcq-session/types";
 import { useMcqSession } from "@/stores/mcq-session/use-mcq-session";
-import { useSessionManager } from "@/stores/session-manager/use-session-manager";
 import type { Course, CourseWeek } from "@/types/database-types";
 import type { SelectiveGenerationConfig } from "@/types/generation-types";
 import { useRealtimeRun } from "@trigger.dev/react-hooks";
@@ -59,7 +58,6 @@ export function McqSessionManager({
 	);
 
 	const mcqActions = useMcqSession((state) => state.actions);
-	const sessionManager = useSessionManager();
 
 	// Generation progress tracking
 	const [generationInProgress, setGenerationInProgress] = useState(false);
@@ -73,21 +71,6 @@ export function McqSessionManager({
 			enabled: Boolean(mcqState.generationRunId && mcqState.generationToken),
 		}
 	);
-
-	// Register callbacks for cross-session coordination
-	useEffect(() => {
-		sessionManager.actions.registerSessionCallbacks("mcqs", {
-			onStart: (_sessionId) => {
-				// MCQ session started tracking can be added here if needed
-			},
-			onEnd: (_sessionId, _stats) => {
-				// TODO: Record session analytics
-			},
-			onProgress: (_sessionId, _progress) => {
-				// MCQ session progress tracking can be added here if needed
-			},
-		});
-	}, [sessionManager]);
 
 	// Handle generation progress updates
 	useEffect(() => {

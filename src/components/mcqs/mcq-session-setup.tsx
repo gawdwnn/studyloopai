@@ -535,28 +535,25 @@ export function McqSessionSetup({
 										) : (
 											<div
 												className={`flex items-start gap-3 p-3 rounded-lg border ${
-													generationHistoryData
+													existingMCQsData.hasCourseWeeksWithContent
 														? "bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800"
 														: "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800"
 												}`}
 											>
-												{generationHistoryData ? (
+												{existingMCQsData.hasCourseWeeksWithContent ? (
 													<Zap className="h-4 w-4 text-orange-600 dark:text-orange-400 mt-0.5 flex-shrink-0" />
 												) : (
 													<AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
 												)}
 												<div className="text-sm">
-													{generationHistoryData ? (
+													{existingMCQsData.hasCourseWeeksWithContent ? (
 														<>
 															<p className="font-medium text-orange-900 dark:text-orange-100">
-																{generationHistoryData.mcqs.generated
-																	? "MCQs Available"
-																	: "Generate MCQs"}
+																Generate MCQs
 															</p>
 															<p className="text-orange-700 dark:text-orange-300 mt-1">
-																{generationHistoryData.mcqs.generated
-																	? `${generationHistoryData.mcqs.count} MCQs available from previous generation`
-																	: "Ready to generate MCQs from your uploaded course materials"}
+																Ready to generate MCQs from your uploaded course
+																materials
 															</p>
 														</>
 													) : (

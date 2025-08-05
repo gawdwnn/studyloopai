@@ -3,15 +3,18 @@
 import {
 	calculateProgress,
 	calculateSessionPerformance,
-	getSessionStats,
 } from "@/components/mcqs/utils/mcq-scoring";
+import {
+	createLearningSession,
+	createOrUpdateLearningGap,
+	createSessionResponses,
+} from "@/lib/actions/adaptive-learning";
 import type { UserMCQ } from "@/lib/actions/mcq";
 import { triggerOnDemandGeneration } from "@/lib/services/on-demand-generation-service";
 import { createLogger } from "@/lib/utils/logger";
 import type { SelectiveGenerationConfig } from "@/types/generation-types";
 import { create } from "zustand";
 import { persist, subscribeWithSelector } from "zustand/middleware";
-import { useSessionManager } from "../session-manager/use-session-manager";
 import type {
 	McqAnswer,
 	McqConfig,
@@ -30,30 +33,6 @@ const useMcqSession = create<McqSessionStore>()(
 	subscribeWithSelector(
 		persist(
 			(set, get): McqSessionStore => {
-				// Initialize callback registration with Session Manager
-				try {
-					const sessionManager = useSessionManager.getState();
-					sessionManager.actions.registerSessionCallbacks("mcqs", {
-						onStart: (_sessionId) => {
-							// Session Manager handles coordination, no action needed here
-							logger.info("MCQ session started via Session Manager");
-						},
-						onEnd: (_sessionId, _stats) => {
-							// Session Manager handles analytics, no action needed here
-							logger.info("MCQ session ended via Session Manager");
-						},
-						onProgress: (_sessionId, _progress) => {
-							// Session Manager handles progress tracking, no action needed here
-							logger.debug("MCQ session progress updated via Session Manager");
-						},
-					});
-				} catch (error) {
-					logger.warn(
-						{ error },
-						"Failed to register callbacks with Session Manager"
-					);
-				}
-
 				return {
 					...initialMcqState,
 
@@ -67,17 +46,6 @@ const useMcqSession = create<McqSessionStore>()(
 								set({ isLoading: true, error: null, status: "loading" });
 
 								const sessionId = `mcq_${Date.now()}`;
-
-								// Session manager integration
-								try {
-									const sessionManager = useSessionManager.getState();
-									await sessionManager.actions.startSession("mcqs", config);
-								} catch (e) {
-									logger.warn(
-										{ error: e },
-										"Session manager failed to start, continuing..."
-									);
-								}
 
 								// Use pre-loaded data - no database fetch needed
 								if (preLoadedMCQs.length === 0) {
@@ -200,16 +168,63 @@ const useMcqSession = create<McqSessionStore>()(
 									state.questions
 								);
 
-								// Record session analytics via Session Manager
+								// Record session to database
 								try {
-									const sessionManager = useSessionManager.getState();
-									const stats = getSessionStats(state.progress);
-									await sessionManager.actions.endSession(state.id, stats);
-								} catch (e) {
-									logger.warn(
-										{ error: e },
-										"Failed to record session analytics"
+									const completedAt = new Date();
+									const sessionData = await createLearningSession({
+										contentType: "mcq",
+										sessionConfig: {
+											courseId: state.config.courseId,
+											weeks: state.config.weeks,
+											questionCount: state.questions.length,
+											timeLimit: state.config.timeLimit,
+										},
+										totalTime: state.progress.timeSpent,
+										itemsCompleted:
+											state.progress.correctAnswers +
+											state.progress.incorrectAnswers,
+										accuracy: finalPerformance.accuracy,
+										startedAt: state.progress.startedAt,
+										completedAt,
+									});
+
+									// Record individual responses if session was created
+									if (sessionData?.id) {
+										const responses = state.progress.answers.map((answer) => ({
+											contentId: answer.questionId,
+											responseData: {
+												selectedOption: answer.selectedAnswer || "",
+												timeSpent: answer.timeSpent,
+												allOptions:
+													state.questions.find(
+														(q) => q.id === answer.questionId
+													)?.options || [],
+												correctOption:
+													state.questions.find(
+														(q) => q.id === answer.questionId
+													)?.correctAnswer || "",
+											},
+											responseTime: answer.timeSpent,
+											isCorrect: answer.isCorrect,
+											attemptedAt: answer.timestamp,
+										}));
+
+										await createSessionResponses(sessionData.id, responses);
+									}
+
+									logger.info(
+										{
+											sessionId: sessionData?.id,
+											questionCount: state.questions.length,
+										},
+										"MCQ session persisted to database"
 									);
+								} catch (dbError) {
+									logger.warn(
+										{ error: dbError },
+										"Failed to persist session to database"
+									);
+									// Continue with session completion even if database fails
 								}
 
 								set({
@@ -263,6 +278,31 @@ const useMcqSession = create<McqSessionStore>()(
 								timestamp: new Date(),
 							};
 
+							// Track learning gaps for incorrect answers
+							if (!isCorrect) {
+								// Calculate severity based on confidence and response time
+								const avgResponseTime = 30000; // 30 seconds baseline
+								const timeFactor = timeSpent > avgResponseTime ? 1 : 2; // Struggled if took long time
+								const confidenceFactor = (confidenceLevel || 3) > 3 ? 2 : 1; // Higher penalty for overconfidence
+								const severity = Math.min(
+									10,
+									3 * timeFactor * confidenceFactor
+								);
+
+								// Async learning gap tracking - don't block the UI
+								createOrUpdateLearningGap({
+									contentType: "mcq",
+									contentId: questionId,
+									conceptId: question.topic,
+									severity,
+								}).catch((error) => {
+									logger.warn(
+										{ error, questionId },
+										"Failed to track learning gap"
+									);
+								});
+							}
+
 							// Update answers array
 							const answers = [...state.progress.answers];
 							const existingIndex = answers.findIndex(
@@ -300,7 +340,7 @@ const useMcqSession = create<McqSessionStore>()(
 
 							logger.debug(
 								{ questionId, selectedAnswer, isCorrect, timeSpent },
-								"Answer submitted"
+								"Answer submitted with learning gap tracking"
 							);
 						},
 

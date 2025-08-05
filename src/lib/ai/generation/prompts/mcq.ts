@@ -5,40 +5,45 @@
 import type { ContentGenerationPrompt } from "../types";
 
 export const mcqPrompt: ContentGenerationPrompt = {
-	systemPrompt: `You are an expert in creating high-quality multiple choice questions for educational assessment. Your questions should effectively test student understanding and include plausible distractors.
-
-Guidelines:
-- Create clear, unambiguous questions
-- Include one correct answer and 3 plausible distractors
-- Avoid "all of the above" or "none of the above" options
-- Make distractors believable but clearly incorrect
-- Test understanding and application, not just recall
-- Provide clear explanations for the correct answer`,
+	systemPrompt:
+		"You are an expert educational assessment designer specializing in multiple choice questions. Your expertise includes creating clear, unambiguous questions that effectively test student knowledge at appropriate cognitive levels. You understand how to craft plausible distractors that reveal common misconceptions without being trick questions. Each question you create must have exactly one correct answer and three incorrect options that are believable but clearly wrong to someone who understands the material.",
 
 	userPrompt: ({ content, difficulty, count }) => `
-Create ${count} multiple choice questions from the following educational content. Each question should test understanding of key concepts.
+Task: Create ${count} multiple choice questions at ${difficulty} level.
 
-Content to analyze:
-${content}
-
-Requirements:
-- Difficulty level: ${difficulty}
-- Generate exactly ${count} questions
-- Each question has 4 options (A, B, C, D)
-- Include clear explanations for correct answers
-- Make distractors plausible but incorrect
-- Test different types of knowledge (facts, concepts, applications)
-
-Output as a JSON object with this structure:
+OUTPUT FORMAT (follow exactly):
 {
   "mcqs": [
     {
-      "question": "Clear question text",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
-      "correctAnswer": "Option A",
-      "explanation": "Why this answer is correct",
-      "difficulty": "${difficulty}"
+      "question": "What is 2 + 2?",
+      "options": ["3", "4", "5", "6"],
+      "correctAnswer": 1,
+      "explanation": "2 + 2 equals 4, which is the second option (index 1)",
+      "difficulty": "easy"
+    },
+    {
+      "question": "Which process allows plants to convert sunlight into energy?",
+      "options": ["Cellular respiration", "Photosynthesis", "Fermentation", "Osmosis"],
+      "correctAnswer": 1,
+      "explanation": "Photosynthesis is the process by which plants use sunlight, carbon dioxide, and water to produce glucose and oxygen",
+      "difficulty": "intermediate"
     }
   ]
-}`,
+}
+
+CRITICAL RULES:
+1. correctAnswer must be a numeric index: 0, 1, 2, or 3
+2. 0 = first option, 1 = second option, 2 = third option, 3 = fourth option  
+3. options array must have exactly 4 items
+4. Each question must have only one correct answer
+
+Content to create questions from:
+${content}
+
+Difficulty guidelines:
+- easy: Test basic facts and definitions
+- intermediate: Test understanding and application
+- hard: Test analysis and complex reasoning
+
+Generate ${count} questions now in the exact JSON format shown above.`,
 };
