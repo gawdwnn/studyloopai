@@ -18,25 +18,25 @@ import type React from "react";
 
 // Data Definitions for Footer Content
 const featureLinks = [
-	{ name: "Smart Quizzes", href: "/dashboard/adaptive-learning/quizzes" },
+	{ name: "AI Summaries", href: "/dashboard/adaptive-learning/summaries" },
+	{
+		name: "AI Notes",
+		href: "/dashboard/adaptive-learning/golden-notes",
+	},
 	{ name: "AI Cuecards", href: "/dashboard/adaptive-learning/cuecards" },
-	{ name: "Course Planner", href: "/dashboard/course-planner" },
+	{
+		name: "AI Multiple Choice Questions",
+		href: "/dashboard/adaptive-learning/multiple-choice",
+	},
 	{ name: "Ask AI Tutor", href: "/dashboard/ask-ai" },
 ];
 
 const resourceLinks = [
 	{ name: "Study Materials", href: "/dashboard/course-materials" },
 	{ name: "Learning Blog", href: "/blog" },
-	{ name: "Success Stories", href: "/success-stories" },
-	{ name: "API Docs", href: "/developers" },
 ];
 
-const companyLinks = [
-	{ name: "About Us", href: "/about" },
-	{ name: "Pricing", href: "/pricing" },
-	{ name: "Contact", href: "/contact" },
-	{ name: "Careers", href: "/careers" },
-];
+const companyLinks = [{ name: "Pricing", href: "/pricing" }];
 
 const socialLinks = [
 	{
@@ -45,23 +45,27 @@ const socialLinks = [
 		icon: Linkedin,
 	},
 	{ name: "Twitter", href: "https://twitter.com/studyloop", icon: Twitter },
-	{ name: "Github", href: "https://github.com/studyloop", icon: Github },
+	{
+		name: "Github",
+		href: "https://github.com/gawdwnn/studyloopai",
+		icon: Github,
+	},
 ];
 
 const legalLinks = [
-	{ name: "Terms of Service", href: "/legal/terms" },
-	{ name: "Privacy Policy", href: "/legal/privacy" },
-	{ name: "Cookie Policy", href: "/legal/cookies" },
+	{ name: "Terms of Service", href: "/legal/terms-of-service" },
+	{ name: "Privacy Policy", href: "/legal/privacy-policy" },
+	{ name: "Cookie Policy", href: "/legal/cookie-policy" },
 ];
 
 const ctaCardsData = [
 	{
 		variant: "pink",
 		icon: <Sparkles className="w-6 h-6 text-pink-400" />,
-		preTitle: "Want to know more?",
-		title: "Keep learning how we can help.",
-		buttonText: "Learn More",
-		buttonLink: "/about",
+		preTitle: "Want to see our pricing?",
+		title: "Check out our affordable plans.",
+		buttonText: "View Pricing",
+		buttonLink: "/pricing",
 		buttonProps: {
 			variant: "ghost",
 			className:
@@ -210,11 +214,11 @@ function ContactColumn({ socialLinks }: ContactColumnProps) {
 						href="mailto:hello@studyloop.ai"
 						className="text-slate-300 hover:text-white transition-colors duration-200"
 					>
-						hello@studyloop.ai
+						studyloopai@gmail.com
 					</a>
 				</div>
 				<div>
-					<span className="text-slate-300">1.800.STUDYLOOP</span>
+					<span className="text-slate-300">+65 9123 4567</span>
 				</div>
 				<div className="flex gap-4 pt-2">
 					{socialLinks.map((social) => (
