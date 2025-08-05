@@ -24,7 +24,13 @@ export const OpenQuestionSchema = z.object({
 // Open questions array schema
 export const OpenQuestionsArraySchema = z.array(OpenQuestionSchema);
 
+// Open questions object schema (for generateObject)
+export const OpenQuestionsObjectSchema = z.object({
+	openQuestions: z.array(OpenQuestionSchema),
+});
+
 // Type definitions
 export type GradingRubric = z.infer<typeof GradingRubricSchema>;
 export type OpenQuestion = z.infer<typeof OpenQuestionSchema>;
 export type OpenQuestionsArray = z.infer<typeof OpenQuestionsArraySchema>;
+export type OpenQuestionsObject = z.infer<typeof OpenQuestionsObjectSchema>;

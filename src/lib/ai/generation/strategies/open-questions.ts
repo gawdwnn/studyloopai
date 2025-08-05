@@ -7,10 +7,9 @@ import type { OpenQuestionsConfig } from "@/types/generation-types";
 import { openQuestionsPrompt } from "../prompts/open-questions";
 import {
 	type OpenQuestion,
-	OpenQuestionsArraySchema,
+	OpenQuestionsObjectSchema,
 } from "../schemas/open-questions";
 import type { ContentStrategy } from "../types";
-import { parseJsonArrayResponse } from "../utils";
 
 /**
  * Create open questions strategy
@@ -21,7 +20,7 @@ export function createOpenQuestionsStrategy(): ContentStrategy<
 > {
 	return {
 		contentType: "openQuestions",
-		responseType: "array",
+		responseType: "object",
 
 		buildContext: (content: string, config: OpenQuestionsConfig) => ({
 			content,
@@ -32,10 +31,10 @@ export function createOpenQuestionsStrategy(): ContentStrategy<
 
 		getPrompt: () => openQuestionsPrompt,
 
-		getSchema: () => OpenQuestionsArraySchema,
+		getSchema: () => OpenQuestionsObjectSchema,
 
-		parseResponse: (response: string): OpenQuestion[] => {
-			return parseJsonArrayResponse(response, OpenQuestionsArraySchema, []);
+		extractArrayFromObject: (obj: unknown): OpenQuestion[] => {
+			return (obj as { openQuestions?: OpenQuestion[] })?.openQuestions || [];
 		},
 
 		persist: async (

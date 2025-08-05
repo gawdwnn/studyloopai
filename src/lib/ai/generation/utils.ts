@@ -1,7 +1,6 @@
 import type { DatabaseClient } from "@/db";
 import { documentChunks } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import type { z } from "zod";
 
 /**
  * Get document chunks for a material
@@ -39,52 +38,6 @@ export function combineChunksForGeneration(
 	}
 
 	return combinedContent.trim();
-}
-
-/**
- * Parse JSON response with Zod validation for arrays
- */
-export function parseJsonArrayResponse<T>(
-	response: string,
-	schema: z.ZodArray<z.ZodTypeAny>,
-	fallback: T[]
-): T[] {
-	try {
-		const parsed = JSON.parse(response);
-		const result = schema.safeParse(parsed);
-
-		if (result.success) {
-			return result.data;
-		}
-		console.warn("Array validation failed:", result.error.errors);
-		return fallback;
-	} catch (error) {
-		console.warn("Failed to parse JSON array response:", error);
-		return fallback;
-	}
-}
-
-/**
- * Parse JSON response with Zod validation for single objects
- */
-export function parseJsonObjectResponse<T>(
-	response: string,
-	schema: z.ZodObject<z.ZodRawShape>,
-	fallback: T
-): T {
-	try {
-		const parsed = JSON.parse(response);
-		const result = schema.safeParse(parsed);
-
-		if (result.success) {
-			return result.data as T;
-		}
-		console.warn("Object validation failed:", result.error.errors);
-		return fallback;
-	} catch (error) {
-		console.warn("Failed to parse JSON object response:", error);
-		return fallback;
-	}
 }
 
 /**

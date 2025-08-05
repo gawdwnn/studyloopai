@@ -14,6 +14,12 @@ export const CuecardSchema = z.object({
 // Cuecards array schema
 export const CuecardsArraySchema = z.array(CuecardSchema);
 
+// Cuecards object schema (for generateObject)
+export const CuecardsObjectSchema = z.object({
+	cuecards: z.array(CuecardSchema),
+});
+
 // Type definitions
 export type Cuecard = z.infer<typeof CuecardSchema>;
 export type CuecardsArray = z.infer<typeof CuecardsArraySchema>;
+export type CuecardsObject = z.infer<typeof CuecardsObjectSchema>;

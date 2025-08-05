@@ -29,17 +29,19 @@ Requirements:
 - Provide grading rubrics with specific criteria
 - Encourage critical thinking and application
 
-Output as a JSON array with this structure:
-[
-  {
-    "question": "Thought-provoking question requiring explanation",
-    "sampleAnswer": "Comprehensive sample answer showing expected depth",
-    "gradingRubric": {
-      "excellent": "Criteria for excellent response",
-      "good": "Criteria for good response", 
-      "needs_improvement": "Criteria for response needing improvement"
-    },
-    "difficulty": "${difficulty}"
-  }
-]`,
+Output as a JSON object with this structure:
+{
+  "openQuestions": [
+    {
+      "question": "Thought-provoking question requiring explanation",
+      "sampleAnswer": "Comprehensive sample answer showing expected depth",
+      "gradingRubric": {
+        "excellent": "Criteria for excellent response",
+        "good": "Criteria for good response", 
+        "needs_improvement": "Criteria for response needing improvement"
+      },
+      "difficulty": "${difficulty}"
+    }
+  ]
+}`,
 };

@@ -7,10 +7,9 @@ import type { GoldenNotesConfig } from "@/types/generation-types";
 import { goldenNotesPrompt } from "../prompts/golden-notes";
 import {
 	type GoldenNote,
-	GoldenNotesArraySchema,
+	GoldenNotesObjectSchema,
 } from "../schemas/golden-notes";
 import type { ContentStrategy } from "../types";
-import { parseJsonArrayResponse } from "../utils";
 
 /**
  * Create golden notes strategy
@@ -21,7 +20,7 @@ export function createGoldenNotesStrategy(): ContentStrategy<
 > {
 	return {
 		contentType: "goldenNotes",
-		responseType: "array",
+		responseType: "object",
 
 		buildContext: (content: string, config: GoldenNotesConfig) => ({
 			content,
@@ -33,10 +32,11 @@ export function createGoldenNotesStrategy(): ContentStrategy<
 
 		getPrompt: () => goldenNotesPrompt,
 
-		getSchema: () => GoldenNotesArraySchema,
+		getSchema: () => GoldenNotesObjectSchema,
 
-		parseResponse: (response: string): GoldenNote[] => {
-			return parseJsonArrayResponse(response, GoldenNotesArraySchema, []);
+		extractArrayFromObject: (obj: unknown): GoldenNote[] => {
+			const typed = obj as { goldenNotes?: GoldenNote[] };
+			return typed?.goldenNotes || [];
 		},
 
 		persist: async (

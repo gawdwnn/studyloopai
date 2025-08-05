@@ -156,7 +156,9 @@ export async function insertMCQs(
 	}));
 
 	if (mcqsToInsert.length > 0) {
-		const { error } = await admin.from("MCQs").insert(mcqsToInsert);
+		const { error } = await admin
+			.from("multiple_choice_questions")
+			.insert(mcqsToInsert);
 
 		if (error) {
 			throw new Error(`Failed to insert MCQs: ${error.message}`);

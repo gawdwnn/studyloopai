@@ -45,9 +45,19 @@ export const ConceptMapSchema = z.object({
 	style: z.enum(["hierarchical", "radial", "network"]),
 });
 
+// Concept maps array schema
+export const ConceptMapsArraySchema = z.array(ConceptMapSchema);
+
+// Concept maps object schema (for generateObject)
+export const ConceptMapsObjectSchema = z.object({
+	conceptMaps: z.array(ConceptMapSchema),
+});
+
 // Type definitions
 export type ConceptMapNode = z.infer<typeof NodeSchema>;
 export type ConceptMapEdge = z.infer<typeof EdgeSchema>;
 export type ConceptMapMetadata = z.infer<typeof MetadataSchema>;
 export type ConceptMapContent = z.infer<typeof ConceptMapContentSchema>;
 export type ConceptMap = z.infer<typeof ConceptMapSchema>;
+export type ConceptMapsArray = z.infer<typeof ConceptMapsArraySchema>;
+export type ConceptMapsObject = z.infer<typeof ConceptMapsObjectSchema>;

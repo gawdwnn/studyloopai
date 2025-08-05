@@ -5,9 +5,8 @@
 import { insertCuecards } from "@/lib/services/persist-generated-content-service";
 import type { CuecardsConfig } from "@/types/generation-types";
 import { cuecardsPrompt } from "../prompts/cuecards";
-import { type Cuecard, CuecardsArraySchema } from "../schemas/cuecards";
+import { type Cuecard, CuecardsObjectSchema } from "../schemas/cuecards";
 import type { ContentStrategy } from "../types";
-import { parseJsonArrayResponse } from "../utils";
 
 /**
  * Create cuecards strategy
@@ -18,7 +17,7 @@ export function createCuecardsStrategy(): ContentStrategy<
 > {
 	return {
 		contentType: "cuecards",
-		responseType: "array",
+		responseType: "object",
 
 		buildContext: (content: string, config: CuecardsConfig) => ({
 			content,
@@ -29,10 +28,11 @@ export function createCuecardsStrategy(): ContentStrategy<
 
 		getPrompt: () => cuecardsPrompt,
 
-		getSchema: () => CuecardsArraySchema,
+		getSchema: () => CuecardsObjectSchema,
 
-		parseResponse: (response: string): Cuecard[] => {
-			return parseJsonArrayResponse(response, CuecardsArraySchema, []);
+		extractArrayFromObject: (obj: unknown): Cuecard[] => {
+			const typed = obj as { cuecards?: Cuecard[] };
+			return typed?.cuecards || [];
 		},
 
 		persist: async (

@@ -5,9 +5,11 @@
 import { insertConceptMaps } from "@/lib/services/persist-generated-content-service";
 import type { ConceptMapsConfig } from "@/types/generation-types";
 import { conceptMapsPrompt } from "../prompts/concept-maps";
-import { type ConceptMap, ConceptMapSchema } from "../schemas/concept-maps";
+import {
+	type ConceptMap,
+	ConceptMapsObjectSchema,
+} from "../schemas/concept-maps";
 import type { ContentStrategy } from "../types";
-import { parseJsonObjectResponse } from "../utils";
 
 /**
  * Create concept maps strategy
@@ -18,7 +20,7 @@ export function createConceptMapsStrategy(): ContentStrategy<
 > {
 	return {
 		contentType: "conceptMaps",
-		responseType: "object", // Concept maps are typically single objects
+		responseType: "object",
 
 		buildContext: (content: string, config: ConceptMapsConfig) => ({
 			content,
@@ -30,18 +32,10 @@ export function createConceptMapsStrategy(): ContentStrategy<
 
 		getPrompt: () => conceptMapsPrompt,
 
-		getSchema: () => ConceptMapSchema,
+		getSchema: () => ConceptMapsObjectSchema,
 
-		parseResponse: (response: string): ConceptMap[] => {
-			// Parse as single object and wrap in array for consistency
-			const conceptMap = parseJsonObjectResponse(
-				response,
-				ConceptMapSchema,
-				{} as ConceptMap
-			);
-			return conceptMap && Object.keys(conceptMap).length > 0
-				? [conceptMap]
-				: [];
+		extractArrayFromObject: (obj: unknown): ConceptMap[] => {
+			return (obj as { conceptMaps?: ConceptMap[] })?.conceptMaps || [];
 		},
 
 		persist: async (

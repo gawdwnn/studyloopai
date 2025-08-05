@@ -11,8 +11,9 @@ const openaiProvider = env.OPENAI_API_KEY
 	: null;
 
 export function getTextGenerationModel() {
+	// Temporarily use OpenAI gpt-3.5-turbo for testing
+	if (openaiProvider) return openaiProvider("gpt-3.5-turbo");
 	if (xaiProvider) return xaiProvider("grok-3");
-	if (openaiProvider) return openaiProvider("gpt-4o-mini");
 	throw new Error(
 		"No AI provider available. Set XAI_API_KEY or OPENAI_API_KEY."
 	);

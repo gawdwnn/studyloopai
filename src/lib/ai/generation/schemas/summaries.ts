@@ -15,6 +15,12 @@ export const SummarySchema = z.object({
 // Summaries array schema (though typically single object)
 export const SummariesArraySchema = z.array(SummarySchema);
 
+// Summaries object schema (for generateObject)
+export const SummariesObjectSchema = z.object({
+	summaries: z.array(SummarySchema),
+});
+
 // Type definitions
 export type Summary = z.infer<typeof SummarySchema>;
 export type SummariesArray = z.infer<typeof SummariesArraySchema>;
+export type SummariesObject = z.infer<typeof SummariesObjectSchema>;

@@ -8,7 +8,6 @@ import { updateCourse } from "@/lib/actions/courses";
 import { logger } from "@/lib/utils/logger";
 import type { Course } from "@/types/database-types";
 import { Edit2, Trash2 } from "lucide-react";
-import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 
 interface CourseCardProps {
@@ -84,7 +83,7 @@ export function CourseCard({
 	};
 
 	return (
-		<Link href={`/dashboard/courses/${course.id}`} className="block h-full">
+		<div className="block h-full">
 			<div
 				className={`relative h-full transition-all duration-300 ${
 					isBeingDeleted ? "opacity-50 scale-95" : ""
@@ -183,6 +182,6 @@ export function CourseCard({
 					</div>
 				) : null}
 			</div>
-		</Link>
+		</div>
 	);
 }

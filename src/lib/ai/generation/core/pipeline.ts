@@ -3,7 +3,7 @@
  */
 
 import { createLogger } from "@/lib/utils/logger";
-import { generateText } from "ai";
+import { generateObject } from "ai";
 import { getTextGenerationModel } from "../../config";
 import { processAIError, trackQuotaExhaustion } from "../../quota-handler";
 import type {
@@ -26,7 +26,7 @@ export async function generateAIResponse<T extends SupportedContentType>(
 	context: Record<string, unknown>,
 	strategy: ContentStrategy<ConfigMap[T], OutputMap[T]>,
 	options?: { maxTokens?: number; temperature?: number }
-): Promise<string> {
+): Promise<OutputMap[T][]> {
 	const prompt = strategy.getPrompt();
 
 	logger.info(`Generating AI response for ${strategy.contentType}`, {
@@ -35,15 +35,16 @@ export async function generateAIResponse<T extends SupportedContentType>(
 		options,
 	});
 
-	const result = await generateText({
+	const result = await generateObject({
 		model: getTextGenerationModel(),
 		system: prompt.systemPrompt,
 		prompt: prompt.userPrompt(context),
+		schema: strategy.getSchema(),
 		maxTokens: options?.maxTokens || 3500,
 		temperature: options?.temperature || 0.7,
 	});
 
-	return result.text;
+	return strategy.extractArrayFromObject(result.object);
 }
 
 /**
@@ -145,12 +146,9 @@ export async function executeGenerationPipeline<T extends SupportedContentType>(
 		const context = strategy.buildContext(chunks.content, config);
 
 		// 5. Generate AI response
-		const response = await generateAIResponse(context, strategy, options);
+		const parsedData = await generateAIResponse(context, strategy, options);
 
-		// 6. Parse response using strategy
-		const parsedData = strategy.parseResponse(response);
-
-		// 7. Validate data
+		// 6. Validate data
 		const isValid = validateGeneratedData(parsedData, contentType);
 		if (!isValid) {
 			return buildGenerationResult(
@@ -161,10 +159,10 @@ export async function executeGenerationPipeline<T extends SupportedContentType>(
 			);
 		}
 
-		// 8. Persist data using strategy
+		// 7. Persist data using strategy
 		await strategy.persist(parsedData, courseId, weekId);
 
-		// 9. Return success result
+		// 8. Return success result
 		logger.info(`Generation pipeline completed for ${contentType}`, {
 			contentType,
 			generatedCount: parsedData.length,

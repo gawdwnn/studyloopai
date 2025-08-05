@@ -25,15 +25,20 @@ Requirements:
 - Target word count: approximately ${(count as number) * 50} words
 - Difficulty level: ${difficulty}
 - Include clear title and structure
-- Organize information logically
+- Organize information logically  
 - Highlight key concepts and relationships
 - Maintain clarity and readability
+- Format content using markdown (headings, lists, emphasis, etc.)
 
 Output as a JSON object with this structure:
 {
-  "title": "Descriptive title for the summary",
-  "content": "Well-structured summary content",
-  "wordCount": actual_word_count,
-  "summaryType": "general"
+  "summaries": [
+    {
+      "title": "Descriptive title for the summary",
+      "content": "Well-structured summary content formatted in markdown with proper headings, lists, and emphasis",
+      "wordCount": actual_word_count,
+      "summaryType": "general"
+    }
+  ]
 }`,
 };
