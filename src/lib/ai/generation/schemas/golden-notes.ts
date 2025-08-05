@@ -15,6 +15,12 @@ export const GoldenNoteSchema = z.object({
 // Golden notes array schema
 export const GoldenNotesArraySchema = z.array(GoldenNoteSchema);
 
+// Golden notes object schema (for generateObject)
+export const GoldenNotesObjectSchema = z.object({
+	goldenNotes: z.array(GoldenNoteSchema),
+});
+
 // Type definitions
 export type GoldenNote = z.infer<typeof GoldenNoteSchema>;
 export type GoldenNotesArray = z.infer<typeof GoldenNotesArraySchema>;
+export type GoldenNotesObject = z.infer<typeof GoldenNotesObjectSchema>;

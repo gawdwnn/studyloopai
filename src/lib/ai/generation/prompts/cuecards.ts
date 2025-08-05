@@ -29,12 +29,14 @@ Requirements:
 - Vary question types (what, how, why, when, etc.)
 - Test understanding, not just memorization
 
-Output as a JSON array with this structure:
-[
-  {
-    "question": "Clear, specific question",
-    "answer": "Complete, accurate answer",
-    "difficulty": "${difficulty}"
-  }
-]`,
+Output as a JSON object with this structure:
+{
+  "cuecards": [
+    {
+      "question": "Clear, specific question",
+      "answer": "Complete, accurate answer",
+      "difficulty": "${difficulty}"
+    }
+  ]
+}`,
 };

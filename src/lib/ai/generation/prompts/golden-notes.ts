@@ -29,13 +29,15 @@ Requirements:
 - Include a clear title for each note
 - Prioritize based on importance (1 = most important, ${count} = least important)
 
-Output as a JSON array with this structure:
-[
-  {
-    "title": "Clear, descriptive title",
-    "content": "Comprehensive explanation of the concept",
-    "priority": 1,
-    "category": "topic category"
-  }
-]`,
+Output as a JSON object with this structure:
+{
+  "goldenNotes": [
+    {
+      "title": "Clear, descriptive title",
+      "content": "Comprehensive explanation of the concept",
+      "priority": 1,
+      "category": "topic category"
+    }
+  ]
+}`,
 };

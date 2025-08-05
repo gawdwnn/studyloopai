@@ -29,14 +29,16 @@ Requirements:
 - Make distractors plausible but incorrect
 - Test different types of knowledge (facts, concepts, applications)
 
-Output as a JSON array with this structure:
-[
-  {
-    "question": "Clear question text",
-    "options": ["Option A", "Option B", "Option C", "Option D"],
-    "correctAnswer": "A",
-    "explanation": "Why this answer is correct",
-    "difficulty": "${difficulty}"
-  }
-]`,
+Output as a JSON object with this structure:
+{
+  "mcqs": [
+    {
+      "question": "Clear question text",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "correctAnswer": "Option A",
+      "explanation": "Why this answer is correct",
+      "difficulty": "${difficulty}"
+    }
+  ]
+}`,
 };

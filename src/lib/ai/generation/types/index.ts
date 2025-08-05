@@ -107,11 +107,11 @@ export interface ChunkRetrievalRequest {
 // Content strategy interface - functional approach
 export interface ContentStrategy<TConfig, TOutput> {
 	readonly contentType: SupportedContentType;
-	readonly responseType: "array" | "object";
+	readonly responseType: "object";
 	buildContext: (content: string, config: TConfig) => Record<string, unknown>;
 	getPrompt: () => ContentGenerationPrompt;
-	getSchema: () => z.ZodTypeAny;
-	parseResponse: (response: string) => TOutput[];
+	getSchema: () => z.ZodObject<z.ZodRawShape>;
+	extractArrayFromObject: (obj: unknown) => TOutput[];
 	persist: (data: TOutput[], courseId: string, weekId: string) => Promise<void>;
 }
 

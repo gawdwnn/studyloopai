@@ -5,9 +5,8 @@
 import { insertMCQs } from "@/lib/services/persist-generated-content-service";
 import type { McqsConfig } from "@/types/generation-types";
 import { mcqPrompt } from "../prompts/mcq";
-import { type MCQ, MCQsArraySchema } from "../schemas/mcq";
+import { type MCQ, MCQsObjectSchema } from "../schemas/mcq";
 import type { ContentStrategy } from "../types";
-import { parseJsonArrayResponse } from "../utils";
 
 /**
  * Create MCQ strategy
@@ -15,7 +14,7 @@ import { parseJsonArrayResponse } from "../utils";
 export function createMCQStrategy(): ContentStrategy<McqsConfig, MCQ> {
 	return {
 		contentType: "multipleChoice",
-		responseType: "array",
+		responseType: "object",
 
 		buildContext: (content: string, config: McqsConfig) => ({
 			content,
@@ -26,10 +25,10 @@ export function createMCQStrategy(): ContentStrategy<McqsConfig, MCQ> {
 
 		getPrompt: () => mcqPrompt,
 
-		getSchema: () => MCQsArraySchema,
+		getSchema: () => MCQsObjectSchema,
 
-		parseResponse: (response: string): MCQ[] => {
-			return parseJsonArrayResponse(response, MCQsArraySchema, []);
+		extractArrayFromObject: (obj: unknown): MCQ[] => {
+			return (obj as { mcqs?: MCQ[] })?.mcqs || [];
 		},
 
 		persist: async (

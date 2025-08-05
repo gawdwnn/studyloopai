@@ -16,6 +16,12 @@ export const MCQSchema = z.object({
 // MCQs array schema
 export const MCQsArraySchema = z.array(MCQSchema);
 
+// MCQs object schema (for generateObject)
+export const MCQsObjectSchema = z.object({
+	mcqs: z.array(MCQSchema),
+});
+
 // Type definitions
 export type MCQ = z.infer<typeof MCQSchema>;
 export type MCQsArray = z.infer<typeof MCQsArraySchema>;
+export type MCQsObject = z.infer<typeof MCQsObjectSchema>;

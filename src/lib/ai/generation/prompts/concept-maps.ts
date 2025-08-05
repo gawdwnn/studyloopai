@@ -36,34 +36,38 @@ Requirements:
 
 Output as a JSON object with this structure:
 {
-  "title": "Descriptive title for the concept map",
-  "content": {
-    "nodes": [
-      {
-        "id": "unique_id",
-        "label": "Node label",
-        "type": "concept|topic|subtopic|example",
-        "level": 0-5,
-        "x": optional_x_coordinate,
-        "y": optional_y_coordinate
-      }
-    ],
-    "edges": [
-      {
-        "source": "source_node_id",
-        "target": "target_node_id",
-        "label": "descriptive label for the relationship (e.g., 'is an example of')",
-        "type": "relationship type (e.g., 'related', 'part_of')",
-        "strength": 0.8
-      }
-    ],
-    "metadata": {
-      "central_concept": "Main concept of the map",
-      "complexity_level": "${difficulty}",
-      "focus_area": "${focus}",
+  "conceptMaps": [
+    {
+      "title": "Descriptive title for the concept map",
+      "content": {
+        "nodes": [
+          {
+            "id": "unique_id",
+            "label": "Node label",
+            "type": "concept",
+            "level": 0,
+            "x": 0,
+            "y": 0
+          }
+        ],
+        "edges": [
+          {
+            "source": "source_node_id",
+            "target": "target_node_id",
+            "label": "descriptive label for the relationship",
+            "type": "related",
+            "strength": 0.8
+          }
+        ],
+        "metadata": {
+          "central_concept": "Main concept of the map",
+          "complexity_level": "${difficulty}",
+          "focus_area": "${focus}",
+          "style": "${style}"
+        }
+      },
       "style": "${style}"
     }
-  },
-  "style": "${style}"
+  ]
 }`,
 };
