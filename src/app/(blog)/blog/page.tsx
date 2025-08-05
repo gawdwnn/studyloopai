@@ -1,4 +1,6 @@
-import { CalendarDays, Clock } from "lucide-react";
+import { ScrollRevealStagger } from "@/components/scroll-reveal";
+import { Card } from "@/components/ui/card";
+import { ArrowRight, Calendar, Clock } from "lucide-react";
 import Link from "next/link";
 
 // This would typically come from a CMS or database
@@ -34,55 +36,56 @@ const blogPosts = [
 
 export default function BlogPage() {
 	return (
-		<div className="max-w-4xl mx-auto">
-			<div className="grid gap-8">
+		<ScrollRevealStagger>
+			<div className="grid gap-6 max-w-4xl mx-auto">
 				{blogPosts.map((post) => (
-					<article
+					<Card
 						key={post.slug}
-						className="group relative rounded-lg border p-6 hover:border-foreground/50 transition-colors"
+						className="group p-6 hover:shadow-lg transition-all duration-300"
 					>
-						<div className="flex flex-col gap-2">
-							<div className="flex items-center gap-2 text-sm text-muted-foreground">
-								<span className="font-medium text-primary">
+						<article>
+							<div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
+								<span className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary font-medium">
 									{post.category}
 								</span>
-								<span>•</span>
 								<div className="flex items-center gap-1">
-									<CalendarDays className="h-4 w-4" />
+									<Calendar className="w-4 h-4" />
 									<time dateTime={post.date}>
 										{new Date(post.date).toLocaleDateString("en-US", {
-											month: "long",
+											month: "short",
 											day: "numeric",
 											year: "numeric",
 										})}
 									</time>
 								</div>
-								<span>•</span>
 								<div className="flex items-center gap-1">
-									<Clock className="h-4 w-4" />
+									<Clock className="w-4 h-4" />
 									<span>{post.readTime}</span>
 								</div>
 							</div>
+
 							<Link
 								href={`/blog/${post.slug}`}
-								className="group-hover:text-primary transition-colors"
+								className="block group-hover:text-primary transition-colors"
 							>
-								<h2 className="text-2xl font-semibold tracking-tight">
-									{post.title}
-								</h2>
+								<h2 className="text-2xl font-bold mb-3">{post.title}</h2>
 							</Link>
-							<p className="text-muted-foreground">{post.excerpt}</p>
+
+							<p className="text-muted-foreground mb-4 line-clamp-2">
+								{post.excerpt}
+							</p>
+
 							<Link
 								href={`/blog/${post.slug}`}
-								className="text-primary hover:underline inline-flex items-center gap-1"
+								className="inline-flex items-center gap-2 text-primary font-medium hover:gap-3 transition-all"
 							>
 								Read more
-								<span aria-hidden="true">→</span>
+								<ArrowRight className="w-4 h-4" />
 							</Link>
-						</div>
-					</article>
+						</article>
+					</Card>
 				))}
 			</div>
-		</div>
+		</ScrollRevealStagger>
 	);
 }
