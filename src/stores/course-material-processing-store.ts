@@ -1,5 +1,6 @@
 "use client";
 
+import type { ClassifiedError } from "@/lib/errors/trigger-error-classifier";
 import { create } from "zustand";
 import { devtools, subscribeWithSelector } from "zustand/middleware";
 
@@ -9,6 +10,7 @@ export interface ProcessingJob {
 	weekId: string;
 	courseId: string;
 	timestamp: number;
+	errorDetails?: ClassifiedError;
 }
 
 export interface ProcessingJobInput {
@@ -24,6 +26,9 @@ interface CourseMaterialProcessingState {
 
 	// Batch tracking for uploads
 	uploadBatches: Map<string, string[]>; // batchId -> materialIds[]
+
+	// Error tracking
+	errorDetails: Map<string, ClassifiedError>; // materialId -> error details
 }
 
 interface CourseMaterialProcessingActions {
@@ -44,6 +49,11 @@ interface CourseMaterialProcessingActions {
 	) => void;
 	getBatchProcessingJobs: (batchId: string) => string[];
 
+	// Error management
+	setErrorDetails: (materialId: string, error: ClassifiedError) => void;
+	getErrorDetails: (materialId: string) => ClassifiedError | undefined;
+	clearErrorDetails: (materialId: string) => void;
+
 	// Cleanup operations
 	clearExpiredJobs: (maxAgeHours?: number) => void;
 	clearAllJobs: () => void;
@@ -61,6 +71,7 @@ export const useCourseMaterialProcessingStore =
 				// Initial state
 				processingJobs: new Map(),
 				uploadBatches: new Map(),
+				errorDetails: new Map(),
 
 				// Individual material tracking
 				setCourseMaterialProcessingJob: (materialId, job) =>
@@ -106,6 +117,25 @@ export const useCourseMaterialProcessingStore =
 					return get().uploadBatches.get(batchId) || [];
 				},
 
+				// Error management
+				setErrorDetails: (materialId, error) =>
+					set((state) => {
+						const newErrorDetails = new Map(state.errorDetails);
+						newErrorDetails.set(materialId, error);
+						return { errorDetails: newErrorDetails };
+					}),
+
+				getErrorDetails: (materialId) => {
+					return get().errorDetails.get(materialId);
+				},
+
+				clearErrorDetails: (materialId) =>
+					set((state) => {
+						const newErrorDetails = new Map(state.errorDetails);
+						newErrorDetails.delete(materialId);
+						return { errorDetails: newErrorDetails };
+					}),
+
 				// Cleanup operations
 				clearExpiredJobs: (maxAgeHours = MAX_JOB_AGE_HOURS) =>
 					set((state) => {
@@ -131,9 +161,18 @@ export const useCourseMaterialProcessingStore =
 							}
 						}
 
+						// Clean up error details for expired jobs
+						const newErrorDetails = new Map(state.errorDetails);
+						for (const materialId of state.errorDetails.keys()) {
+							if (!newJobs.has(materialId)) {
+								newErrorDetails.delete(materialId);
+							}
+						}
+
 						return {
 							processingJobs: newJobs,
 							uploadBatches: newBatches,
+							errorDetails: newErrorDetails,
 						};
 					}),
 
@@ -141,6 +180,7 @@ export const useCourseMaterialProcessingStore =
 					set({
 						processingJobs: new Map(),
 						uploadBatches: new Map(),
+						errorDetails: new Map(),
 					}),
 			})),
 			{
