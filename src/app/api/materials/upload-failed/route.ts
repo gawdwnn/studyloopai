@@ -3,7 +3,6 @@
 import { db } from "@/db";
 import { courseMaterials } from "@/db/schema";
 import { getServerClient } from "@/lib/supabase/server";
-import { getUserFriendlyErrorMessage } from "@/lib/utils/error-messages";
 import { logger } from "@/lib/utils/logger";
 import { and, eq, inArray } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
@@ -68,10 +67,9 @@ export async function POST(req: NextRequest) {
 			method: "POST",
 		});
 
-		const userMessage = getUserFriendlyErrorMessage(
-			err instanceof Error ? err : "Unknown error occurred"
+		return NextResponse.json(
+			{ error: "Failed to update upload status. Please try again." },
+			{ status: 500 }
 		);
-
-		return NextResponse.json({ error: userMessage }, { status: 400 });
 	}
 }

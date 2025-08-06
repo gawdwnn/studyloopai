@@ -5,7 +5,6 @@
 import { createLogger } from "@/lib/utils/logger";
 import { generateObject } from "ai";
 import { getTextGenerationModel } from "../../config";
-import { processAIError, trackQuotaExhaustion } from "../../quota-handler";
 import type {
 	ConfigMap,
 	ContentStrategy,
@@ -171,44 +170,16 @@ export async function executeGenerationPipeline<T extends SupportedContentType>(
 
 		return buildGenerationResult(parsedData, contentType, true);
 	} catch (error) {
-		const errorMessage = error instanceof Error ? error.message : String(error);
-
-		// Handle quota exhaustion specifically
-		const { isQuotaIssue, notification } = processAIError(error);
-
-		if (isQuotaIssue && notification) {
-			// Track quota exhaustion for analytics
-			trackQuotaExhaustion(notification.provider, contentType);
-
-			logger.error(
-				`Generation pipeline failed due to quota exhaustion for ${contentType}`,
-				{
-					contentType,
-					courseId,
-					weekId,
-					userMessage: notification.userMessage,
-					technicalMessage: notification.technicalMessage,
-					provider: notification.provider,
-					requiresAttention: true,
-				}
-			);
-
-			return buildGenerationResult(
-				[],
-				contentType,
-				false,
-				notification.userMessage
-			);
-		}
-
+		// Log error details for debugging but let all errors surface naturally
 		logger.error(`Generation pipeline failed for ${contentType}`, {
 			contentType,
 			courseId,
 			weekId,
-			error: errorMessage,
+			error: error instanceof Error ? error.message : String(error),
 			stack: error instanceof Error ? error.stack : undefined,
 		});
 
-		return buildGenerationResult([], contentType, false, errorMessage);
+		// Re-throw the original error so ALL errors (including AI SDK and quota) surface immediately
+		throw error;
 	}
 }

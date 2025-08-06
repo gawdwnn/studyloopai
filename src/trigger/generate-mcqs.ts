@@ -46,7 +46,7 @@ export const generateMCQs = schemaTask({
 				mcqConfig,
 			});
 
-			const result = await generateContent({
+			await generateContent({
 				contentType: "multipleChoice",
 				courseId,
 				weekId,
@@ -54,10 +54,6 @@ export const generateMCQs = schemaTask({
 				config: mcqConfig,
 				cacheKey,
 			});
-
-			if (!result.success) {
-				throw new Error(result.error || "MCQs generation failed");
-			}
 
 			return {
 				success: true,

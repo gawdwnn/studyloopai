@@ -1,11 +1,11 @@
 "use client";
 import { useStepValidation } from "@/components/step-validation-context";
 import { Card, CardContent } from "@/components/ui/card";
-import { usePersonalizationStepData } from "@/hooks/use-onboarding-progress";
+import { usePersonalizationStepData } from "@/hooks/use-onboarding";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { Check, Target } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
 const STUDY_GOALS = [
 	{ id: "exam_prep", label: "Exam Preparation" },
@@ -19,26 +19,41 @@ const STUDY_GOALS = [
 export function PersonalizationStep() {
 	const { setStepValid, setStepData } = useStepValidation();
 	const { studyGoals, isLoading } = usePersonalizationStepData();
-	const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
 
-	// Initialize selected goals from hook when data loads
-	useEffect(() => {
+	// Initialize selectedGoals from server state, but maintain local state for UI updates
+	const initialSelectedGoals = useMemo(() => {
+		return isLoading ? [] : studyGoals;
+	}, [studyGoals, isLoading]);
+
+	const [selectedGoals, setSelectedGoals] =
+		useState<string[]>(initialSelectedGoals);
+
+	// Sync local state when server state changes (on initial load)
+	useMemo(() => {
 		if (!isLoading) {
 			setSelectedGoals(studyGoals);
+		}
+	}, [studyGoals, isLoading]);
+
+	// Initialize step validation once when component mounts
+	const isInitialized = useRef(false);
+	useLayoutEffect(() => {
+		if (!isInitialized.current && !isLoading) {
 			// This step is always valid (can proceed with no goals selected)
 			setStepValid(true);
-			setStepData({ studyGoals });
+			setStepData({ studyGoals: selectedGoals });
+			isInitialized.current = true;
 		}
-	}, [studyGoals, isLoading, setStepValid, setStepData]);
+	}, [isLoading, selectedGoals, setStepValid, setStepData]);
 
 	const toggleGoal = (goalId: string) => {
 		const newGoals = selectedGoals.includes(goalId)
 			? selectedGoals.filter((id) => id !== goalId)
 			: [...selectedGoals, goalId];
 
+		// Update local state for immediate UI feedback
 		setSelectedGoals(newGoals);
-
-		// Update step data
+		// Update step data for form submission
 		setStepData({ studyGoals: newGoals });
 	};
 

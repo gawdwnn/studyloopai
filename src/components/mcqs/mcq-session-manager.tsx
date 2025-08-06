@@ -5,6 +5,9 @@ import { toast } from "sonner";
 import { useShallow } from "zustand/react/shallow";
 
 import { env } from "@/env";
+import { createLogger } from "@/lib/utils/logger";
+
+const logger = createLogger("mcq:session-manager");
 
 import type { MCQAvailability, UserMCQ } from "@/lib/actions/mcq";
 import type { McqConfig } from "@/stores/mcq-session/types";
@@ -124,9 +127,13 @@ export function McqSessionManager({
 					throw new Error("No pre-loaded MCQ data available");
 				}
 			} catch (error) {
-				const errorMessage =
-					error instanceof Error ? error.message : "Unknown error occurred";
-				toast.error(`Failed to start session: ${errorMessage}`);
+				logger.error("Failed to start MCQ session", {
+					error: error instanceof Error ? error.message : String(error),
+					stack: error instanceof Error ? error.stack : undefined,
+					config,
+					context: { action: "startSession" },
+				});
+				toast.error("Unable to start MCQ session. Please try again.");
 			}
 		},
 		[initialData, mcqActions]
@@ -168,9 +175,15 @@ export function McqSessionManager({
 				}
 			} catch (error) {
 				setGenerationInProgress(false);
-				const errorMessage =
-					error instanceof Error ? error.message : "Generation failed";
-				toast.error(`Failed to generate MCQs: ${errorMessage}`);
+				logger.error("Failed to generate MCQs", {
+					error: error instanceof Error ? error.message : String(error),
+					stack: error instanceof Error ? error.stack : undefined,
+					courseId,
+					weekIds,
+					config,
+					context: { action: "generateContent" },
+				});
+				toast.error("Unable to generate MCQs. Please try again.");
 			}
 		},
 		[mcqActions]

@@ -8,7 +8,7 @@ import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { CourseMaterialsTable } from "@/components/course/course-materials-table";
-import { handleApiError } from "@/lib/utils/error-handling";
+import { logger } from "@/lib/utils/logger";
 import type {
 	Course,
 	CourseMaterial,
@@ -84,9 +84,15 @@ export function CourseMaterialsClient({
 					duration: 3000,
 				});
 			} catch (error) {
+				logger.error("Failed to delete material", {
+					message: error instanceof Error ? error.message : String(error),
+					stack: error instanceof Error ? error.stack : undefined,
+					materialId,
+					materialName,
+				});
 				// Revert optimistic update
 				queryClient.invalidateQueries({ queryKey: ["all-user-materials"] });
-				toast.error(handleApiError(error, "delete course material"));
+				toast.error("Failed to delete material. Please try again.");
 			} finally {
 				setDeletingMaterials((prev) => {
 					const newSet = new Set(prev);

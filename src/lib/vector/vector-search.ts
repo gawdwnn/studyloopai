@@ -4,7 +4,7 @@ import { db } from "../../db";
 import { courseMaterials, documentChunks } from "../../db/schema";
 import { generateEmbeddings } from "../ai/embeddings";
 import { VectorSearchError } from "../ai/errors";
-import { processAIError } from "../ai/quota-handler";
+import { isRateLimitError } from "../utils/error-handling";
 
 interface SearchOptions {
 	limit?: number; // Default: 10
@@ -195,21 +195,18 @@ export async function searchSimilarChunks(
 			searchTime,
 		};
 	} catch (error) {
-		// Handle quota exhaustion specifically
-		const { isQuotaIssue, notification } = processAIError(error);
-
-		if (isQuotaIssue && notification) {
-			logger.error("Vector search failed due to quota exhaustion", {
-				userMessage: notification.userMessage,
-				technicalMessage: notification.technicalMessage,
-				provider: notification.provider,
+		// Handle rate limit errors specifically
+		if (isRateLimitError(error)) {
+			logger.error("Vector search failed due to rate limit", {
+				remainingAttempts: error.remainingAttempts,
+				resetTime: error.resetTime,
 				query,
 				options,
 			});
 
 			return {
 				success: false,
-				error: notification.userMessage,
+				error: "Search temporarily unavailable due to rate limits. Please try again later.",
 			};
 		}
 

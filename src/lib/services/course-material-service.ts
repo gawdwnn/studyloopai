@@ -21,7 +21,10 @@ export async function presignUpload(
 	});
 
 	if (!res.ok) {
-		throw new Error(await res.text());
+		const errorData = await res
+			.json()
+			.catch(() => ({ error: "Upload preparation failed" }));
+		throw new Error(errorData.error || "Upload preparation failed");
 	}
 
 	return res.json() as Promise<PresignUploadResponse>;
@@ -56,7 +59,10 @@ export async function completeUpload(
 	});
 
 	if (!res.ok) {
-		throw new Error(await res.text());
+		const errorData = await res
+			.json()
+			.catch(() => ({ error: "Upload completion failed" }));
+		throw new Error(errorData.error || "Upload completion failed");
 	}
 
 	return res.json() as Promise<CompleteUploadResponse>;

@@ -2,49 +2,51 @@
 import { useStepValidation } from "@/components/step-validation-context";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useProfileStepData } from "@/hooks/use-onboarding-progress";
+import { useProfileStepData } from "@/hooks/use-onboarding";
 import { motion } from "framer-motion";
 import { User, Users } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
 export function WelcomeProfileStep() {
 	const { setStepValid, setStepData } = useStepValidation();
 	const { firstName, lastName, isLoading, hasValidProfile } =
 		useProfileStepData();
 
-	const [formData, setFormData] = useState({
-		firstName: "",
-		lastName: "",
-	});
+	// Derive form data from server state with local input state
+	const initialFormData = useMemo(
+		() => ({
+			firstName: firstName || "",
+			lastName: lastName || "",
+		}),
+		[firstName, lastName]
+	);
 
-	// Initialize form data from hook when data loads
-	useEffect(() => {
+	const [formData, setFormData] = useState(initialFormData);
+
+	// Sync form data when server state changes
+	useMemo(() => {
 		if (!isLoading) {
-			const newFormData = {
-				firstName: firstName || "",
-				lastName: lastName || "",
-			};
-			setFormData(newFormData);
+			setFormData(initialFormData);
+		}
+	}, [initialFormData, isLoading]);
 
+	// Initialize step validation once when component mounts
+	const isInitialized = useRef(false);
+	useLayoutEffect(() => {
+		if (!isInitialized.current && !isLoading) {
 			// Set initial validation state
 			const isValid = hasValidProfile;
 			setStepValid(isValid);
 
 			if (isValid) {
 				setStepData({
-					firstName: newFormData.firstName,
-					lastName: newFormData.lastName,
+					firstName: formData.firstName,
+					lastName: formData.lastName,
 				});
 			}
+			isInitialized.current = true;
 		}
-	}, [
-		firstName,
-		lastName,
-		isLoading,
-		hasValidProfile,
-		setStepValid,
-		setStepData,
-	]);
+	}, [isLoading, hasValidProfile, formData, setStepValid, setStepData]);
 
 	const handleInputChange = (field: string, value: string) => {
 		const newFormData = { ...formData, [field]: value };

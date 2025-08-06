@@ -51,7 +51,7 @@ export const generateCuecards = schemaTask({
 				cuecardsConfig,
 			});
 
-			const result = await generateContent({
+			await generateContent({
 				contentType: "cuecards",
 				courseId,
 				weekId,
@@ -59,10 +59,6 @@ export const generateCuecards = schemaTask({
 				config: cuecardsConfig,
 				cacheKey,
 			});
-
-			if (!result.success) {
-				throw new Error(result.error || "Cuecards generation failed");
-			}
 
 			return {
 				success: true,

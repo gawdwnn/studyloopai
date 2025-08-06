@@ -23,7 +23,14 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
+import {
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+	useTransition,
+} from "react";
 import { toast } from "sonner";
 
 export default function OnboardingLayout({
@@ -88,7 +95,7 @@ export default function OnboardingLayout({
 		}
 	});
 
-	const handleNext = () => {
+	const handleNext = useCallback(() => {
 		if (currentStep === TOTAL_STEPS) {
 			startTransition(async () => {
 				await completeOnboardingAction();
@@ -113,11 +120,22 @@ export default function OnboardingLayout({
 					}
 				}
 
-				const nextSlug = getStepInfo(currentStep + 1).slug;
+				// Update store optimistically for immediate UI feedback
+				const nextStep = currentStep + 1;
+				goToStep(nextStep);
+
+				const nextSlug = getStepInfo(nextStep).slug;
 				router.push(`/onboarding/${nextSlug}`);
 			});
 		}
-	};
+	}, [
+		currentStep,
+		stepData,
+		getStepInfo,
+		router,
+		completeOnboarding,
+		goToStep,
+	]);
 
 	const handleBack = () => {
 		if (currentStep > 1) {
@@ -126,14 +144,14 @@ export default function OnboardingLayout({
 		}
 	};
 
-	const handleSkipAll = () => {
+	const handleSkipAll = useCallback(() => {
 		startTransition(async () => {
 			await skipOnboarding();
 			router.push("/dashboard");
 		});
-	};
+	}, [router]);
 
-	const handleSkipCurrentStep = () => {
+	const handleSkipCurrentStep = useCallback(() => {
 		if (currentStep === TOTAL_STEPS) {
 			// Can't skip completion step, redirect to finish
 			handleNext();
@@ -167,23 +185,44 @@ export default function OnboardingLayout({
 				toast.error("Unable to skip this step. Please try again.");
 			}
 		});
-	};
+	}, [currentStep, handleNext, router, stepData, getStepInfo]);
 
 	const isLastStep = currentStep === TOTAL_STEPS;
 	const canGoBack = currentStep > 1;
 	const currentStepConfig = STEP_CONFIGS[currentStep];
 	const canSkipCurrentStep = currentStepConfig?.canSkip ?? false;
 
-	// Context value for step validation
-	const validationContextValue = {
-		setStepValid: setIsStepValid,
-		getStepData: () => stepData,
-		setStepData,
-		// Enhanced skip functionality
-		canSkipStep: canSkipCurrentStep,
-		skipCurrentStep: handleSkipCurrentStep,
-		skipAllOnboarding: handleSkipAll,
-	};
+	// Stable context functions to prevent infinite re-renders
+	const stableSetStepValid = useCallback((isValid: boolean) => {
+		setIsStepValid(isValid);
+	}, []);
+
+	const stableGetStepData = useCallback(() => stepData, [stepData]);
+
+	const stableSetStepData = useCallback((data: Record<string, unknown>) => {
+		setStepData(data);
+	}, []);
+
+	// Memoized context value for step validation to prevent unnecessary re-renders
+	const validationContextValue = useMemo(
+		() => ({
+			setStepValid: stableSetStepValid,
+			getStepData: stableGetStepData,
+			setStepData: stableSetStepData,
+			// Enhanced skip functionality
+			canSkipStep: canSkipCurrentStep,
+			skipCurrentStep: handleSkipCurrentStep,
+			skipAllOnboarding: handleSkipAll,
+		}),
+		[
+			stableSetStepValid,
+			stableGetStepData,
+			stableSetStepData,
+			canSkipCurrentStep,
+			handleSkipCurrentStep,
+			handleSkipAll,
+		]
+	);
 
 	return (
 		<div className="flex flex-col min-h-screen bg-background">

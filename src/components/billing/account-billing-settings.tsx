@@ -53,10 +53,23 @@ export function AccountBillingSettings({
 					window.location.reload();
 				}
 			} else {
-				toast.error(result.error || "Failed to update plan");
+				logger.error("Plan selection failed", {
+					error: result.error,
+					planId,
+					userId,
+					context: { action: "selectPlan" },
+				});
+				toast.error("Unable to update plan. Please try again.");
 			}
-		} catch (_error) {
-			toast.error("Failed to update plan. Please try again.");
+		} catch (error) {
+			logger.error("Plan selection failed", {
+				error: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined,
+				planId,
+				userId,
+				context: { action: "selectPlan" },
+			});
+			toast.error("Unable to update plan. Please try again.");
 		} finally {
 			setIsLoading(false);
 		}
@@ -81,10 +94,7 @@ export function AccountBillingSettings({
 				userId,
 			});
 
-			toast.error("Failed to open customer portal", {
-				description:
-					"Please try again or contact support if the issue persists.",
-			});
+			toast.error("Unable to open customer portal. Please try again.");
 		} finally {
 			setLoadingPortal(false);
 		}

@@ -89,7 +89,9 @@ export async function markMaterialsUploadFailed(materialIds: string[]) {
 		});
 
 		if (!response.ok) {
-			const errorData = await response.json();
+			const errorData = await response
+				.json()
+				.catch(() => ({ error: "Failed to mark uploads as failed" }));
 			throw new Error(errorData.error || "Failed to mark uploads as failed");
 		}
 

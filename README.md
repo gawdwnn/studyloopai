@@ -1,6 +1,6 @@
 # StudyLoopAI
 
-AI-powered adaptive learning platform that transforms course materials into personalized study experiences with vector search, content generation, and performance analytics.
+AI-powered adaptive learning platform that transforms course materials into personalized study experience.
 
 ## Features
 
