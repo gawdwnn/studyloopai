@@ -9,7 +9,6 @@ import {
 } from "@/lib/config/file-upload";
 import { getServerClient } from "@/lib/supabase/server";
 import { createSignedUploadUrlForCourseMaterial } from "@/lib/supabase/storage";
-import { getUserFriendlyErrorMessage } from "@/lib/utils/error-messages";
 import { logger } from "@/lib/utils/logger";
 import { eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
@@ -142,10 +141,9 @@ export async function POST(req: NextRequest) {
 			method: "POST",
 		});
 
-		const userMessage = getUserFriendlyErrorMessage(
-			err instanceof Error ? err : "Unknown error occurred"
+		return NextResponse.json(
+			{ error: "Upload preparation failed. Please try again." },
+			{ status: 500 }
 		);
-
-		return NextResponse.json({ error: userMessage }, { status: 400 });
 	}
 }

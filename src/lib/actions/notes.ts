@@ -18,9 +18,7 @@ const UpdateGoldenNoteSchema = z.object({
 
 export type UpdateGoldenNoteInput = z.infer<typeof UpdateGoldenNoteSchema>;
 
-type NoteOperationResult<T = unknown> =
-	| { success: true; data: T }
-	| { success: false; data: null };
+// Removed NoteOperationResult - mutations should return data directly or throw
 
 /**
  * Get ALL golden notes for a course (all weeks)
@@ -145,72 +143,56 @@ export async function getCourseWeeks(courseId: string) {
 /**
  * Update a golden note
  */
-export async function updateGoldenNote(
-	input: UpdateGoldenNoteInput
-): Promise<NoteOperationResult> {
-	return await withErrorHandling(
-		async (): Promise<NoteOperationResult> => {
-			const supabase = await getServerClient();
-			const {
-				data: { user },
-			} = await supabase.auth.getUser();
+export async function updateGoldenNote(input: UpdateGoldenNoteInput) {
+	const supabase = await getServerClient();
+	const {
+		data: { user },
+	} = await supabase.auth.getUser();
 
-			if (!user) {
-				throw new Error("Authentication required");
-			}
+	if (!user) {
+		throw new Error("Authentication required");
+	}
 
-			const validatedInput = UpdateGoldenNoteSchema.parse(input);
-			const { id, ...updateData } = validatedInput;
+	const validatedInput = UpdateGoldenNoteSchema.parse(input);
+	const { id, ...updateData } = validatedInput;
 
-			const updatedNote = await db
-				.update(goldenNotes)
-				.set({
-					...updateData,
-					updatedAt: new Date(),
-				})
-				.where(eq(goldenNotes.id, id))
-				.returning();
+	const updatedNote = await db
+		.update(goldenNotes)
+		.set({
+			...updateData,
+			updatedAt: new Date(),
+		})
+		.where(eq(goldenNotes.id, id))
+		.returning();
 
-			if (updatedNote.length === 0) {
-				throw new Error("Note not found or access denied");
-			}
+	if (updatedNote.length === 0) {
+		throw new Error("Note not found or access denied");
+	}
 
-			return { success: true, data: updatedNote[0] };
-		},
-		"updateGoldenNote",
-		{ success: false, data: null }
-	);
+	return updatedNote[0];
 }
 
 /**
  * Delete a golden note
  */
-export async function deleteGoldenNote(
-	noteId: string
-): Promise<NoteOperationResult<{ id: string }>> {
-	return await withErrorHandling(
-		async (): Promise<NoteOperationResult<{ id: string }>> => {
-			const supabase = await getServerClient();
-			const {
-				data: { user },
-			} = await supabase.auth.getUser();
+export async function deleteGoldenNote(noteId: string) {
+	const supabase = await getServerClient();
+	const {
+		data: { user },
+	} = await supabase.auth.getUser();
 
-			if (!user) {
-				throw new Error("Authentication required");
-			}
+	if (!user) {
+		throw new Error("Authentication required");
+	}
 
-			const result = await db
-				.delete(goldenNotes)
-				.where(eq(goldenNotes.id, noteId))
-				.returning({ id: goldenNotes.id });
+	const result = await db
+		.delete(goldenNotes)
+		.where(eq(goldenNotes.id, noteId))
+		.returning({ id: goldenNotes.id });
 
-			if (result.length === 0) {
-				throw new Error("Note not found or access denied");
-			}
+	if (result.length === 0) {
+		throw new Error("Note not found or access denied");
+	}
 
-			return { success: true, data: result[0] };
-		},
-		"deleteGoldenNote",
-		{ success: false, data: null }
-	);
+	return result[0];
 }

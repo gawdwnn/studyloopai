@@ -21,7 +21,6 @@ import {
 	useUnifiedNotesData,
 } from "@/hooks/use-notes";
 import { useQueryState } from "@/hooks/use-query-state";
-import { handleApiError, shouldShowRetry } from "@/lib/utils/error-handling";
 
 interface Course {
 	id: string;
@@ -186,13 +185,11 @@ export function NotesClient({
 										Unable to load notes
 									</h3>
 									<p className="text-muted-foreground mb-4">
-										{handleApiError(error, "load notes")}
+										Something went wrong while loading your notes.
 									</p>
-									{shouldShowRetry(error) && (
-										<Button variant="outline" onClick={() => refetch()}>
-											Try Again
-										</Button>
-									)}
+									<Button variant="outline" onClick={() => refetch()}>
+										Try Again
+									</Button>
 								</div>
 							) : (
 								<Tabs

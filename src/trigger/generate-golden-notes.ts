@@ -54,7 +54,7 @@ export const generateGoldenNotes = schemaTask({
 				materialCount: materialIds.length,
 			});
 
-			const result = await generateContent({
+			await generateContent({
 				contentType: "goldenNotes",
 				courseId,
 				weekId,
@@ -62,10 +62,6 @@ export const generateGoldenNotes = schemaTask({
 				config: goldenNotesConfig,
 				cacheKey,
 			});
-
-			if (!result.success) {
-				throw new Error(result.error || "Golden notes generation failed");
-			}
 
 			return {
 				success: true,

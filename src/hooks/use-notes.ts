@@ -9,7 +9,9 @@ import {
 	getAllCourseNotesData,
 	updateGoldenNote,
 } from "@/lib/actions/notes";
-import { logger } from "@/lib/utils/logger";
+import { createLogger } from "@/lib/utils/logger";
+
+const logger = createLogger("hooks:notes");
 
 // Types
 interface GoldenNote {
@@ -118,24 +120,19 @@ export function useUpdateGoldenNote() {
 			...data
 		}: { id: string } & Partial<Omit<UpdateGoldenNoteInput, "id">>) =>
 			updateGoldenNote({ id, ...data }),
-		onSuccess: (result, _variables) => {
-			if (result.success) {
-				toast.success("Note updated successfully!");
-
-				queryClient.invalidateQueries({
-					queryKey: notesKeys.all,
-				});
-			} else {
-				toast.error("Failed to save note");
-			}
+		onSuccess: () => {
+			toast.success("Note updated successfully!");
+			queryClient.invalidateQueries({
+				queryKey: notesKeys.all,
+			});
 		},
 		onError: (error) => {
-			logger.error("Failed to save note", {
+			logger.error("Failed to update note", {
 				message: error instanceof Error ? error.message : String(error),
 				stack: error instanceof Error ? error.stack : undefined,
 				action: "updateGoldenNote",
 			});
-			toast.error("Failed to save note. Please try again.");
+			toast.error("Unable to save note. Please try again.");
 		},
 	});
 }
@@ -145,16 +142,11 @@ export function useDeleteGoldenNote() {
 
 	return useMutation({
 		mutationFn: (noteId: string) => deleteGoldenNote(noteId),
-		onSuccess: (result, _noteId) => {
-			if (result.success) {
-				toast.success("Note deleted successfully!");
-
-				queryClient.invalidateQueries({
-					queryKey: notesKeys.all,
-				});
-			} else {
-				toast.error("Failed to delete note");
-			}
+		onSuccess: () => {
+			toast.success("Note deleted successfully!");
+			queryClient.invalidateQueries({
+				queryKey: notesKeys.all,
+			});
 		},
 		onError: (error) => {
 			logger.error("Failed to delete note", {
@@ -162,7 +154,7 @@ export function useDeleteGoldenNote() {
 				stack: error instanceof Error ? error.stack : undefined,
 				action: "deleteGoldenNote",
 			});
-			toast.error("Failed to delete note. Please try again.");
+			toast.error("Unable to delete note. Please try again.");
 		},
 	});
 }

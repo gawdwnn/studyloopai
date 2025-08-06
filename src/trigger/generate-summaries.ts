@@ -51,7 +51,7 @@ export const generateSummaries = schemaTask({
 				summariesConfig,
 			});
 
-			const result = await generateContent({
+			await generateContent({
 				contentType: "summaries",
 				courseId,
 				weekId,
@@ -59,10 +59,6 @@ export const generateSummaries = schemaTask({
 				config: summariesConfig,
 				cacheKey,
 			});
-
-			if (!result.success) {
-				throw new Error(result.error || "Summaries generation failed");
-			}
 
 			return {
 				success: true,

@@ -23,6 +23,7 @@ import {
 	presignUpload,
 } from "@/lib/services/course-material-service";
 import { createClient } from "@/lib/supabase/client";
+import { logger } from "@/lib/utils/logger";
 import { validateSelectiveGenerationConfig } from "@/lib/validation/generation-config";
 import { useCourseMaterialProcessingStore } from "@/stores/course-material-processing-store";
 import { useUploadWizardStore } from "@/stores/upload-wizard-store";
@@ -155,10 +156,8 @@ export function UploadWizard({ courses, onUploadSuccess }: UploadWizardProps) {
 						);
 						uploadedMaterialIds.push(presignRes.materialId);
 					}
-				} catch (err) {
-					const errorMessage =
-						err instanceof Error ? err.message : "Upload failed";
-					updateFileStatus(uploadFile.id, "error", errorMessage);
+				} catch {
+					updateFileStatus(uploadFile.id, "error", "Upload preparation failed");
 				}
 
 				// Update progress
@@ -198,9 +197,12 @@ export function UploadWizard({ courses, onUploadSuccess }: UploadWizardProps) {
 
 			setIsOpen(false);
 			onUploadSuccess();
-		} catch (err) {
-			const errorMessage = err instanceof Error ? err.message : "Upload failed";
-			toast.error(errorMessage);
+		} catch (error) {
+			logger.error("Failed to complete upload", {
+				message: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined,
+			});
+			toast.error("Failed to complete upload. Please try again.");
 		} finally {
 			setIsUploading(false);
 			setUploadProgress(0);

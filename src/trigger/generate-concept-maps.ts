@@ -53,7 +53,7 @@ export const generateConceptMaps = schemaTask({
 				conceptMapsConfig,
 			});
 
-			const result = await generateContent({
+			await generateContent({
 				contentType: "conceptMaps",
 				courseId,
 				weekId,
@@ -64,10 +64,6 @@ export const generateConceptMaps = schemaTask({
 					maxTokens: 4000,
 				},
 			});
-
-			if (!result.success) {
-				throw new Error(result.error || "Concept maps generation failed");
-			}
 
 			return {
 				success: true,

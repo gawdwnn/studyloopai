@@ -53,7 +53,7 @@ export const generateOpenQuestions = schemaTask({
 				openQuestionsConfig,
 			});
 
-			const result = await generateContent({
+			await generateContent({
 				contentType: "openQuestions",
 				courseId,
 				weekId,
@@ -61,10 +61,6 @@ export const generateOpenQuestions = schemaTask({
 				config: openQuestionsConfig,
 				cacheKey,
 			});
-
-			if (!result.success) {
-				throw new Error(result.error || "Open questions generation failed");
-			}
 
 			return {
 				success: true,

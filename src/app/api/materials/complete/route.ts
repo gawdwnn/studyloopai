@@ -5,7 +5,6 @@ import { configurationSource, courseMaterials, courseWeeks } from "@/db/schema";
 import { initializeFeatureTracking } from "@/lib/actions/course-week-features";
 import { persistSelectiveConfig } from "@/lib/actions/generation-config";
 import { getServerClient } from "@/lib/supabase/server";
-import { getUserFriendlyErrorMessage } from "@/lib/utils/error-messages";
 import { logger } from "@/lib/utils/logger";
 import { SelectiveGenerationConfigSchema } from "@/lib/validation/generation-config";
 import type { ingestCourseMaterials } from "@/trigger/ingest-course-materials";
@@ -124,10 +123,9 @@ export async function POST(req: NextRequest) {
 			method: "POST",
 		});
 
-		const userMessage = getUserFriendlyErrorMessage(
-			err instanceof Error ? err : "Unknown error occurred"
+		return NextResponse.json(
+			{ error: "Failed to complete upload. Please try again." },
+			{ status: 500 }
 		);
-
-		return NextResponse.json({ error: userMessage }, { status: 400 });
 	}
 }

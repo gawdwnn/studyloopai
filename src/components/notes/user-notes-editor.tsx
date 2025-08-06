@@ -96,9 +96,13 @@ export function UserNotesEditor({ courseId, weekId }: UserNotesEditorProps) {
 			setEditingNote(null);
 		},
 		onError: (error: Error) => {
-			toast.error("Error updating note", {
-				description: error.message,
+			logger.error("Note update failed", {
+				message: error.message,
+				stack: error.stack,
+				courseId,
+				weekId,
 			});
+			toast.error("Unable to update note. Please try again.");
 		},
 	});
 

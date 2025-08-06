@@ -1,6 +1,6 @@
 "use client";
 import { PlanSelector } from "@/components/billing/plan-selector";
-import { useBillingStepData } from "@/hooks/use-onboarding-progress";
+import { useBillingStepData } from "@/hooks/use-onboarding";
 import { selectPlan } from "@/lib/actions/plans";
 import { updateOnboardingStep } from "@/lib/actions/user";
 import type { PlanId } from "@/lib/database/types";
