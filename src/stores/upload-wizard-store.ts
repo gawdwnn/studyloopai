@@ -1,3 +1,8 @@
+import {
+	type CourseWeek,
+	canUseExistingMaterials,
+	shouldSkipFileUpload,
+} from "@/lib/utils/upload-wizard-utils";
 import type { SelectiveGenerationConfig } from "@/types/generation-types";
 import { create } from "zustand";
 import { devtools, subscribeWithSelector } from "zustand/middleware";
@@ -56,9 +61,12 @@ interface UploadWizardState {
 	setUploadProgress: (progress: number) => void;
 
 	// Navigation
-	canProceedToNext: () => boolean;
-	proceedToNext: () => void;
-	goToPrevious: () => void;
+	canProceedToNext: (
+		courseWeeks?: CourseWeek[],
+		isLoading?: boolean
+	) => boolean;
+	proceedToNext: (courseWeeks?: CourseWeek[]) => void;
+	goToPrevious: (courseWeeks?: CourseWeek[]) => void;
 
 	// Reset
 	reset: () => void;
@@ -150,8 +158,12 @@ export const useUploadWizardStore = create<UploadWizardState>()(
 			setUploadProgress: (progress) => set({ uploadProgress: progress }),
 
 			// Navigation
-			canProceedToNext: () => {
+			canProceedToNext: (courseWeeks, isLoading = false) => {
 				const state = get();
+
+				// Graceful degradation: disable if data is loading
+				if (isLoading) return false;
+
 				switch (state.currentStep) {
 					case "course-selection":
 						return !!state.selectedCourseId && !!state.selectedWeekId;
@@ -164,28 +176,56 @@ export const useUploadWizardStore = create<UploadWizardState>()(
 					case "generation-settings":
 						return true; // Settings are always valid due to defaults
 					case "review-and-upload":
-						return false; // Last step
+						return canUseExistingMaterials(
+							courseWeeks,
+							state.selectedWeekId,
+							state.files.length > 0
+						);
 					default:
 						return false;
 				}
 			},
 
-			proceedToNext: () => {
+			proceedToNext: (courseWeeks) => {
 				const state = get();
 				const currentIndex = WIZARD_STEPS.indexOf(state.currentStep);
+
 				if (
 					currentIndex < WIZARD_STEPS.length - 1 &&
-					state.canProceedToNext()
+					state.canProceedToNext(courseWeeks)
 				) {
-					set({ currentStep: WIZARD_STEPS[currentIndex + 1] });
+					let nextStep = WIZARD_STEPS[currentIndex + 1];
+
+					// Smart step-skipping: skip file-upload if materials exist
+					if (
+						state.currentStep === "course-selection" &&
+						nextStep === "file-upload" &&
+						shouldSkipFileUpload(courseWeeks, state.selectedWeekId)
+					) {
+						nextStep = "feature-selection";
+					}
+
+					set({ currentStep: nextStep });
 				}
 			},
 
-			goToPrevious: () => {
+			goToPrevious: (courseWeeks) => {
 				const state = get();
 				const currentIndex = WIZARD_STEPS.indexOf(state.currentStep);
+
 				if (currentIndex > 0) {
-					set({ currentStep: WIZARD_STEPS[currentIndex - 1] });
+					let previousStep = WIZARD_STEPS[currentIndex - 1];
+
+					// Smart step-skipping: skip file-upload when going back if materials exist
+					if (
+						state.currentStep === "feature-selection" &&
+						previousStep === "file-upload" &&
+						shouldSkipFileUpload(courseWeeks, state.selectedWeekId)
+					) {
+						previousStep = "course-selection";
+					}
+
+					set({ currentStep: previousStep });
 				}
 			},
 
