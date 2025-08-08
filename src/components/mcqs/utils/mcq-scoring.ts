@@ -3,7 +3,7 @@ import type {
 	McqPerformance,
 	McqProgress,
 	McqQuestion,
-} from "@/stores/mcq-session/types";
+} from "../stores/types";
 
 /**
  * Calculate the score for an individual MCQ answer
@@ -88,9 +88,16 @@ export function calculateSessionPerformance(
 	for (const answer of answers) {
 		const question = questions.find((q) => q.id === answer.questionId);
 		if (question) {
-			difficultyBreakdown[question.difficulty].attempted++;
+			// Ensure difficulty is valid, default to medium if not
+			const validDifficulty = ["easy", "medium", "hard"].includes(
+				question.difficulty
+			)
+				? (question.difficulty as keyof typeof difficultyBreakdown)
+				: "medium";
+
+			difficultyBreakdown[validDifficulty].attempted++;
 			if (answer.isCorrect) {
-				difficultyBreakdown[question.difficulty].correct++;
+				difficultyBreakdown[validDifficulty].correct++;
 			}
 		}
 	}
@@ -193,14 +200,15 @@ function calculateImprovementTrend(answers: McqAnswer[]): number {
 
 /**
  * Calculate progress metrics
+ * @param sessionElapsedTime - Optional session elapsed time in milliseconds from store timer
  */
 export function calculateProgress(
 	answers: McqAnswer[],
 	totalQuestions: number,
-	startTime: Date
+	startTime: Date,
+	sessionElapsedTime?: number
 ): McqProgress {
-	const now = new Date();
-	const timeSpent = now.getTime() - startTime.getTime();
+	const timeSpent = sessionElapsedTime ?? Date.now() - startTime.getTime();
 
 	const correctAnswers = answers.filter((a) => a.isCorrect).length;
 	const incorrectAnswers = answers.filter(
@@ -223,7 +231,7 @@ export function calculateProgress(
 		skippedQuestions,
 		timeSpent,
 		startedAt: startTime,
-		lastUpdated: now,
+		lastUpdated: new Date(),
 		averageTimePerQuestion,
 		answers,
 		flaggedQuestions: [], // Will be managed by session store

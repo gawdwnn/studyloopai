@@ -9,10 +9,10 @@ import {
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import confetti from "canvas-confetti";
-import { CheckCircle2, SparklesIcon, XCircle, XIcon } from "lucide-react";
+import { CheckCircle2, SparklesIcon, X, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
+import { toast } from "sonner";
 
 interface McqResultsData {
 	score: number;
@@ -31,31 +31,133 @@ interface McqResultsData {
 	}>;
 }
 
-const COLORS = ["#3b82f6", "#e5e7eb"]; // blue-500, gray-200
+// Get theme-aware colors from CSS variables
+const getChartColors = () => {
+	if (typeof window === "undefined") {
+		// SSR fallback colors
+		return ["#3b82f6", "#e5e7eb"];
+	}
 
-type McqResultsViewProps = {
-	results: McqResultsData;
-	onRestart: () => void;
+	const style = getComputedStyle(document.documentElement);
+	return [
+		style.getPropertyValue("--color-chart-1") ||
+			style.getPropertyValue("--color-primary") ||
+			"#3b82f6",
+		style.getPropertyValue("--color-muted") || "#e5e7eb",
+	];
 };
 
-export function McqResultsView({ results, onRestart }: McqResultsViewProps) {
+type McqResultsViewProps = {
+	sessionId?: string; // Fetch results from database if provided
+	results?: McqResultsData; // Fallback data if sessionId not available
+	onRestart: () => void;
+	onClose: () => void; // Handle navigation to feedback page
+};
+
+export function McqResultsView({
+	sessionId,
+	results: fallbackResults,
+	onRestart,
+	onClose,
+}: McqResultsViewProps) {
 	const [openItems, setOpenItems] = useState<string[]>([]);
+	const [results, setResults] = useState<McqResultsData | null>(null);
+	const [isLoading, setIsLoading] = useState(!!sessionId);
 
+	// Fetch results from database if sessionId is provided
 	useEffect(() => {
-		// Trigger confetti animation when component mounts
-		const timer = setTimeout(() => {
-			confetti({
-				particleCount: 100,
-				spread: 70,
-				origin: { y: 0.6 },
-				colors: ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"],
-			});
-		}, 500);
+		if (!sessionId) {
+			setResults(fallbackResults || null);
+			setIsLoading(false);
+			return;
+		}
 
-		return () => clearTimeout(timer);
-	}, []);
+		const fetchSessionResults = async () => {
+			try {
+				setIsLoading(true);
+				const { getSessionResults } = await import(
+					"@/lib/actions/adaptive-learning"
+				);
+				const sessionData = await getSessionResults(sessionId);
 
-	// Create chart data from results
+				if (!sessionData) {
+					throw new Error("Failed to fetch session results");
+				}
+
+				// Transform database results to match McqResultsData format
+				const transformedResults: McqResultsData = {
+					score: sessionData.accuracy,
+					skipped:
+						sessionData.totalResponses -
+						sessionData.correctResponses -
+						sessionData.incorrectResponses,
+					totalTime: formatTime(sessionData.totalTime),
+					timeOnExercise: formatTime(sessionData.totalTime),
+					avgPerExercise: `${Math.round(sessionData.averageResponseTime / 1000)}s`,
+					questions: [], // We would need to fetch question details separately
+				};
+
+				setResults(transformedResults);
+			} catch (err) {
+				console.error("Failed to fetch session results:", err);
+
+				// Show user error
+				toast.error(
+					"Failed to load session results. Using cached data if available."
+				);
+
+				// Fall back to cached results if available
+				setResults(fallbackResults || null);
+			} finally {
+				setIsLoading(false);
+			}
+		};
+
+		fetchSessionResults();
+	}, [sessionId, fallbackResults]);
+
+	// Helper function to format time from milliseconds
+	const formatTime = (timeMs: number): string => {
+		const minutes = Math.floor(timeMs / 60000);
+		const seconds = Math.floor((timeMs % 60000) / 1000);
+		return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+	};
+
+	// Show loading state
+	if (isLoading) {
+		return (
+			<div className="flex items-center justify-center min-h-96">
+				<div className="text-center">
+					<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4" />
+					<p className="text-muted-foreground">Loading session results...</p>
+				</div>
+			</div>
+		);
+	}
+
+	// No results available
+	if (!results) {
+		return (
+			<div className="flex items-center justify-center min-h-96">
+				<div className="text-center">
+					<SparklesIcon className="h-8 w-8 text-muted-foreground mx-auto mb-4" />
+					<h3 className="text-lg font-semibold mb-2">No Results Available</h3>
+					<p className="text-muted-foreground mb-4">
+						Unable to display session results.
+					</p>
+					<div className="space-x-2">
+						<Button onClick={onRestart}>Start New Session</Button>
+						<Button variant="outline" onClick={onClose}>
+							Continue
+						</Button>
+					</div>
+				</div>
+			</div>
+		);
+	}
+
+	// Create chart data from results with theme-aware colors
+	const chartColors = getChartColors();
 	const chartData = [
 		{ name: "Correct", value: results.score },
 		{ name: "Incorrect", value: 100 - results.score },
@@ -83,6 +185,8 @@ export function McqResultsView({ results, onRestart }: McqResultsViewProps) {
 		return "default";
 	};
 
+	// Use the onClose prop instead of handling navigation directly
+
 	return (
 		<div className="min-h-screen bg-background relative">
 			<div className="absolute top-4 right-4 z-10 flex gap-2">
@@ -90,10 +194,10 @@ export function McqResultsView({ results, onRestart }: McqResultsViewProps) {
 				<Button
 					variant="ghost"
 					size="icon"
-					className="bg-gray-100 hover:bg-gray-200 rounded-full"
-					onClick={onRestart}
+					className="bg-background/80 hover:bg-background/90 dark:bg-background/80 dark:hover:bg-background/90 rounded-full border shadow-sm h-10 w-10"
+					onClick={onClose}
 				>
-					<XIcon className="h-6 w-6 text-gray-600" />
+					<X className="h-6 w-6 text-foreground" />
 				</Button>
 			</div>
 
@@ -137,7 +241,7 @@ export function McqResultsView({ results, onRestart }: McqResultsViewProps) {
 												{chartData.map((entry, index) => (
 													<Cell
 														key={`cell-${entry.name}`}
-														fill={COLORS[index % COLORS.length]}
+														fill={chartColors[index % chartColors.length]}
 													/>
 												))}
 											</Pie>
@@ -240,10 +344,10 @@ export function McqResultsView({ results, onRestart }: McqResultsViewProps) {
 														className={cn(
 															"p-3 flex items-center space-x-3 rounded-md border",
 															state === "correct"
-																? "border-green-500 bg-green-50/50"
+																? "border-green-500 bg-green-500/10"
 																: "border-border",
 															state === "incorrect"
-																? "border-red-500 bg-red-50/50"
+																? "border-red-500 bg-red-500/10"
 																: "border-border"
 														)}
 													>
@@ -260,8 +364,10 @@ export function McqResultsView({ results, onRestart }: McqResultsViewProps) {
 														</div>
 														<span
 															className={cn(
-																state === "correct" && "text-green-800",
-																state === "incorrect" && "text-red-800"
+																state === "correct" &&
+																	"text-green-600 dark:text-green-400",
+																state === "incorrect" &&
+																	"text-red-600 dark:text-red-400"
 															)}
 														>
 															{option}
