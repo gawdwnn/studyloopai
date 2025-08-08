@@ -114,6 +114,7 @@
 		"react-hotkeys-hook": "^5.1.0",
 		"react-resizable-panels": "^3.0.2",
 		"react-table": "^7.8.0",
+		"react-timer-hook": "^4.0.5",
 		"recharts": "^2.15.3",
 		"rehype-sanitize": "^6.0.0",
 		"resend": "^4.5.2",
