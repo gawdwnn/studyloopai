@@ -1,8 +1,8 @@
 // Cuecard-specific types colocated for better maintainability
 // Re-exports from store types for convenience
 
-import type { CuecardConfig } from "@/stores/cuecard-session/types";
 import type { SelectiveGenerationConfig } from "@/types/generation-types";
+import type { CuecardConfig } from "../stores/types";
 
 export type {
 	CardResponse,
@@ -10,7 +10,7 @@ export type {
 	CuecardFeedback,
 	CuecardSessionState,
 	SessionStatus,
-} from "@/stores/cuecard-session/types";
+} from "../stores/types";
 
 // Re-exports from action types for convenience
 export type { UserCuecard } from "@/lib/actions/cuecard";

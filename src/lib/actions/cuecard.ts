@@ -6,15 +6,12 @@ import { getServerClient } from "@/lib/supabase/server";
 import { withErrorHandling } from "@/lib/utils/error-handling";
 import { and, eq, inArray } from "drizzle-orm";
 
-// Import types from centralized database types
 import type { Cuecard } from "@/types/database-types";
 
-// Types for cuecards data - extended with week information
 export type UserCuecard = Cuecard & {
 	weekNumber: number;
 };
 
-// Extended availability type with optimization data
 export type CuecardAvailability = {
 	available: boolean;
 	count: number;
@@ -22,9 +19,6 @@ export type CuecardAvailability = {
 	availableWeeks: Array<{ id: string; weekNumber: number }>;
 	cuecardsByWeek: Record<string, number>;
 };
-
-// Progress is now tracked via adaptive learning tables (session_responses, learning_sessions)
-// No need for real-time progress updates during sessions
 
 /**
  * OPTIMIZED: Single query to get cuecards with availability info
@@ -48,14 +42,13 @@ export async function getUserCuecardsWithAvailability(
 				throw new Error("Authentication required");
 			}
 
-			// Single optimized query to get both cards and availability info
 			const shouldFilterByWeeks =
 				weekIds?.length && !weekIds.includes("all-weeks");
 
-			// Get cuecards with week information in one query
-			const baseQuery = db
+			// SINGLE QUERY: Get cuecards + week info + materials check using RIGHT JOIN
+			const result = await db
 				.select({
-					// Cuecard fields
+					// Cuecard data (null if no cuecards exist)
 					id: cuecards.id,
 					courseId: cuecards.courseId,
 					weekId: cuecards.weekId,
@@ -65,33 +58,64 @@ export async function getUserCuecardsWithAvailability(
 					metadata: cuecards.metadata,
 					createdAt: cuecards.createdAt,
 					updatedAt: cuecards.updatedAt,
-					// Week fields
+					// Week data (always present)
+					actualWeekId: courseWeeks.id,
 					weekNumber: courseWeeks.weekNumber,
+					weekHasMaterials: courseWeeks.hasMaterials,
 				})
-				.from(cuecards)
-				.innerJoin(courseWeeks, eq(cuecards.weekId, courseWeeks.id))
-				.innerJoin(courses, eq(cuecards.courseId, courses.id))
+				.from(courseWeeks)
+				.leftJoin(cuecards, eq(courseWeeks.id, cuecards.weekId))
+				.innerJoin(courses, eq(courseWeeks.courseId, courses.id))
 				.where(
 					and(
-						eq(courses.userId, user.id), // RLS protection
-						eq(cuecards.courseId, courseId),
-						// Only include weeks that have materials (required for generation)
+						eq(courses.userId, user.id),
+						eq(courseWeeks.courseId, courseId),
 						eq(courseWeeks.hasMaterials, true),
-						shouldFilterByWeeks ? inArray(cuecards.weekId, weekIds) : undefined
+						shouldFilterByWeeks ? inArray(courseWeeks.id, weekIds) : undefined
 					)
 				);
 
-			const cards = await baseQuery;
+			// Process results
+			const cards = result
+				.filter(
+					(
+						r
+					): r is typeof r & {
+						id: NonNullable<typeof r.id>;
+						courseId: NonNullable<typeof r.courseId>;
+						weekId: NonNullable<typeof r.weekId>;
+						question: NonNullable<typeof r.question>;
+						answer: NonNullable<typeof r.answer>;
+						difficulty: NonNullable<typeof r.difficulty>;
+						metadata: NonNullable<typeof r.metadata>;
+						createdAt: NonNullable<typeof r.createdAt>;
+						updatedAt: NonNullable<typeof r.updatedAt>;
+					} => r.id !== null
+				) // Only actual cuecards
+				.map((r) => ({
+					id: r.id,
+					courseId: r.courseId,
+					weekId: r.weekId,
+					question: r.question,
+					answer: r.answer,
+					difficulty: r.difficulty,
+					metadata: r.metadata,
+					createdAt: r.createdAt,
+					updatedAt: r.updatedAt,
+					weekNumber: r.weekNumber,
+				}));
 
-			// Calculate availability from the results
-			const uniqueWeeks = new Map<string, { id: string; weekNumber: number }>();
-			for (const card of cards) {
-				uniqueWeeks.set(card.weekId, {
-					id: card.weekId,
-					weekNumber: card.weekNumber,
-				});
-			}
-			const availableWeeks = Array.from(uniqueWeeks.values());
+			const weeksWithMaterials = result.length > 0; // Any week with materials exists
+
+			// Calculate availability
+			const availableWeeks = Array.from(
+				new Map(
+					cards.map((card) => [
+						card.weekId,
+						{ id: card.weekId, weekNumber: card.weekNumber },
+					])
+				).values()
+			);
 
 			const cuecardsByWeek = cards.reduce(
 				(acc, card) => {
@@ -104,15 +128,12 @@ export async function getUserCuecardsWithAvailability(
 			const availability: CuecardAvailability = {
 				available: cards.length > 0,
 				count: cards.length,
-				hasCourseWeeksWithContent: availableWeeks.length > 0,
+				hasCourseWeeksWithContent: weeksWithMaterials,
 				availableWeeks,
 				cuecardsByWeek,
 			};
 
-			return {
-				cards,
-				availability,
-			};
+			return { cards, availability };
 		},
 		"getUserCuecardsWithAvailability",
 		{
