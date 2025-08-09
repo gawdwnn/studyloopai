@@ -10,7 +10,7 @@ const blogPosts = [
 		title: "Getting Started with AI-Powered Learning",
 		excerpt:
 			"Learn how to leverage artificial intelligence to enhance your study experience and improve your learning outcomes.",
-		date: "2024-03-20",
+		date: "2025-03-20",
 		readTime: "5 min read",
 		category: "Guides",
 	},
@@ -19,7 +19,7 @@ const blogPosts = [
 		title: "Effective Study Techniques with AI",
 		excerpt:
 			"Discover proven study techniques that work best with AI-powered learning tools and how to integrate them into your routine.",
-		date: "2024-03-18",
+		date: "2025-03-18",
 		readTime: "7 min read",
 		category: "Tips & Tricks",
 	},
@@ -28,7 +28,7 @@ const blogPosts = [
 		title: "The Future of Education: AI's Role",
 		excerpt:
 			"Explore how artificial intelligence is transforming education and what it means for students and educators.",
-		date: "2024-03-15",
+		date: "2025-03-15",
 		readTime: "6 min read",
 		category: "Insights",
 	},

@@ -3,14 +3,7 @@
 
 import type { UserMCQ } from "@/lib/actions/mcq";
 import type { SelectiveGenerationConfig } from "@/types/generation-types";
-
-export type DifficultyLevel = "easy" | "medium" | "hard" | "mixed";
-
-export type FocusType =
-	| "tailored-for-me"
-	| "weak-areas"
-	| "recent-content"
-	| "comprehensive";
+import type { TimerActions, TimerState } from "@/types/timer-types";
 
 export type SessionStatus =
 	| "idle"
@@ -23,18 +16,10 @@ export type SessionStatus =
 	| "no_content_for_weeks"
 	| "generating";
 
-export type PracticeMode = "practice" | "exam";
-
-// MCQ-specific configuration
+// MCQ-specific configuration - simplified to match cuecards
 export interface McqConfig {
 	courseId: string;
 	weeks: string[];
-	numQuestions: number;
-	difficulty: DifficultyLevel;
-	focus: FocusType;
-	practiceMode: PracticeMode;
-	timeLimit?: number;
-	randomizeOptions?: boolean;
 }
 
 export interface McqQuestion {
@@ -74,7 +59,6 @@ export interface McqProgress {
 	averageTimePerQuestion: number;
 	answers: McqAnswer[];
 	flaggedQuestions: string[]; // questions marked for review
-	remainingTime?: number; // for timed sessions
 }
 
 // Performance analytics for MCQ sessions
@@ -103,7 +87,7 @@ export interface McqPerformance {
 }
 
 // Session state for MCQ sessions
-export interface McqSessionState {
+export interface McqSessionState extends TimerState {
 	id: string;
 	status: SessionStatus;
 	config: McqConfig;
@@ -111,35 +95,35 @@ export interface McqSessionState {
 	progress: McqProgress;
 	performance: McqPerformance;
 	currentQuestion: McqQuestion | null;
-	shuffledOptions?: string[]; // for current question if randomization is enabled
 	error: string | null;
 	isLoading: boolean;
 	lastSyncedAt: Date | null;
 	generationRunId?: string;
 	generationToken?: string;
+	learningSessionId?: string | null; // Track the database learning session ID for feedback navigation
+	realTimeSessionId: string | null; // Track real-time database session ID
 }
 
 // Store actions interface
-export interface McqSessionActions {
+export interface McqSessionActions extends TimerActions {
 	// Session lifecycle
-	startSessionWithData: (
-		config: McqConfig,
-		preLoadedMCQs: UserMCQ[]
-	) => Promise<void>;
-	endSession: () => Promise<void>;
+	startSession: (config: McqConfig, preLoadedMCQs: UserMCQ[]) => Promise<void>;
+	endSession: () => Promise<string | null>;
 	resetSession: () => void;
 
 	// Answer submission
 	submitAnswer: (
 		questionId: string,
 		selectedAnswer: string | null,
-		timeSpent: number,
+		timeSpent?: number, // Optional - timer will provide it
 		confidenceLevel?: number
-	) => void;
+	) => Promise<void>;
 
-	// Error handling
-	setError: (error: string | null) => void;
-	clearError: () => void;
+	// Question skip
+	skipQuestion: (
+		questionId: string,
+		timeSpent?: number // Optional - timer will provide it
+	) => Promise<void>;
 
 	// Generation support
 	triggerGeneration: (
@@ -152,6 +136,7 @@ export interface McqSessionActions {
 		publicAccessToken?: string;
 		error?: string;
 	}>;
+	resetGenerationState: () => void;
 }
 
 // Complete store interface
@@ -194,18 +179,24 @@ export const initialMcqState: McqSessionState = {
 	config: {
 		courseId: "",
 		weeks: [],
-		numQuestions: 10,
-		difficulty: "mixed",
-		focus: "comprehensive",
-		practiceMode: "practice",
-		randomizeOptions: true,
 	},
 	questions: [],
 	progress: initialMcqProgress,
 	performance: initialMcqPerformance,
 	currentQuestion: null,
-	shuffledOptions: undefined,
 	error: null,
 	isLoading: false,
 	lastSyncedAt: null,
+	learningSessionId: null,
+	realTimeSessionId: null,
+	// Timer state properties
+	sessionElapsedTime: 0, // milliseconds
+	sessionStartTime: null,
+	isTimerRunning: false,
+	isTimerPaused: false,
+	itemElapsedTime: 0, // milliseconds
+	itemStartTime: null,
+	averageItemTime: 0, // milliseconds
+	completedItemsCount: 0,
+	totalItemTime: 0,
 };

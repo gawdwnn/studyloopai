@@ -1,4 +1,16 @@
-import type { SessionStatus } from "@/stores/mcq-session/types";
+// Shared session state utilities for both MCQ and Cuecard systems
+// Consolidated from duplicated implementations in component-specific folders
+
+export type SessionStatus =
+	| "idle"
+	| "loading"
+	| "active"
+	| "paused"
+	| "completed"
+	| "failed"
+	| "needs_generation"
+	| "no_content_for_weeks"
+	| "generating";
 
 export const SETUP_STATES: readonly SessionStatus[] = [
 	"idle",

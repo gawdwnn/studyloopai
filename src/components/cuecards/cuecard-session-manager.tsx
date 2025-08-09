@@ -1,27 +1,33 @@
 "use client";
 
+import {
+	CuecardSkeleton,
+	LoadingOverlay,
+} from "@/components/skeleton-patterns";
 import { env } from "@/env";
 import type { CuecardAvailability, UserCuecard } from "@/lib/actions/cuecard";
 import { logger } from "@/lib/utils/logger";
-import { useCuecardSession } from "@/stores/cuecard-session/use-cuecard-session";
-import type { Course, CourseWeek } from "@/types/database-types";
-import type { SelectiveGenerationConfig } from "@/types/generation-types";
-import { useRealtimeRun } from "@trigger.dev/react-hooks";
-import { useCallback, useEffect, useState } from "react";
-import { toast } from "sonner";
-import { useShallow } from "zustand/react/shallow";
-import { CuecardDisplay } from "./cuecard-display";
-import { CuecardResultsView } from "./cuecard-results-view";
-import { CuecardSessionSetup } from "./cuecard-session-setup";
-import type { CuecardFeedback } from "./types";
 import {
-	formatSessionResultsForDisplay,
 	hasNoContentForWeeks,
 	isActiveState,
 	isCompletedState,
 	isGenerating,
 	isSetupState,
-} from "./utils";
+} from "@/lib/utils/session-states";
+import type { Course, CourseWeek } from "@/types/database-types";
+import type { SelectiveGenerationConfig } from "@/types/generation-types";
+import { useQueryClient } from "@tanstack/react-query";
+import { useRealtimeRun } from "@trigger.dev/react-hooks";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
+import { useShallow } from "zustand/react/shallow";
+import { CuecardResultsView } from "./cuecard-results-view";
+import { CuecardSessionSetup } from "./cuecard-session-setup";
+import { CuecardDisplay } from "./cuecard-session-view";
+import { useCuecardSession } from "./stores/use-cuecard-session";
+import type { CuecardFeedback } from "./types";
+import { formatSessionResultsForDisplay } from "./utils";
 
 interface CuecardSessionManagerProps {
 	courses: Course[];
@@ -38,6 +44,8 @@ export function CuecardSessionManager({
 	courses,
 	initialData,
 }: CuecardSessionManagerProps) {
+	const router = useRouter();
+
 	// Use shallow equality check to prevent unnecessary re-renders
 	const cuecardState = useCuecardSession(
 		useShallow((s) => ({
@@ -46,13 +54,18 @@ export function CuecardSessionManager({
 			cards: s.cards,
 			responses: s.responses,
 			startTime: s.startTime,
+			sessionElapsedTime: s.sessionElapsedTime,
 			generationRunId: s.generationRunId,
 			generationToken: s.generationToken,
+			learningSessionId: s.learningSessionId,
+			isLoading: s.isLoading,
 		}))
 	);
 	const cuecardActions = useCuecardSession((s) => s.actions);
+	const queryClient = useQueryClient();
 
 	const [isEndingSession, setIsEndingSession] = useState(false);
+	const [generationInProgress, setGenerationInProgress] = useState(false);
 
 	// Realtime tracking for cuecard generation
 	const { run: runData, error: runError } = useRealtimeRun(
@@ -66,44 +79,44 @@ export function CuecardSessionManager({
 		}
 	);
 
-	// Handle generation completion and progress updates
+	// Handle generation progress updates
 	useEffect(() => {
-		if (!runData || !cuecardState.generationRunId) return;
-
-		const { status, output } = runData;
-
-		if (status === "COMPLETED" || String(status).includes("COMPLETED")) {
-			// Generation completed successfully
-			toast.success("Cuecards generated successfully! Loading content...");
-
-			// Reset generation state - this will cause the session setup to refresh
-			// and detect the newly generated cuecards
-			setTimeout(() => {
+		if (runData) {
+			if (runData.status === "COMPLETED" && generationInProgress) {
+				setGenerationInProgress(false);
+				// Invalidate content-related queries to ensure UI updates properly
+				queryClient.invalidateQueries({
+					predicate: (query) => {
+						const queryKey = query.queryKey;
+						return (
+							queryKey.includes("cuecards") ||
+							queryKey.includes("mcq") ||
+							queryKey.includes("session-data") ||
+							queryKey.includes("feature-availability") ||
+							queryKey.includes("course-weeks")
+						);
+					},
+				});
+				// Reset the store's generation state to clear loading state
 				cuecardActions.resetGenerationState();
-			}, 2000); // Give a brief moment to show the completion message
-		} else if (
-			status === "CRASHED" ||
-			status === "CANCELED" ||
-			status === "SYSTEM_FAILURE" ||
-			status === "INTERRUPTED" ||
-			status === "TIMED_OUT"
-		) {
-			// Generation failed
-			logger.error("Cuecard generation failed", {
-				status,
-				error: output?.error,
-				runId: cuecardState.generationRunId,
-			});
-			toast.error("Generation failed, please try again.");
-		} else if (
-			status === "EXECUTING" ||
-			status === "QUEUED" ||
-			status === "WAITING_FOR_DEPLOY"
-		) {
-			// Still generating - status should remain "generating"
-			// This keeps the UI in the correct state showing generation progress
+				toast.success("Cuecards generated successfully!");
+			} else if (runData.status === "FAILED") {
+				setGenerationInProgress(false);
+				toast.error("Cuecard generation failed. Please try again.");
+				// Add error logging similar to MCQ
+				logger.error("Cuecard generation failed", {
+					status: runData.status,
+					runId: cuecardState.generationRunId,
+				});
+			}
 		}
-	}, [runData, cuecardState.generationRunId, cuecardActions]);
+	}, [
+		runData,
+		generationInProgress,
+		cuecardActions,
+		queryClient,
+		cuecardState.generationRunId,
+	]);
 
 	// Handle generation errors
 	useEffect(() => {
@@ -124,6 +137,7 @@ export function CuecardSessionManager({
 			generationConfig: SelectiveGenerationConfig
 		) => {
 			try {
+				setGenerationInProgress(true);
 				const result = await cuecardActions.triggerGeneration(
 					courseId,
 					weekIds,
@@ -137,9 +151,11 @@ export function CuecardSessionManager({
 					// Realtime tracking will automatically start via useRealtimeRun hook
 					// when generationRunId and generationToken are set in the store
 				} else {
+					setGenerationInProgress(false);
 					toast.error("Failed to start cuecard generation. Please try again.");
 				}
 			} catch (error) {
+				setGenerationInProgress(false);
 				logger.error("Failed to trigger cuecard generation", {
 					message: error instanceof Error ? error.message : String(error),
 					stack: error instanceof Error ? error.stack : undefined,
@@ -176,8 +192,7 @@ export function CuecardSessionManager({
 				sessionStatus: cuecardState.status,
 				currentIndex: cuecardState.currentIndex,
 			});
-			// Fallback navigation
-			window.location.href = "/dashboard/feedback";
+			toast.error("Session end failed, please try again");
 		} finally {
 			setIsEndingSession(false);
 		}
@@ -188,15 +203,26 @@ export function CuecardSessionManager({
 		cuecardState.currentIndex,
 	]);
 
-	// Session completion is now handled directly in store's submitFeedback method
-	// No need for useEffect to watch for completion
-
 	const handleClose = useCallback(() => {
-		// Reset any active session state
+		// Navigate first, then reset session
+		router.push("/dashboard/adaptive-learning");
 		cuecardActions.resetSession();
-		// Navigate back to the adaptive learning dashboard
-		window.location.href = "/dashboard/adaptive-learning";
-	}, [cuecardActions]);
+	}, [router, cuecardActions]);
+
+	const handleCloseToFeedback = useCallback(() => {
+		// Navigate to feedback page with sessionId (called from results view "Close" button)
+		const sessionId = cuecardState.learningSessionId;
+
+		// Navigate FIRST, then reset session state
+		if (sessionId) {
+			router.push(`/dashboard/feedback?sessionId=${sessionId}`);
+		} else {
+			router.push("/dashboard/feedback");
+		}
+
+		// Reset session after navigation
+		cuecardActions.resetSession();
+	}, [router, cuecardActions, cuecardState.learningSessionId]);
 
 	// Handle setup states (idle, failed, needs_generation, etc.)
 	if (isSetupState(cuecardState.status)) {
@@ -206,7 +232,9 @@ export function CuecardSessionManager({
 				initialData={initialData}
 				onClose={handleClose}
 				showWeekSelectionError={hasNoContentForWeeks(cuecardState.status)}
-				showGenerationProgress={isGenerating(cuecardState.status)}
+				showGenerationProgress={
+					isGenerating(cuecardState.status) || generationInProgress
+				}
 				generationProgress={runData}
 				onTriggerGeneration={handleTriggerGeneration}
 			/>
@@ -222,18 +250,14 @@ export function CuecardSessionManager({
 		}
 
 		return (
-			<div className="relative flex h-full flex-1 flex-col">
-				<div className="flex-1 overflow-y-auto">
-					<CuecardDisplay
-						card={currentCard}
-						onFeedback={handleCardFeedback}
-						onClose={handleEndSession}
-						currentIndex={cuecardState.currentIndex}
-						totalCards={cuecardState.cards.length}
-						weekInfo={`Week ${currentCard.weekNumber}`}
-					/>
-				</div>
-			</div>
+			<CuecardDisplay
+				card={currentCard}
+				onFeedback={handleCardFeedback}
+				onClose={handleEndSession}
+				currentIndex={cuecardState.currentIndex}
+				totalCards={cuecardState.cards.length}
+				weekInfo={`Week ${currentCard.weekNumber}`}
+			/>
 		);
 	}
 
@@ -241,16 +265,27 @@ export function CuecardSessionManager({
 		const resultsData = formatSessionResultsForDisplay(
 			cuecardState.cards,
 			cuecardState.responses,
-			cuecardState.startTime
+			cuecardState.startTime,
+			cuecardState.sessionElapsedTime // Pass session elapsed time from store timer
 		);
 
 		return (
 			<CuecardResultsView
+				sessionId={cuecardState.learningSessionId || undefined}
 				results={resultsData}
 				onNewSession={() => cuecardActions.resetSession()}
+				onClose={handleCloseToFeedback}
 			/>
 		);
 	}
 
-	return null; // Or a loading skeleton
+	if (cuecardState.status === "loading" || cuecardState.isLoading) {
+		return <CuecardSkeleton />;
+	}
+
+	return (
+		<div className="min-h-screen bg-background flex items-center justify-center">
+			<LoadingOverlay message="Initializing cuecard session..." />
+		</div>
+	);
 }

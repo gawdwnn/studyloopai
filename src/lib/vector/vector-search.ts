@@ -206,7 +206,8 @@ export async function searchSimilarChunks(
 
 			return {
 				success: false,
-				error: "Search temporarily unavailable due to rate limits. Please try again later.",
+				error:
+					"Search temporarily unavailable due to rate limits. Please try again later.",
 			};
 		}
 

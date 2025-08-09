@@ -5,9 +5,9 @@ import {
 	type UserCuecard,
 	getUserCuecardsWithAvailability,
 } from "@/lib/actions/cuecard";
-import { useCuecardSession } from "@/stores/cuecard-session/use-cuecard-session";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useCallback } from "react";
+import { useCuecardSession } from "../stores/use-cuecard-session";
 import type { CuecardConfig } from "../types";
 
 interface UseCuecardSessionDataOptions {
@@ -53,7 +53,6 @@ export function useCuecardSessionData({
 	initialData,
 }: UseCuecardSessionDataOptions): CuecardSessionData {
 	const queryKey = ["cuecards", "session-data", courseId, weekIds];
-	const queryClient = useQueryClient();
 
 	const {
 		data: result,
@@ -84,25 +83,6 @@ export function useCuecardSessionData({
 		gcTime: 5 * 60 * 1000, // 5 minutes
 	});
 
-	// Simplified prefetching - only prefetch when user is likely to need other weeks
-	useEffect(() => {
-		if (
-			courseId &&
-			result?.availability?.availableWeeks &&
-			weekIds.length === 0
-		) {
-			// Only prefetch when viewing "all-weeks" - user likely to switch to specific weeks
-			for (const week of result.availability.availableWeeks.slice(0, 3)) {
-				// Limit to first 3 weeks
-				queryClient.prefetchQuery({
-					queryKey: ["cuecards", "session-data", courseId, [week.id]],
-					queryFn: () => getUserCuecardsWithAvailability(courseId, [week.id]),
-					staleTime: 5 * 60 * 1000, // 5 minutes
-				});
-			}
-		}
-	}, [courseId, result?.availability?.availableWeeks, weekIds, queryClient]);
-
 	// Store actions
 	const cuecardActions = useCuecardSession((state) => state.actions);
 
@@ -113,7 +93,7 @@ export function useCuecardSessionData({
 			}
 
 			// Use pre-loaded data for instant session start
-			await cuecardActions.startSessionWithData(config, result.cards);
+			await cuecardActions.startSession(config, result.cards);
 		},
 		[result?.cards, cuecardActions]
 	);
@@ -142,14 +122,3 @@ export function useCuecardSessionData({
 		error: queryError ? String(queryError) : null,
 	};
 }
-
-// Query key factory for consistent caching
-export const cuecardKeys = {
-	all: ["cuecards"] as const,
-	sessionData: (courseId: string, weekIds: string[]) =>
-		[...cuecardKeys.all, "session-data", courseId, weekIds] as const,
-	availability: (courseId: string, weekIds?: string[]) =>
-		[...cuecardKeys.all, "availability", courseId, weekIds || []] as const,
-	course: (courseId: string) =>
-		[...cuecardKeys.all, "course", courseId] as const,
-};

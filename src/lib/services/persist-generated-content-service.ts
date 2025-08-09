@@ -59,11 +59,19 @@ async function updateFeatureCountsAdmin(
 			throw new Error(`Unknown feature type: ${featureType}`);
 	}
 
+	// Use UPSERT to handle cases where the record doesn't exist yet
+	const upsertData = {
+		course_id: courseId,
+		week_id: weekId,
+		...updateData,
+	};
+
 	const { error } = await admin
 		.from("course_week_features")
-		.update(updateData)
-		.eq("course_id", courseId)
-		.eq("week_id", weekId);
+		.upsert(upsertData, {
+			onConflict: "course_id,week_id",
+			ignoreDuplicates: false,
+		});
 
 	if (error) {
 		throw new Error(`Failed to update feature counts: ${error.message}`);

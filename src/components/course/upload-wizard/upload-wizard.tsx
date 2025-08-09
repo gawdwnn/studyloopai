@@ -24,6 +24,10 @@ import {
 } from "@/lib/services/course-material-service";
 import { createClient } from "@/lib/supabase/client";
 import { logger } from "@/lib/utils/logger";
+import {
+	findWeekById,
+	weekHasMaterials,
+} from "@/lib/utils/upload-wizard-utils";
 import { validateSelectiveGenerationConfig } from "@/lib/validation/generation-config";
 import { useCourseMaterialProcessingStore } from "@/stores/course-material-processing-store";
 import { useUploadWizardStore } from "@/stores/upload-wizard-store";
@@ -68,6 +72,43 @@ const STEP_CONFIG = {
 
 const STEPS = Object.keys(STEP_CONFIG) as Array<keyof typeof STEP_CONFIG>;
 
+/**
+ * Renders button content with appropriate text and icon based on upload state
+ */
+function UploadButtonContent({
+	hasFiles,
+	isUploading,
+	uploadProgress,
+}: {
+	hasFiles: boolean;
+	isUploading: boolean;
+	uploadProgress: number;
+}) {
+	if (isUploading) {
+		return (
+			<>
+				<Loader2 className="h-4 w-4 animate-spin" />
+				<span className="hidden sm:inline">
+					{hasFiles ? `Uploading... ${uploadProgress}%` : "Generating..."}
+				</span>
+				<span className="sm:hidden">
+					{hasFiles ? `${uploadProgress}%` : "Gen..."}
+				</span>
+			</>
+		);
+	}
+
+	return (
+		<>
+			<Upload className="h-4 w-4" />
+			<span className="hidden sm:inline">
+				{hasFiles ? "Upload & Generate" : "Generate with Existing Materials"}
+			</span>
+			<span className="sm:hidden">{hasFiles ? "Upload" : "Generate"}</span>
+		</>
+	);
+}
+
 export function UploadWizard({ courses, onUploadSuccess }: UploadWizardProps) {
 	const [isOpen, setIsOpen] = useState(false);
 
@@ -90,7 +131,7 @@ export function UploadWizard({ courses, onUploadSuccess }: UploadWizardProps) {
 
 	const { setBatchProcessingJob } = useCourseMaterialProcessingStore();
 
-	const { data: courseWeeks = [] } = useQuery({
+	const { data: courseWeeks = [], isLoading: isLoadingCourseWeeks } = useQuery({
 		queryKey: ["course-weeks", selectedCourseId],
 		queryFn: () => getCourseWeeks(selectedCourseId),
 		enabled: !!selectedCourseId,
@@ -117,10 +158,76 @@ export function UploadWizard({ courses, onUploadSuccess }: UploadWizardProps) {
 		}
 
 		setIsUploading(true);
-		const supabase = createClient();
-		const uploadedMaterialIds: string[] = [];
 
 		try {
+			// If no files to upload, check if we can use existing materials
+			if (files.length === 0) {
+				const selectedWeek = findWeekById(courseWeeks, selectedWeekId);
+
+				if (!weekHasMaterials(selectedWeek)) {
+					toast.error(
+						"No files selected and no existing materials found for this week"
+					);
+					return;
+				}
+
+				const featureTypes = Object.keys(
+					selectiveConfig.selectedFeatures
+				).filter(
+					(key) =>
+						selectiveConfig.selectedFeatures[
+							key as keyof typeof selectiveConfig.selectedFeatures
+						]
+				) as Array<keyof typeof selectiveConfig.selectedFeatures>;
+
+				if (featureTypes.length === 0) {
+					toast.error("Please select at least one feature to generate");
+					return;
+				}
+
+				// Use on-demand generation API for existing materials
+				const response = await fetch("/api/generation/trigger", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					credentials: "include",
+					body: JSON.stringify({
+						courseId: selectedCourseId,
+						weekId: selectedWeekId,
+						featureTypes,
+						config: selectiveConfig,
+						configSource: "course_week_override",
+					}),
+				});
+
+				if (!response.ok) {
+					const errorData = await response
+						.json()
+						.catch(() => ({ error: "Generation failed" }));
+					throw new Error(errorData.error || "Failed to start generation");
+				}
+
+				const result = await response.json();
+
+				// Store processing job information for real-time tracking
+				setBatchProcessingJob([], {
+					runId: result.runId,
+					publicAccessToken: result.publicAccessToken,
+					weekId: selectedWeekId,
+					courseId: selectedCourseId,
+				});
+
+				toast.success(
+					"Content generation started using existing materials. Processing will continue in background."
+				);
+				setIsOpen(false);
+				onUploadSuccess();
+				return;
+			}
+
+			// Standard file upload flow
+			const supabase = createClient();
+			const uploadedMaterialIds: string[] = [];
+
 			// Upload files one by one
 			for (let i = 0; i < files.length; i++) {
 				const uploadFile = files[i];
@@ -305,7 +412,7 @@ export function UploadWizard({ courses, onUploadSuccess }: UploadWizardProps) {
 						{currentStepIndex > 0 && !isUploading && (
 							<Button
 								variant="outline"
-								onClick={goToPrevious}
+								onClick={() => goToPrevious(courseWeeks)}
 								className="gap-2 w-full sm:w-auto"
 							>
 								<ChevronLeft className="h-4 w-4" />
@@ -331,30 +438,24 @@ export function UploadWizard({ courses, onUploadSuccess }: UploadWizardProps) {
 								disabled={isUploading}
 								className="gap-2 flex-1 sm:flex-none"
 							>
-								{isUploading ? (
-									<>
-										<Loader2 className="h-4 w-4 animate-spin" />
-										<span className="hidden sm:inline">
-											Uploading... {uploadProgress}%
-										</span>
-										<span className="sm:hidden">{uploadProgress}%</span>
-									</>
-								) : (
-									<>
-										<Upload className="h-4 w-4" />
-										<span className="hidden sm:inline">Upload & Generate</span>
-										<span className="sm:hidden">Upload</span>
-									</>
-								)}
+								<UploadButtonContent
+									hasFiles={files.length > 0}
+									isUploading={isUploading}
+									uploadProgress={uploadProgress}
+								/>
 							</Button>
 						) : (
 							<Button
-								onClick={proceedToNext}
-								disabled={!canProceedToNext()}
+								onClick={() => proceedToNext(courseWeeks)}
+								disabled={!canProceedToNext(courseWeeks, isLoadingCourseWeeks)}
 								className="gap-2 flex-1 sm:flex-none"
 							>
-								<span className="hidden sm:inline">Next</span>
-								<span className="sm:hidden">Next</span>
+								<span className="hidden sm:inline">
+									{isLoadingCourseWeeks ? "Loading..." : "Next"}
+								</span>
+								<span className="sm:hidden">
+									{isLoadingCourseWeeks ? "Loading..." : "Next"}
+								</span>
 								<ChevronRight className="h-4 w-4" />
 							</Button>
 						)}
