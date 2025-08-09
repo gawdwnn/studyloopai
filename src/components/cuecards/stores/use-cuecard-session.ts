@@ -171,7 +171,7 @@ const useCuecardSession = create<CuecardSessionStore>()(
 							{ error },
 							"Failed to start cuecard session with data"
 						);
-						
+
 						set({
 							isLoading: false,
 							status: "failed",

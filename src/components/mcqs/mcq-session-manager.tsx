@@ -45,7 +45,7 @@ export function McqSessionManager({
 	initialData,
 }: MCQSessionManagerProps) {
 	const router = useRouter();
-	
+
 	// Use shallow equality check to prevent unnecessary re-renders
 	const mcqState = useMcqSession(
 		useShallow((s) => ({
@@ -109,7 +109,7 @@ export function McqSessionManager({
 						const queryKey = query.queryKey;
 						return (
 							queryKey.includes("cuecards") ||
-							queryKey.includes("mcq") || 
+							queryKey.includes("mcq") ||
 							queryKey.includes("session-data") ||
 							queryKey.includes("feature-availability") ||
 							queryKey.includes("course-weeks")
@@ -168,7 +168,7 @@ export function McqSessionManager({
 		} else {
 			router.push("/dashboard/feedback");
 		}
-		
+
 		// Reset session after navigation
 		mcqActions.resetSession();
 	}, [router, mcqActions, mcqState.learningSessionId]);
@@ -264,48 +264,17 @@ export function McqSessionManager({
 	}
 
 	if (isCompletedState(mcqState.status)) {
-		// Helper function to format time from milliseconds
-		const formatTime = (timeMs: number): string => {
-			const minutes = Math.floor(timeMs / 60000);
-			const seconds = Math.floor((timeMs % 60000) / 1000);
-			return `${minutes}:${seconds.toString().padStart(2, "0")}`;
-		};
-
-		// Transform questions for fallback display
-		const transformedQuestions = mcqState.questions.map((question) => {
-			const answer = mcqState.progress.answers.find(
-				(a) => a.questionId === question.id
-			);
-			const userAnswerText = answer?.selectedAnswer
-				? question.options[Number.parseInt(answer.selectedAnswer)] || null
-				: null;
-			const correctAnswerText =
-				question.options[Number.parseInt(question.correctAnswer)];
-
-			return {
-				question: question.question,
-				time: answer ? `${Math.floor(answer.timeSpent / 1000)}s` : "0s",
-				correct: answer?.isCorrect || false,
-				userAnswer: userAnswerText,
-				correctAnswer: correctAnswerText,
-				options: question.options,
-				explanation: question.explanation,
-			};
-		});
-
-		const formattedTime = formatTime(mcqState.progress.timeSpent);
+		// Ensure sessionId exists before showing results
+		if (!mcqState.learningSessionId) {
+			console.error("No session ID available for results view");
+			toast.error("Session data not available. Please restart the session.");
+			handleResetSession();
+			return null;
+		}
 
 		return (
 			<McqResultsView
-				sessionId={mcqState.learningSessionId || undefined}
-				results={{
-					score: Math.round(mcqState.performance.accuracy),
-					skipped: mcqState.progress.skippedQuestions,
-					totalTime: formattedTime,
-					timeOnExercise: formattedTime,
-					avgPerExercise: `${Math.floor(mcqState.progress.averageTimePerQuestion / 1000)}s`,
-					questions: transformedQuestions,
-				}}
+				sessionId={mcqState.learningSessionId}
 				onRestart={handleResetSession}
 				onClose={handleCloseToFeedback}
 			/>

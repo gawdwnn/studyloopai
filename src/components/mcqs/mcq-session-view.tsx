@@ -41,14 +41,20 @@ function QuestionView({
 	const [isSkippingQuestion, setIsSkippingQuestion] = useState(false);
 
 	const handleSelectAnswer = async (option: string) => {
-		if (selectedAnswer !== null || isSkipped || isSubmittingAnswer || isSkippingQuestion) return; // Already answered, skipped, or processing
+		if (
+			selectedAnswer !== null ||
+			isSkipped ||
+			isSubmittingAnswer ||
+			isSkippingQuestion
+		)
+			return; // Already answered, skipped, or processing
 
 		setSelectedAnswer(option);
 		setIsSubmittingAnswer(true);
-		
+
 		try {
 			// Small delay to show loading feedback
-			await new Promise(resolve => setTimeout(resolve, 300));
+			await new Promise((resolve) => setTimeout(resolve, 300));
 			await onAnswer(option);
 		} finally {
 			setIsSubmittingAnswer(false);
@@ -56,13 +62,19 @@ function QuestionView({
 	};
 
 	const handleSkip = async () => {
-		if (selectedAnswer !== null || isSkipped || isSubmittingAnswer || isSkippingQuestion) return; // Already answered, skipped, or processing
+		if (
+			selectedAnswer !== null ||
+			isSkipped ||
+			isSubmittingAnswer ||
+			isSkippingQuestion
+		)
+			return; // Already answered, skipped, or processing
 
 		setIsSkippingQuestion(true);
-		
+
 		try {
 			// Small delay to show loading feedback
-			await new Promise(resolve => setTimeout(resolve, 300));
+			await new Promise((resolve) => setTimeout(resolve, 300));
 			setIsSkipped(true);
 			await onSkip();
 		} finally {
@@ -108,7 +120,10 @@ function QuestionView({
 							onClick={() => handleSelectAnswer(option)}
 							className={cn(
 								"p-6 w-full h-auto text-left transition-all text-lg justify-start min-h-[4rem] items-start",
-								selectedAnswer === null && !isSkipped && !isSubmittingAnswer && !isSkippingQuestion
+								selectedAnswer === null &&
+									!isSkipped &&
+									!isSubmittingAnswer &&
+									!isSkippingQuestion
 									? "hover:bg-muted/50 hover:border-primary/50"
 									: "pointer-events-none",
 								// Visual feedback for selected and correct answers
@@ -180,14 +195,23 @@ function QuestionView({
 				{/* Next/Finish Button */}
 				<LoadingButton
 					onClick={handleNextQuestion}
-					disabled={(selectedAnswer === null && !isSkipped) || isSubmittingAnswer || isSkippingQuestion}
-					isLoading={(isEndingSession && questionIndex >= totalQuestions - 1) || isSubmittingAnswer}
-					loadingText={isSubmittingAnswer ? "Submitting..." : "Ending session..."}
+					disabled={
+						(selectedAnswer === null && !isSkipped) ||
+						isSubmittingAnswer ||
+						isSkippingQuestion
+					}
+					isLoading={
+						(isEndingSession && questionIndex >= totalQuestions - 1) ||
+						isSubmittingAnswer
+					}
+					loadingText={
+						isSubmittingAnswer ? "Submitting..." : "Ending session..."
+					}
 					size="lg"
 					className="w-full px-8 py-4 text-lg font-semibold"
 					variant={selectedAnswer !== null || isSkipped ? "default" : "outline"}
 				>
-					{isSubmittingAnswer 
+					{isSubmittingAnswer
 						? "Submitting..."
 						: selectedAnswer !== null || isSkipped
 							? questionIndex < totalQuestions - 1

@@ -124,7 +124,7 @@ export interface McqSessionActions extends TimerActions {
 		questionId: string,
 		timeSpent?: number // Optional - timer will provide it
 	) => Promise<void>;
-	
+
 	// Generation support
 	triggerGeneration: (
 		courseId: string,

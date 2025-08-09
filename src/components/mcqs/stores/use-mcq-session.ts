@@ -51,7 +51,7 @@ const useMcqSession = create<McqSessionStore>()(
 						// Use pre-loaded data - no database fetch needed
 						if (preLoadedMCQs.length === 0) {
 							set({
-									isLoading: false,
+								isLoading: false,
 								status: "needs_generation",
 							});
 							return;

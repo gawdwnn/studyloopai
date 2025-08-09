@@ -90,7 +90,7 @@ export function CuecardSessionManager({
 						const queryKey = query.queryKey;
 						return (
 							queryKey.includes("cuecards") ||
-							queryKey.includes("mcq") || 
+							queryKey.includes("mcq") ||
 							queryKey.includes("session-data") ||
 							queryKey.includes("feature-availability") ||
 							queryKey.includes("course-weeks")

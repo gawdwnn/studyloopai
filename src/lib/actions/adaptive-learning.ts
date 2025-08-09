@@ -490,3 +490,92 @@ export async function getSessionResults(sessionId: string) {
 		null
 	);
 }
+
+/**
+ * Get complete session results with question details for MCQ sessions
+ * Includes full question data with options, explanations, and user responses
+ */
+export async function getSessionResultsWithQuestions(sessionId: string) {
+	// Validate input parameters
+	if (!sessionId?.trim()) {
+		throw new Error("Session ID is required");
+	}
+
+	return await withErrorHandling(
+		async () => {
+			const {
+				data: { user },
+			} = await (await getServerClient()).auth.getUser();
+
+			if (!user) {
+				throw new Error("Authentication required");
+			}
+
+			// Get basic session results first
+			const sessionData = await getSessionResults(sessionId);
+			if (!sessionData) {
+				return null;
+			}
+
+			// Get unique content IDs from responses
+			const contentIds = [
+				...new Set(sessionData.responses.map((r) => r.contentId)),
+			];
+
+			if (contentIds.length === 0) {
+				// Return session data without questions if no responses
+				return {
+					...sessionData,
+					questions: [],
+				};
+			}
+
+			// Import database modules for server-side query
+			const { multipleChoiceQuestions } = await import("@/db/schema");
+			const { inArray } = await import("drizzle-orm");
+
+			// Fetch question details from database
+			const questionsFromDb = await db.query.multipleChoiceQuestions.findMany({
+				where: inArray(multipleChoiceQuestions.id, contentIds),
+			});
+
+			// Transform questions with user responses
+			const questions = questionsFromDb.map((question) => {
+				const response = sessionData.responses.find(
+					(r) => r.contentId === question.id
+				);
+				const userAnswerIndex =
+					response?.responseData &&
+					typeof response.responseData === "object" &&
+					response.responseData !== null &&
+					"selectedAnswer" in response.responseData
+						? Number.parseInt(response.responseData.selectedAnswer as string)
+						: null;
+				const userAnswer =
+					userAnswerIndex !== null ? question.options[userAnswerIndex] : null;
+				const correctAnswer =
+					question.options[Number.parseInt(question.correctAnswer)];
+
+				return {
+					question: question.question,
+					time: response
+						? `${Math.floor(response.responseTime / 1000)}s`
+						: "0s",
+					correct: response?.isCorrect || false,
+					userAnswer,
+					correctAnswer,
+					options: question.options,
+					explanation: question.explanation || undefined,
+				};
+			});
+
+			// Return combined data
+			return {
+				...sessionData,
+				questions,
+			};
+		},
+		"getSessionResultsWithQuestions",
+		null
+	);
+}

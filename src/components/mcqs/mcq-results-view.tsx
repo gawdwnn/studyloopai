@@ -9,8 +9,10 @@ import {
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { formatMmSs } from "@/lib/utils/time-formatter";
+import { useQuery } from "@tanstack/react-query";
 import { CheckCircle2, SparklesIcon, X, XCircle } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import { toast } from "sonner";
 
@@ -31,97 +33,55 @@ interface McqResultsData {
 	}>;
 }
 
-// Get theme-aware colors from CSS variables
-const getChartColors = () => {
-	if (typeof window === "undefined") {
-		// SSR fallback colors
-		return ["#3b82f6", "#e5e7eb"];
-	}
-
-	const style = getComputedStyle(document.documentElement);
-	return [
-		style.getPropertyValue("--color-chart-1") ||
-			style.getPropertyValue("--color-primary") ||
-			"#3b82f6",
-		style.getPropertyValue("--color-muted") || "#e5e7eb",
-	];
-};
-
 type McqResultsViewProps = {
-	sessionId?: string; // Fetch results from database if provided
-	results?: McqResultsData; // Fallback data if sessionId not available
+	sessionId: string; // Always fetch results from database
 	onRestart: () => void;
 	onClose: () => void; // Handle navigation to feedback page
 };
 
 export function McqResultsView({
 	sessionId,
-	results: fallbackResults,
 	onRestart,
 	onClose,
 }: McqResultsViewProps) {
 	const [openItems, setOpenItems] = useState<string[]>([]);
-	const [results, setResults] = useState<McqResultsData | null>(null);
-	const [isLoading, setIsLoading] = useState(!!sessionId);
 
-	// Fetch results from database if sessionId is provided
-	useEffect(() => {
-		if (!sessionId) {
-			setResults(fallbackResults || null);
-			setIsLoading(false);
-			return;
-		}
+	const {
+		data: sessionData,
+		isLoading,
+		error,
+		refetch,
+	} = useQuery({
+		queryKey: ["session-results", sessionId],
+		queryFn: async () => {
+			const { getSessionResultsWithQuestions } = await import(
+				"@/lib/actions/adaptive-learning"
+			);
+			return await getSessionResultsWithQuestions(sessionId);
+		},
+		retry: 2,
+		staleTime: 5 * 60 * 1000, // 5 minutes
+	});
 
-		const fetchSessionResults = async () => {
-			try {
-				setIsLoading(true);
-				const { getSessionResults } = await import(
-					"@/lib/actions/adaptive-learning"
-				);
-				const sessionData = await getSessionResults(sessionId);
+	// Show error toast when query fails
+	if (error) {
+		toast.error("Failed to load session results. Please try again.");
+	}
 
-				if (!sessionData) {
-					throw new Error("Failed to fetch session results");
-				}
-
-				// Transform database results to match McqResultsData format
-				const transformedResults: McqResultsData = {
-					score: sessionData.accuracy,
-					skipped:
-						sessionData.totalResponses -
-						sessionData.correctResponses -
-						sessionData.incorrectResponses,
-					totalTime: formatTime(sessionData.totalTime),
-					timeOnExercise: formatTime(sessionData.totalTime),
-					avgPerExercise: `${Math.round(sessionData.averageResponseTime / 1000)}s`,
-					questions: [], // We would need to fetch question details separately
-				};
-
-				setResults(transformedResults);
-			} catch (err) {
-				console.error("Failed to fetch session results:", err);
-
-				// Show user error
-				toast.error(
-					"Failed to load session results. Using cached data if available."
-				);
-
-				// Fall back to cached results if available
-				setResults(fallbackResults || null);
-			} finally {
-				setIsLoading(false);
+	// Transform session data to results format
+	const results: McqResultsData | null = sessionData
+		? {
+				score: sessionData.accuracy,
+				skipped:
+					sessionData.totalResponses -
+					sessionData.correctResponses -
+					sessionData.incorrectResponses,
+				totalTime: formatMmSs(sessionData.totalTime),
+				timeOnExercise: formatMmSs(sessionData.totalTime),
+				avgPerExercise: `${Math.round(sessionData.averageResponseTime / 1000)}s`,
+				questions: sessionData.questions,
 			}
-		};
-
-		fetchSessionResults();
-	}, [sessionId, fallbackResults]);
-
-	// Helper function to format time from milliseconds
-	const formatTime = (timeMs: number): string => {
-		const minutes = Math.floor(timeMs / 60000);
-		const seconds = Math.floor((timeMs % 60000) / 1000);
-		return `${minutes}:${seconds.toString().padStart(2, "0")}`;
-	};
+		: null;
 
 	// Show loading state
 	if (isLoading) {
@@ -135,8 +95,32 @@ export function McqResultsView({
 		);
 	}
 
-	// No results available
-	if (!results) {
+	// Error state
+	if (error && !isLoading) {
+		return (
+			<div className="flex items-center justify-center min-h-96">
+				<div className="text-center">
+					<SparklesIcon className="h-8 w-8 text-muted-foreground mx-auto mb-4" />
+					<h3 className="text-lg font-semibold mb-2">Failed to Load Results</h3>
+					<p className="text-muted-foreground mb-4">
+						Unable to load session results. Please try again.
+					</p>
+					<div className="space-x-2">
+						<Button onClick={() => refetch()}>Retry</Button>
+						<Button variant="outline" onClick={onRestart}>
+							Start New Session
+						</Button>
+						<Button variant="outline" onClick={onClose}>
+							Continue
+						</Button>
+					</div>
+				</div>
+			</div>
+		);
+	}
+
+	// No results available (shouldn't happen if query succeeds)
+	if (!results && !isLoading) {
 		return (
 			<div className="flex items-center justify-center min-h-96">
 				<div className="text-center">
@@ -156,8 +140,12 @@ export function McqResultsView({
 		);
 	}
 
-	// Create chart data from results with theme-aware colors
-	const chartColors = getChartColors();
+	// Guard clause - this shouldn't happen due to earlier checks, but TypeScript needs it
+	if (!results) {
+		return null;
+	}
+
+	// Create chart data from results
 	const chartData = [
 		{ name: "Correct", value: results.score },
 		{ name: "Incorrect", value: 100 - results.score },
@@ -203,15 +191,8 @@ export function McqResultsView({
 
 			<div className="container mx-auto px-4 py-8">
 				<div className="max-w-6xl mx-auto">
-					{/* Header */}
-					<div className="text-center mb-12">
-						<h1 className="text-4xl font-bold mb-4">Session Complete! 🎉</h1>
-						<p className="text-xl text-muted-foreground">
-							Great work! Here's how you performed.
-						</p>
-					</div>
 					{/* Performance Overview */}
-					<div className="bg-card rounded-2xl p-8 border mb-12">
+					<div className="bg-card rounded-2xl p-8 border mb-12 mt-12">
 						<div className="grid md:grid-cols-3 gap-8 items-center">
 							<div className="text-center md:text-left">
 								<p className="text-2xl font-bold mb-2">
@@ -241,7 +222,9 @@ export function McqResultsView({
 												{chartData.map((entry, index) => (
 													<Cell
 														key={`cell-${entry.name}`}
-														fill={chartColors[index % chartColors.length]}
+														fill={
+															index === 0 ? "var(--chart-1)" : "var(--chart-2)"
+														}
 													/>
 												))}
 											</Pie>
