@@ -5,10 +5,10 @@ import {
 	type UserMCQ,
 	getUserMCQsWithAvailability,
 } from "@/lib/actions/mcq";
-import type { McqConfig } from "@/stores/mcq-session/types";
-import { useMcqSession } from "@/stores/mcq-session/use-mcq-session";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useCallback } from "react";
+import type { McqConfig } from "../stores/types";
+import { useMcqSession } from "../stores/use-mcq-session";
 
 interface UseMCQSessionDataOptions {
 	courseId?: string;
@@ -54,7 +54,6 @@ export function useMCQSessionData({
 	initialData,
 }: UseMCQSessionDataOptions): MCQSessionData {
 	const queryKey = ["mcq", "session-data", courseId, weekIds];
-	const queryClient = useQueryClient();
 
 	const {
 		data: result,
@@ -85,25 +84,6 @@ export function useMCQSessionData({
 		gcTime: 5 * 60 * 1000, // 5 minutes
 	});
 
-	// Simplified prefetching - only prefetch when user is likely to need other weeks
-	useEffect(() => {
-		if (
-			courseId &&
-			result?.availability?.availableWeeks &&
-			weekIds.length === 0
-		) {
-			// Only prefetch when viewing "all-weeks" - user likely to switch to specific weeks
-			for (const week of result.availability.availableWeeks.slice(0, 3)) {
-				// Limit to first 3 weeks
-				queryClient.prefetchQuery({
-					queryKey: ["mcq", "session-data", courseId, [week.id]],
-					queryFn: () => getUserMCQsWithAvailability(courseId, [week.id]),
-					staleTime: 5 * 60 * 1000, // 5 minutes
-				});
-			}
-		}
-	}, [courseId, result?.availability?.availableWeeks, weekIds, queryClient]);
-
 	// Store actions
 	const mcqActions = useMcqSession((state) => state.actions);
 
@@ -114,7 +94,7 @@ export function useMCQSessionData({
 			}
 
 			// Use pre-loaded data for instant session start
-			await mcqActions.startSessionWithData(config, result.mcqs);
+			await mcqActions.startSession(config, result.mcqs);
 		},
 		[result?.mcqs, mcqActions]
 	);
@@ -144,17 +124,3 @@ export function useMCQSessionData({
 		error: queryError ? String(queryError) : null,
 	};
 }
-
-// Query key factory for consistent caching
-export const mcqKeys = {
-	all: ["mcq"] as const,
-	sessionData: (courseId: string, weekIds: string[]) =>
-		[...mcqKeys.all, "session-data", courseId, weekIds] as const,
-	sessionDataOptimized: (courseId: string, weekIds: string[]) =>
-		[...mcqKeys.all, "session-data-optimized", courseId, weekIds] as const,
-	availability: (courseId: string, weekIds?: string[]) =>
-		[...mcqKeys.all, "availability", courseId, weekIds || []] as const,
-	difficulty: (courseId: string, weekIds: string[], difficulty: string) =>
-		[...mcqKeys.all, "difficulty", courseId, weekIds, difficulty] as const,
-	course: (courseId: string) => [...mcqKeys.all, "course", courseId] as const,
-};

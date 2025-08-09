@@ -1,5 +1,10 @@
 "use client";
 
+import {
+	GeneratingButton,
+	LoadingButton,
+	StartingButton,
+} from "@/components/adaptive-loading-button";
 import { SelectiveGenerationSettings } from "@/components/course/selective-generation-settings";
 import { FullscreenButton } from "@/components/fullscreen-button";
 import { OnDemandGenerationProgress } from "@/components/on-demand-generation-progress";
@@ -30,7 +35,6 @@ import { useCourseWeeks } from "@/hooks/use-course-week";
 import { useFeatureAvailability } from "@/hooks/use-feature-availability";
 import { useQueryState } from "@/hooks/use-query-state";
 import { logger } from "@/lib/utils/logger";
-import type { McqConfig } from "@/stores/mcq-session/types";
 import { getDefaultMcqsConfig } from "@/types/generation-types";
 import {
 	AlertTriangle,
@@ -44,6 +48,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useMCQSessionData } from "./hooks/use-mcq-session-data";
+import type { McqConfig } from "./stores/types";
 
 import type { MCQAvailability, UserMCQ } from "@/lib/actions/mcq";
 import type { Course, CourseWeek } from "@/types/database-types";
@@ -208,10 +213,6 @@ export function McqSessionSetup({
 					const config: McqConfig = {
 						courseId: selectedCourse,
 						weeks: isAllWeeksSelected ? [] : [selectedWeek],
-						numQuestions: 10,
-						difficulty: "mixed",
-						focus: "comprehensive",
-						practiceMode: "practice",
 					};
 					try {
 						await existingMCQsData.startSessionInstantly(config);
@@ -283,15 +284,30 @@ export function McqSessionSetup({
 
 		const actionConfig = stateActionConfigs[mcqUIState];
 		if (actionConfig.canExecute) {
-			await actionConfig.action();
+			// Set loading state for better UX
+			if (mcqUIState === "ready-to-start") {
+				setIsStarting(true);
+			}
+
+			try {
+				await actionConfig.action();
+			} finally {
+				if (mcqUIState === "ready-to-start") {
+					setIsStarting(false);
+				}
+			}
 		}
 	};
 
-	// State-based button configuration using computed UI state
+	// Session starting state for better UX
+	const [isStarting, setIsStarting] = useState(false);
+
+	// Enhanced state-based button configuration
 	const buttonState = useMemo(() => {
 		// Override state during generation
 		if (showGenerationProgress) {
 			return {
+				type: "generating" as const,
 				disabled: true,
 				text: "Generating...",
 				icon: <Loader2 className="mr-2 h-4 w-4 animate-spin" />,
@@ -303,6 +319,7 @@ export function McqSessionSetup({
 		switch (mcqUIState) {
 			case "loading":
 				return {
+					type: "loading" as const,
 					disabled: true,
 					text: selectedCourse ? "Checking Content..." : "Select a Course",
 					icon: selectedCourse ? (
@@ -312,6 +329,7 @@ export function McqSessionSetup({
 				};
 			case "ready-to-start":
 				return {
+					type: "start" as const,
 					disabled: false,
 					text: "Start Session",
 					icon: <PlayCircle className="mr-2 h-4 w-4" />,
@@ -319,6 +337,7 @@ export function McqSessionSetup({
 				};
 			case "can-generate":
 				return {
+					type: "generate" as const,
 					disabled: false,
 					text: "Generate & Start Session",
 					icon: <Sparkles className="mr-2 h-4 w-4" />,
@@ -326,24 +345,28 @@ export function McqSessionSetup({
 				};
 			case "needs-materials":
 				return {
+					type: "disabled" as const,
 					disabled: true,
 					text: "Upload Course Materials First",
 					variant: "secondary" as const,
 				};
 			case "needs-specific-week":
 				return {
+					type: "disabled" as const,
 					disabled: true,
 					text: "Select Specific Week",
 					variant: "secondary" as const,
 				};
 			case "cannot-generate":
 				return {
+					type: "disabled" as const,
 					disabled: true,
 					text: "Cannot Generate",
 					variant: "secondary" as const,
 				};
 			default:
 				return {
+					type: "disabled" as const,
 					disabled: true,
 					text: "Unknown State",
 					variant: "secondary" as const,
@@ -374,10 +397,10 @@ export function McqSessionSetup({
 				<Button
 					variant="ghost"
 					size="icon"
-					className="bg-background/80 hover:bg-background/90 text-foreground rounded-full border shadow-sm"
+					className="bg-background/80 hover:bg-background/90 dark:bg-background/80 dark:hover:bg-background/90 rounded-full border shadow-sm h-10 w-10"
 					onClick={onClose}
 				>
-					<X className="h-6 w-6" />
+					<X className="h-6 w-6 text-foreground" />
 				</Button>
 			</div>
 
@@ -610,11 +633,13 @@ export function McqSessionSetup({
 								contentType="MCQs"
 							/>
 
-							{buttonState.text.includes("Generate") ? (
+							{/* Render different button types based on action */}
+							{buttonState.type === "generate" ? (
 								<TooltipProvider>
 									<Tooltip>
 										<TooltipTrigger asChild>
-											<Button
+											<GeneratingButton
+												isGenerating={showGenerationProgress}
 												className="w-full h-14 text-lg"
 												onClick={handleStartSession}
 												disabled={buttonState.disabled}
@@ -622,7 +647,7 @@ export function McqSessionSetup({
 											>
 												{buttonState.icon}
 												{buttonState.text}
-											</Button>
+											</GeneratingButton>
 										</TooltipTrigger>
 										<TooltipContent className="max-w-xs">
 											<p>
@@ -633,6 +658,27 @@ export function McqSessionSetup({
 										</TooltipContent>
 									</Tooltip>
 								</TooltipProvider>
+							) : buttonState.type === "start" ? (
+								<StartingButton
+									isStarting={isStarting}
+									className="w-full h-14 text-lg"
+									onClick={handleStartSession}
+									disabled={buttonState.disabled || isStarting}
+									variant={buttonState.variant || "default"}
+								>
+									{buttonState.icon}
+									{buttonState.text}
+								</StartingButton>
+							) : buttonState.type === "loading" ? (
+								<LoadingButton
+									isLoading={true}
+									className="w-full h-14 text-lg"
+									disabled={true}
+									variant={buttonState.variant || "default"}
+									loadingText={buttonState.text}
+								>
+									{buttonState.text}
+								</LoadingButton>
 							) : (
 								<Button
 									className="w-full h-14 text-lg"

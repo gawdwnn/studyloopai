@@ -6,27 +6,28 @@ import { useShallow } from "zustand/react/shallow";
 
 import { env } from "@/env";
 import { createLogger } from "@/lib/utils/logger";
+import { useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 
 const logger = createLogger("mcq:session-manager");
 
 import type { MCQAvailability, UserMCQ } from "@/lib/actions/mcq";
-import type { McqConfig } from "@/stores/mcq-session/types";
-import { useMcqSession } from "@/stores/mcq-session/use-mcq-session";
 import type { Course, CourseWeek } from "@/types/database-types";
 import type { SelectiveGenerationConfig } from "@/types/generation-types";
 import { useRealtimeRun } from "@trigger.dev/react-hooks";
+import { useMcqSession } from "./stores/use-mcq-session";
 
-import { McqQuizView } from "./mcq-quiz-view";
-import { McqResultsView } from "./mcq-results-view";
-import { McqSessionSetup } from "./mcq-session-setup";
-// Import from colocation structure
+import { LoadingOverlay, McqSkeleton } from "@/components/skeleton-patterns";
+// Import shared session state utilities
 import {
-	hasNoContentForWeeks,
 	isActiveState,
 	isCompletedState,
 	isGenerating,
 	isSetupState,
-} from "./utils/session-states";
+} from "@/lib/utils/session-states";
+import { McqResultsView } from "./mcq-results-view";
+import { McqSessionSetup } from "./mcq-session-setup";
+import { McqQuizView } from "./mcq-session-view";
 
 interface MCQSessionManagerProps {
 	courses: Course[];
@@ -43,6 +44,8 @@ export function McqSessionManager({
 	courses,
 	initialData,
 }: MCQSessionManagerProps) {
+	const router = useRouter();
+
 	// Use shallow equality check to prevent unnecessary re-renders
 	const mcqState = useMcqSession(
 		useShallow((s) => ({
@@ -57,13 +60,33 @@ export function McqSessionManager({
 			isLoading: s.isLoading,
 			generationRunId: s.generationRunId,
 			generationToken: s.generationToken,
+			learningSessionId: s.learningSessionId,
 		}))
 	);
 
 	const mcqActions = useMcqSession((state) => state.actions);
+	const queryClient = useQueryClient();
 
 	// Generation progress tracking
 	const [generationInProgress, setGenerationInProgress] = useState(false);
+
+	// End session when user leaves page during active session
+	useEffect(() => {
+		const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+			if (isActiveState(mcqState.status)) {
+				// End session immediately when user tries to leave
+				mcqActions.endSession().catch((error) => {
+					logger.error("Failed to end session on page unload", { error });
+				});
+
+				// Show browser confirmation dialog
+				event.preventDefault();
+			}
+		};
+
+		window.addEventListener("beforeunload", handleBeforeUnload);
+		return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+	}, [mcqState.status, mcqActions]);
 
 	// Real-time run tracking for content generation
 	const { run: realtimeRun, error: realtimeError } = useRealtimeRun(
@@ -80,16 +103,28 @@ export function McqSessionManager({
 		if (realtimeRun) {
 			if (realtimeRun.status === "COMPLETED" && generationInProgress) {
 				setGenerationInProgress(false);
+				// Invalidate content-related queries to ensure UI updates properly
+				queryClient.invalidateQueries({
+					predicate: (query) => {
+						const queryKey = query.queryKey;
+						return (
+							queryKey.includes("cuecards") ||
+							queryKey.includes("mcq") ||
+							queryKey.includes("session-data") ||
+							queryKey.includes("feature-availability") ||
+							queryKey.includes("course-weeks")
+						);
+					},
+				});
+				// Reset the store's generation state to clear loading state
+				mcqActions.resetGenerationState();
 				toast.success("MCQ generation completed successfully!");
-				// Trigger data refetch or update
-				// TODO: Implement refetch mechanism
 			} else if (realtimeRun.status === "FAILED") {
 				setGenerationInProgress(false);
 				toast.error("MCQ generation failed. Please try again.");
-				mcqActions.setError("Generation failed");
 			}
 		}
-	}, [realtimeRun, generationInProgress, mcqActions]);
+	}, [realtimeRun, generationInProgress, mcqActions, queryClient]);
 
 	// Handle real-time errors
 	useEffect(() => {
@@ -99,54 +134,44 @@ export function McqSessionManager({
 		}
 	}, [realtimeError]);
 
-	const _handleStartSession = useCallback(
-		async (config: McqConfig) => {
-			try {
-				// Check if we have pre-loaded data that matches the config
-				const hasMatchingData =
-					initialData?.courseId === config.courseId &&
-					(config.weeks.length === 0 ||
-						(initialData.weekIds.length === 0 && config.weeks.length === 0) ||
-						config.weeks.every((weekId) =>
-							initialData.weekIds.includes(weekId)
-						));
+	const handleEndSession = useCallback(async () => {
+		try {
+			// endSession transitions state to "completed"
+			await mcqActions.endSession();
+			toast.success("MCQ session completed!");
 
-				if (
-					hasMatchingData &&
-					initialData.mcqs &&
-					initialData.mcqs.length > 0
-				) {
-					// Use pre-loaded data pattern - no loading state needed
-					await mcqActions.startSessionWithData(config, initialData.mcqs);
-					toast.success("MCQ session started!");
-				} else {
-					// If no matching data, show error - user should generate content first
-					toast.error(
-						"No MCQs available for this configuration. Please generate content first."
-					);
-					throw new Error("No pre-loaded MCQ data available");
-				}
-			} catch (error) {
-				logger.error("Failed to start MCQ session", {
-					error: error instanceof Error ? error.message : String(error),
-					stack: error instanceof Error ? error.stack : undefined,
-					config,
-					context: { action: "startSession" },
-				});
-				toast.error("Unable to start MCQ session. Please try again.");
-			}
-		},
-		[initialData, mcqActions]
-	);
-
-	const handleEndSession = useCallback(() => {
-		mcqActions.endSession();
-		toast.success("MCQ session ended");
+			// Don't reset or navigate immediately - let the results view show
+			// Navigation will happen when user clicks "Close" or "Start New Session"
+		} catch (error) {
+			logger.error("Failed to end MCQ session", {
+				error: error instanceof Error ? error.message : String(error),
+				context: { action: "handleEndSession" },
+			});
+			toast.error("Failed to end session properly");
+		}
 	}, [mcqActions]);
 
 	const handleResetSession = useCallback(() => {
+		// Reset session state and return to setup
 		mcqActions.resetSession();
 	}, [mcqActions]);
+
+	const handleClose = useCallback(() => {
+		router.push("/dashboard/adaptive-learning");
+		mcqActions.resetSession();
+	}, [router, mcqActions]);
+
+	const handleCloseToFeedback = useCallback(() => {
+		const sessionId = mcqState.learningSessionId;
+		if (sessionId) {
+			router.push(`/dashboard/feedback?sessionId=${sessionId}`);
+		} else {
+			router.push("/dashboard/feedback");
+		}
+
+		// Reset session after navigation
+		mcqActions.resetSession();
+	}, [router, mcqActions, mcqState.learningSessionId]);
 
 	const handleGenerateContent = useCallback(
 		async (
@@ -195,10 +220,7 @@ export function McqSessionManager({
 			<McqSessionSetup
 				courses={courses}
 				initialData={initialData}
-				onClose={() => {
-					// Close handler - could navigate back or reset
-					mcqActions.resetSession();
-				}}
+				onClose={handleClose}
 				showGenerationProgress={
 					isGenerating(mcqState.status) || generationInProgress
 				}
@@ -219,163 +241,55 @@ export function McqSessionManager({
 
 	if (isActiveState(mcqState.status)) {
 		return (
-			<div className="relative flex h-full flex-1 flex-col">
-				<div className="flex-1 overflow-y-auto">
-					<McqQuizView
-						questions={mcqState.questions}
-						config={mcqState.config}
-						onQuestionAnswer={(
-							questionId: string,
-							selectedAnswer: string | null,
-							timeSpent: number
-						) => {
-							mcqActions.submitAnswer(questionId, selectedAnswer, timeSpent);
-						}}
-						onEndSession={(_totalTime: number) => {
-							handleEndSession();
-						}}
-						onClose={handleEndSession}
-					/>
-				</div>
-			</div>
+			<McqQuizView
+				questions={mcqState.questions}
+				config={mcqState.config}
+				onQuestionAnswer={async (
+					questionId: string,
+					selectedAnswer: string | null,
+					timeSpent?: number // Optional - store will provide it
+				) => {
+					await mcqActions.submitAnswer(questionId, selectedAnswer, timeSpent);
+				}}
+				onSkipQuestion={async (
+					questionId: string,
+					timeSpent?: number // Optional - store will provide it
+				) => {
+					await mcqActions.skipQuestion(questionId, timeSpent);
+				}}
+				onEndSession={handleEndSession}
+				onClose={handleEndSession}
+			/>
 		);
 	}
 
 	if (isCompletedState(mcqState.status)) {
-		// Transform the state data to match McqResultsView expected format
-		const resultsData = {
-			score: Math.round(mcqState.performance.accuracy),
-			skipped: mcqState.progress.skippedQuestions,
-			totalTime: `${Math.floor(mcqState.progress.timeSpent / 60000)}:${Math.floor(
-				(mcqState.progress.timeSpent % 60000) / 1000
-			)
-				.toString()
-				.padStart(2, "0")}`,
-			timeOnExercise: `${Math.floor(mcqState.progress.timeSpent / 60000)}:${Math.floor(
-				(mcqState.progress.timeSpent % 60000) / 1000
-			)
-				.toString()
-				.padStart(2, "0")}`,
-			avgPerExercise: `${Math.floor(mcqState.progress.averageTimePerQuestion / 1000)}s`,
-			questions: mcqState.questions.map((question, _index) => {
-				const answer = mcqState.progress.answers.find(
-					(a) => a.questionId === question.id
-				);
-				return {
-					question: question.question,
-					time: answer ? `${Math.floor(answer.timeSpent / 1000)}s` : "0s",
-					correct: answer?.isCorrect || false,
-					userAnswer: answer?.selectedAnswer || null,
-					correctAnswer: question.correctAnswer,
-					options: question.options,
-					explanation: question.explanation,
-				};
-			}),
-		};
+		// Ensure sessionId exists before showing results
+		if (!mcqState.learningSessionId) {
+			console.error("No session ID available for results view");
+			toast.error("Session data not available. Please restart the session.");
+			handleResetSession();
+			return null;
+		}
 
 		return (
-			<McqResultsView results={resultsData} onRestart={handleResetSession} />
+			<McqResultsView
+				sessionId={mcqState.learningSessionId}
+				onRestart={handleResetSession}
+				onClose={handleCloseToFeedback}
+			/>
 		);
 	}
 
 	// Loading states
 	if (mcqState.status === "loading" || mcqState.isLoading) {
-		return (
-			<div className="flex items-center justify-center min-h-[400px]">
-				<div className="text-center">
-					<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
-					<p className="text-lg font-medium mb-2">Loading MCQ session...</p>
-					<p className="text-muted-foreground">Preparing your questions</p>
-				</div>
-			</div>
-		);
-	}
-
-	// Generation in progress
-	if (isGenerating(mcqState.status) || generationInProgress) {
-		return (
-			<div className="flex items-center justify-center min-h-[400px]">
-				<div className="text-center">
-					<div className="animate-pulse rounded-full h-12 w-12 bg-primary/20 mx-auto mb-4 flex items-center justify-center">
-						<div className="w-6 h-6 rounded-full bg-primary animate-bounce" />
-					</div>
-					<p className="text-lg font-medium mb-2">Generating MCQs...</p>
-					<p className="text-muted-foreground">
-						This may take a few minutes. Please wait.
-					</p>
-					{realtimeRun?.status && (
-						<p className="text-sm text-muted-foreground mt-2">
-							Status: {realtimeRun.status}
-						</p>
-					)}
-				</div>
-			</div>
-		);
-	}
-
-	// No content for selected weeks
-	if (hasNoContentForWeeks(mcqState.status)) {
-		return (
-			<div className="flex items-center justify-center min-h-[400px]">
-				<div className="text-center">
-					<div className="rounded-full h-12 w-12 bg-muted mx-auto mb-4 flex items-center justify-center">
-						<span className="text-2xl">📚</span>
-					</div>
-					<p className="text-lg font-medium mb-2">No MCQs Available</p>
-					<p className="text-muted-foreground mb-4">
-						No MCQs found for the selected weeks.
-					</p>
-					<button
-						type="button"
-						onClick={handleResetSession}
-						className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-					>
-						Choose Different Weeks
-					</button>
-				</div>
-			</div>
-		);
-	}
-
-	// Error states
-	if (mcqState.error) {
-		return (
-			<div className="flex items-center justify-center min-h-[400px]">
-				<div className="text-center">
-					<div className="rounded-full h-12 w-12 bg-destructive/10 mx-auto mb-4 flex items-center justify-center">
-						<span className="text-2xl text-destructive">⚠️</span>
-					</div>
-					<p className="text-lg font-medium mb-2 text-destructive">
-						Session Error
-					</p>
-					<p className="text-muted-foreground mb-4">{mcqState.error}</p>
-					<div className="space-x-2">
-						<button
-							type="button"
-							onClick={() => mcqActions.clearError()}
-							className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-						>
-							Try Again
-						</button>
-						<button
-							type="button"
-							onClick={handleResetSession}
-							className="px-4 py-2 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/90"
-						>
-							Start Over
-						</button>
-					</div>
-				</div>
-			</div>
-		);
+		return <McqSkeleton />;
 	}
 
 	// Fallback
 	return (
-		<div className="flex items-center justify-center min-h-[400px]">
-			<div className="text-center">
-				<p className="text-muted-foreground">Initializing MCQ session...</p>
-			</div>
+		<div className="min-h-screen bg-background flex items-center justify-center">
+			<LoadingOverlay message="Initializing MCQ session..." />
 		</div>
 	);
 }

@@ -12,18 +12,26 @@ export interface SessionCard {
 export function formatSessionResultsForDisplay(
 	cards: SessionCard[],
 	responses: SessionResponse[],
-	startTime: Date | null
+	startTime: Date | null,
+	sessionElapsedTime?: number // Optional session elapsed time in milliseconds from store
 ): SessionResults {
 	// Calculate feedback counts
 	const correct = responses.filter((r) => r.feedback === "correct").length;
 	const incorrect = responses.filter((r) => r.feedback === "incorrect").length;
 
-	// Calculate timing - handle invalid/null startTime
+	// Calculate timing - prefer sessionElapsedTime from store, fallback to manual calculation
 	let sessionTime = 0;
 	let sessionTimeString = "0 min";
 	let avgTime = 0;
 
-	if (startTime && responses.length > 0) {
+	if (sessionElapsedTime && responses.length > 0) {
+		// Use store timer (preferred method)
+		const timeDiffMinutes = Math.round(sessionElapsedTime / 60000); // Convert ms to minutes
+		sessionTime = timeDiffMinutes;
+		sessionTimeString = sessionTime < 1 ? "< 1 min" : `${sessionTime} min`;
+		avgTime = Math.round(sessionElapsedTime / responses.length / 1000); // Average per card in seconds
+	} else if (startTime && responses.length > 0) {
+		// Fallback to manual calculation
 		const now = new Date();
 		const timeDiff = Math.abs(differenceInMinutes(now, startTime));
 

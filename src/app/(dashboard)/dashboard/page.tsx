@@ -1,6 +1,8 @@
 import { getAllUserMaterials, getUserCourses } from "@/lib/actions/courses";
+import { Suspense } from "react";
 
 import { CreateCourseWrapper } from "@/components/course/create-course-wrapper";
+import { DashboardLoadingSkeleton } from "@/components/dashboard/dashboard-loading-skeleton";
 import { DashboardStats } from "@/components/dashboard/dashboard-stats";
 import { WelcomeScreen } from "@/components/dashboard/welcome-screen";
 import { PageHeading } from "@/components/page-heading";
@@ -11,7 +13,8 @@ export const metadata = {
 	description: "Manage your courses and track your learning progress.",
 };
 
-export default async function DashboardPage() {
+// Separate component for dashboard content that requires data
+async function DashboardContent() {
 	// Fetch data server-side
 	const [courses, materials] = await Promise.all([
 		getUserCourses(),
@@ -51,5 +54,13 @@ export default async function DashboardPage() {
 				<DashboardClient initialCourses={courses} />
 			</div>
 		</div>
+	);
+}
+
+export default function DashboardPage() {
+	return (
+		<Suspense fallback={<DashboardLoadingSkeleton />}>
+			<DashboardContent />
+		</Suspense>
 	);
 }

@@ -1,13 +1,18 @@
 "use client";
 
+import { LoadingButton } from "@/components/adaptive-loading-button";
 import { FullscreenButton } from "@/components/fullscreen-button";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import {
+	useCuecardItemTimer,
+	useCuecardSessionTimer,
+} from "@/hooks/use-store-timer";
 import type { UserCuecard } from "@/lib/actions/cuecard";
-import type { CuecardFeedback } from "@/stores/cuecard-session/types";
 import { X } from "lucide-react";
 import { useState } from "react";
+import type { CuecardFeedback } from "./stores/types";
 
 interface CuecardDisplayProps {
 	card: UserCuecard;
@@ -30,16 +35,30 @@ export function CuecardDisplay({
 	const [viewMode, setViewMode] = useState<"answer" | "question">("answer");
 	const [showUserInput, setShowUserInput] = useState(false);
 	const [userAnswer, setUserAnswer] = useState("");
+	const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
+
+	// Use store-based timers for live updates
+	const sessionTimer = useCuecardSessionTimer();
+	const itemTimer = useCuecardItemTimer();
 
 	const handleShowAnswer = () => {
 		setShowAnswer(true);
 	};
 
-	const handleFeedback = (feedback: CuecardFeedback) => {
-		onFeedback(feedback);
-		setShowAnswer(false);
-		setViewMode("answer");
-		setUserAnswer("");
+	const handleFeedback = async (feedback: CuecardFeedback) => {
+		setIsSubmittingFeedback(true);
+
+		try {
+			onFeedback(feedback);
+			// Small delay to show loading feedback
+			await new Promise((resolve) => setTimeout(resolve, 300));
+		} finally {
+			// Reset state for next card
+			setShowAnswer(false);
+			setViewMode("answer");
+			setUserAnswer("");
+			setIsSubmittingFeedback(false);
+		}
 	};
 
 	return (
@@ -49,22 +68,42 @@ export function CuecardDisplay({
 				<Button
 					variant="ghost"
 					size="icon"
-					className="bg-gray-100 hover:bg-gray-200 rounded-full"
+					className="bg-background/80 hover:bg-background/90 dark:bg-background/80 dark:hover:bg-background/90 rounded-full border shadow-sm h-10 w-10"
 					onClick={onClose}
 				>
-					<X className="h-6 w-6 text-gray-600" />
+					<X className="h-6 w-6 text-foreground" />
 				</Button>
 			</div>
 
 			<div className="container mx-auto px-4 py-8">
 				<div className="max-w-4xl mx-auto">
-					{/* Progress Header */}
+					{/* Progress Header with Timer */}
 					<div className="flex justify-between items-center mb-12">
-						<div className="text-lg font-medium text-muted-foreground">
-							{weekInfo}
+						<div className="text-center">
+							<div className="text-sm text-muted-foreground mb-1">
+								Session Time
+							</div>
+							<div className="text-lg font-mono bg-muted px-3 py-1 rounded-lg">
+								{sessionTimer.shortFormattedSessionTime}
+							</div>
 						</div>
-						<div className="text-lg font-medium bg-muted px-4 py-2 rounded-lg">
-							{currentIndex + 1} of {totalCards}
+
+						<div className="text-center">
+							<div className="text-sm text-muted-foreground mb-1">
+								{weekInfo}
+							</div>
+							<div className="text-lg font-medium bg-muted px-4 py-2 rounded-lg">
+								{currentIndex + 1} of {totalCards}
+							</div>
+						</div>
+
+						<div className="text-center">
+							<div className="text-sm text-muted-foreground mb-1">
+								Card Time
+							</div>
+							<div className="text-lg font-mono bg-muted/50 px-3 py-1 rounded-lg">
+								{itemTimer.formattedItemTime}
+							</div>
 						</div>
 					</div>
 
@@ -137,29 +176,38 @@ export function CuecardDisplay({
 									)}
 
 									<div className="flex flex-col sm:flex-row gap-4 w-full max-w-lg">
-										<Button
+										<LoadingButton
+											isLoading={isSubmittingFeedback}
 											onClick={() => handleFeedback("correct")}
 											variant="default"
-											className="flex-1 bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white font-medium py-3"
+											size="lg"
+											className="flex-1 bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white dark:text-green-50 px-6 sm:px-8 py-4 text-lg font-semibold"
+											disabled={isSubmittingFeedback}
+											loadingText="Submitting..."
 										>
 											✓ I knew this
-										</Button>
-										<Button
+										</LoadingButton>
+										<LoadingButton
+											isLoading={isSubmittingFeedback}
 											onClick={() => handleFeedback("incorrect")}
 											variant="destructive"
-											className="flex-1 font-medium py-3"
+											size="lg"
+											className="flex-1 px-6 sm:px-8 py-4 text-lg font-semibold"
+											disabled={isSubmittingFeedback}
+											loadingText="Submitting..."
 										>
 											✗ I didn't know this
-										</Button>
+										</LoadingButton>
 									</div>
 								</>
 							) : (
 								<Button
 									onClick={handleShowAnswer}
-									disabled={showAnswer}
-									className="px-8 py-3 text-base font-medium"
+									disabled={showAnswer || isSubmittingFeedback}
+									size="lg"
+									className="w-full sm:w-auto sm:min-w-40 px-6 sm:px-8 py-4 text-lg font-semibold"
 								>
-									Show answer
+									Show Answer
 								</Button>
 							)}
 

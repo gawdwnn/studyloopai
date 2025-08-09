@@ -9,10 +9,12 @@ import {
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import confetti from "canvas-confetti";
-import { CheckCircle2, SparklesIcon, XCircle, XIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { formatMmSs } from "@/lib/utils/time-formatter";
+import { useQuery } from "@tanstack/react-query";
+import { CheckCircle2, SparklesIcon, X, XCircle } from "lucide-react";
+import { useState } from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
+import { toast } from "sonner";
 
 interface McqResultsData {
 	score: number;
@@ -31,29 +33,117 @@ interface McqResultsData {
 	}>;
 }
 
-const COLORS = ["#3b82f6", "#e5e7eb"]; // blue-500, gray-200
-
 type McqResultsViewProps = {
-	results: McqResultsData;
+	sessionId: string; // Always fetch results from database
 	onRestart: () => void;
+	onClose: () => void; // Handle navigation to feedback page
 };
 
-export function McqResultsView({ results, onRestart }: McqResultsViewProps) {
+export function McqResultsView({
+	sessionId,
+	onRestart,
+	onClose,
+}: McqResultsViewProps) {
 	const [openItems, setOpenItems] = useState<string[]>([]);
 
-	useEffect(() => {
-		// Trigger confetti animation when component mounts
-		const timer = setTimeout(() => {
-			confetti({
-				particleCount: 100,
-				spread: 70,
-				origin: { y: 0.6 },
-				colors: ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"],
-			});
-		}, 500);
+	const {
+		data: sessionData,
+		isLoading,
+		error,
+		refetch,
+	} = useQuery({
+		queryKey: ["session-results", sessionId],
+		queryFn: async () => {
+			const { getSessionResultsWithQuestions } = await import(
+				"@/lib/actions/adaptive-learning"
+			);
+			return await getSessionResultsWithQuestions(sessionId);
+		},
+		retry: 2,
+		staleTime: 5 * 60 * 1000, // 5 minutes
+	});
 
-		return () => clearTimeout(timer);
-	}, []);
+	// Show error toast when query fails
+	if (error) {
+		toast.error("Failed to load session results. Please try again.");
+	}
+
+	// Transform session data to results format
+	const results: McqResultsData | null = sessionData
+		? {
+				score: sessionData.accuracy,
+				skipped:
+					sessionData.totalResponses -
+					sessionData.correctResponses -
+					sessionData.incorrectResponses,
+				totalTime: formatMmSs(sessionData.totalTime),
+				timeOnExercise: formatMmSs(sessionData.totalTime),
+				avgPerExercise: `${Math.round(sessionData.averageResponseTime / 1000)}s`,
+				questions: sessionData.questions,
+			}
+		: null;
+
+	// Show loading state
+	if (isLoading) {
+		return (
+			<div className="flex items-center justify-center min-h-96">
+				<div className="text-center">
+					<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4" />
+					<p className="text-muted-foreground">Loading session results...</p>
+				</div>
+			</div>
+		);
+	}
+
+	// Error state
+	if (error && !isLoading) {
+		return (
+			<div className="flex items-center justify-center min-h-96">
+				<div className="text-center">
+					<SparklesIcon className="h-8 w-8 text-muted-foreground mx-auto mb-4" />
+					<h3 className="text-lg font-semibold mb-2">Failed to Load Results</h3>
+					<p className="text-muted-foreground mb-4">
+						Unable to load session results. Please try again.
+					</p>
+					<div className="space-x-2">
+						<Button onClick={() => refetch()}>Retry</Button>
+						<Button variant="outline" onClick={onRestart}>
+							Start New Session
+						</Button>
+						<Button variant="outline" onClick={onClose}>
+							Continue
+						</Button>
+					</div>
+				</div>
+			</div>
+		);
+	}
+
+	// No results available (shouldn't happen if query succeeds)
+	if (!results && !isLoading) {
+		return (
+			<div className="flex items-center justify-center min-h-96">
+				<div className="text-center">
+					<SparklesIcon className="h-8 w-8 text-muted-foreground mx-auto mb-4" />
+					<h3 className="text-lg font-semibold mb-2">No Results Available</h3>
+					<p className="text-muted-foreground mb-4">
+						Unable to display session results.
+					</p>
+					<div className="space-x-2">
+						<Button onClick={onRestart}>Start New Session</Button>
+						<Button variant="outline" onClick={onClose}>
+							Continue
+						</Button>
+					</div>
+				</div>
+			</div>
+		);
+	}
+
+	// Guard clause - this shouldn't happen due to earlier checks, but TypeScript needs it
+	if (!results) {
+		return null;
+	}
 
 	// Create chart data from results
 	const chartData = [
@@ -83,6 +173,8 @@ export function McqResultsView({ results, onRestart }: McqResultsViewProps) {
 		return "default";
 	};
 
+	// Use the onClose prop instead of handling navigation directly
+
 	return (
 		<div className="min-h-screen bg-background relative">
 			<div className="absolute top-4 right-4 z-10 flex gap-2">
@@ -90,24 +182,17 @@ export function McqResultsView({ results, onRestart }: McqResultsViewProps) {
 				<Button
 					variant="ghost"
 					size="icon"
-					className="bg-gray-100 hover:bg-gray-200 rounded-full"
-					onClick={onRestart}
+					className="bg-background/80 hover:bg-background/90 dark:bg-background/80 dark:hover:bg-background/90 rounded-full border shadow-sm h-10 w-10"
+					onClick={onClose}
 				>
-					<XIcon className="h-6 w-6 text-gray-600" />
+					<X className="h-6 w-6 text-foreground" />
 				</Button>
 			</div>
 
 			<div className="container mx-auto px-4 py-8">
 				<div className="max-w-6xl mx-auto">
-					{/* Header */}
-					<div className="text-center mb-12">
-						<h1 className="text-4xl font-bold mb-4">Session Complete! 🎉</h1>
-						<p className="text-xl text-muted-foreground">
-							Great work! Here's how you performed.
-						</p>
-					</div>
 					{/* Performance Overview */}
-					<div className="bg-card rounded-2xl p-8 border mb-12">
+					<div className="bg-card rounded-2xl p-8 border mb-12 mt-12">
 						<div className="grid md:grid-cols-3 gap-8 items-center">
 							<div className="text-center md:text-left">
 								<p className="text-2xl font-bold mb-2">
@@ -137,7 +222,9 @@ export function McqResultsView({ results, onRestart }: McqResultsViewProps) {
 												{chartData.map((entry, index) => (
 													<Cell
 														key={`cell-${entry.name}`}
-														fill={COLORS[index % COLORS.length]}
+														fill={
+															index === 0 ? "var(--chart-1)" : "var(--chart-2)"
+														}
 													/>
 												))}
 											</Pie>
@@ -240,10 +327,10 @@ export function McqResultsView({ results, onRestart }: McqResultsViewProps) {
 														className={cn(
 															"p-3 flex items-center space-x-3 rounded-md border",
 															state === "correct"
-																? "border-green-500 bg-green-50/50"
+																? "border-green-500 bg-green-500/10"
 																: "border-border",
 															state === "incorrect"
-																? "border-red-500 bg-red-50/50"
+																? "border-red-500 bg-red-500/10"
 																: "border-border"
 														)}
 													>
@@ -260,8 +347,10 @@ export function McqResultsView({ results, onRestart }: McqResultsViewProps) {
 														</div>
 														<span
 															className={cn(
-																state === "correct" && "text-green-800",
-																state === "incorrect" && "text-red-800"
+																state === "correct" &&
+																	"text-green-600 dark:text-green-400",
+																state === "incorrect" &&
+																	"text-red-600 dark:text-red-400"
 															)}
 														>
 															{option}

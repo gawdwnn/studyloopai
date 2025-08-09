@@ -4,25 +4,13 @@ import { db } from "@/db";
 import { courseWeeks, courses, multipleChoiceQuestions } from "@/db/schema";
 import { getServerClient } from "@/lib/supabase/server";
 import { withErrorHandling } from "@/lib/utils/error-handling";
+import type { MCQ } from "@/types/database-types";
 import { and, eq, inArray } from "drizzle-orm";
 
-// Define MCQ type based on the database schema
-export type UserMCQ = {
-	id: string;
-	courseId: string;
-	weekId: string;
-	question: string;
-	options: string[];
-	correctAnswer: string;
-	explanation: string | null;
-	difficulty: string | null;
-	metadata: unknown;
-	createdAt: Date | null;
-	updatedAt: Date | null;
+export type UserMCQ = MCQ & {
 	weekNumber: number;
 };
 
-// Extended availability type with optimization data
 export type MCQAvailability = {
 	available: boolean;
 	count: number;
@@ -54,14 +42,13 @@ export async function getUserMCQsWithAvailability(
 				throw new Error("Authentication required");
 			}
 
-			// Single optimized query to get both MCQs and availability info
 			const shouldFilterByWeeks =
 				weekIds?.length && !weekIds.includes("all-weeks");
 
-			// Get MCQs with week information in one query
-			const baseQuery = db
+			// SINGLE QUERY: Get MCQs + week info + materials check using LEFT JOIN
+			const result = await db
 				.select({
-					// MCQ fields
+					// MCQ data (null if no MCQs exist)
 					id: multipleChoiceQuestions.id,
 					courseId: multipleChoiceQuestions.courseId,
 					weekId: multipleChoiceQuestions.weekId,
@@ -73,57 +60,71 @@ export async function getUserMCQsWithAvailability(
 					metadata: multipleChoiceQuestions.metadata,
 					createdAt: multipleChoiceQuestions.createdAt,
 					updatedAt: multipleChoiceQuestions.updatedAt,
-					// Week fields
+					// Week data (always present)
+					actualWeekId: courseWeeks.id,
 					weekNumber: courseWeeks.weekNumber,
-				})
-				.from(multipleChoiceQuestions)
-				.innerJoin(
-					courseWeeks,
-					eq(multipleChoiceQuestions.weekId, courseWeeks.id)
-				)
-				.innerJoin(courses, eq(multipleChoiceQuestions.courseId, courses.id))
-				.where(
-					and(
-						eq(courses.userId, user.id), // RLS protection
-						eq(multipleChoiceQuestions.courseId, courseId),
-						// Only include weeks that have materials (required for generation)
-						eq(courseWeeks.hasMaterials, true),
-						shouldFilterByWeeks
-							? inArray(multipleChoiceQuestions.weekId, weekIds)
-							: undefined
-					)
-				);
-
-			const mcqs = await baseQuery;
-
-			// Separate query to check for weeks with materials (for generation capability)
-			const weeksWithMaterialsQuery = db
-				.select({
-					id: courseWeeks.id,
-					weekNumber: courseWeeks.weekNumber,
+					weekHasMaterials: courseWeeks.hasMaterials,
 				})
 				.from(courseWeeks)
+				.leftJoin(
+					multipleChoiceQuestions,
+					eq(courseWeeks.id, multipleChoiceQuestions.weekId)
+				)
 				.innerJoin(courses, eq(courseWeeks.courseId, courses.id))
 				.where(
 					and(
-						eq(courses.userId, user.id), // RLS protection
+						eq(courses.userId, user.id),
 						eq(courseWeeks.courseId, courseId),
 						eq(courseWeeks.hasMaterials, true),
 						shouldFilterByWeeks ? inArray(courseWeeks.id, weekIds) : undefined
 					)
 				);
 
-			const weeksWithMaterials = await weeksWithMaterialsQuery;
+			// Process results
+			const mcqs = result
+				.filter(
+					(
+						r
+					): r is typeof r & {
+						id: NonNullable<typeof r.id>;
+						courseId: NonNullable<typeof r.courseId>;
+						weekId: NonNullable<typeof r.weekId>;
+						question: NonNullable<typeof r.question>;
+						options: NonNullable<typeof r.options>;
+						correctAnswer: NonNullable<typeof r.correctAnswer>;
+						explanation: NonNullable<typeof r.explanation>;
+						difficulty: NonNullable<typeof r.difficulty>;
+						metadata: NonNullable<typeof r.metadata>;
+						createdAt: NonNullable<typeof r.createdAt>;
+						updatedAt: NonNullable<typeof r.updatedAt>;
+					} => r.id !== null
+				) // Only actual MCQs
+				.map((r) => ({
+					id: r.id,
+					courseId: r.courseId,
+					weekId: r.weekId,
+					question: r.question,
+					options: r.options,
+					correctAnswer: r.correctAnswer,
+					explanation: r.explanation,
+					difficulty: r.difficulty,
+					metadata: r.metadata,
+					createdAt: r.createdAt,
+					updatedAt: r.updatedAt,
+					weekNumber: r.weekNumber,
+				}));
 
-			// Calculate availability from MCQ results (for existing MCQs)
-			const uniqueWeeks = new Map<string, { id: string; weekNumber: number }>();
-			for (const mcq of mcqs) {
-				uniqueWeeks.set(mcq.weekId, {
-					id: mcq.weekId,
-					weekNumber: mcq.weekNumber,
-				});
-			}
-			const availableWeeks = Array.from(uniqueWeeks.values());
+			const weeksWithMaterials = result.length > 0; // Any week with materials exists
+
+			// Calculate availability
+			const availableWeeks = Array.from(
+				new Map(
+					mcqs.map((mcq) => [
+						mcq.weekId,
+						{ id: mcq.weekId, weekNumber: mcq.weekNumber },
+					])
+				).values()
+			);
 
 			const mcqsByWeek = mcqs.reduce(
 				(acc, mcq) => {
@@ -149,17 +150,13 @@ export async function getUserMCQsWithAvailability(
 			const availability: MCQAvailability = {
 				available: mcqs.length > 0,
 				count: mcqs.length,
-				// Fix: Check for weeks with materials (for generation), not just weeks with existing MCQs
-				hasCourseWeeksWithContent: weeksWithMaterials.length > 0,
+				hasCourseWeeksWithContent: weeksWithMaterials,
 				availableWeeks,
 				mcqsByWeek,
 				difficultyBreakdown,
 			};
 
-			return {
-				mcqs,
-				availability,
-			};
+			return { mcqs, availability };
 		},
 		"getUserMCQsWithAvailability",
 		{

@@ -2,6 +2,7 @@
 
 import type { UserCuecard } from "@/lib/actions/cuecard";
 import type { SelectiveGenerationConfig } from "@/types/generation-types";
+import type { TimerActions, TimerState } from "@/types/timer-types";
 
 export type CuecardFeedback = "correct" | "incorrect";
 
@@ -15,16 +16,10 @@ export type SessionStatus =
 	| "loading"
 	| "generating";
 
-// Cuecard-specific configuration for an active session
+// Cuecard-specific configuration - simplified
 export interface CuecardConfig {
 	courseId: string;
 	weeks: string[];
-}
-
-// Configuration used on the setup screen
-export interface CuecardSetupConfig {
-	courseId: string;
-	week: string;
 }
 
 // Simple card response tracking
@@ -35,12 +30,11 @@ export interface CardResponse {
 	attemptedAt: Date;
 }
 
-// Simplified session state
-export interface CuecardSessionState {
+// Simplified session state with timer functionality
+export interface CuecardSessionState extends TimerState {
 	id: string;
 	status: SessionStatus;
-	config: CuecardConfig; // Config for the active session
-	setupConfig: CuecardSetupConfig; // Config for the setup screen
+	config: CuecardConfig;
 
 	// Direct database mapping
 	cards: UserCuecard[];
@@ -58,6 +52,10 @@ export interface CuecardSessionState {
 	// Generation tracking
 	generationRunId?: string;
 	generationToken?: string;
+
+	// Session tracking for results and feedback navigation
+	learningSessionId?: string | null;
+	realTimeSessionId: string | null; // Track real-time database session ID
 }
 
 // Session statistics for results display
@@ -70,22 +68,15 @@ export interface SessionStats {
 	accuracy: number;
 }
 
-// Simplified store actions
-export interface CuecardSessionActions {
+// Simplified store actions with timer functionality
+export interface CuecardSessionActions extends TimerActions {
 	// Session lifecycle
-	startSessionWithData: (
+	startSession: (
 		config: CuecardConfig,
 		preLoadedCards: UserCuecard[]
 	) => Promise<void>;
-	endSession: () => Promise<string | undefined>;
+	endSession: () => Promise<string | null | undefined>;
 	resetSession: () => void;
-
-	// Setup configuration
-	setSetupConfig: (config: Partial<CuecardSetupConfig>) => void;
-	initSetupConfig: (
-		courses: { id: string }[],
-		initialParams: Partial<CuecardSetupConfig>
-	) => void;
 
 	// Card navigation
 	getCurrentCard: () => UserCuecard | null;
@@ -102,9 +93,6 @@ export interface CuecardSessionActions {
 		publicAccessToken?: string;
 		error?: string;
 	}>;
-
-	// Error handling
-	setError: (error: string | null) => void;
 
 	// Generation state management
 	resetGenerationState: () => void;
@@ -134,10 +122,6 @@ export const initialCuecardState: CuecardSessionState = {
 		courseId: "",
 		weeks: [],
 	},
-	setupConfig: {
-		courseId: "",
-		week: "all-weeks",
-	},
 	cards: [],
 	currentIndex: 0,
 	responses: [],
@@ -147,4 +131,16 @@ export const initialCuecardState: CuecardSessionState = {
 	isLoading: false,
 	generationRunId: undefined,
 	generationToken: undefined,
+	learningSessionId: undefined,
+	realTimeSessionId: null,
+	// Timer state properties
+	sessionElapsedTime: 0, // milliseconds
+	sessionStartTime: null,
+	isTimerRunning: false,
+	isTimerPaused: false,
+	itemElapsedTime: 0, // milliseconds
+	itemStartTime: null,
+	averageItemTime: 0, // milliseconds
+	completedItemsCount: 0,
+	totalItemTime: 0,
 };

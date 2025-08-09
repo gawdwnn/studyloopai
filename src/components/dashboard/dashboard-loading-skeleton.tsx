@@ -11,7 +11,7 @@ const SKELETON_COURSES = [
 	"course-8",
 ];
 
-export default function DashboardLoading() {
+export function DashboardLoadingSkeleton() {
 	return (
 		<div className="space-y-8">
 			{/* Page Heading Skeleton */}
@@ -22,6 +22,25 @@ export default function DashboardLoading() {
 				</div>
 				<Skeleton className="h-10 w-full sm:w-40" />
 			</div>
+
+			{/* Dashboard Stats Skeleton */}
+			<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+				{Array.from({ length: 4 }).map((_, i) => (
+					<div key={i} className="rounded-lg border bg-card p-6">
+						<div className="flex items-center justify-between space-y-0 pb-2">
+							<Skeleton className="h-4 w-24" />
+							<Skeleton className="h-4 w-4" />
+						</div>
+						<div className="space-y-1">
+							<Skeleton className="h-7 w-16" />
+							<Skeleton className="h-3 w-32" />
+						</div>
+					</div>
+				))}
+			</div>
+
+			{/* Section Title Skeleton */}
+			<Skeleton className="h-6 w-32 sm:h-7 sm:w-36" />
 
 			{/* Course Grid Skeleton */}
 			<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
