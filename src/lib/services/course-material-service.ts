@@ -55,6 +55,7 @@ export async function completeUpload(
 	});
 
 	if (!res.ok) {
+		// Error toast already shown by fetchWithErrorHandling
 		throw new Error("Upload completion failed");
 	}
 
