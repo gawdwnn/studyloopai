@@ -1,27 +1,43 @@
 /**
  * AI Content Generation Analytics Events
  * Server-side only events for tracking AI content generation and usage
+ * Now includes Polar usage tracking for billing
  */
 
+// No imports needed - will extract info from actual usage
+import { sendUsageEvent } from "@/lib/polar/usage-events";
 import { trackServerEvent } from "../posthog";
 
 export const contentGenerationEvents = {
 	contentGenerated: async (
-		contentType: "mcq" | "summary" | "notes" | "cuecard" | "concept_map",
+		contentType:
+			| "mcq"
+			| "summary"
+			| "notes"
+			| "cuecard"
+			| "concept_map"
+			| "open_question",
 		properties: {
 			courseId: string;
+			weekId: string;
 			materialId?: string;
 			processingTime?: number;
 			wordCount?: number;
-			modelUsed?: string;
+			modelUsed: string;
+			provider: string;
+			totalTokens?: number;
+			success?: boolean;
+			generatedCount?: number;
 		},
 		userId?: string
 	) => {
+		// Send to PostHog (existing analytics)
 		await trackServerEvent(
 			"ai_content_generated",
 			{
 				content_type: contentType,
 				course_id: properties.courseId,
+				week_id: properties.weekId,
 				material_id: properties.materialId,
 				processing_time_ms: properties.processingTime,
 				word_count: properties.wordCount,
@@ -30,6 +46,24 @@ export const contentGenerationEvents = {
 			},
 			userId
 		);
+
+		// Send to Polar (billing usage tracking)
+		if (userId) {
+			await sendUsageEvent(userId, "ai_generation", {
+				content_type: contentType,
+				model: properties.modelUsed,
+				provider: properties.provider,
+				tokens: properties.totalTokens || properties.wordCount || 0,
+				processing_time_ms: properties.processingTime || 0,
+				success: properties.success !== false,
+				generated_count: properties.generatedCount || 1,
+				course_id: properties.courseId,
+				week_id: properties.weekId,
+				material_ids: properties.materialId
+					? [properties.materialId]
+					: undefined,
+			});
+		}
 	},
 
 	contentRegenerated: async (
@@ -37,6 +71,7 @@ export const contentGenerationEvents = {
 		reason: "quality" | "user_request" | "error",
 		properties: {
 			courseId?: string;
+			weekId?: string;
 			originalProcessingTime?: number;
 			newProcessingTime?: number;
 			modelUsed?: string;
@@ -49,6 +84,7 @@ export const contentGenerationEvents = {
 				content_type: contentType,
 				regeneration_reason: reason,
 				course_id: properties.courseId,
+				week_id: properties.weekId,
 				original_processing_time_ms: properties.originalProcessingTime,
 				new_processing_time_ms: properties.newProcessingTime,
 				model_used: properties.modelUsed,
@@ -62,6 +98,7 @@ export const contentGenerationEvents = {
 		contentType: string,
 		properties: {
 			courseId: string;
+			weekId?: string;
 			materialId?: string;
 			expectedDuration?: number;
 			modelSelected?: string;
@@ -73,6 +110,7 @@ export const contentGenerationEvents = {
 			{
 				content_type: contentType,
 				course_id: properties.courseId,
+				week_id: properties.weekId,
 				material_id: properties.materialId,
 				expected_duration_ms: properties.expectedDuration,
 				model_selected: properties.modelSelected,
@@ -87,6 +125,7 @@ export const contentGenerationEvents = {
 		errorType: string,
 		properties: {
 			courseId?: string;
+			weekId?: string;
 			materialId?: string;
 			errorMessage?: string;
 			processingTime?: number;
@@ -100,6 +139,7 @@ export const contentGenerationEvents = {
 				content_type: contentType,
 				error_type: errorType,
 				course_id: properties.courseId,
+				week_id: properties.weekId,
 				material_id: properties.materialId,
 				error_message: properties.errorMessage,
 				processing_time_ms: properties.processingTime,
@@ -168,11 +208,15 @@ export const contentGenerationEvents = {
 			materialId: string;
 			chunkCount: number;
 			processingTime: number;
-			embeddingModel?: string;
+			embeddingModel: string;
+			embeddingProvider: string;
 			totalTokens?: number;
+			courseId?: string;
+			success?: boolean;
 		},
 		userId?: string
 	) => {
+		// Send to PostHog (existing analytics)
 		await trackServerEvent(
 			"vector_embedding_completed",
 			{
@@ -185,5 +229,19 @@ export const contentGenerationEvents = {
 			},
 			userId
 		);
+
+		// Send to Polar (billing usage tracking)
+		if (userId) {
+			await sendUsageEvent(userId, "embedding_generation", {
+				tokens: properties.totalTokens || 0,
+				chunks: properties.chunkCount || 1,
+				model: properties.embeddingModel,
+				provider: properties.embeddingProvider,
+				processing_time_ms: properties.processingTime || 0,
+				success: properties.success !== false,
+				material_id: properties.materialId,
+				course_id: properties.courseId,
+			});
+		}
 	},
 };

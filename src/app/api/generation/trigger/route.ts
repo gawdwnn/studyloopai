@@ -9,8 +9,13 @@ import { db } from "@/db";
 import { configurationSource, courseMaterials, courseWeeks } from "@/db/schema";
 import { initializeFeatureTracking } from "@/lib/actions/course-week-features";
 import { persistSelectiveConfig } from "@/lib/actions/generation-config";
+import { checkQuotaAndConsume } from "@/lib/actions/plans";
 import { checkAIRateLimit } from "@/lib/rate-limit";
 import { getServerClient } from "@/lib/supabase/server";
+import {
+	API_ERROR_CODES,
+	createQuotaErrorResponse,
+} from "@/lib/types/api-errors";
 import { logger } from "@/lib/utils/logger";
 import { SelectiveGenerationConfigSchema } from "@/lib/validation/generation-config";
 import { tasks } from "@trigger.dev/sdk";
@@ -62,9 +67,15 @@ export async function POST(req: NextRequest) {
 			return NextResponse.json(
 				{
 					error: "Rate limit exceeded",
-					message: `Too many AI generation requests. Try again in ${resetMinutes} minutes.`,
-					remainingAttempts: rateLimitResult.remaining,
-					resetTime: rateLimitResult.reset,
+					code: API_ERROR_CODES.RATE_LIMIT_EXCEEDED,
+					details: {
+						limit: rateLimitResult.limit,
+						remaining: rateLimitResult.remaining,
+						resetTime: rateLimitResult.reset,
+						retryAfterSeconds: Math.ceil(
+							((rateLimitResult.reset || Date.now()) - Date.now()) / 1000
+						),
+					},
 				},
 				{
 					status: 429,
@@ -78,6 +89,33 @@ export async function POST(req: NextRequest) {
 					},
 				}
 			);
+		}
+
+		// Check AI generation quota before proceeding (charge per requested feature)
+		const requestedGenerations = body.featureTypes.length;
+		const quotaCheck = await checkQuotaAndConsume(
+			user.id,
+			"ai_generations",
+			requestedGenerations
+		);
+		if (!quotaCheck.allowed && quotaCheck.quotaDetails) {
+			const quotaError = createQuotaErrorResponse(
+				quotaCheck.quotaDetails.quotaType,
+				quotaCheck.quotaDetails.currentUsage,
+				quotaCheck.quotaDetails.quotaLimit,
+				quotaCheck.quotaDetails.planId
+			);
+			const res = NextResponse.json(quotaError, { status: 429 });
+			const remaining = Math.max(
+				0,
+				quotaError.details.quotaLimit - quotaError.details.currentUsage
+			);
+			res.headers.set("X-Quota-Remaining", remaining.toString());
+			res.headers.set(
+				"X-Quota-Limit",
+				quotaError.details.quotaLimit.toString()
+			);
+			return res;
 		}
 
 		// Get materials for this courseId and weekId, ensuring week has course materials
@@ -98,7 +136,10 @@ export async function POST(req: NextRequest) {
 
 		if (materials.length === 0) {
 			return NextResponse.json(
-				{ error: "No materials found for this course and week" },
+				{
+					error: "No materials found for this course and week",
+					code: "MATERIALS_NOT_FOUND",
+				},
 				{ status: 400 }
 			);
 		}
@@ -118,21 +159,57 @@ export async function POST(req: NextRequest) {
 				userAgent: "on-demand-generation-api",
 			}
 		);
+		if (!configId) {
+			return NextResponse.json(
+				{
+					error: "Failed to persist generation configuration",
+					code: "CONFIG_PERSIST_FAILED",
+				},
+				{ status: 500 }
+			);
+		}
 
 		// Trigger the AI content orchestrator
 		const { aiContentOrchestrator } = await import(
 			"@/trigger/ai-content-orchestrator"
 		);
 
-		const handle = await tasks.trigger(aiContentOrchestrator.id, {
-			weekId: body.weekId,
-			courseId: body.courseId,
-			materialIds: materials.map((m) => m.id),
-			configId,
-		});
+		let handle: { id: string; publicAccessToken?: string };
+		try {
+			handle = await tasks.trigger(aiContentOrchestrator.id, {
+				weekId: body.weekId,
+				courseId: body.courseId,
+				materialIds: materials.map((m) => m.id),
+				configId,
+				userId: user.id,
+			});
+		} catch (taskErr) {
+			logger.error("Failed to queue orchestrator task", {
+				message: taskErr instanceof Error ? taskErr.message : String(taskErr),
+				route: "/api/generation/trigger",
+				userId: user.id,
+				courseId: body.courseId,
+				weekId: body.weekId,
+			});
+			return NextResponse.json(
+				{
+					error: "Failed to queue generation task",
+					code: "TASK_TRIGGER_FAILED",
+				},
+				{ status: 502 }
+			);
+		}
 
 		// Initialize feature tracking
-		await initializeFeatureTracking(body.courseId, body.weekId, configId);
+		try {
+			await initializeFeatureTracking(body.courseId, body.weekId, configId);
+		} catch (ftErr) {
+			logger.error("Failed to initialize feature tracking", {
+				message: ftErr instanceof Error ? ftErr.message : String(ftErr),
+				route: "/api/generation/trigger",
+			});
+			// Non-critical: do not fail the response
+		}
 
 		const response = NextResponse.json({
 			success: true,

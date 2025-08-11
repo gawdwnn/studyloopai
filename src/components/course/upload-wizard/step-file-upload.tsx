@@ -15,11 +15,17 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+	DOCUMENT_PROCESSING_CONFIG,
+	getDropzoneDescription,
+} from "@/lib/config/document-processing";
+import type { UserPlan } from "@/lib/processing/types";
 import { useUploadWizardStore } from "@/stores/upload-wizard-store";
 import { Info } from "lucide-react";
 
-export function StepFileUpload() {
+export function StepFileUpload({ userPlan }: { userPlan: UserPlan }) {
 	const { files, addFiles, removeFile } = useUploadWizardStore();
+	const dropzoneDescription = getDropzoneDescription(userPlan);
 
 	const handleFilesAdded = (newFiles: File[]) => {
 		// Filter out duplicates
@@ -45,8 +51,7 @@ export function StepFileUpload() {
 			<CardHeader>
 				<CardTitle>Upload Course Materials</CardTitle>
 				<CardDescription>
-					Upload PDF files containing your course content. You can upload
-					multiple files at once.
+					Upload your course materials. You can upload multiple files at once.
 				</CardDescription>
 			</CardHeader>
 			<CardContent>
@@ -60,8 +65,8 @@ export function StepFileUpload() {
 								</TooltipTrigger>
 								<TooltipContent className="max-w-xs">
 									<p>
-										Upload PDF files up to 2MB each. Text will be extracted and
-										processed for AI content generation.
+										Supported formats: {dropzoneDescription}. Text will be
+										extracted and processed for AI content generation.
 									</p>
 								</TooltipContent>
 							</Tooltip>
@@ -71,9 +76,11 @@ export function StepFileUpload() {
 						onFilesAdded={handleFilesAdded}
 						files={files.map((f) => f.file)}
 						onRemoveFile={handleRemoveFile}
+						userPlan={userPlan}
 					/>
 					<p className="text-sm text-muted-foreground">
-						Maximum 5 files per batch. Supported formats: PDF
+						Maximum {DOCUMENT_PROCESSING_CONFIG.UPLOAD.maxBatchSize} files per
+						upload batch.
 					</p>
 				</div>
 			</CardContent>

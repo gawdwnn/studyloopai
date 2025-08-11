@@ -7,7 +7,10 @@ import type { TableColumn } from "@/components/course/table-column-config";
 import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { useFeatureAvailability } from "@/hooks/use-feature-availability";
-import { CONTENT_TYPES, CONTENT_TYPE_LABELS } from "@/lib/config/file-upload";
+import {
+	CONTENT_TYPES,
+	CONTENT_TYPE_LABELS,
+} from "@/lib/config/document-processing";
 import type {
 	Course,
 	CourseMaterial,

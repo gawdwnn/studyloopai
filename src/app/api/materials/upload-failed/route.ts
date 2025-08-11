@@ -50,7 +50,8 @@ export async function POST(req: NextRequest) {
 			);
 		}
 
-		console.log(`Upload failed for ${updateResult.length} materials:`, {
+		logger.info("Upload status marked as failed", {
+			updatedCount: updateResult.length,
 			materialIds: updateResult.map((m) => m.id),
 			userId: user.id,
 		});

@@ -187,3 +187,37 @@ export async function getCombinedChunks(
 	}
 	return allChunks;
 }
+
+/**
+ * Get user plan information by user ID - more efficient than by material ID
+ */
+export async function getUserPlanByUserId(userId: string): Promise<{
+	userPlan: "free" | "monthly" | "yearly";
+}> {
+	const admin = getAdminDatabaseAccess();
+
+	const { data: userData, error: userError } = await admin
+		.from("users")
+		.select(`
+			user_plans!inner(
+				plan_id,
+				is_active
+			)
+		`)
+		.eq("user_id", userId)
+		.single();
+
+	if (userError) {
+		throw new Error(`Failed to get user data: ${userError.message}`);
+	}
+
+	const userPlans = Array.isArray(userData.user_plans)
+		? userData.user_plans
+		: [userData.user_plans];
+
+	const activePlan = userPlans.find((plan: any) => plan?.is_active);
+
+	return {
+		userPlan: activePlan?.plan_id,
+	};
+}

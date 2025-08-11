@@ -2,6 +2,7 @@
  * AI content generation pipeline - functional composition
  */
 
+import { contentGenerationEvents } from "@/lib/analytics/events";
 import { createLogger } from "@/lib/utils/logger";
 import { generateObject } from "ai";
 import { getTextGenerationModel } from "../../config";
@@ -19,12 +20,33 @@ import { getStrategy } from "./strategy-factory";
 const logger = createLogger("ai:generation:pipeline");
 
 /**
+ * Map generation content types to analytics content types
+ */
+function mapContentTypeToAnalytics(
+	contentType: string
+): "mcq" | "summary" | "notes" | "cuecard" | "concept_map" | "open_question" {
+	const mapping: Record<
+		string,
+		"mcq" | "summary" | "notes" | "cuecard" | "concept_map" | "open_question"
+	> = {
+		multipleChoice: "mcq",
+		summaries: "summary",
+		goldenNotes: "notes",
+		cuecards: "cuecard",
+		conceptMaps: "concept_map",
+		openQuestions: "open_question",
+	};
+
+	return mapping[contentType] || "notes";
+}
+
+/**
  * Generate AI response using the strategy's prompt and context
  */
 export async function generateAIResponse<T extends SupportedContentType>(
 	context: Record<string, unknown>,
 	strategy: ContentStrategy<ConfigMap[T], OutputMap[T]>,
-	options?: { maxTokens?: number; temperature?: number }
+	options?: { maxOutputTokens?: number; temperature?: number }
 ): Promise<OutputMap[T][]> {
 	const prompt = strategy.getPrompt();
 
@@ -34,13 +56,16 @@ export async function generateAIResponse<T extends SupportedContentType>(
 		options,
 	});
 
+	const { model } = getTextGenerationModel();
 	const result = await generateObject({
-		model: getTextGenerationModel(),
+		model,
 		system: prompt.systemPrompt,
 		prompt: prompt.userPrompt(context),
 		schema: strategy.getSchema(),
-		maxTokens: options?.maxTokens || 3500,
+		maxOutputTokens: options?.maxOutputTokens || 3500,
 		temperature: options?.temperature || 0.7,
+		maxRetries: 3, // AI SDK handles retries automatically with exponential backoff
+		abortSignal: AbortSignal.timeout(60000), // 60 second timeout for generation
 	});
 
 	return strategy.extractArrayFromObject(result.object);
@@ -107,6 +132,7 @@ export async function executeGenerationPipeline<T extends SupportedContentType>(
 		weekId,
 		materialIds,
 		config,
+		userId,
 		cacheKey,
 		options,
 	} = request;
@@ -129,10 +155,12 @@ export async function executeGenerationPipeline<T extends SupportedContentType>(
 			contentType,
 		});
 
-		// 2. Get strategy for content type
+		// 2. Quota enforcement is handled at the API boundary before the pipeline is invoked
+
+		// 3. Get strategy for content type
 		const strategy = getStrategy(contentType);
 
-		// 3. Retrieve chunks (cache-first)
+		// 4. Retrieve chunks (cache-first)
 		const chunks = await retrieveChunks({
 			materialIds,
 			cacheKey,
@@ -141,13 +169,16 @@ export async function executeGenerationPipeline<T extends SupportedContentType>(
 			contentType,
 		});
 
-		// 4. Build context using strategy
+		// 5. Build context using strategy
 		const context = strategy.buildContext(chunks.content, config);
 
-		// 5. Generate AI response
+		// 6. Generate AI response
 		const parsedData = await generateAIResponse(context, strategy, options);
 
-		// 6. Validate data
+		// 6.1. Get model info for analytics (after successful generation)
+		const { modelName, provider } = getTextGenerationModel();
+
+		// 7. Validate data
 		const isValid = validateGeneratedData(parsedData, contentType);
 		if (!isValid) {
 			return buildGenerationResult(
@@ -158,16 +189,40 @@ export async function executeGenerationPipeline<T extends SupportedContentType>(
 			);
 		}
 
-		// 7. Persist data using strategy
+		// 8. Persist data using strategy
 		await strategy.persist(parsedData, courseId, weekId);
 
-		// 8. Return success result
+		// 9. Track successful generation usage (fire and forget)
+		// Fire and forget - don't await or fail the main flow
+		const analyticsContentType = mapContentTypeToAnalytics(contentType);
+		contentGenerationEvents
+			.contentGenerated(
+				analyticsContentType,
+				{
+					courseId,
+					weekId,
+					modelUsed: modelName,
+					provider,
+					success: true,
+					generatedCount: parsedData.length,
+				},
+				userId
+			)
+			.catch((trackingError) => {
+				// Silent failure - just log
+				logger.error("Failed to track content generation", {
+					error: trackingError,
+					contentType,
+				});
+			});
+
 		logger.info(`Generation pipeline completed for ${contentType}`, {
 			contentType,
 			generatedCount: parsedData.length,
 			chunkSource: chunks.metadata?.source,
 		});
 
+		// 10. Return success result
 		return buildGenerationResult(parsedData, contentType, true);
 	} catch (error) {
 		// Log error details for debugging but let all errors surface naturally

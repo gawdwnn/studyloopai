@@ -2,6 +2,8 @@
 
 import { db } from "@/db";
 import { courseMaterials, courseWeeks, courses } from "@/db/schema";
+import { mapUploadEventToPolar } from "@/lib/polar/event-mapper";
+import { sendUsageEvent } from "@/lib/polar/usage-events";
 import { deleteContentForCourseWeek } from "@/lib/services/content-deletion-service";
 import {
 	cleanupStorageFiles,
@@ -56,16 +58,38 @@ export async function addCourseMaterial(material: {
 		throw new Error("The selected week does not exist for this course.");
 	}
 
-	await db.insert(courseMaterials).values({
-		courseId: material.courseId,
-		weekId: week.id,
-		title: material.title,
-		filePath: material.filePath,
-		fileSize: material.fileSize,
-		mimeType: material.mimeType,
-		uploadedBy: user.id,
-		uploadStatus: "completed",
-	});
+	const [insertedMaterial] = await db
+		.insert(courseMaterials)
+		.values({
+			courseId: material.courseId,
+			weekId: week.id,
+			title: material.title,
+			filePath: material.filePath,
+			fileSize: material.fileSize,
+			mimeType: material.mimeType,
+			uploadedBy: user.id,
+			uploadStatus: "completed",
+		})
+		.returning({
+			id: courseMaterials.id,
+			title: courseMaterials.title,
+			fileSize: courseMaterials.fileSize,
+			mimeType: courseMaterials.mimeType,
+		});
+
+	// Track file upload usage via Polar (fire-and-forget)
+	if (insertedMaterial) {
+		const polarEvent = mapUploadEventToPolar({
+			fileSize: material.fileSize,
+			mimeType: material.mimeType,
+			fileName: material.title,
+			success: true,
+			materialId: insertedMaterial.id,
+			courseId: material.courseId,
+		});
+
+		sendUsageEvent(user.id, polarEvent.name, polarEvent.metadata);
+	}
 
 	// Mark the week as having materials
 	await db

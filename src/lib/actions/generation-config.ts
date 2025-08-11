@@ -22,37 +22,50 @@ export async function persistSelectiveConfig(
 		[key: string]: string | string[] | undefined;
 	}
 ): Promise<string> {
-	// Prepare metadata - all callers must provide required fields
-	const configMetadata = {
-		timestamp: new Date().toISOString(),
-		...metadata,
-	};
+	try {
+		// Prepare metadata - all callers must provide required fields
+		const configMetadata = {
+			timestamp: new Date().toISOString(),
+			...metadata,
+		};
 
-	// Update existing config or insert new one using upsert pattern
-	const [savedConfig] = await db
-		.insert(generationConfigs)
-		.values({
-			weekId,
-			courseId,
-			configSource,
-			configData: config,
-			createdBy: userId,
-			isActive: true,
-			metadata: configMetadata,
-		})
-		.onConflictDoUpdate({
-			target: [generationConfigs.weekId, generationConfigs.configSource],
-			set: {
+		// Update existing config or insert new one using upsert pattern
+		const result = await db
+			.insert(generationConfigs)
+			.values({
+				weekId,
+				courseId,
+				configSource,
 				configData: config,
-				updatedAt: sql`now()`,
-				metadata: configMetadata,
-				isActive: true,
 				createdBy: userId,
-			},
-		})
-		.returning({ id: generationConfigs.id });
+				isActive: true,
+				metadata: configMetadata,
+				// Explicitly set userId to null for course_week_override configs
+				// The check constraint requires user_id to be null for this config_source
+				userId: configSource === "course_week_override" ? null : userId,
+			})
+			.onConflictDoUpdate({
+				target: [generationConfigs.weekId, generationConfigs.configSource],
+				set: {
+					configData: config,
+					updatedAt: sql`now()`,
+					metadata: configMetadata,
+					isActive: true,
+					createdBy: userId,
+					// Keep userId null for course_week_override configs
+					userId: configSource === "course_week_override" ? null : userId,
+				},
+			})
+			.returning({ id: generationConfigs.id });
 
-	return savedConfig.id;
+		if (!result || result.length === 0) {
+			throw new Error("Failed to save generation config - no result returned");
+		}
+
+		return result[0].id;
+	} catch (error) {
+		throw error; // Re-throw to let caller handle it
+	}
 }
 
 /**

@@ -1,11 +1,19 @@
-import { FEATURE_IDS, PLAN_IDS, type Plan } from "@/lib/database/types";
+import {
+	FEATURE_IDS,
+	PLAN_IDS,
+	type Plan,
+	type UsageMetric,
+} from "@/lib/database/types";
+
+// Re-export UsageMetric for backward compatibility
+export type { UsageMetric };
 
 /**
  * UNIFIED PLAN CONFIGURATION - SINGLE SOURCE OF TRUTH
  *
  * This configuration contains the correct pricing as specified:
- * - Monthly: $4.99
- * - Yearly: $3.99 (per month, billed annually)
+ * - Monthly: $20.00
+ * - Yearly: $17.00 (per month, billed annually at $204)
  */
 
 export const PLANS: Plan[] = [
@@ -15,6 +23,10 @@ export const PLANS: Plan[] = [
 		price: 0,
 		billingPeriod: "",
 		description: "Perfect for trying out StudyLoop",
+		quotas: {
+			ai_generations: 25,
+			materials_uploaded: 5,
+		},
 		features: [
 			{
 				id: FEATURE_IDS.BASIC_AI_TOOLS,
@@ -23,12 +35,12 @@ export const PLANS: Plan[] = [
 			},
 			{
 				id: FEATURE_IDS.DOCUMENT_UPLOADS,
-				name: "Up to 3 document uploads",
+				name: "5 document uploads per month",
 				included: true,
 			},
 			{
 				id: FEATURE_IDS.AI_CHAT,
-				name: "Limited AI chat (10 messages/day)",
+				name: "25 AI generations per month",
 				included: true,
 			},
 			{
@@ -56,10 +68,14 @@ export const PLANS: Plan[] = [
 	{
 		id: PLAN_IDS.MONTHLY,
 		name: "Pro",
-		price: 4.99,
+		price: 20,
 		billingPeriod: "/month",
 		description: "Flexible monthly billing",
-		savingsInfo: "Switch to yearly to save $1.00/month",
+		savingsInfo: "Switch to yearly to save $3.00/month",
+		quotas: {
+			ai_generations: 500,
+			materials_uploaded: 100,
+		},
 		features: [
 			{
 				id: FEATURE_IDS.BASIC_AI_TOOLS,
@@ -68,12 +84,12 @@ export const PLANS: Plan[] = [
 			},
 			{
 				id: FEATURE_IDS.UNLIMITED_UPLOADS,
-				name: "Unlimited document uploads",
+				name: "100 document uploads per month",
 				included: true,
 			},
 			{
 				id: FEATURE_IDS.AI_CHAT,
-				name: "Unlimited AI chat & exercises",
+				name: "500 AI generations per month",
 				included: true,
 			},
 			{
@@ -91,12 +107,16 @@ export const PLANS: Plan[] = [
 	{
 		id: PLAN_IDS.YEARLY,
 		name: "Pro",
-		price: 3.99,
+		price: 17,
 		billingPeriod: "/month",
-		annualPrice: 47.88,
+		annualPrice: 204,
 		description: "Best value • Annual billing",
-		savingsInfo: "Save $1.00/month vs monthly plan",
+		savingsInfo: "Save $3.00/month vs monthly plan",
 		isPopular: true,
+		quotas: {
+			ai_generations: 500,
+			materials_uploaded: 100,
+		},
 		features: [
 			{
 				id: FEATURE_IDS.BASIC_AI_TOOLS,
@@ -116,6 +136,15 @@ export const PLANS: Plan[] = [
 		],
 	},
 ];
+
+// Create quota lookup similar to PLAN_QUOTAS for backward compatibility
+export const PLAN_QUOTAS = PLANS.reduce(
+	(acc, plan) => {
+		acc[plan.id] = plan.quotas;
+		return acc;
+	},
+	{} as Record<string, { ai_generations: number; materials_uploaded: number }>
+);
 
 // Utility functions for price conversion
 export const priceUtils = {
