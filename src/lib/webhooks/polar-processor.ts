@@ -24,7 +24,7 @@ export async function processPolarWebhook(
 
 		logger.info("Processing validated Polar webhook", {
 			eventType: event.type,
-			eventId: (event as any).data?.id,
+			eventId: event.data?.id || "unknown",
 		});
 
 		switch (event.type) {
@@ -67,8 +67,8 @@ export async function processPolarWebhook(
 				}
 
 				let currentPeriodEnd: Date | null = null;
-				if (data.currentPeriodEnd) {
-					currentPeriodEnd = new Date(data.currentPeriodEnd);
+				if (data.current_period_end) {
+					currentPeriodEnd = new Date(data.current_period_end);
 				} else if (planId === "monthly") {
 					currentPeriodEnd = new Date();
 					currentPeriodEnd.setMonth(currentPeriodEnd.getMonth() + 1);
@@ -107,13 +107,13 @@ export async function processPolarWebhook(
 						});
 					}
 
-					if (data.customerId) {
+					if (data.customer_id) {
 						const userUpdates: {
 							polarCustomerId: string;
 							updatedAt: Date;
 							currentOnboardingStep?: number;
 						} = {
-							polarCustomerId: data.customerId,
+							polarCustomerId: data.customer_id,
 							updatedAt: new Date(),
 						};
 
@@ -130,12 +130,12 @@ export async function processPolarWebhook(
 
 				const firstPrice = data.prices?.[0];
 				const revenue =
-					firstPrice && "amount" in firstPrice
-						? (firstPrice.amount as number) / 100
+					firstPrice && "price_amount" in firstPrice
+						? (firstPrice.price_amount as number) / 100
 						: 0;
 				const currency =
-					firstPrice && "currency" in firstPrice
-						? (firstPrice.currency as string)
+					firstPrice && "price_currency" in firstPrice
+						? (firstPrice.price_currency as string)
 						: "USD";
 				await billingEvents.subscriptionCreated(
 					planId || "unknown",
@@ -176,8 +176,8 @@ export async function processPolarWebhook(
 					.set({
 						subscriptionStatus:
 							data.status === "active" ? "active" : "canceled",
-						currentPeriodEnd: data.currentPeriodEnd
-							? new Date(data.currentPeriodEnd)
+						currentPeriodEnd: data.current_period_end
+							? new Date(data.current_period_end)
 							: null,
 						updatedAt: new Date(),
 					})
@@ -232,7 +232,7 @@ export async function processPolarWebhook(
 					);
 
 				await billingEvents.subscriptionCancelled(
-					data.canceledAt ? "scheduled" : "immediate",
+					data.canceled_at ? "scheduled" : "immediate",
 					data.id,
 					userPlan?.userId
 				);
@@ -303,6 +303,40 @@ export async function processPolarWebhook(
 						.where(eq(userPlans.userId, userId));
 				}
 
+				// Handle quota reset for subscription renewals
+				if (data.billing_reason === "subscription_cycle") {
+					logger.info("Processing subscription renewal for quota reset", {
+						userId,
+						orderId: data.id,
+						billingReason: data.billing_reason,
+					});
+
+					const { forceResetUserQuota } = await import(
+						"@/lib/utils/quota-reset"
+					);
+					const wasReset = await forceResetUserQuota(
+						userId,
+						`subscription_renewal_order_${data.id}`
+					);
+
+					logger.info("Quota reset result for subscription renewal", {
+						userId,
+						orderId: data.id,
+						wasReset,
+					});
+
+					return {
+						success: true,
+						shouldRetry: false,
+						result: {
+							orderId: data.id,
+							userId,
+							quotaReset: wasReset,
+							billingReason: data.billing_reason,
+						},
+					};
+				}
+
 				return {
 					success: true,
 					shouldRetry: false,
@@ -310,13 +344,16 @@ export async function processPolarWebhook(
 				};
 			}
 
-			default:
-				logger.info("Unhandled webhook event type", { eventType: event.type });
+			default: {
+				logger.info("Unhandled webhook event type", {
+					eventType: "unknown",
+				});
 				return {
 					success: true,
 					shouldRetry: false,
 					result: { skipped: true, reason: "unhandled event type" },
 				};
+			}
 		}
 	} catch (error) {
 		logger.error("Error processing webhook", {

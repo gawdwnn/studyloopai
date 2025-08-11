@@ -95,7 +95,7 @@ export function LimitBanner({ data, onDismiss, onUpgrade }: LimitBannerProps) {
 		>
 			<div className="max-w-7xl mx-auto py-3 px-4 sm:px-6 lg:px-8">
 				<div className="flex items-center justify-between flex-wrap gap-3">
-					<div className="flex-1"></div>
+					<div className="flex-1" />
 					<div className="flex items-center justify-center">
 						{content.icon}
 						<div className="text-center">
