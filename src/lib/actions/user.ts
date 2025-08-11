@@ -8,6 +8,7 @@ import { getServerClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/utils/logger";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { createUserPlan } from "./plans";
 
 export async function getOnboardingProgress() {
 	const supabase = await getServerClient();
@@ -117,6 +118,9 @@ export async function skipOnboarding() {
 			where: eq(users.userId, user.id),
 			columns: { currentOnboardingStep: true },
 		});
+
+		// Ensure user has a plan when skipping onboarding
+		await createUserPlan("free", user.id);
 
 		await db
 			.update(users)

@@ -1,9 +1,9 @@
 "use server";
 
 import { db } from "@/db";
-import { userPlans, users } from "@/db/schema";
+import { userPlans, userUsage, users } from "@/db/schema";
 import { env } from "@/env";
-import { PLANS } from "@/lib/config/plans";
+import { PLANS, PLAN_QUOTAS, type UsageMetric } from "@/lib/config/plans";
 import type { PlanId } from "@/lib/database/types";
 import { FEATURE_IDS } from "@/lib/database/types";
 import { createPolarClient } from "@/lib/polar/client";
@@ -11,46 +11,27 @@ import { getProducts } from "@/lib/polar/products";
 import { getServerClient } from "@/lib/supabase/server";
 import { withErrorHandling } from "@/lib/utils/error-handling";
 import { createLogger } from "@/lib/utils/logger";
+import { addMonths, addYears } from "date-fns";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 const logger = createLogger("billing:plans");
 
-export async function createUserPlan(planId: PlanId, userId?: string) {
+export async function createUserPlan(planId: PlanId, userId: string) {
 	return await withErrorHandling(
 		async () => {
-			const supabase = await getServerClient();
-
-			let effectiveUserId = userId;
-
-			// Get the current user if userId is not provided
-			if (!effectiveUserId) {
-				const {
-					data: { user: sessionUser },
-					error: userError,
-				} = await supabase.auth.getUser();
-				if (userError || !sessionUser) {
-					throw new Error("User not found");
-				}
-				effectiveUserId = sessionUser.id;
-			}
-
 			// Calculate currentPeriodEnd based on plan
 			let currentPeriodEnd: Date | null = null;
+			const now = new Date();
 			if (planId === "monthly") {
-				currentPeriodEnd = new Date();
-				currentPeriodEnd.setMonth(currentPeriodEnd.getMonth() + 1);
+				currentPeriodEnd = addMonths(now, 1);
 			} else if (planId === "yearly") {
-				currentPeriodEnd = new Date();
-				currentPeriodEnd.setFullYear(currentPeriodEnd.getFullYear() + 1);
+				currentPeriodEnd = addYears(now, 1);
 			}
 
 			// Check if user already has an active plan
 			const existingPlan = await db.query.userPlans.findFirst({
-				where: and(
-					eq(userPlans.userId, effectiveUserId),
-					eq(userPlans.isActive, true)
-				),
+				where: and(eq(userPlans.userId, userId), eq(userPlans.isActive, true)),
 			});
 
 			if (existingPlan) {
@@ -62,7 +43,7 @@ export async function createUserPlan(planId: PlanId, userId?: string) {
 			const [newPlan] = await db
 				.insert(userPlans)
 				.values({
-					userId: effectiveUserId,
+					userId,
 					planId,
 					currentPeriodEnd,
 					isActive: true,
@@ -344,5 +325,127 @@ export async function getCustomerPortalUrl() {
 		},
 		"getCustomerPortalUrl",
 		null
+	);
+}
+
+// moved PLAN_QUOTAS and UsageMetric to non-server config
+
+// Main quota enforcement function
+export async function checkQuotaAndConsume(
+	userId: string,
+	usageType: UsageMetric,
+	amount = 1
+): Promise<{
+	allowed: boolean;
+	remaining?: number;
+	error?: string;
+	quotaDetails?: {
+		quotaType: UsageMetric;
+		currentUsage: number;
+		quotaLimit: number;
+		planId: PlanId;
+	};
+}> {
+	return await withErrorHandling(
+		async () => {
+			// Get user's current plan and usage in a transaction
+			return await db.transaction(async (tx) => {
+				// Get user's plan
+				const userPlan = await tx.query.userPlans.findFirst({
+					where: and(
+						eq(userPlans.userId, userId),
+						eq(userPlans.isActive, true)
+					),
+				});
+
+				if (!userPlan) {
+					return { allowed: false, error: "No active plan found" };
+				}
+
+				// Get or create user usage record
+				let usage = await tx.query.userUsage.findFirst({
+					where: eq(userUsage.userId, userId),
+				});
+
+				const now = new Date();
+				// Fix: Reset cycle when current time is past the billing period end
+				const shouldResetCycle =
+					usage?.cycleStart &&
+					userPlan.currentPeriodEnd &&
+					now > new Date(userPlan.currentPeriodEnd);
+
+				// Initialize usage or reset cycle if needed
+				if (!usage) {
+					[usage] = await tx
+						.insert(userUsage)
+						.values({
+							userId,
+							cycleStart: now,
+						})
+						.returning();
+				} else if (shouldResetCycle && userPlan.currentPeriodEnd) {
+					// Reset usage counters for new cycle
+					[usage] = await tx
+						.update(userUsage)
+						.set({
+							cycleStart: now,
+							aiGenerationsCount: 0,
+							aiTokensConsumed: 0,
+							materialsUploadedCount: 0,
+							updatedAt: now,
+						})
+						.where(eq(userUsage.userId, userId))
+						.returning();
+				}
+
+				// Get quota limit for this plan
+				const quota = PLAN_QUOTAS[userPlan.planId][usageType];
+
+				// Map usage type to database field
+				const fieldMapping: Record<UsageMetric, keyof typeof usage> = {
+					ai_generations: "aiGenerationsCount",
+					materials_uploaded: "materialsUploadedCount",
+				};
+
+				const fieldName = fieldMapping[usageType];
+				const currentUsage = (usage[fieldName] as number) || 0;
+
+				// Atomic conditional increment to prevent race conditions
+				const newValue = currentUsage + amount;
+				if (newValue > quota) {
+					return {
+						allowed: false,
+						error: `${usageType} quota exceeded. You have used ${currentUsage}/${quota}. Please upgrade your plan.`,
+						quotaDetails: {
+							quotaType: usageType,
+							currentUsage,
+							quotaLimit: quota,
+							planId: userPlan.planId,
+						},
+					};
+				}
+
+				const result = await tx
+					.update(userUsage)
+					.set({
+						[fieldName]: newValue,
+						updatedAt: now,
+					})
+					.where(eq(userUsage.userId, userId))
+					.returning();
+
+				// Defensive: ensure exactly one row updated
+				if (result.length !== 1) {
+					return { allowed: false, error: "Failed to update usage" };
+				}
+
+				return {
+					allowed: true,
+					remaining: quota - newValue,
+				};
+			});
+		},
+		"checkQuotaAndConsume",
+		{ allowed: false, error: "Database error occurred" }
 	);
 }

@@ -10,6 +10,7 @@ const GenerateCuecardsPayload = z.object({
 		.min(1, "At least one material ID is required"),
 	configId: z.string().uuid("Config ID must be a valid UUID"),
 	cacheKey: z.string().optional(), // Cache key for pre-fetched chunks
+	userId: z.string().min(1, "User ID is required"),
 });
 
 const GenerateCuecardsOutput = z.object({
@@ -23,7 +24,8 @@ export const generateCuecards = schemaTask({
 	schema: GenerateCuecardsPayload,
 	maxDuration: 300, // 5 minutes for individual content type
 	run: async (payload: GenerateCuecardsPayloadType, { ctx: _ctx }) => {
-		const { weekId, courseId, materialIds, configId, cacheKey } = payload;
+		const { weekId, courseId, materialIds, configId, cacheKey, userId } =
+			payload;
 
 		await tags.add([
 			`weekId:${payload.weekId}`,
@@ -52,6 +54,7 @@ export const generateCuecards = schemaTask({
 			});
 
 			await generateContent({
+				userId,
 				contentType: "cuecards",
 				courseId,
 				weekId,

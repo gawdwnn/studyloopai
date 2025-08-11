@@ -52,7 +52,8 @@ export async function generateEmbeddings(
 				const { embeddings } = await embedMany({
 					model: getEmbeddingModel("text-embedding-3-small"),
 					values: uncachedTexts.map((t) => t.text),
-					maxRetries: 2, // AI SDK handles retries automatically
+					maxRetries: 3, // AI SDK handles retries automatically with exponential backoff
+					abortSignal: AbortSignal.timeout(30000), // 30 second timeout for embeddings
 				});
 
 				// Map embeddings back to their hashes for caching

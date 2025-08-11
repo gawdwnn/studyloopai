@@ -1,7 +1,9 @@
 import { generateEmbeddings } from "@/lib/ai/embeddings";
-import { CONTENT_TYPES } from "@/lib/config/file-upload";
-import { PDF_PROCESSING_LIMITS } from "@/lib/config/pdf-processing";
-import { parsePDF } from "@/lib/processing/pdf-parser";
+import { contentGenerationEvents } from "@/lib/analytics/events";
+import {
+	getDocumentProcessor,
+	isSupportedDocumentType,
+} from "@/lib/processing";
 import {
 	insertDocumentChunks,
 	updateCourseMaterialStatus,
@@ -16,6 +18,7 @@ const ProcessAndEmbedIndividualPayload = z.object({
 	materialId: z.string().min(1, "Material ID is required"),
 	filePath: z.string().min(1, "File path is required"),
 	contentType: z.string().min(1, "Content type is required"),
+	userId: z.string().min(1, "User ID is required"),
 });
 
 const ProcessAndEmbedIndividualOutput = z.object({
@@ -55,7 +58,7 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 		});
 	},
 	run: async (payload: ProcessAndEmbedIndividualPayloadType) => {
-		const { materialId, filePath, contentType } = payload;
+		const { materialId, filePath, contentType, userId } = payload;
 
 		// Tag this run for enhanced observability
 		await tags.add([`materialId:${payload.materialId}`, "phase:embedding"]);
@@ -87,62 +90,60 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 
 			const buffer = downloadResult.buffer;
 
-			let extractedText = "";
-
-			// 2. Process based on content type (v1: PDF only)
-			if (contentType === CONTENT_TYPES.PDF) {
-				const pdfResult = await parsePDF(buffer, {
-					cleanText: true,
-					timeout: PDF_PROCESSING_LIMITS.MAX_PROCESSING_TIMEOUT,
-				});
-
-				if (pdfResult.success && pdfResult.text && pdfResult.text.trim()) {
-					extractedText = pdfResult.text;
-				} else {
-					logger.error("PDF text extraction failed", {
-						materialId,
-						filePath,
-						error: pdfResult.error,
-						step: "text_extraction",
-					});
-					throw new Error(
-						`Failed to extract text from PDF: ${filePath}. Error: ${pdfResult.error}`
-					);
-				}
-			} else {
-				logger.error("Unsupported content type", {
+			// 2. Check if the document type is supported
+			if (!isSupportedDocumentType(contentType)) {
+				logger.error("Unsupported document type", {
 					materialId,
 					filePath,
 					contentType,
-					supportedTypes: [CONTENT_TYPES.PDF],
-					step: "text_extraction",
+					step: "document_validation",
 				});
-				// Future: Handle other content types (video, audio, image, weblink)
 				throw new Error(
-					`Content type '${contentType}' is not yet supported. Currently only PDF processing is implemented.`
+					`Document type '${contentType}' is not supported. Supported: PDF, Office (Word/Excel/PowerPoint), and Text (TXT/CSV/MD).`
 				);
 			}
 
-			if (!extractedText.trim()) {
-				logger.error("No extractable text found", {
+			// 3. Process document directly for easier traceability
+			const processor = await getDocumentProcessor(contentType);
+			const processingResult = await processor.process(buffer, {
+				materialId,
+			});
+
+			if (!processingResult.success || !processingResult.text.trim()) {
+				logger.error("Document processing failed", {
 					materialId,
 					filePath,
-					textLength: extractedText.length,
+					contentType,
+					error: processingResult.error,
+					source: processingResult.metadata.source,
+					processor: processingResult.metadata.processor,
 					step: "text_extraction",
 				});
 				throw new Error(
-					`No text could be extracted from file: ${filePath}. Please ensure the file contains readable text content.`
+					`Failed to extract text from document: ${filePath}. Error: ${processingResult.error || "No extractable text found"}`
 				);
 			}
 
-			// 3. Chunk text
+			const extractedText = processingResult.text;
+			logger.info("Document processing completed", {
+				materialId,
+				filePath,
+				contentType,
+				textLength: extractedText.length,
+				source: processingResult.metadata.source,
+				processor: processingResult.metadata.processor,
+				confidence: processingResult.metadata.confidence,
+				warnings: processingResult.metadata.warnings,
+			});
+
+			// 4. Chunk text
 			const splitter = new RecursiveCharacterTextSplitter({
-				chunkSize: PDF_PROCESSING_LIMITS.CHUNK_SIZE,
-				chunkOverlap: PDF_PROCESSING_LIMITS.CHUNK_OVERLAP,
+				chunkSize: 1000,
+				chunkOverlap: 200,
 			});
 			const chunks = await splitter.createDocuments([extractedText]);
 
-			// 4. Generate embeddings
+			// 5. Generate embeddings
 			const result = await generateEmbeddings(
 				chunks.map((c: Document) => c.pageContent)
 			);
@@ -157,7 +158,7 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 				throw new Error(`Embedding generation failed: ${result.error}`);
 			}
 
-			// 5. Save chunks to database
+			// 6. Save chunks to database (idempotent)
 			const chunksToInsert = result.embeddings.map(
 				(embedding: number[], i: number) => ({
 					material_id: materialId,
@@ -168,10 +169,59 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 				})
 			);
 
-			// Using admin database client to bypass RLS policies for background processing
+			// Idempotent write: remove existing chunks for this material before insert
+			// to avoid duplicates on retries.
+			try {
+				const { getAdminDatabaseAccess } = await import("@/db");
+				const admin = getAdminDatabaseAccess();
+				await admin
+					.from("document_chunks")
+					.delete()
+					.eq("material_id", materialId);
+			} catch (cleanupError) {
+				logger.error("Failed to cleanup existing chunks before insert", {
+					materialId,
+					error:
+						cleanupError instanceof Error
+							? cleanupError.message
+							: String(cleanupError),
+				});
+				// Continue; insert will still proceed
+			}
+
 			await insertDocumentChunks(chunksToInsert);
 
-			// 6. Update final status to 'completed'
+			// 7. Track embedding generation for analytics and billing
+			try {
+				const totalTokens = chunksToInsert.reduce(
+					(sum, chunk) => sum + chunk.token_count,
+					0
+				);
+				await contentGenerationEvents.vectorEmbedding(
+					{
+						materialId,
+						chunkCount: chunks.length,
+						processingTime: 0, // Processing time not tracked in this context
+						embeddingModel: "text-embedding-3-small",
+						embeddingProvider: "openai",
+						totalTokens,
+						courseId: undefined, // Could be retrieved if needed
+						success: true,
+					},
+					userId
+				);
+			} catch (trackingError) {
+				// Don't fail the job if tracking fails
+				logger.error("Failed to track embedding generation", {
+					error:
+						trackingError instanceof Error
+							? trackingError.message
+							: String(trackingError),
+					materialId,
+				});
+			}
+
+			// 9. Update final status to 'completed'
 			await updateCourseMaterialStatus(materialId, "completed", {
 				processingCompletedAt: new Date(),
 			});
@@ -188,9 +238,13 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 				contentType,
 			};
 		} catch (error) {
-			// log error as it
-
-			logger.error("Material processing failed", {});
+			logger.error("Material processing failed", {
+				materialId: payload.materialId,
+				filePath: payload.filePath,
+				contentType: payload.contentType,
+				error: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined,
+			});
 
 			await updateCourseMaterialStatus(payload.materialId, "failed", {
 				processingCompletedAt: new Date(),
@@ -218,8 +272,6 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 	}: {
 		payload: ProcessAndEmbedIndividualPayloadType;
 	}) => {
-		//log error as is
-
 		logger.error("Material processing failed permanently", {
 			materialId: payload.materialId,
 			filePath: payload.filePath,

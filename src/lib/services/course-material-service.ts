@@ -1,4 +1,5 @@
 import type { configurationSource } from "@/db/schema";
+import { fetchWithErrorHandling } from "@/lib/utils/api-error-handler";
 import type { SelectiveGenerationConfig } from "@/types/generation-types";
 
 /** Payload returned by the /api/materials/presign endpoint */
@@ -13,7 +14,7 @@ export interface PresignUploadResponse {
 export async function presignUpload(
 	body: Record<string, unknown>
 ): Promise<PresignUploadResponse> {
-	const res = await fetch("/api/materials/presign", {
+	const res = await fetchWithErrorHandling("/api/materials/presign", {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		credentials: "include",
@@ -21,10 +22,8 @@ export async function presignUpload(
 	});
 
 	if (!res.ok) {
-		const errorData = await res
-			.json()
-			.catch(() => ({ error: "Upload preparation failed" }));
-		throw new Error(errorData.error || "Upload preparation failed");
+		// Error toast already shown by fetchWithErrorHandling
+		throw new Error("Upload preparation failed");
 	}
 
 	return res.json() as Promise<PresignUploadResponse>;
@@ -45,7 +44,7 @@ export async function completeUpload(
 	selectiveConfig: SelectiveGenerationConfig,
 	configSource: (typeof configurationSource.enumValues)[number]
 ): Promise<CompleteUploadResponse> {
-	const res = await fetch("/api/materials/complete", {
+	const res = await fetchWithErrorHandling("/api/materials/complete", {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		credentials: "include",
@@ -59,10 +58,8 @@ export async function completeUpload(
 	});
 
 	if (!res.ok) {
-		const errorData = await res
-			.json()
-			.catch(() => ({ error: "Upload completion failed" }));
-		throw new Error(errorData.error || "Upload completion failed");
+		// Error toast already shown by fetchWithErrorHandling
+		throw new Error("Upload completion failed");
 	}
 
 	return res.json() as Promise<CompleteUploadResponse>;

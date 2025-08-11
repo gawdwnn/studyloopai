@@ -14,6 +14,6 @@ export const config: TriggerConfig = {
 		},
 	},
 	build: {
-		external: ["pino", "pino-pretty", "thread-stream"],
+		external: ["pino", "pino-pretty"],
 	},
 };

@@ -17,12 +17,15 @@ import {
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { getCourseWeeks } from "@/lib/actions/courses";
+import { DOCUMENT_PROCESSING_CONFIG } from "@/lib/config/document-processing";
 import { COURSE_MATERIALS_BUCKET } from "@/lib/config/storage";
+import type { UserPlan } from "@/lib/processing/types";
 import {
 	completeUpload,
 	presignUpload,
 } from "@/lib/services/course-material-service";
 import { createClient } from "@/lib/supabase/client";
+import { fetchWithErrorHandling } from "@/lib/utils/api-error-handler";
 import { logger } from "@/lib/utils/logger";
 import {
 	findWeekById,
@@ -44,7 +47,8 @@ import { StepReviewUpload } from "./step-review-upload";
 
 interface UploadWizardProps {
 	courses: Course[];
-	onUploadSuccess: () => void;
+	onUploadSuccess?: () => void;
+	userPlan: UserPlan;
 }
 
 const STEP_CONFIG = {
@@ -109,7 +113,11 @@ function UploadButtonContent({
 	);
 }
 
-export function UploadWizard({ courses, onUploadSuccess }: UploadWizardProps) {
+export function UploadWizard({
+	courses,
+	onUploadSuccess,
+	userPlan,
+}: UploadWizardProps) {
 	const [isOpen, setIsOpen] = useState(false);
 
 	const {
@@ -152,8 +160,9 @@ export function UploadWizard({ courses, onUploadSuccess }: UploadWizardProps) {
 			return;
 		}
 
-		if (files.length > 5) {
-			toast.error("Maximum 5 files allowed per batch");
+		const maxBatchSize = DOCUMENT_PROCESSING_CONFIG.UPLOAD.maxBatchSize;
+		if (files.length > maxBatchSize) {
+			toast.error(`Maximum ${maxBatchSize} files allowed per batch`);
 			return;
 		}
 
@@ -186,24 +195,25 @@ export function UploadWizard({ courses, onUploadSuccess }: UploadWizardProps) {
 				}
 
 				// Use on-demand generation API for existing materials
-				const response = await fetch("/api/generation/trigger", {
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					credentials: "include",
-					body: JSON.stringify({
-						courseId: selectedCourseId,
-						weekId: selectedWeekId,
-						featureTypes,
-						config: selectiveConfig,
-						configSource: "course_week_override",
-					}),
-				});
+				const response = await fetchWithErrorHandling(
+					"/api/generation/trigger",
+					{
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						credentials: "include",
+						body: JSON.stringify({
+							courseId: selectedCourseId,
+							weekId: selectedWeekId,
+							featureTypes,
+							config: selectiveConfig,
+							configSource: "course_week_override",
+						}),
+					}
+				);
 
 				if (!response.ok) {
-					const errorData = await response
-						.json()
-						.catch(() => ({ error: "Generation failed" }));
-					throw new Error(errorData.error || "Failed to start generation");
+					// Error toast already shown by fetchWithErrorHandling
+					throw new Error("Failed to start generation");
 				}
 
 				const result = await response.json();
@@ -220,7 +230,7 @@ export function UploadWizard({ courses, onUploadSuccess }: UploadWizardProps) {
 					"Content generation started using existing materials. Processing will continue in background."
 				);
 				setIsOpen(false);
-				onUploadSuccess();
+				onUploadSuccess?.();
 				return;
 			}
 
@@ -303,7 +313,7 @@ export function UploadWizard({ courses, onUploadSuccess }: UploadWizardProps) {
 			);
 
 			setIsOpen(false);
-			onUploadSuccess();
+			onUploadSuccess?.();
 		} catch (error) {
 			logger.error("Failed to complete upload", {
 				message: error instanceof Error ? error.message : String(error),
@@ -324,7 +334,7 @@ export function UploadWizard({ courses, onUploadSuccess }: UploadWizardProps) {
 			case "course-selection":
 				return <StepCourseSelection courses={courses} />;
 			case "file-upload":
-				return <StepFileUpload />;
+				return <StepFileUpload userPlan={userPlan} />;
 			case "feature-selection":
 				return <StepFeatureSelection />;
 			case "generation-settings":
@@ -359,9 +369,9 @@ export function UploadWizard({ courses, onUploadSuccess }: UploadWizardProps) {
 								</TooltipTrigger>
 								<TooltipContent className="max-w-xs">
 									<p>
-										Upload PDFs, documents, or other course materials. You can
-										choose which AI features to generate and customize settings
-										for each.
+										Upload course materials including PDFs, Office documents,
+										and text files. You can choose which AI features to generate
+										and customize settings for each.
 									</p>
 								</TooltipContent>
 							</Tooltip>

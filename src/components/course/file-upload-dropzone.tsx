@@ -1,9 +1,11 @@
 "use client";
 
 import {
-	FILE_UPLOAD_DISPLAY,
-	FILE_UPLOAD_LIMITS,
-} from "@/lib/config/file-upload";
+	type UserPlan,
+	getDropzoneDescription,
+	getSupportedFileTypes,
+	validateFile,
+} from "@/lib/config/document-processing";
 import { cn } from "@/lib/utils";
 import { logger } from "@/lib/utils/logger";
 import { FileIcon, UploadCloudIcon, XIcon } from "lucide-react";
@@ -13,8 +15,7 @@ import { toast } from "sonner";
 
 interface FileUploadDropzoneProps {
 	onFilesAdded: (files: File[]) => void;
-	acceptedFileTypes?: Record<string, string[]>;
-	maxFileSize?: number; // in bytes
+	userPlan: UserPlan; // Required - must be passed from server component
 	className?: string;
 	files: File[];
 	onRemoveFile: (index: number) => void;
@@ -22,44 +23,62 @@ interface FileUploadDropzoneProps {
 
 export function FileUploadDropzone({
 	onFilesAdded,
-	acceptedFileTypes = FILE_UPLOAD_LIMITS.ACCEPTED_FILE_TYPES,
-	maxFileSize = FILE_UPLOAD_LIMITS.MAX_FILE_SIZE,
+	userPlan,
 	className,
 	files,
 	onRemoveFile,
 }: FileUploadDropzoneProps) {
+	// Get plan-aware configuration
+	const supportedFileTypes = getSupportedFileTypes(userPlan);
+	const dropzoneDescription = getDropzoneDescription(userPlan);
 	const onDrop = useCallback(
 		(acceptedFiles: File[], fileRejections: FileRejection[]) => {
+			// Handle rejected files from dropzone
 			if (fileRejections.length > 0) {
 				for (const rejection of fileRejections) {
-					for (const error of rejection.errors) {
-						logger.warn("File validation error", {
-							fileName: rejection.file.name,
-							fileSize: rejection.file.size,
-							errorCode: error.code,
-							message: error.message,
-						});
+					const validation = validateFile(rejection.file, userPlan);
+					logger.warn("File validation error", {
+						fileName: rejection.file.name,
+						fileSize: rejection.file.size,
+						userPlan,
+						validationError: validation.error,
+					});
 
-						if (error.code === "file-too-large") {
-							toast.error(FILE_UPLOAD_DISPLAY.FILE_TOO_LARGE);
-						} else if (error.code === "file-invalid-type") {
-							toast.error("Invalid file type. Only PDFs are accepted.");
-						} else {
-							toast.error("File upload failed. Please try again.");
-						}
+					if (validation.error) {
+						toast.error(validation.error);
 					}
 				}
 				return;
 			}
-			onFilesAdded(acceptedFiles);
+
+			// Additional validation for accepted files using our consolidated config
+			const validFiles: File[] = [];
+			for (const file of acceptedFiles) {
+				const validation = validateFile(file, userPlan);
+				if (validation.isValid) {
+					validFiles.push(file);
+				} else {
+					toast.error(validation.error);
+					logger.warn("File failed additional validation", {
+						fileName: file.name,
+						fileSize: file.size,
+						userPlan,
+						validationError: validation.error,
+					});
+				}
+			}
+
+			if (validFiles.length > 0) {
+				onFilesAdded(validFiles);
+			}
 		},
-		[onFilesAdded]
+		[onFilesAdded, userPlan]
 	);
 
 	const { getRootProps, getInputProps, isDragActive } = useDropzone({
 		onDrop,
-		accept: acceptedFileTypes,
-		maxSize: maxFileSize,
+		accept: supportedFileTypes,
+		// File size validated via validateFile(userPlan) onDrop, not by dropzone config
 	});
 
 	return (
@@ -93,9 +112,7 @@ export function FileUploadDropzone({
 							</>
 						)}
 					</p>
-					<p className="text-xs text-muted-foreground">
-						{FILE_UPLOAD_DISPLAY.DROPZONE_TEXT}
-					</p>
+					<p className="text-xs text-muted-foreground">{dropzoneDescription}</p>
 				</div>
 			</div>
 			{files.length > 0 && (
