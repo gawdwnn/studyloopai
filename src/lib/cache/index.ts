@@ -15,6 +15,8 @@ const CACHE_TTL = {
 	chunks: 3600, // 1 hour - for content generation chunks
 	onboardingIncomplete: 300, // 5 minutes - for incomplete onboarding (may change frequently)
 	onboardingComplete: 86400, // 24 hours - for completed onboarding (rarely changes)
+	ocrResult: 604800, // 7 days - OCR results are expensive and stable
+	ocrProcessing: 300, // 5 minutes - temporary cache during processing
 } as const;
 
 // Generic cache get
@@ -25,8 +27,8 @@ export const cacheGet = async <T>(
 	try {
 		const value = await redis.get<T>(key);
 		return value;
-	} catch (error) {
-		console.error("Cache get error:", error);
+	} catch (_error) {
+		// Silent cache failure - return null to fallback to source
 		return null;
 	}
 };
@@ -39,8 +41,8 @@ export const cacheSet = async <T>(
 ): Promise<void> => {
 	try {
 		await redis.set(key, value, { ex: CACHE_TTL[cacheType] });
-	} catch (error) {
-		console.error("Cache set error:", error);
+	} catch (_error) {
+		// Silent cache failure - continue without caching
 	}
 };
 
@@ -69,8 +71,8 @@ export const cacheInvalidate = async (pattern: string): Promise<void> => {
 		if (keys.length > 0) {
 			await redis.del(...keys);
 		}
-	} catch (error) {
-		console.error("Cache invalidation failed:", error);
+	} catch (_error) {
+		// Silent cache failure - continue without invalidation
 	}
 };
 
@@ -87,8 +89,8 @@ export const cacheMget = async <T>(keys: string[]): Promise<Map<string, T>> => {
 		});
 
 		return result;
-	} catch (error) {
-		console.error("Cache mget error:", error);
+	} catch (_error) {
+		// Silent cache failure - return empty map to fallback
 		return new Map();
 	}
 };
@@ -106,8 +108,8 @@ export const cacheMset = async <T>(
 		}
 
 		await pipeline.exec();
-	} catch (error) {
-		console.error("Cache mset error:", error);
+	} catch (_error) {
+		// Silent cache failure - continue without bulk caching
 	}
 };
 
@@ -135,4 +137,27 @@ export const getCachedChunks = async (
 	cacheKey: string
 ): Promise<string[] | null> => {
 	return await cacheGet<string[]>(cacheKey, "chunks");
+};
+
+// OCR-specific cache utilities
+export const generateOCRCacheKey = (
+  fileHash: string,
+  processingType: "mistral" | "basic"
+): string => {
+  // Global cache scope to maximize reuse across users
+  return `ocr:${processingType}:${fileHash}`;
+};
+
+// OCR result caching
+export const cacheOCRResult = async (
+	result: string,
+	cacheKey: string
+): Promise<void> => {
+	await cacheSet(cacheKey, result, "ocrResult");
+};
+
+export const getCachedOCRResult = async (
+	cacheKey: string
+): Promise<string | null> => {
+	return await cacheGet<string>(cacheKey, "ocrResult");
 };

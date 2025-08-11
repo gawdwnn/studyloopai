@@ -1,9 +1,9 @@
 "use server";
 
 import { db } from "@/db";
-import { userPlans, users } from "@/db/schema";
+import { userPlans, userUsage, users } from "@/db/schema";
 import { env } from "@/env";
-import { PLANS } from "@/lib/config/plans";
+import { PLANS, PLAN_QUOTAS, type UsageMetric } from "@/lib/config/plans";
 import type { PlanId } from "@/lib/database/types";
 import { FEATURE_IDS } from "@/lib/database/types";
 import { createPolarClient } from "@/lib/polar/client";
@@ -344,5 +344,127 @@ export async function getCustomerPortalUrl() {
 		},
 		"getCustomerPortalUrl",
 		null
+	);
+}
+
+// moved PLAN_QUOTAS and UsageMetric to non-server config
+
+// Main quota enforcement function
+export async function checkQuotaAndConsume(
+	userId: string,
+	usageType: UsageMetric,
+	amount = 1
+): Promise<{
+	allowed: boolean;
+	remaining?: number;
+	error?: string;
+	quotaDetails?: {
+		quotaType: UsageMetric;
+		currentUsage: number;
+		quotaLimit: number;
+		planId: PlanId;
+	};
+}> {
+	return await withErrorHandling(
+		async () => {
+			// Get user's current plan and usage in a transaction
+			return await db.transaction(async (tx) => {
+				// Get user's plan
+				const userPlan = await tx.query.userPlans.findFirst({
+					where: and(
+						eq(userPlans.userId, userId),
+						eq(userPlans.isActive, true)
+					),
+				});
+
+				if (!userPlan) {
+					return { allowed: false, error: "No active plan found" };
+				}
+
+				// Get or create user usage record
+				let usage = await tx.query.userUsage.findFirst({
+					where: eq(userUsage.userId, userId),
+				});
+
+				const now = new Date();
+				// Fix: Reset cycle when current time is past the billing period end
+				const shouldResetCycle =
+					usage?.cycleStart &&
+					userPlan.currentPeriodEnd &&
+					now > new Date(userPlan.currentPeriodEnd);
+
+				// Initialize usage or reset cycle if needed
+				if (!usage) {
+					[usage] = await tx
+						.insert(userUsage)
+						.values({
+							userId,
+							cycleStart: now,
+						})
+						.returning();
+				} else if (shouldResetCycle && userPlan.currentPeriodEnd) {
+					// Reset usage counters for new cycle
+					[usage] = await tx
+						.update(userUsage)
+						.set({
+							cycleStart: now,
+							aiGenerationsCount: 0,
+							aiTokensConsumed: 0,
+							materialsUploadedCount: 0,
+							updatedAt: now,
+						})
+						.where(eq(userUsage.userId, userId))
+						.returning();
+				}
+
+				// Get quota limit for this plan
+				const quota = PLAN_QUOTAS[userPlan.planId][usageType];
+
+				// Map usage type to database field
+				const fieldMapping: Record<UsageMetric, keyof typeof usage> = {
+					ai_generations: "aiGenerationsCount",
+					materials_uploaded: "materialsUploadedCount",
+				};
+
+				const fieldName = fieldMapping[usageType];
+				const currentUsage = (usage[fieldName] as number) || 0;
+
+				// Atomic conditional increment to prevent race conditions
+				const newValue = currentUsage + amount;
+				if (newValue > quota) {
+					return {
+						allowed: false,
+						error: `${usageType} quota exceeded. You have used ${currentUsage}/${quota}. Please upgrade your plan.`,
+						quotaDetails: {
+							quotaType: usageType,
+							currentUsage,
+							quotaLimit: quota,
+							planId: userPlan.planId,
+						},
+					};
+				}
+
+				const result = await tx
+					.update(userUsage)
+					.set({
+						[fieldName]: newValue,
+						updatedAt: now,
+					})
+					.where(eq(userUsage.userId, userId))
+					.returning();
+
+				// Defensive: ensure exactly one row updated
+				if (result.length !== 1) {
+					return { allowed: false, error: "Failed to update usage" };
+				}
+
+				return {
+					allowed: true,
+					remaining: quota - newValue,
+				};
+			});
+		},
+		"checkQuotaAndConsume",
+		{ allowed: false, error: "Database error occurred" }
 	);
 }
