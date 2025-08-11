@@ -725,6 +725,41 @@ export const userPlans = pgTable(
 	]
 );
 
+// User usage tracking table
+export const userUsage = pgTable(
+	"user_usage",
+	{
+		userUsageId: uuid("user_usage_id").defaultRandom().primaryKey().notNull(),
+		userId: uuid("user_id").notNull(),
+		cycleStart: timestamp("cycle_start").defaultNow().notNull(),
+
+		// Usage counters for current cycle
+		aiGenerationsCount: integer("ai_generations_count").default(0).notNull(),
+		aiTokensConsumed: integer("ai_tokens_consumed").default(0).notNull(),
+		materialsUploadedCount: integer("materials_uploaded_count")
+			.default(0)
+			.notNull(),
+
+		createdAt: timestamp("created_at").defaultNow().notNull(),
+		updatedAt: timestamp("updated_at").defaultNow().notNull(),
+	},
+	(table) => [
+		// Index for fast user lookups
+		index("idx_user_usage_user_id").using("btree", table.userId),
+		index("idx_user_usage_cycle_start").using("btree", table.cycleStart),
+
+		// Unique constraint - only one usage record per user
+		unique("user_usage_user_id_unique").on(table.userId),
+
+		// Foreign key constraint
+		foreignKey({
+			columns: [table.userId],
+			foreignColumns: [usersInAuth.id],
+			name: "user_usage_user_id_fkey",
+		}).onDelete("cascade"),
+	]
+);
+
 // Users table
 export const users = pgTable(
 	"users",
@@ -1105,6 +1140,64 @@ export const conceptMappings = pgTable(
 			columns: [table.weekId],
 			foreignColumns: [courseWeeks.id],
 			name: "concept_mappings_week_id_fkey",
+		}).onDelete("cascade"),
+	]
+);
+
+// Idempotency tracking table - Prevents duplicate processing of critical operations
+export const idempotencyKeys = pgTable(
+	"idempotency_keys",
+	{
+		id: uuid().defaultRandom().primaryKey().notNull(),
+		idempotencyKey: varchar("idempotency_key", { length: 255 }).notNull().unique(),
+		operationType: varchar("operation_type", { length: 50 }).notNull(), // 'webhook', 'payment', 'upload', 'generation'
+		resourceId: varchar("resource_id", { length: 255 }), // Optional reference to related resource
+		userId: uuid("user_id"), // Optional user association
+		status: varchar({ length: 20 }).default("processing").notNull(), // 'processing', 'completed', 'failed'
+		resultData: jsonb("result_data"), // Store operation result for idempotent responses
+		errorMessage: text("error_message"), // Store error details if failed
+		retryCount: integer("retry_count").default(0).notNull(),
+		maxRetries: integer("max_retries").default(3).notNull(),
+		lastRetryAt: timestamp("last_retry_at"),
+		processingStartedAt: timestamp("processing_started_at").defaultNow().notNull(),
+		processingCompletedAt: timestamp("processing_completed_at"),
+		expiresAt: timestamp("expires_at").notNull(), // TTL for cleanup
+		createdAt: timestamp("created_at").defaultNow().notNull(),
+		updatedAt: timestamp("updated_at").defaultNow().notNull(),
+		// Metadata for additional context
+		metadata: jsonb("metadata"),
+	},
+	(table) => [
+		index("idx_idempotency_keys_operation_type").using(
+			"btree",
+			table.operationType
+		),
+		index("idx_idempotency_keys_resource_id").using(
+			"btree",
+			table.resourceId
+		),
+		index("idx_idempotency_keys_user_id").using("btree", table.userId),
+		index("idx_idempotency_keys_status").using("btree", table.status),
+		index("idx_idempotency_keys_expires_at").using("btree", table.expiresAt),
+		index("idx_idempotency_keys_created_at").using("btree", table.createdAt),
+		// Composite index for efficient cleanup of expired records
+		index("idx_idempotency_keys_expires_status").using(
+			"btree",
+			table.expiresAt,
+			table.status
+		),
+		// Composite index for retries
+		index("idx_idempotency_keys_retry_tracking").using(
+			"btree",
+			table.status,
+			table.retryCount,
+			table.lastRetryAt
+		),
+		// Optional foreign key to users (nullable for non-user operations)
+		foreignKey({
+			columns: [table.userId],
+			foreignColumns: [users.userId],
+			name: "idempotency_keys_user_id_fkey",
 		}).onDelete("cascade"),
 	]
 );

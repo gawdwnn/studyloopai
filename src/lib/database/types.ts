@@ -14,6 +14,13 @@ export interface PlanFeature {
 	included: boolean;
 }
 
+export interface PlanQuotas {
+	ai_generations: number;
+	materials_uploaded: number;
+}
+
+export type UsageMetric = keyof PlanQuotas;
+
 export interface Plan {
 	id: PlanId;
 	name: string;
@@ -24,6 +31,7 @@ export interface Plan {
 	savingsInfo?: string;
 	isPopular?: boolean;
 	features: PlanFeature[];
+	quotas: PlanQuotas;
 }
 
 // Feature IDs for easy reference and type safety
