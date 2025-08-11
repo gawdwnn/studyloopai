@@ -1,22 +1,56 @@
-import { PLANS, priceUtils } from "@/lib/config/plans";
+import { PLANS, PLAN_QUOTAS, priceUtils } from "@/lib/config/plans";
 import { createLogger } from "@/lib/utils/logger";
 import { createPolarClient } from "./client";
 
 const logger = createLogger("billing:products");
 
+// Helper function for consistent product matching
+const findPaidProductByInterval = (products: any[], interval: string) => {
+	return products.find(
+		(p) => p.recurringInterval === interval && p.prices?.[0]?.priceAmount > 0
+	);
+};
+
 export async function createProducts() {
 	const polar = createPolarClient();
+	const freePlan = PLANS.find((p) => p.id === "free");
 	const monthlyPlan = PLANS.find((p) => p.id === "monthly");
 	const yearlyPlan = PLANS.find((p) => p.id === "yearly");
 
-	if (!monthlyPlan || !yearlyPlan) {
-		throw new Error("Monthly or yearly plan not found");
+	if (!freePlan || !monthlyPlan || !yearlyPlan) {
+		throw new Error("Required plans not found");
+	}
+
+	logger.info("Creating products with client", {
+		freePlanFound: !!freePlan,
+		monthlyPlanFound: !!monthlyPlan,
+		yearlyPlanFound: !!yearlyPlan,
+	});
+
+	// Create free product
+	logger.info("Creating free product...");
+	let freeProduct;
+	try {
+		freeProduct = await polar.products.create({
+			name: "StudyLoop Free",
+			description: `Free tier: ${PLAN_QUOTAS.free.ai_generations} AI generations, ${PLAN_QUOTAS.free.materials_uploaded} material uploads per month`,
+			recurringInterval: "month",
+			prices: [
+				{
+					amountType: "free",
+				},
+			],
+		});
+		logger.info("Free product created successfully", { id: freeProduct.id });
+	} catch (error) {
+		console.error("Failed to create free product:", error);
+		throw error;
 	}
 
 	// Create monthly product
 	const monthlyProduct = await polar.products.create({
 		name: "StudyLoop Pro Monthly",
-		description: "Monthly subscription to StudyLoop Pro",
+		description: `Pro Monthly: ${PLAN_QUOTAS.monthly.ai_generations} AI generations, ${PLAN_QUOTAS.monthly.materials_uploaded} material uploads per month`,
 		recurringInterval: "month",
 		prices: [
 			{
@@ -30,7 +64,7 @@ export async function createProducts() {
 	// Create yearly product
 	const yearlyProduct = await polar.products.create({
 		name: "StudyLoop Pro Yearly",
-		description: "Yearly subscription to StudyLoop Pro - Save $1.00/month",
+		description: `Pro Yearly: ${PLAN_QUOTAS.yearly.ai_generations} AI generations, ${PLAN_QUOTAS.yearly.materials_uploaded} material uploads per month - Save $12 annually`,
 		recurringInterval: "year",
 		prices: [
 			{
@@ -43,18 +77,45 @@ export async function createProducts() {
 		],
 	});
 
-	return { monthlyProduct, yearlyProduct };
+	return { freeProduct, monthlyProduct, yearlyProduct };
 }
 
 export async function getProductPrices() {
 	const polar = createPolarClient();
 
+	logger.info("GetProductPrices: Fetching product prices from Polar");
+
 	// Fetch all products from Polar using the same pattern as getProducts()
 	const productsResponse = await polar.products.list({});
 	const products = productsResponse.result?.items || [];
 
-	const monthlyProduct = products.find((p) => p.name?.includes("Monthly"));
-	const yearlyProduct = products.find((p) => p.name?.includes("Yearly"));
+	// Use consistent product matching strategy
+	const monthlyProduct = findPaidProductByInterval(products, "month");
+	const yearlyProduct = findPaidProductByInterval(products, "year");
+
+	logger.info("GetProductPrices: Product matching results", {
+		foundMonthly: !!monthlyProduct,
+		foundYearly: !!yearlyProduct,
+		monthlyPriceId: monthlyProduct?.prices?.[0]?.id,
+		yearlyPriceId: yearlyProduct?.prices?.[0]?.id,
+	});
+
+	if (!monthlyProduct?.prices?.[0]?.id || !yearlyProduct?.prices?.[0]?.id) {
+		logger.warn("GetProductPrices: Missing price information", {
+			monthlyProduct: monthlyProduct
+				? {
+						id: monthlyProduct.id,
+						priceCount: monthlyProduct.prices?.length || 0,
+					}
+				: null,
+			yearlyProduct: yearlyProduct
+				? {
+						id: yearlyProduct.id,
+						priceCount: yearlyProduct.prices?.length || 0,
+					}
+				: null,
+		});
+	}
 
 	return {
 		monthlyPriceId: monthlyProduct?.prices?.[0]?.id,
@@ -82,9 +143,9 @@ export async function getProducts() {
 		})),
 	});
 
-	// More robust product matching based on recurring interval
-	const monthlyProduct = products.find((p) => p.recurringInterval === "month");
-	const yearlyProduct = products.find((p) => p.recurringInterval === "year");
+	// Use consistent product matching strategy (paid products only)
+	const monthlyProduct = findPaidProductByInterval(products, "month");
+	const yearlyProduct = findPaidProductByInterval(products, "year");
 
 	logger.info("GetProducts: Product matching results", {
 		foundMonthly: !!monthlyProduct,

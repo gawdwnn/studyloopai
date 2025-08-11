@@ -186,6 +186,15 @@ function BillingCycleToggle({
 	billingCycle: BillingCycle;
 	onBillingCycleChange: (cycle: BillingCycle) => void;
 }) {
+	// Calculate annual savings dynamically
+	const monthlyPlan = PLANS.find((p) => p.id === PLAN_IDS.MONTHLY);
+	const yearlyPlan = PLANS.find((p) => p.id === PLAN_IDS.YEARLY);
+
+	const annualSavings =
+		monthlyPlan && yearlyPlan
+			? monthlyPlan.price * 12 - yearlyPlan.annualPrice!
+			: 0;
+
 	return (
 		<div className="flex items-center justify-center gap-4 mb-8">
 			<span
@@ -216,7 +225,7 @@ function BillingCycleToggle({
 				Yearly
 			</span>
 			<Badge variant="secondary" className="bg-purple-100 text-purple-700">
-				Save $12/year
+				Save ${annualSavings}/year
 			</Badge>
 		</div>
 	);
