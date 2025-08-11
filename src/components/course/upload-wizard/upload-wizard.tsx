@@ -228,6 +228,9 @@ export function UploadWizard({
 				toast.success(
 					"Content generation started using existing materials. Processing will continue in background."
 				);
+
+				// Dispatch event for table refresh
+				window.dispatchEvent(new CustomEvent("upload-success"));
 				setIsOpen(false);
 				onUploadSuccess?.();
 				return;
@@ -310,6 +313,8 @@ export function UploadWizard({
 				`${successMessage}. Processing will continue in background.`
 			);
 
+			// Dispatch event for table refresh
+			window.dispatchEvent(new CustomEvent("upload-success"));
 			setIsOpen(false);
 			onUploadSuccess?.();
 		} catch (error) {

@@ -7,7 +7,6 @@
 
 import { db } from "@/db";
 import { courseMaterials, courseWeeks } from "@/db/schema";
-import { initializeFeatureTracking } from "@/lib/actions/course-week-features";
 import { persistSelectiveConfig } from "@/lib/actions/generation-config";
 import { checkQuotaAndConsume } from "@/lib/actions/plans";
 import { checkAIRateLimit } from "@/lib/rate-limit";
@@ -187,17 +186,6 @@ export async function POST(req: NextRequest) {
 				},
 				{ status: 502 }
 			);
-		}
-
-		// Initialize feature tracking
-		try {
-			await initializeFeatureTracking(body.courseId, body.weekId);
-		} catch (ftErr) {
-			logger.error("Failed to initialize feature tracking", {
-				message: ftErr instanceof Error ? ftErr.message : String(ftErr),
-				route: "/api/generation/trigger",
-			});
-			// Non-critical: do not fail the response
 		}
 
 		const response = NextResponse.json({

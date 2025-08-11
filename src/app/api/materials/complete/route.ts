@@ -2,7 +2,6 @@
 
 import { db } from "@/db";
 import { courseMaterials, courseWeeks } from "@/db/schema";
-import { initializeFeatureTracking } from "@/lib/actions/course-week-features";
 import { persistSelectiveConfig } from "@/lib/actions/generation-config";
 import { checkQuotaAndConsume } from "@/lib/actions/plans";
 import { checkAPIStrictRateLimit } from "@/lib/rate-limit";
@@ -16,6 +15,7 @@ import { SelectiveGenerationConfigSchema } from "@/lib/validation/generation-con
 import type { ingestCourseMaterials } from "@/trigger/ingest-course-materials";
 import { tasks } from "@trigger.dev/sdk";
 import { and, eq, inArray } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -221,16 +221,10 @@ export async function POST(req: NextRequest) {
 			);
 		}
 
-		// Initialize feature tracking
-		try {
-			await initializeFeatureTracking(body.courseId, body.weekId);
-		} catch (ftErr) {
-			logger.error(
-				{ err: ftErr, route: "/api/materials/complete" },
-				"Failed to initialize feature tracking"
-			);
-			// Non-critical: do not fail the response
-		}
+		// Feature tracking already initialized by persistSelectiveConfig above
+
+		// Revalidate course materials page to show updated materials
+		revalidatePath("/dashboard/course-materials");
 
 		return NextResponse.json({
 			success: true,
