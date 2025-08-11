@@ -2,10 +2,12 @@ import { getAllUserMaterials, getUserCourses } from "@/lib/actions/courses";
 import { FilePlus2, FileX } from "lucide-react";
 import Link from "next/link";
 
-import { UploadWizardWrapper } from "@/components/course/upload-wizard-wrapper";
+import { UploadWizard } from "@/components/course/upload-wizard";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeading } from "@/components/page-heading";
 import { Button } from "@/components/ui/button";
+import { getUserPlan } from "@/lib/actions/plans";
+import type { UserPlan } from "@/lib/processing/types";
 import { CourseMaterialsClient } from "./course-materials-client";
 
 export const metadata = {
@@ -15,10 +17,12 @@ export const metadata = {
 
 export default async function CourseMaterialsPage() {
 	// Fetch data server-side
-	const [courses, courseMaterials] = await Promise.all([
+	const [courses, courseMaterials, planRow] = await Promise.all([
 		getUserCourses(),
 		getAllUserMaterials(),
+		getUserPlan(),
 	]);
+	const userPlan = (planRow?.planId as UserPlan) ?? "free";
 
 	// Handle no courses state
 	if (courses.length === 0) {
@@ -43,7 +47,7 @@ export default async function CourseMaterialsPage() {
 					title="Course Materials"
 					description="Manage your uploaded course materials and generated content."
 				>
-					<UploadWizardWrapper courses={courses} />
+					<UploadWizard courses={courses} userPlan={userPlan} />
 				</PageHeading>
 
 				<EmptyState
@@ -51,7 +55,7 @@ export default async function CourseMaterialsPage() {
 					title="No Materials Uploaded Yet"
 					description="Upload your first course material to start generating AI-powered study content like notes, cuecards, and quizzes."
 				>
-					<UploadWizardWrapper courses={courses} />
+					<UploadWizard courses={courses} userPlan={userPlan} />
 				</EmptyState>
 			</div>
 		);
@@ -64,7 +68,7 @@ export default async function CourseMaterialsPage() {
 				title="Course Materials"
 				description="Manage your uploaded course materials and generated content."
 			>
-				<UploadWizardWrapper courses={courses} />
+				<UploadWizard courses={courses} userPlan={userPlan} />
 			</PageHeading>
 
 			<CourseMaterialsClient

@@ -214,6 +214,24 @@ export function McqSessionManager({
 		[mcqActions]
 	);
 
+	const handleQuestionAnswer = useCallback(
+		async (
+			questionId: string,
+			selectedAnswer: string | null,
+			timeSpent?: number // Optional - store will provide it
+		) => {
+			await mcqActions.submitAnswer(questionId, selectedAnswer, timeSpent);
+		},
+		[mcqActions]
+	);
+
+	const handleSkipQuestion = useCallback(
+		async (questionId: string, timeSpent?: number) => {
+			await mcqActions.skipQuestion(questionId, timeSpent);
+		},
+		[mcqActions]
+	);
+
 	// State-driven rendering using utilities
 	if (isSetupState(mcqState.status)) {
 		return (
@@ -224,16 +242,7 @@ export function McqSessionManager({
 				showGenerationProgress={
 					isGenerating(mcqState.status) || generationInProgress
 				}
-				generationProgress={
-					realtimeRun
-						? {
-								status: realtimeRun.status || "unknown",
-								updatedAt: realtimeRun.updatedAt
-									? new Date(realtimeRun.updatedAt)
-									: undefined,
-							}
-						: null
-				}
+				generationProgress={realtimeRun}
 				onTriggerGeneration={handleGenerateContent}
 			/>
 		);
@@ -244,19 +253,8 @@ export function McqSessionManager({
 			<McqQuizView
 				questions={mcqState.questions}
 				config={mcqState.config}
-				onQuestionAnswer={async (
-					questionId: string,
-					selectedAnswer: string | null,
-					timeSpent?: number // Optional - store will provide it
-				) => {
-					await mcqActions.submitAnswer(questionId, selectedAnswer, timeSpent);
-				}}
-				onSkipQuestion={async (
-					questionId: string,
-					timeSpent?: number // Optional - store will provide it
-				) => {
-					await mcqActions.skipQuestion(questionId, timeSpent);
-				}}
+				onQuestionAnswer={handleQuestionAnswer}
+				onSkipQuestion={handleSkipQuestion}
 				onEndSession={handleEndSession}
 				onClose={handleEndSession}
 			/>
