@@ -60,25 +60,21 @@ export async function extractErrorFromResponse(
 	}
 }
 
-// Toast notification handler for quota errors
+// Banner notification handler for quota errors
 function handleQuotaError(quotaError: QuotaExhaustedResponse): void {
 	const { details } = quotaError;
-	const quotaTypeDisplay =
-		details.quotaType === "ai_generations"
-			? "AI Generation"
-			: "Material Upload";
 
-	toast.error(`${quotaTypeDisplay} Quota Exceeded`, {
-		description: `You've used ${details.currentUsage}/${details.quotaLimit} ${quotaTypeDisplay.toLowerCase()}s on your ${details.planId} plan. Please upgrade to continue.`,
-		duration: 6000,
-		action: {
-			label: "Upgrade Plan",
-			onClick: () => {
-				// Navigate to billing page
-				window.location.href = "/dashboard/billing";
+	// Dispatch custom event to show quota banner
+	window.dispatchEvent(
+		new CustomEvent("quota-exhausted", {
+			detail: {
+				quotaType: details.quotaType,
+				currentUsage: details.currentUsage,
+				quotaLimit: details.quotaLimit,
+				planId: details.planId,
 			},
-		},
-	});
+		})
+	);
 }
 
 // Toast notification handler for general API errors
@@ -113,19 +109,21 @@ function handleGeneralError(error: ApiErrorResponse): void {
 	});
 }
 
-// Toast notification handler for rate limit errors
+// Banner notification handler for rate limit errors
 function handleRateLimitError(error: RateLimitExceededResponse): void {
-	const seconds = error.details.retryAfterSeconds;
-	const minutes = seconds ? Math.ceil(seconds / 60) : undefined;
+	const { details } = error;
 
-	const description = minutes
-		? `Too many requests. Try again in ~${minutes} minute${minutes > 1 ? "s" : ""}.`
-		: "Too many requests. Please try again later.";
-
-	toast.error("Rate limit exceeded", {
-		description,
-		duration: 4000,
-	});
+	// Dispatch custom event to show rate limit banner
+	window.dispatchEvent(
+		new CustomEvent("rate-limit-exceeded", {
+			detail: {
+				limitType: "requests",
+				retryAfterSeconds: details.retryAfterSeconds || 60,
+				limit: details.limit,
+				remaining: details.remaining,
+			},
+		})
+	);
 }
 
 // Wrapper for fetch requests with automatic error handling

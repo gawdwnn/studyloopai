@@ -29,7 +29,7 @@ export async function POST(req: Request) {
 		}
 
 		// Verify webhook signature first
-		let rawEvent: any;
+		let rawEvent: unknown;
 		try {
 			rawEvent = validateEvent(body, headers, webhookSecret);
 		} catch (error) {
@@ -48,9 +48,13 @@ export async function POST(req: Request) {
 		}
 
 		// Create webhook payload for retry queue with deterministic fallback
-		const eventId = rawEvent.id || rawEvent.data?.id || hash(body);
+		// The rawEvent is validated by Polar SDK but we'll let our processor handle type validation
+		const eventId = hash(body); // Use body hash as deterministic ID
 		const webhookPayload: WebhookPayload = {
-			eventType: rawEvent.type,
+			eventType:
+				rawEvent && typeof rawEvent === "object" && "type" in rawEvent
+					? String(rawEvent.type)
+					: "unknown",
 			eventId,
 			data: rawEvent,
 			headers,
