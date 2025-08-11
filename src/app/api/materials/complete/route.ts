@@ -157,30 +157,38 @@ export async function POST(req: NextRequest) {
 			}
 		} catch (quotaErr) {
 			logger.error(
-				"AI generation quota check failed during materials complete",
-				{
-					message:
-						quotaErr instanceof Error ? quotaErr.message : String(quotaErr),
-					route: "/api/materials/complete",
-				}
+				{ err: quotaErr, route: "/api/materials/complete" },
+				"AI generation quota check failed during materials complete"
 			);
 			// Gracefully degrade: do not block upload completion if quota service is unavailable
 		}
 
 		// Persist the user's selected config to database
-		const savedConfigId = await persistSelectiveConfig(
-			body.selectiveConfig,
-			body.weekId,
-			body.courseId,
-			user.id,
-			body.configSource,
-			{
-				source: "material_upload_completion",
-				trigger: "course_material_upload_wizard",
-				userAgent: "material-upload-api",
-			}
-		);
-		if (!savedConfigId) {
+		let savedConfigId: string;
+		try {
+			savedConfigId = await persistSelectiveConfig(
+				body.selectiveConfig,
+				body.weekId,
+				body.courseId,
+				user.id,
+				body.configSource,
+				{
+					source: "material_upload_completion",
+					trigger: "course_material_upload_wizard",
+					userAgent: "material-upload-api",
+				}
+			);
+		} catch (configErr) {
+			logger.error(
+				{
+					err: configErr,
+					route: "/api/materials/complete",
+					userId: user.id,
+					courseId: body.courseId,
+					weekId: body.weekId,
+				},
+				"Failed to persist generation configuration"
+			);
 			return NextResponse.json(
 				{
 					error: "Failed to persist generation configuration",
@@ -206,13 +214,16 @@ export async function POST(req: NextRequest) {
 				}
 			);
 		} catch (taskErr) {
-			logger.error("Failed to queue ingest task", {
-				message: taskErr instanceof Error ? taskErr.message : String(taskErr),
-				route: "/api/materials/complete",
-				userId: user.id,
-				courseId: body.courseId,
-				weekId: body.weekId,
-			});
+			logger.error(
+				{
+					err: taskErr,
+					route: "/api/materials/complete",
+					userId: user.id,
+					courseId: body.courseId,
+					weekId: body.weekId,
+				},
+				"Failed to queue ingest task"
+			);
 			return NextResponse.json(
 				{
 					error: "Failed to queue processing task",
@@ -230,10 +241,10 @@ export async function POST(req: NextRequest) {
 				savedConfigId
 			);
 		} catch (ftErr) {
-			logger.error("Failed to initialize feature tracking", {
-				message: ftErr instanceof Error ? ftErr.message : String(ftErr),
-				route: "/api/materials/complete",
-			});
+			logger.error(
+				{ err: ftErr, route: "/api/materials/complete" },
+				"Failed to initialize feature tracking"
+			);
 			// Non-critical: do not fail the response
 		}
 
@@ -276,12 +287,10 @@ export async function POST(req: NextRequest) {
 				);
 			}
 		}
-		logger.error("Materials completion operation failed", {
-			message: err instanceof Error ? err.message : String(err),
-			stack: err instanceof Error ? err.stack : undefined,
-			route: "/api/materials/complete",
-			method: "POST",
-		});
+		logger.error(
+			{ err, route: "/api/materials/complete", method: "POST" },
+			"Materials completion operation failed"
+		);
 
 		return NextResponse.json(
 			{ error: "Failed to complete upload. Please try again." },

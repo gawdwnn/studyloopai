@@ -11,10 +11,10 @@ import {
  * Text Document Processing Strategy
  * Handles plain text, markdown, and CSV files
  */
-async function processTextDocument(
+const process = async (
 	buffer: Buffer,
 	_options: ProcessingOptions
-): Promise<ProcessingResult> {
+): Promise<ProcessingResult> => {
 	try {
 		logger.info("Starting text document processing", {
 			bufferSize: buffer.length,
@@ -49,7 +49,7 @@ async function processTextDocument(
 			error instanceof Error ? error.message : String(error)
 		);
 	}
-}
+};
 
 // Supported MIME types for text documents (from config)
 const SUPPORTED_TEXT_TYPES =
@@ -59,5 +59,5 @@ const SUPPORTED_TEXT_TYPES =
 export const TextStrategy: ProcessorStrategy = {
 	name: "text",
 	canProcess: createMimeTypeCanProcess(SUPPORTED_TEXT_TYPES),
-	process: processTextDocument,
+	process: process,
 };

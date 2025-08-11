@@ -42,19 +42,18 @@ const extractWithUnpdf = async (
 // PDF processing strategy implementation
 const process = async (
 	buffer: Buffer,
-	options: ProcessingOptions
+	_options: ProcessingOptions
 ): Promise<ProcessingResult> => {
 	const strategyName = "pdf-basic";
 
 	try {
 		// Use unpdf for PDF text extraction
-    const result = await extractWithUnpdf(buffer);
+		const result = await extractWithUnpdf(buffer);
 
 		if (result.success && result.text.length > 0) {
 			logger.info("PDF processing completed successfully", {
 				method: "unpdf",
 				textLength: result.text.length,
-				userId: options.userId,
 			});
 
 			return createProcessingResult(
@@ -65,26 +64,24 @@ const process = async (
 			);
 		}
 
-    // If unpdf fails or produces no text
+		// If unpdf fails or produces no text
 		logger.error("PDF extraction failed", {
-			userId: options.userId,
 			error: result.error,
 		});
 
-    return createProcessingResult(
-      strategyName,
-      false,
-      "",
-      "text-extraction",
-      result.error || "Could not extract text from PDF"
-    );
+		return createProcessingResult(
+			strategyName,
+			false,
+			"",
+			"text-extraction",
+			result.error || "Could not extract text from PDF"
+		);
 	} catch (error) {
 		const errorMessage =
 			error instanceof Error ? error.message : "Unknown PDF processing error";
 
 		logger.error("PDF processing failed with exception", {
 			error: errorMessage,
-			userId: options.userId,
 		});
 
 		return createProcessingResult(
@@ -101,5 +98,5 @@ const process = async (
 export const PDFStrategy: ProcessorStrategy = {
 	name: "pdf-basic",
 	canProcess: createMimeTypeCanProcess(SUPPORTED_MIME_TYPES),
-	process,
+	process: process,
 };

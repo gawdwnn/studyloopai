@@ -45,13 +45,13 @@ const BodySchema = z.object({
 			(mime) => allSupportedMimeTypes.includes(mime),
 			`Supported MIME types: ${allSupportedMimeTypes.join(", ")}`
 		),
-  fileSize: z
-    .number()
-    .min(1, "File cannot be empty")
-    .max(
-      DOCUMENT_PROCESSING_CONFIG.UPLOAD.maxFileSizeBytes,
-      `File too large. Max ${(DOCUMENT_PROCESSING_CONFIG.UPLOAD.maxFileSizeBytes / (1024 * 1024)).toFixed(1)} MB`
-    ),
+	fileSize: z
+		.number()
+		.min(1, "File cannot be empty")
+		.max(
+			DOCUMENT_PROCESSING_CONFIG.UPLOAD.maxFileSizeBytes,
+			`File too large. Max ${(DOCUMENT_PROCESSING_CONFIG.UPLOAD.maxFileSizeBytes / (1024 * 1024)).toFixed(1)} MB`
+		),
 });
 
 export async function POST(req: NextRequest) {
@@ -144,10 +144,9 @@ export async function POST(req: NextRequest) {
 			);
 		}
 
-		// Determine content type using consolidated detector
-		let detectedContentType: string;
+		// Validate that the file type is supported
 		try {
-			detectedContentType = detectDocumentType({
+			detectDocumentType({
 				mimeType: body.mimeType,
 				fileName: body.fileName,
 			});
@@ -202,7 +201,7 @@ export async function POST(req: NextRequest) {
 					fileName: body.fileName,
 					originalFilename: body.fileName,
 					mimeType: body.mimeType,
-					contentType: detectedContentType,
+					contentType: body.mimeType, // Store the actual MIME type for processing
 					uploadStatus: "pending",
 					uploadedBy: user.id,
 				})

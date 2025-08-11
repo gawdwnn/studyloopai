@@ -141,11 +141,11 @@ export const getCachedChunks = async (
 
 // OCR-specific cache utilities
 export const generateOCRCacheKey = (
-  fileHash: string,
-  processingType: "mistral" | "basic"
+	fileHash: string,
+	processingType: "mistral" | "basic"
 ): string => {
-  // Global cache scope to maximize reuse across users
-  return `ocr:${processingType}:${fileHash}`;
+	// Global cache scope to maximize reuse across users
+	return `ocr:${processingType}:${fileHash}`;
 };
 
 // OCR result caching

@@ -78,7 +78,7 @@ export function FileUploadDropzone({
 	const { getRootProps, getInputProps, isDragActive } = useDropzone({
 		onDrop,
 		accept: supportedFileTypes,
-    // File size validated via validateFile(userPlan) onDrop, not by dropzone config
+		// File size validated via validateFile(userPlan) onDrop, not by dropzone config
 	});
 
 	return (

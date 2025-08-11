@@ -11,10 +11,10 @@ import {
  * Office Document Processing Strategy
  * Handles Word, Excel, PowerPoint, and other Office formats
  */
-async function processOfficeDocument(
+const process = async (
 	buffer: Buffer,
 	_options: ProcessingOptions
-): Promise<ProcessingResult> {
+): Promise<ProcessingResult> => {
 	try {
 		logger.info("Starting office document processing", {
 			bufferSize: buffer.length,
@@ -53,7 +53,7 @@ async function processOfficeDocument(
 			error instanceof Error ? error.message : String(error)
 		);
 	}
-}
+};
 
 // Supported MIME types for office documents (from config)
 const SUPPORTED_OFFICE_TYPES =
@@ -63,5 +63,5 @@ const SUPPORTED_OFFICE_TYPES =
 export const OfficeStrategy: ProcessorStrategy = {
 	name: "office",
 	canProcess: createMimeTypeCanProcess(SUPPORTED_OFFICE_TYPES),
-	process: processOfficeDocument,
+	process: process,
 };

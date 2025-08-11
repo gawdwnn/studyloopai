@@ -11,46 +11,27 @@ import { getProducts } from "@/lib/polar/products";
 import { getServerClient } from "@/lib/supabase/server";
 import { withErrorHandling } from "@/lib/utils/error-handling";
 import { createLogger } from "@/lib/utils/logger";
+import { addMonths, addYears } from "date-fns";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 const logger = createLogger("billing:plans");
 
-export async function createUserPlan(planId: PlanId, userId?: string) {
+export async function createUserPlan(planId: PlanId, userId: string) {
 	return await withErrorHandling(
 		async () => {
-			const supabase = await getServerClient();
-
-			let effectiveUserId = userId;
-
-			// Get the current user if userId is not provided
-			if (!effectiveUserId) {
-				const {
-					data: { user: sessionUser },
-					error: userError,
-				} = await supabase.auth.getUser();
-				if (userError || !sessionUser) {
-					throw new Error("User not found");
-				}
-				effectiveUserId = sessionUser.id;
-			}
-
 			// Calculate currentPeriodEnd based on plan
 			let currentPeriodEnd: Date | null = null;
+			const now = new Date();
 			if (planId === "monthly") {
-				currentPeriodEnd = new Date();
-				currentPeriodEnd.setMonth(currentPeriodEnd.getMonth() + 1);
+				currentPeriodEnd = addMonths(now, 1);
 			} else if (planId === "yearly") {
-				currentPeriodEnd = new Date();
-				currentPeriodEnd.setFullYear(currentPeriodEnd.getFullYear() + 1);
+				currentPeriodEnd = addYears(now, 1);
 			}
 
 			// Check if user already has an active plan
 			const existingPlan = await db.query.userPlans.findFirst({
-				where: and(
-					eq(userPlans.userId, effectiveUserId),
-					eq(userPlans.isActive, true)
-				),
+				where: and(eq(userPlans.userId, userId), eq(userPlans.isActive, true)),
 			});
 
 			if (existingPlan) {
@@ -62,7 +43,7 @@ export async function createUserPlan(planId: PlanId, userId?: string) {
 			const [newPlan] = await db
 				.insert(userPlans)
 				.values({
-					userId: effectiveUserId,
+					userId,
 					planId,
 					currentPeriodEnd,
 					isActive: true,

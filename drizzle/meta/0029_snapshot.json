@@ -1,6 +1,6 @@
 {
-	"id": "47cf301e-6dff-4243-8477-6ba2c13ed952",
-	"prevId": "7cd0db15-9f2b-43b2-9e4c-6bb1c6fb07b3",
+	"id": "5286c7cf-409e-4c4f-aee6-c1cf70c8ce2b",
+	"prevId": "47cf301e-6dff-4243-8477-6ba2c13ed952",
 	"version": "7",
 	"dialect": "postgresql",
 	"tables": {
@@ -4210,7 +4210,17 @@
 				}
 			},
 			"indexes": {},
-			"foreignKeys": {},
+			"foreignKeys": {
+				"user_plans_user_id_fkey": {
+					"name": "user_plans_user_id_fkey",
+					"tableFrom": "user_plans",
+					"tableTo": "users",
+					"columnsFrom": ["user_id"],
+					"columnsTo": ["user_id"],
+					"onDelete": "cascade",
+					"onUpdate": "no action"
+				}
+			},
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {
 				"user_plans_polar_subscription_id_unique": {

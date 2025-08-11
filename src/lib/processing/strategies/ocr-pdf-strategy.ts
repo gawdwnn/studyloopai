@@ -14,21 +14,20 @@ import {
 	createProcessingResult,
 } from "./base-strategy";
 
-const processWithOCR = async (
+const process = async (
 	buffer: Buffer,
 	options: ProcessingOptions
 ): Promise<ProcessingResult> => {
 	const strategyName = "pdf-ocr";
 	// Generate cache key based on file content
-  const fileHash = createHash("sha256").update(buffer).digest("hex");
-  const cacheKey = generateOCRCacheKey(fileHash, "mistral");
+	const fileHash = createHash("sha256").update(buffer).digest("hex");
+	const cacheKey = generateOCRCacheKey(fileHash, "mistral");
 
 	// Check cache first
 	const cachedResult = await getCachedOCRResult(cacheKey);
 	if (cachedResult) {
 		logger.info("OCR result found in cache", {
 			textLength: cachedResult.length,
-			userId: options.userId,
 			materialId: options.materialId,
 		});
 
@@ -54,7 +53,6 @@ const processWithOCR = async (
 
 		logger.info("OCR processing completed successfully", {
 			textLength: ocrResult.text.length,
-			userId: options.userId,
 			materialId: options.materialId,
 		});
 
@@ -72,7 +70,6 @@ const processWithOCR = async (
 
 		logger.error("OCR processing failed", {
 			error: errorMessage,
-			userId: options.userId,
 			materialId: options.materialId,
 		});
 
@@ -92,5 +89,5 @@ export const OCRPDFStrategy: ProcessorStrategy = {
 	canProcess: createMimeTypeCanProcess(
 		DOCUMENT_PROCESSING_CONFIG.SUPPORTED_TYPES.PDF.mimeTypes
 	),
-	process: processWithOCR,
+	process: process,
 };

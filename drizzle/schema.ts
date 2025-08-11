@@ -722,6 +722,11 @@ export const userPlans = pgTable(
 		unique("user_plans_polar_subscription_id_unique").on(
 			table.polarSubscriptionId
 		),
+		foreignKey({
+			columns: [table.userId],
+			foreignColumns: [users.userId],
+			name: "user_plans_user_id_fkey",
+		}).onDelete("cascade"),
 	]
 );
 
@@ -1149,7 +1154,9 @@ export const idempotencyKeys = pgTable(
 	"idempotency_keys",
 	{
 		id: uuid().defaultRandom().primaryKey().notNull(),
-		idempotencyKey: varchar("idempotency_key", { length: 255 }).notNull().unique(),
+		idempotencyKey: varchar("idempotency_key", { length: 255 })
+			.notNull()
+			.unique(),
 		operationType: varchar("operation_type", { length: 50 }).notNull(), // 'webhook', 'payment', 'upload', 'generation'
 		resourceId: varchar("resource_id", { length: 255 }), // Optional reference to related resource
 		userId: uuid("user_id"), // Optional user association
@@ -1159,7 +1166,9 @@ export const idempotencyKeys = pgTable(
 		retryCount: integer("retry_count").default(0).notNull(),
 		maxRetries: integer("max_retries").default(3).notNull(),
 		lastRetryAt: timestamp("last_retry_at"),
-		processingStartedAt: timestamp("processing_started_at").defaultNow().notNull(),
+		processingStartedAt: timestamp("processing_started_at")
+			.defaultNow()
+			.notNull(),
 		processingCompletedAt: timestamp("processing_completed_at"),
 		expiresAt: timestamp("expires_at").notNull(), // TTL for cleanup
 		createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -1172,10 +1181,7 @@ export const idempotencyKeys = pgTable(
 			"btree",
 			table.operationType
 		),
-		index("idx_idempotency_keys_resource_id").using(
-			"btree",
-			table.resourceId
-		),
+		index("idx_idempotency_keys_resource_id").using("btree", table.resourceId),
 		index("idx_idempotency_keys_user_id").using("btree", table.userId),
 		index("idx_idempotency_keys_status").using("btree", table.status),
 		index("idx_idempotency_keys_expires_at").using("btree", table.expiresAt),

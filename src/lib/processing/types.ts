@@ -10,7 +10,6 @@ export interface DocumentProcessor {
 }
 
 export interface ProcessingOptions {
-	userId: string;
 	materialId: string;
 }
 

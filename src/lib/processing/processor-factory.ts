@@ -1,11 +1,14 @@
-import { DOCUMENT_PROCESSING_CONFIG, detectDocumentType } from "@/lib/config/document-processing";
+import {
+	DOCUMENT_PROCESSING_CONFIG,
+	detectDocumentType,
+} from "@/lib/config/document-processing";
 import { logger } from "@/lib/utils/logger";
 import type { ProcessorStrategy } from "./strategies/base-strategy";
 import { OCRPDFStrategy } from "./strategies/ocr-pdf-strategy";
 import { OfficeStrategy } from "./strategies/office-strategy";
 import { PDFStrategy } from "./strategies/pdf-strategy";
 import { TextStrategy } from "./strategies/text-strategy";
-import type { DocumentProcessor, Environment } from "./types";
+import type { DocumentProcessor } from "./types";
 
 // Strategy adapter to make ProcessorStrategy compatible with DocumentProcessor
 const createDocumentProcessorFromStrategy = (
@@ -19,17 +22,12 @@ const createDocumentProcessorFromStrategy = (
 
 // Main factory function for selecting document processors
 export async function getDocumentProcessor(
-    mimeType: string,
-    environment: Environment,
-    userId: string,
-    _fileSize: number
+	mimeType: string
 ): Promise<DocumentProcessor> {
 	try {
 		// Log processor selection for debugging
-        logger.info("Selecting document processor", {
+		logger.info("Selecting document processor", {
 			mimeType,
-			environment,
-			userId,
 		});
 
 		// Determine document type
@@ -37,24 +35,36 @@ export async function getDocumentProcessor(
 
 		// Route based on document type
 		switch (documentType) {
-            case "pdf": {
-                // Requirement: 3.1 PDF is used in development for now
-                if (DOCUMENT_PROCESSING_CONFIG.ENVIRONMENT.isDevelopment) {
-                    logger.info("Using basic PDF strategy (development mode)", { userId });
-                    return createDocumentProcessorFromStrategy(PDFStrategy);
-                }
-                // In production we use OCR by default. OCR access is governed by quota, not plan gating here.
-                logger.info("Using OCR PDF strategy (production mode)", { userId });
-                return createDocumentProcessorFromStrategy(OCRPDFStrategy);
-            }
+			case "pdf": {
+				// Requirement: 3.1 PDF is used in development for now
+				if (DOCUMENT_PROCESSING_CONFIG.ENVIRONMENT.isDevelopment) {
+					logger.info("Using basic PDF strategy (development mode)", {
+						documentType,
+						mimeType,
+					});
+					return createDocumentProcessorFromStrategy(PDFStrategy);
+				}
+				// In production we use OCR by default. OCR access is governed by quota, not plan gating here.
+				logger.info("Using OCR PDF strategy (production mode)", {
+					documentType,
+					mimeType,
+				});
+				return createDocumentProcessorFromStrategy(OCRPDFStrategy);
+			}
 
 			case "office": {
-                logger.info("Using office document processing strategy", { mimeType, userId });
+				logger.info("Using office document processing strategy", {
+					documentType,
+					mimeType,
+				});
 				return createDocumentProcessorFromStrategy(OfficeStrategy);
 			}
 
 			case "text": {
-                logger.info("Using text document processing strategy", { mimeType, userId });
+				logger.info("Using text document processing strategy", {
+					documentType,
+					mimeType,
+				});
 				return createDocumentProcessorFromStrategy(TextStrategy);
 			}
 
@@ -64,7 +74,6 @@ export async function getDocumentProcessor(
 					{
 						documentType,
 						mimeType,
-						userId,
 					}
 				);
 				throw new Error(
@@ -75,8 +84,6 @@ export async function getDocumentProcessor(
 	} catch (error) {
 		logger.error("Failed to select document processor", {
 			error: error instanceof Error ? error.message : String(error),
-			userId,
-			mimeType,
 		});
 
 		throw error;

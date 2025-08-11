@@ -2,7 +2,6 @@
  * Document Processing Configuration - Consolidated
  * Single source of truth for all document processing settings
  */
-import { env } from "@/env";
 import type { UserPlan } from "@/lib/processing/types";
 export type { UserPlan };
 
@@ -62,32 +61,23 @@ export const DOCUMENT_PROCESSING_CONFIG = {
 		},
 	} as const,
 
-	// Processing configuration
-	PROCESSING: {
-		timeout: 120000, // 2 minutes
-		retryCount: 3,
-		chunkSize: 1000,
-		chunkOverlap: 200,
-		costPerPage: Number.parseFloat(
-			process.env.MISTRAL_OCR_COST_PER_PAGE || "0.001"
-		),
-		cacheTimeout: 604800, // 7 days
-	} as const,
+	// Processing configuration moved closer to usage (chunking now defined in trigger file)
 
 	// Upload configuration
 	UPLOAD: {
-    maxBatchSize: 10, // Maximum files per upload batch
-    // Global max file size in bytes. Validation must happen in UI and API.
-    // Background jobs must not perform file size validation.
-    maxFileSizeBytes: Number.parseInt(
-      process.env.NEXT_PUBLIC_UPLOAD_MAX_BYTES || "10485760"
-    ), // default 10MB
+		maxBatchSize: 10, // Maximum files per upload batch
+		// Global max file size in bytes. Validation must happen in UI and API.
+		// Background jobs must not perform file size validation.
+		maxFileSizeBytes: Number.parseInt(
+			process.env.NEXT_PUBLIC_UPLOAD_MAX_BYTES || "10485760"
+		), // default 10MB
 	} as const,
 
 	// Environment configuration
 	ENVIRONMENT: {
-    isDevelopment: env.NODE_ENV === "development",
-    ocrDebug: false,
+		// Safe on both client and server (Next.js inlines NODE_ENV at build time)
+		isDevelopment: process.env.NODE_ENV === "development",
+		ocrDebug: false,
 	} as const,
 } as const;
 
@@ -238,7 +228,7 @@ export function validateFile(
 ): { isValid: boolean; error?: string } {
 	const supportedTypes = getSupportedFileTypes(userPlan);
 	const supportedExtensions = getSupportedExtensions(userPlan);
-  const maxBytes = DOCUMENT_PROCESSING_CONFIG.UPLOAD.maxFileSizeBytes;
+	const maxBytes = DOCUMENT_PROCESSING_CONFIG.UPLOAD.maxFileSizeBytes;
 
 	// Prefer MIME type validation when available
 	if (file.type && supportedTypes[file.type]) {
@@ -273,14 +263,14 @@ export function validateFile(
 		};
 	}
 
-  // Enforce max file size (plan-agnostic for now)
-  if (file.size > maxBytes) {
-    const mb = (maxBytes / (1024 * 1024)).toFixed(1);
-    return {
-      isValid: false,
-      error: `File is too large. Maximum allowed size is ${mb} MB`,
-    };
-  }
+	// Enforce max file size (plan-agnostic for now)
+	if (file.size > maxBytes) {
+		const mb = (maxBytes / (1024 * 1024)).toFixed(1);
+		return {
+			isValid: false,
+			error: `File is too large. Maximum allowed size is ${mb} MB`,
+		};
+	}
 
 	return { isValid: true };
 }
@@ -336,6 +326,5 @@ export const PROCESSING_ERROR_MESSAGES = {
 	UNSUPPORTED_TYPE: (supportedTypes: string) =>
 		`File type not supported. Supported types: ${supportedTypes}`,
 	FILE_EMPTY: "File is empty and cannot be processed.",
-	PROCESSING_TIMEOUT: "Document processing timed out. Please try again.",
 	PROCESSING_FAILED: "Document processing failed. Please try again.",
 } as const;

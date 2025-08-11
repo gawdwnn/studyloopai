@@ -33,11 +33,6 @@ export const createProcessingResult = (
 	};
 };
 
-// Removed cleanText as requested
-
-// Helper function to validate buffer
-// Removed: validateBuffer. File validations must happen in UI and API based on plan.
-
 // Helper function to validate MIME type
 export const validateMimeType = (
 	mimeType: string,

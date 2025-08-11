@@ -1,10 +1,10 @@
 import { generateEmbeddings } from "@/lib/ai/embeddings";
 import { contentGenerationEvents } from "@/lib/analytics/events";
-import { DOCUMENT_PROCESSING_CONFIG } from "@/lib/config/document-processing";
-import { isSupportedDocumentType, processDocument } from "@/lib/processing";
-import type { Environment } from "@/lib/processing/types";
 import {
-	getUserPlanByUserId,
+	getDocumentProcessor,
+	isSupportedDocumentType,
+} from "@/lib/processing";
+import {
 	insertDocumentChunks,
 	updateCourseMaterialStatus,
 } from "@/lib/services/background-job-db-service";
@@ -90,15 +90,7 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 
 			const buffer = downloadResult.buffer;
 
-      // 2. Get user plan information (for analytics/observability only)
-      const userInfo = await getUserPlanByUserId(userId);
-      logger.info("Retrieved user plan information", {
-        materialId,
-        userId,
-        userPlan: userInfo.userPlan,
-      });
-
-			// 3. Check if the document type is supported
+			// 2. Check if the document type is supported
 			if (!isSupportedDocumentType(contentType)) {
 				logger.error("Unsupported document type", {
 					materialId,
@@ -111,14 +103,11 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 				);
 			}
 
-			// 4. Process document using the new multi-format processor
-			const environment =
-				(process.env.NODE_ENV as Environment) || "development";
-      const processingResult = await processDocument(buffer, contentType, {
-        userId: userId,
-        materialId,
-        environment,
-      });
+			// 3. Process document directly for easier traceability
+			const processor = await getDocumentProcessor(contentType);
+			const processingResult = await processor.process(buffer, {
+				materialId,
+			});
 
 			if (!processingResult.success || !processingResult.text.trim()) {
 				logger.error("Document processing failed", {
@@ -147,14 +136,14 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 				warnings: processingResult.metadata.warnings,
 			});
 
-			// 5. Chunk text
+			// 4. Chunk text
 			const splitter = new RecursiveCharacterTextSplitter({
-				chunkSize: DOCUMENT_PROCESSING_CONFIG.PROCESSING.chunkSize,
-				chunkOverlap: DOCUMENT_PROCESSING_CONFIG.PROCESSING.chunkOverlap,
+				chunkSize: 1000,
+				chunkOverlap: 200,
 			});
 			const chunks = await splitter.createDocuments([extractedText]);
 
-			// 5.5. Generate embeddings
+			// 5. Generate embeddings
 			const result = await generateEmbeddings(
 				chunks.map((c: Document) => c.pageContent)
 			);
@@ -169,35 +158,38 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 				throw new Error(`Embedding generation failed: ${result.error}`);
 			}
 
-      // 6. Save chunks to database (idempotent)
-      const chunksToInsert = result.embeddings.map(
-        (embedding: number[], i: number) => ({
-          material_id: materialId,
-          content: chunks[i].pageContent,
-          embedding: embedding,
-          chunk_index: i,
-          token_count: Math.round(chunks[i].pageContent.length / 4),
-        })
-      );
+			// 6. Save chunks to database (idempotent)
+			const chunksToInsert = result.embeddings.map(
+				(embedding: number[], i: number) => ({
+					material_id: materialId,
+					content: chunks[i].pageContent,
+					embedding: embedding,
+					chunk_index: i,
+					token_count: Math.round(chunks[i].pageContent.length / 4),
+				})
+			);
 
-      // Idempotent write: remove existing chunks for this material before insert
-      // to avoid duplicates on retries.
-      try {
-        const { getAdminDatabaseAccess } = await import("@/db");
-        const admin = getAdminDatabaseAccess();
-        await admin.from("document_chunks").delete().eq("material_id", materialId);
-      } catch (cleanupError) {
-        logger.error("Failed to cleanup existing chunks before insert", {
-          materialId,
-          error:
-            cleanupError instanceof Error
-              ? cleanupError.message
-              : String(cleanupError),
-        });
-        // Continue; insert will still proceed
-      }
+			// Idempotent write: remove existing chunks for this material before insert
+			// to avoid duplicates on retries.
+			try {
+				const { getAdminDatabaseAccess } = await import("@/db");
+				const admin = getAdminDatabaseAccess();
+				await admin
+					.from("document_chunks")
+					.delete()
+					.eq("material_id", materialId);
+			} catch (cleanupError) {
+				logger.error("Failed to cleanup existing chunks before insert", {
+					materialId,
+					error:
+						cleanupError instanceof Error
+							? cleanupError.message
+							: String(cleanupError),
+				});
+				// Continue; insert will still proceed
+			}
 
-      await insertDocumentChunks(chunksToInsert);
+			await insertDocumentChunks(chunksToInsert);
 
 			// 7. Track embedding generation for analytics and billing
 			try {
