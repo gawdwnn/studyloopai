@@ -6,7 +6,7 @@
  */
 
 import { db } from "@/db";
-import { configurationSource, courseMaterials, courseWeeks } from "@/db/schema";
+import { courseMaterials, courseWeeks } from "@/db/schema";
 import { initializeFeatureTracking } from "@/lib/actions/course-week-features";
 import { persistSelectiveConfig } from "@/lib/actions/generation-config";
 import { checkQuotaAndConsume } from "@/lib/actions/plans";
@@ -39,7 +39,7 @@ const TriggerGenerationSchema = z.object({
 		)
 		.min(1, "At least one content type is required"),
 	config: SelectiveGenerationConfigSchema,
-	configSource: z.enum(configurationSource.enumValues),
+	// REMOVED: configSource field - no longer needed with simplified config storage
 });
 
 export async function POST(req: NextRequest) {
@@ -60,10 +60,6 @@ export async function POST(req: NextRequest) {
 		const rateLimitResult = await checkAIRateLimit(user.id);
 
 		if (!rateLimitResult.success) {
-			const resetMinutes = rateLimitResult.reset
-				? Math.ceil((rateLimitResult.reset - Date.now()) / 60000)
-				: 60;
-
 			return NextResponse.json(
 				{
 					error: "Rate limit exceeded",
@@ -146,18 +142,11 @@ export async function POST(req: NextRequest) {
 
 		const selectiveConfig = body.config;
 
-		// Persist the config to database with on-demand metadata
+		// Persist the config to database with simplified storage
 		const configId = await persistSelectiveConfig(
 			selectiveConfig,
 			body.weekId,
-			body.courseId,
-			user.id,
-			body.configSource,
-			{
-				source: "on_demand_generation",
-				trigger: "adaptive_learning_session_setup",
-				userAgent: "on-demand-generation-api",
-			}
+			body.courseId
 		);
 		if (!configId) {
 			return NextResponse.json(
@@ -202,7 +191,7 @@ export async function POST(req: NextRequest) {
 
 		// Initialize feature tracking
 		try {
-			await initializeFeatureTracking(body.courseId, body.weekId, configId);
+			await initializeFeatureTracking(body.courseId, body.weekId);
 		} catch (ftErr) {
 			logger.error("Failed to initialize feature tracking", {
 				message: ftErr instanceof Error ? ftErr.message : String(ftErr),

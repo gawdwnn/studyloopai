@@ -1,91 +1,70 @@
 "use server";
 
 import { db } from "@/db";
-import { type configurationSource, generationConfigs } from "@/db/schema";
-import type { SelectiveGenerationConfig } from "@/types/generation-types";
-import { eq, sql } from "drizzle-orm";
+import { courseWeekFeatures } from "@/db/schema";
+import type {
+	FeatureType,
+	SelectiveGenerationConfig,
+} from "@/types/generation-types";
+import { getDefaultConfigForFeature } from "@/types/generation-types";
+import { eq } from "drizzle-orm";
 
 /**
- * Persist user's selective generation config to database
- * This creates a historical record of what config was used for this specific generation
+ * Persist user's selective generation config to courseweekfeatures table
+ * SIMPLIFIED: Direct storage with no hierarchical complexity
  */
 export async function persistSelectiveConfig(
 	config: SelectiveGenerationConfig,
 	weekId: string,
-	courseId: string,
-	userId: string,
-	configSource: (typeof configurationSource.enumValues)[number],
-	metadata: {
-		source: string;
-		trigger: string;
-		userAgent: string;
-		[key: string]: string | string[] | undefined;
-	}
+	courseId: string
 ): Promise<string> {
 	try {
-		// Prepare metadata - all callers must provide required fields
-		const configMetadata = {
-			timestamp: new Date().toISOString(),
-			...metadata,
-		};
-
-		// Update existing config or insert new one using upsert pattern
+		// Simple upsert - update existing config or create new one for this week
 		const result = await db
-			.insert(generationConfigs)
+			.insert(courseWeekFeatures)
 			.values({
 				weekId,
 				courseId,
-				configSource,
 				configData: config,
-				createdBy: userId,
-				isActive: true,
-				metadata: configMetadata,
-				// Explicitly set userId to null for course_week_override configs
-				// The check constraint requires user_id to be null for this config_source
-				userId: configSource === "course_week_override" ? null : userId,
+				updatedAt: new Date(),
 			})
 			.onConflictDoUpdate({
-				target: [generationConfigs.weekId, generationConfigs.configSource],
+				target: [courseWeekFeatures.weekId, courseWeekFeatures.courseId],
 				set: {
 					configData: config,
-					updatedAt: sql`now()`,
-					metadata: configMetadata,
-					isActive: true,
-					createdBy: userId,
-					// Keep userId null for course_week_override configs
-					userId: configSource === "course_week_override" ? null : userId,
+					updatedAt: new Date(),
 				},
 			})
-			.returning({ id: generationConfigs.id });
+			.returning({ id: courseWeekFeatures.id });
 
 		if (!result || result.length === 0) {
 			throw new Error("Failed to save generation config - no result returned");
 		}
 
-		return result[0].id;
+		return result[0].id; // Return courseweekfeatures.id as configId
 	} catch (error) {
+		console.error("Failed to persist selective config:", error);
 		throw error; // Re-throw to let caller handle it
 	}
 }
 
 /**
- * Get a generation config by its ID
- * Used by generator jobs to fetch their specific configuration
+ * Get a generation config by its ID (courseweekfeatures.id)
+ * UPDATED: Now queries courseweekfeatures instead of generation_configs
  */
 export async function getGenerationConfigById(
 	configId: string
 ): Promise<SelectiveGenerationConfig | null> {
 	const result = await db
 		.select({
-			configData: generationConfigs.configData,
-			isActive: generationConfigs.isActive,
+			configData: courseWeekFeatures.configData,
 		})
-		.from(generationConfigs)
-		.where(eq(generationConfigs.id, configId))
+		.from(courseWeekFeatures)
+		.where(eq(courseWeekFeatures.id, configId))
 		.limit(1);
 
 	const config = result[0];
-	if (!config || !config.isActive) {
+	if (!config) {
 		return null;
 	}
 
@@ -93,20 +72,21 @@ export async function getGenerationConfigById(
 }
 
 /**
- * Get a generation config by ID with specific feature config
- * Useful for generators that only need their specific config portion
+ * Get specific feature configuration for background jobs
+ * UPDATED: Now queries courseweekfeatures instead of generation_configs
  */
-export async function getFeatureGenerationConfig<
-	T extends keyof SelectiveGenerationConfig["featureConfigs"],
->(
+export async function getFeatureGenerationConfig<T extends FeatureType>(
 	configId: string,
-	feature: T
+	featureType: T
 ): Promise<SelectiveGenerationConfig["featureConfigs"][T] | null> {
+	// Get the full config first
 	const config = await getGenerationConfigById(configId);
-	if (!config) return null;
+	if (!config || !config.selectedFeatures[featureType]) {
+		return null; // Feature not selected
+	}
 
-	// Check if feature is enabled
-	if (!config.selectedFeatures[feature]) return null;
-
-	return config.featureConfigs[feature] || null;
+	return (
+		config.featureConfigs[featureType] ||
+		getDefaultConfigForFeature(featureType)
+	);
 }

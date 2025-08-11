@@ -1,6 +1,5 @@
 /**
  * Database type definitions using Drizzle ORM type inference
- * This file demonstrates the standard practice for typing Drizzle schemas
  */
 
 import type {
@@ -14,9 +13,7 @@ import type {
 	cuecardScheduling,
 	cuecards,
 	documentChunks,
-	generationConfigs,
 	goldenNotes,
-	institutions,
 	learningGaps,
 	learningSessions,
 	multipleChoiceQuestions,
@@ -55,10 +52,6 @@ export type NewCourseMaterial = InferInsertModel<typeof courseMaterials>;
 export type DocumentChunk = InferSelectModel<typeof documentChunks>;
 export type NewDocumentChunk = InferInsertModel<typeof documentChunks>;
 
-// Generation config types
-export type GenerationConfig = InferSelectModel<typeof generationConfigs>;
-export type NewGenerationConfig = InferInsertModel<typeof generationConfigs>;
-
 // User prompt template types
 export type UserPromptTemplate = InferSelectModel<typeof userPromptTemplates>;
 export type NewUserPromptTemplate = InferInsertModel<
@@ -95,10 +88,6 @@ export type NewUserProgress = InferInsertModel<typeof userProgress>;
 export type UserPlan = InferSelectModel<typeof userPlans>;
 export type NewUserPlan = InferInsertModel<typeof userPlans>;
 
-// Institution types
-export type Institution = InferSelectModel<typeof institutions>;
-export type NewInstitution = InferInsertModel<typeof institutions>;
-
 // Adaptive Learning types
 export type LearningSession = InferSelectModel<typeof learningSessions>;
 export type NewLearningSession = InferInsertModel<typeof learningSessions>;
@@ -117,8 +106,6 @@ export type NewConceptMapping = InferInsertModel<typeof conceptMappings>;
 
 export type AiRecommendation = InferSelectModel<typeof aiRecommendations>;
 export type NewAiRecommendation = InferInsertModel<typeof aiRecommendations>;
-
-// Note: Processing and generation metadata types removed during metadata cleanup
 
 export type {
 	ConceptMapsConfig,

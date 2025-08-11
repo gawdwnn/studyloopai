@@ -87,10 +87,41 @@ export const generateSummaries = schemaTask({
 			success: output.success,
 		});
 	},
-	onFailure: async ({ error }: { error: unknown }) => {
+	onFailure: async ({
+		error,
+		payload,
+	}: { error: unknown; payload: GenerateSummariesPayloadType }) => {
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		logger.error("Summaries generation failed permanently", {
 			error: errorMessage,
+			weekId: payload.weekId,
+			courseId: payload.courseId,
+			configId: payload.configId,
 		});
+
+		// Track this specific feature failure in database
+		try {
+			const { updateGenerationConfigStatus } = await import(
+				"@/lib/services/background-job-db-service"
+			);
+			await updateGenerationConfigStatus(payload.configId, "failed", {
+				failedFeatures: [
+					{
+						feature: "summaries",
+						timestamp: new Date(),
+						retryCount: 0, // Get from trigger context if available
+					},
+				],
+			});
+		} catch (updateError) {
+			logger.error("Failed to update summaries failure status in database", {
+				configId: payload.configId,
+				feature: "summaries",
+				updateError:
+					updateError instanceof Error
+						? updateError.message
+						: String(updateError),
+			});
+		}
 	},
 });

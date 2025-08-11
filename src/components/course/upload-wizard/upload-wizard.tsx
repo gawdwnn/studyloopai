@@ -206,7 +206,6 @@ export function UploadWizard({
 							weekId: selectedWeekId,
 							featureTypes,
 							config: selectiveConfig,
-							configSource: "course_week_override",
 						}),
 					}
 				);
@@ -291,8 +290,7 @@ export function UploadWizard({
 				uploadedMaterialIds,
 				selectedWeekId,
 				selectedCourseId,
-				selectiveConfig,
-				"course_week_override"
+				selectiveConfig
 			);
 
 			// Store processing job information for real-time tracking

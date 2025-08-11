@@ -221,8 +221,8 @@ export async function deleteCourseMaterial(
 
 			return {
 				...deletedMaterial,
-				configsDeleted: aiContentResult.configsDeleted,
 				aiContentDeleted: aiContentResult.aiContentDeleted,
+				featuresDeleted: aiContentResult.featuresDeleted,
 				chunksDeleted: aiContentResult.chunksDeleted,
 				ownNotesDeleted: aiContentResult.ownNotesDeleted,
 			};

@@ -90,6 +90,7 @@ export const generateCuecards = schemaTask({
 	},
 	onFailure: async ({
 		error,
+		payload,
 	}: {
 		payload: GenerateCuecardsPayloadType;
 		error: unknown;
@@ -97,6 +98,34 @@ export const generateCuecards = schemaTask({
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		logger.error("Cuecards generation failed permanently", {
 			error: errorMessage,
+			weekId: payload.weekId,
+			courseId: payload.courseId,
+			configId: payload.configId,
 		});
+
+		// Track this specific feature failure in database
+		try {
+			const { updateGenerationConfigStatus } = await import(
+				"@/lib/services/background-job-db-service"
+			);
+			await updateGenerationConfigStatus(payload.configId, "failed", {
+				failedFeatures: [
+					{
+						feature: "cuecards",
+						timestamp: new Date(),
+						retryCount: 0, // Get from trigger context if available
+					},
+				],
+			});
+		} catch (updateError) {
+			logger.error("Failed to update cuecards failure status in database", {
+				configId: payload.configId,
+				feature: "cuecards",
+				updateError:
+					updateError instanceof Error
+						? updateError.message
+						: String(updateError),
+			});
+		}
 	},
 });

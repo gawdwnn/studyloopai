@@ -68,9 +68,7 @@ export async function getFeatureAvailability(
 			} = await (await getServerClient()).auth.getUser();
 
 			if (!user) {
-				// Return null for single week, empty object for full course
-				// This maintains consistency with the original behavior
-				return weekId ? null : {};
+				throw new Error("Authentication required");
 			}
 
 			// Build query conditions based on parameters
@@ -113,8 +111,7 @@ export async function getFeatureAvailability(
  */
 export async function initializeFeatureTracking(
 	courseId: string,
-	weekId: string,
-	configId?: string
+	weekId: string
 ): Promise<void> {
 	return await withErrorHandling(
 		async () => {
@@ -131,12 +128,12 @@ export async function initializeFeatureTracking(
 				.values({
 					courseId,
 					weekId,
-					lastGenerationConfigId: configId,
+					// configId now stored in configData JSONB column
 				})
 				.onConflictDoUpdate({
 					target: [courseWeekFeatures.courseId, courseWeekFeatures.weekId],
 					set: {
-						lastGenerationConfigId: configId,
+						// configId now tracked via configData JSONB column
 						updatedAt: new Date(),
 					},
 				});
