@@ -456,6 +456,11 @@ const getEnvironmentOperations = (projectKey: ProjectKey) => {
 			name: chalk.red("Reset development database (Truncate)"),
 			value: "reset-dev-database",
 		});
+	} else if (projectKey === "prod") {
+		destructiveOps.push({
+			name: chalk.red("Reset production database (Truncate)"),
+			value: "reset-prod-database",
+		});
 	}
 
 	return [
@@ -463,6 +468,8 @@ const getEnvironmentOperations = (projectKey: ProjectKey) => {
 		...safeOps,
 		new Separator(chalk.red("--- DESTRUCTIVE Operations ---")),
 		...destructiveOps,
+		new Separator(chalk.gray("--- NAVIGATION ---")),
+		{ name: "Exit", value: "exit" },
 	];
 };
 
@@ -500,6 +507,7 @@ const executeOperation = async (
 		"apply-policy",
 		"apply-policies",
 		"reset-dev-database",
+		"reset-prod-database",
 	];
 
 	if (isProduction && destructiveOps.includes(operation)) {
@@ -737,6 +745,86 @@ const executeOperation = async (
 			await tasks.run();
 			ctx.output.success(chalk.green("All tables truncated successfully"));
 			break;
+		}
+
+		case "reset-prod-database": {
+			if (projectKey !== "prod") {
+				ctx.output.error(
+					"This operation is only available in production environment."
+				);
+				return;
+			}
+
+			// Additional production safety confirmation
+			ctx.output.info(chalk.red.bold("\n🚨 PRODUCTION DATABASE RESET WARNING"));
+			ctx.output.info(
+				chalk.yellow("This will delete ALL production data permanently.")
+			);
+			ctx.output.info(
+				chalk.yellow("This action cannot be undone and will affect live users.")
+			);
+			ctx.output.info(
+				chalk.gray("Make sure you have recent backups before proceeding.\n")
+			);
+
+			const firstConfirm = await ctx.output.prompt(() =>
+				confirm({
+					message:
+						"Do you understand this will permanently delete ALL production data?",
+					default: false,
+				})
+			);
+
+			if (!firstConfirm) {
+				ctx.output.warn("Operation cancelled");
+				return;
+			}
+
+			const secondConfirm = await ctx.output.prompt(() =>
+				confirm({
+					message:
+						"Type confirmation: Are you absolutely sure you want to reset the production database?",
+					default: false,
+				})
+			);
+
+			if (!secondConfirm) {
+				ctx.output.warn("Operation cancelled");
+				return;
+			}
+
+			const tasks = new Listr([
+				{
+					title: "Truncating all tables in production database",
+					task: () =>
+						ctx.db.withConnection(
+							projectKey,
+							async (client: DatabaseClient) => {
+								const tables = await getManagedTables(ctx);
+								if (tables.length === 0) {
+									ctx.output.warn("No managed tables found to truncate.");
+									return;
+								}
+								const tableList = tables.map((t) => `"${t}"`).join(", ");
+								const sql = `TRUNCATE TABLE ${tableList} RESTART IDENTITY CASCADE;`;
+
+								ctx.output.info(`Executing: ${sql}`);
+								await client.unsafe(sql);
+							}
+						),
+				},
+			]);
+
+			await tasks.run();
+			ctx.output.success(
+				chalk.green("All production tables truncated successfully")
+			);
+			break;
+		}
+
+		case "exit": {
+			ctx.output.info("Exiting...");
+			return;
 		}
 
 		default:
