@@ -65,13 +65,14 @@ export interface GenerationRequest<T extends SupportedContentType> {
 	weekId: string;
 	materialIds: string[];
 	config: ConfigMap[T];
+	userId: string;
 	cacheKey?: string;
 	options?: GenerationOptions;
 }
 
 // Generation options
 export interface GenerationOptions {
-	maxTokens?: number;
+	maxOutputTokens?: number;
 	temperature?: number;
 }
 
