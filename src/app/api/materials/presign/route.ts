@@ -16,6 +16,7 @@ import {
 } from "@/lib/types/api-errors";
 import { logger } from "@/lib/utils/logger";
 import { and, eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -74,10 +75,6 @@ export async function POST(req: NextRequest) {
 		// Strategic rate limiting to prevent upload abuse (not for quota enforcement)
 		const rateLimitResult = await checkAPIStrictRateLimit(user.id);
 		if (!rateLimitResult.success) {
-			const resetMinutes = rateLimitResult.reset
-				? Math.ceil((rateLimitResult.reset - Date.now()) / 60000)
-				: 60;
-
 			return NextResponse.json(
 				{
 					error: "Too many upload requests",
@@ -265,6 +262,9 @@ export async function POST(req: NextRequest) {
 				{ status: 500 }
 			);
 		}
+
+		// Revalidate course materials page since new material was created
+		revalidatePath("/dashboard/course-materials");
 
 		return NextResponse.json({
 			signedUrl,
