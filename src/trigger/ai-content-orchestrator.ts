@@ -212,7 +212,6 @@ export const aiContentOrchestrator = schemaTask({
 				try {
 					await updateGenerationConfigStatus(configId, "failed", {
 						generationCompletedAt: new Date(),
-						failedFeatures: [],
 					});
 
 					logger.error("Updated generation config status to failed", {

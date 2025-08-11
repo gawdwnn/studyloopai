@@ -1,4 +1,3 @@
-import type { configurationSource } from "@/db/schema";
 import { fetchWithErrorHandling } from "@/lib/utils/api-error-handler";
 import type { SelectiveGenerationConfig } from "@/types/generation-types";
 
@@ -41,8 +40,7 @@ export async function completeUpload(
 	materialIds: string[],
 	weekId: string,
 	courseId: string,
-	selectiveConfig: SelectiveGenerationConfig,
-	configSource: (typeof configurationSource.enumValues)[number]
+	selectiveConfig: SelectiveGenerationConfig
 ): Promise<CompleteUploadResponse> {
 	const res = await fetchWithErrorHandling("/api/materials/complete", {
 		method: "POST",
@@ -53,12 +51,10 @@ export async function completeUpload(
 			weekId,
 			courseId,
 			selectiveConfig,
-			configSource,
 		}),
 	});
 
 	if (!res.ok) {
-		// Error toast already shown by fetchWithErrorHandling
 		throw new Error("Upload completion failed");
 	}
 

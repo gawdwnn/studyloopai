@@ -89,10 +89,44 @@ export const generateOpenQuestions = schemaTask({
 			success: output.success,
 		});
 	},
-	onFailure: async ({ error }: { error: unknown }) => {
+	onFailure: async ({
+		error,
+		payload,
+	}: { error: unknown; payload: GenerateOpenQuestionsPayloadType }) => {
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		logger.error("Open questions generation failed permanently", {
 			error: errorMessage,
+			weekId: payload.weekId,
+			courseId: payload.courseId,
+			configId: payload.configId,
 		});
+
+		// Track this specific feature failure in database
+		try {
+			const { updateGenerationConfigStatus } = await import(
+				"@/lib/services/background-job-db-service"
+			);
+			await updateGenerationConfigStatus(payload.configId, "failed", {
+				failedFeatures: [
+					{
+						feature: "openQuestions",
+						timestamp: new Date(),
+						retryCount: 0, // Get from trigger context if available
+					},
+				],
+			});
+		} catch (updateError) {
+			logger.error(
+				"Failed to update open questions failure status in database",
+				{
+					configId: payload.configId,
+					feature: "openQuestions",
+					updateError:
+						updateError instanceof Error
+							? updateError.message
+							: String(updateError),
+				}
+			);
+		}
 	},
 });

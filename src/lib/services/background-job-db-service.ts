@@ -1,8 +1,8 @@
 import { getAdminDatabaseAccess } from "@/db";
 import type {
 	CourseMaterial,
+	CourseWeekFeatures,
 	DocumentChunk,
-	GenerationConfig,
 } from "@/types/database-types";
 
 /**
@@ -11,54 +11,63 @@ import type {
  */
 
 /**
- * Update generation config status
+ * Update generation config status in courseweekfeatures table
+ * MODIFIED: Now updates courseweekfeatures instead of generation_configs
  */
 export async function updateGenerationConfigStatus(
-	configId: string,
+	configId: string, // Same parameter - now courseweekfeatures.id
 	status: "pending" | "processing" | "completed" | "failed",
 	additionalData?: {
 		generationStartedAt?: Date;
 		generationCompletedAt?: Date;
-		failedFeatures?: string[];
+		failedFeatures?: Array<{
+			feature: string;
+			timestamp: Date;
+			retryCount?: number;
+		}>;
 	}
-): Promise<GenerationConfig> {
+): Promise<CourseWeekFeatures> {
 	const admin = getAdminDatabaseAccess();
 
-	interface UpdateData {
-		generation_status: string;
-		generation_started_at?: string;
-		generation_completed_at?: string;
-		failed_features?: string[];
+	// Failed features tracking
+	let failedFeaturesData = null;
+	if (additionalData?.failedFeatures?.length) {
+		failedFeaturesData = additionalData.failedFeatures.map((failure) => ({
+			feature: failure.feature,
+			timestamp: failure.timestamp.toISOString(),
+			retryCount: failure.retryCount || 0,
+		}));
 	}
 
-	const updateData: UpdateData = {
+	const updateData = {
 		generation_status: status,
+		updated_at: new Date().toISOString(),
+		...(additionalData?.generationStartedAt && {
+			generation_started_at: additionalData.generationStartedAt.toISOString(),
+		}),
+		...(additionalData?.generationCompletedAt && {
+			generation_completed_at:
+				additionalData.generationCompletedAt.toISOString(),
+		}),
+		...(failedFeaturesData && {
+			failed_features: JSON.stringify(failedFeaturesData),
+		}),
 	};
 
-	if (additionalData?.generationStartedAt) {
-		updateData.generation_started_at =
-			additionalData.generationStartedAt.toISOString();
-	}
-	if (additionalData?.generationCompletedAt) {
-		updateData.generation_completed_at =
-			additionalData.generationCompletedAt.toISOString();
-	}
-	if (additionalData?.failedFeatures) {
-		updateData.failed_features = additionalData.failedFeatures;
-	}
-
 	const { data, error } = await admin
-		.from("generation_configs")
+		.from("course_week_features")
 		.update(updateData)
 		.eq("id", configId)
 		.select()
 		.single();
 
 	if (error) {
-		throw new Error(`Failed to update generation config: ${error.message}`);
+		throw new Error(
+			`Failed to update generation config status: ${error.message}`
+		);
 	}
 
-	return data as GenerationConfig;
+	return data;
 }
 
 /**
@@ -215,7 +224,9 @@ export async function getUserPlanByUserId(userId: string): Promise<{
 		? userData.user_plans
 		: [userData.user_plans];
 
-	const activePlan = userPlans.find((plan: any) => plan?.is_active);
+	const activePlan = userPlans.find(
+		(plan: { plan_id: string; is_active: boolean }) => plan?.is_active
+	);
 
 	return {
 		userPlan: activePlan?.plan_id,

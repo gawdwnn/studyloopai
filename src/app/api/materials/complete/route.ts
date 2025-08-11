@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { configurationSource, courseMaterials, courseWeeks } from "@/db/schema";
+import { courseMaterials, courseWeeks } from "@/db/schema";
 import { initializeFeatureTracking } from "@/lib/actions/course-week-features";
 import { persistSelectiveConfig } from "@/lib/actions/generation-config";
 import { checkQuotaAndConsume } from "@/lib/actions/plans";
@@ -27,7 +27,6 @@ const BodySchema = z.object({
 	weekId: z.string().uuid("Invalid week ID"),
 	courseId: z.string().uuid("Invalid course ID"),
 	selectiveConfig: SelectiveGenerationConfigSchema,
-	configSource: z.enum(configurationSource.enumValues),
 });
 
 export async function POST(req: NextRequest) {
@@ -46,10 +45,6 @@ export async function POST(req: NextRequest) {
 		// Strategic rate limiting to prevent processing abuse (not for quota enforcement)
 		const rateLimitResult = await checkAPIStrictRateLimit(user.id);
 		if (!rateLimitResult.success) {
-			const resetMinutes = rateLimitResult.reset
-				? Math.ceil((rateLimitResult.reset - Date.now()) / 60000)
-				: 60;
-
 			return NextResponse.json(
 				{
 					error: "Too many processing requests",
@@ -169,14 +164,7 @@ export async function POST(req: NextRequest) {
 			savedConfigId = await persistSelectiveConfig(
 				body.selectiveConfig,
 				body.weekId,
-				body.courseId,
-				user.id,
-				body.configSource,
-				{
-					source: "material_upload_completion",
-					trigger: "course_material_upload_wizard",
-					userAgent: "material-upload-api",
-				}
+				body.courseId
 			);
 		} catch (configErr) {
 			logger.error(
@@ -235,11 +223,7 @@ export async function POST(req: NextRequest) {
 
 		// Initialize feature tracking
 		try {
-			await initializeFeatureTracking(
-				body.courseId,
-				body.weekId,
-				savedConfigId
-			);
+			await initializeFeatureTracking(body.courseId, body.weekId);
 		} catch (ftErr) {
 			logger.error(
 				{ err: ftErr, route: "/api/materials/complete" },

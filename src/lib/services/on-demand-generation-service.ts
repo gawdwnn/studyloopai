@@ -1,4 +1,3 @@
-import type { configurationSource } from "@/db/schema";
 import { createLogger } from "@/lib/utils/logger";
 import type {
 	FeatureType,
@@ -13,7 +12,7 @@ export interface TriggerOnDemandGenerationRequest {
 	weekId: string;
 	featureTypes: FeatureType[];
 	config: SelectiveGenerationConfig;
-	configSource: (typeof configurationSource.enumValues)[number];
+	// REMOVED: configSource field - no longer needed with simplified config storage
 }
 
 /** Response from generation trigger API */
@@ -64,7 +63,7 @@ export async function triggerOnDemandGeneration(
 				weekId: params.weekIds[0],
 				featureTypes: [params.featureType],
 				config: params.generationConfig,
-				configSource: "course_week_override" as const,
+				// REMOVED: configSource field - no longer needed
 			} satisfies TriggerOnDemandGenerationRequest),
 		});
 
