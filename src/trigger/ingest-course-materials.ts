@@ -40,6 +40,7 @@ export const ingestCourseMaterials = schemaTask({
 				materialId: m.materialId,
 				filePath: m.filePath,
 				contentType: m.contentType,
+				userId: userId,
 			},
 		}));
 
@@ -94,6 +95,7 @@ export const ingestCourseMaterials = schemaTask({
 
 		// Trigger AI content generation for the course week with validated material IDs
 		await aiContentOrchestrator.trigger({
+			userId,
 			weekId,
 			courseId,
 			materialIds,

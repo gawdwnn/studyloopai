@@ -20,6 +20,7 @@ const AiContentOrchestratorPayload = z.object({
 		.min(1, "At least one material ID is required"),
 	configId: z.string().uuid().optional(),
 	cacheKey: z.string().optional(), // Cache key for pre-fetched chunks
+	userId: z.string().min(1, "User ID is required"),
 });
 
 const AiContentOrchestratorOutput = z.object({
@@ -56,7 +57,7 @@ export const aiContentOrchestrator = schemaTask({
 		});
 	},
 	run: async (payload: AiContentOrchestratorPayloadType, { ctx: _ctx }) => {
-		const { weekId, courseId, materialIds, configId } = payload;
+		const { weekId, courseId, materialIds, configId, userId } = payload;
 
 		await tags.add([
 			`weekId:${payload.weekId}`,
@@ -114,7 +115,14 @@ export const aiContentOrchestrator = schemaTask({
 			}
 
 			// payload with cache key for all generators
-			const payload = { weekId, courseId, materialIds, configId, cacheKey };
+			const payload = {
+				weekId,
+				courseId,
+				materialIds,
+				configId,
+				cacheKey,
+				userId,
+			};
 
 			if (selectiveConfig.selectedFeatures.goldenNotes) {
 				batchRuns.goldenNotes = await generateGoldenNotes.batchTrigger([
