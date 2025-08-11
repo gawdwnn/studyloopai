@@ -93,6 +93,7 @@ export const generateGoldenNotes = schemaTask({
 	},
 	onFailure: async ({
 		error,
+		payload,
 	}: {
 		payload: GenerateGoldenNotesPayloadType;
 		error: unknown;
@@ -100,6 +101,34 @@ export const generateGoldenNotes = schemaTask({
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		logger.error("Golden notes generation failed permanently", {
 			error: errorMessage,
+			weekId: payload.weekId,
+			courseId: payload.courseId,
+			configId: payload.configId,
 		});
+
+		// Track this specific feature failure in database
+		try {
+			const { updateGenerationConfigStatus } = await import(
+				"@/lib/services/background-job-db-service"
+			);
+			await updateGenerationConfigStatus(payload.configId, "failed", {
+				failedFeatures: [
+					{
+						feature: "goldenNotes",
+						timestamp: new Date(),
+						retryCount: 0, // Get from trigger context if available
+					},
+				],
+			});
+		} catch (updateError) {
+			logger.error("Failed to update golden notes failure status in database", {
+				configId: payload.configId,
+				feature: "goldenNotes",
+				updateError:
+					updateError instanceof Error
+						? updateError.message
+						: String(updateError),
+			});
+		}
 	},
 });

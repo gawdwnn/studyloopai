@@ -1,10 +1,10 @@
 import type * as schema from "@/db/schema";
 import {
 	courseMaterials,
+	courseWeekFeatures,
 	courseWeeks,
 	cuecards,
 	documentChunks,
-	generationConfigs,
 	goldenNotes,
 	multipleChoiceQuestions,
 	openQuestions,
@@ -48,7 +48,7 @@ export async function deleteContentForCourse(
 ): Promise<{
 	aiContentDeleted: AiContentDeletionCounts;
 	ownNotesDeleted: number;
-	configsDeleted: number;
+	featuresDeleted: number;
 	chunksDeleted: number;
 	materialsDeleted: number;
 	weeksDeleted: number;
@@ -60,7 +60,7 @@ export async function deleteContentForCourse(
 		summariesResult,
 		goldenNotesResult,
 		ownNotesResult,
-		configsResult,
+		featuresDeletedResult,
 		chunksResult,
 		materialsResult,
 		weeksResult,
@@ -90,9 +90,9 @@ export async function deleteContentForCourse(
 			.where(eq(ownNotes.courseId, courseId))
 			.returning({ id: ownNotes.id }),
 		tx
-			.delete(generationConfigs)
-			.where(eq(generationConfigs.courseId, courseId))
-			.returning({ id: generationConfigs.id }),
+			.delete(courseWeekFeatures)
+			.where(eq(courseWeekFeatures.courseId, courseId))
+			.returning({ id: courseWeekFeatures.id }),
 		materialIds.length > 0
 			? tx
 					.delete(documentChunks)
@@ -128,7 +128,7 @@ export async function deleteContentForCourse(
 	return {
 		aiContentDeleted: aiContentCounts,
 		ownNotesDeleted: ownNotesResult.length,
-		configsDeleted: configsResult.length,
+		featuresDeleted: featuresDeletedResult.length,
 		chunksDeleted: chunksResult.length,
 		materialsDeleted: materialsResult.length,
 		weeksDeleted: weeksResult.length,
@@ -150,7 +150,7 @@ export async function deleteContentForCourseWeek(
 ): Promise<{
 	aiContentDeleted: AiContentDeletionCounts;
 	ownNotesDeleted: number;
-	configsDeleted: number;
+	featuresDeleted: number;
 	chunksDeleted: number;
 }> {
 	const [
@@ -160,7 +160,7 @@ export async function deleteContentForCourseWeek(
 		summariesResult,
 		goldenNotesResult,
 		ownNotesResult,
-		configsResult,
+		featuresDeletedResult,
 		chunksResult,
 	] = await Promise.all([
 		tx
@@ -201,15 +201,16 @@ export async function deleteContentForCourseWeek(
 			.delete(ownNotes)
 			.where(and(eq(ownNotes.courseId, courseId), eq(ownNotes.weekId, weekId)))
 			.returning({ id: ownNotes.id }),
+		// Delete generation tracking record for this specific week
 		tx
-			.delete(generationConfigs)
+			.delete(courseWeekFeatures)
 			.where(
 				and(
-					eq(generationConfigs.courseId, courseId),
-					eq(generationConfigs.weekId, weekId)
+					eq(courseWeekFeatures.courseId, courseId),
+					eq(courseWeekFeatures.weekId, weekId)
 				)
 			)
-			.returning({ id: generationConfigs.id }),
+			.returning({ id: courseWeekFeatures.id }),
 		materialIds && materialIds.length > 0
 			? tx
 					.delete(documentChunks)
@@ -234,7 +235,7 @@ export async function deleteContentForCourseWeek(
 	return {
 		aiContentDeleted: aiContentCounts,
 		ownNotesDeleted: ownNotesResult.length,
-		configsDeleted: configsResult.length,
+		featuresDeleted: featuresDeletedResult.length,
 		chunksDeleted: chunksResult.length,
 	};
 }

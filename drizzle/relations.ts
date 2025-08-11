@@ -5,7 +5,6 @@ import {
 	courses,
 	cuecards,
 	documentChunks,
-	generationConfigs,
 	goldenNotes,
 	multipleChoiceQuestions,
 	openQuestions,
@@ -48,7 +47,7 @@ export const coursesRelations = relations(courses, ({ one, many }) => ({
 	openQuestions: many(openQuestions),
 	summaries: many(summaries),
 	goldenNotes: many(goldenNotes),
-	generationConfigs: many(generationConfigs),
+	// generationConfigs removed - using courseWeekFeatures for simplified config storage
 }));
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -56,7 +55,7 @@ export const usersRelations = relations(users, ({ many }) => ({
 	courses: many(courses),
 	userPlans: many(userPlans),
 	ownNotes: many(ownNotes),
-	generationConfigs: many(generationConfigs),
+	// generationConfigs removed - using courseWeekFeatures for simplified config storage
 	userProgress: many(userProgress),
 }));
 
@@ -71,7 +70,7 @@ export const courseWeeksRelations = relations(courseWeeks, ({ one, many }) => ({
 	openQuestions: many(openQuestions),
 	summaries: many(summaries),
 	goldenNotes: many(goldenNotes),
-	generationConfigs: many(generationConfigs),
+	// generationConfigs removed - using courseWeekFeatures for simplified config storage
 }));
 
 export const documentChunksRelations = relations(documentChunks, ({ one }) => ({
@@ -167,24 +166,7 @@ export const ownNotesRelations = relations(ownNotes, ({ one }) => ({
 	}),
 }));
 
-// Generation configs relations
-export const generationConfigsRelations = relations(
-	generationConfigs,
-	({ one }) => ({
-		courseWeek: one(courseWeeks, {
-			fields: [generationConfigs.weekId],
-			references: [courseWeeks.id],
-		}),
-		course: one(courses, {
-			fields: [generationConfigs.courseId],
-			references: [courses.id],
-		}),
-		user: one(users, {
-			fields: [generationConfigs.userId],
-			references: [users.userId],
-		}),
-	})
-);
+// Generation configs relations removed - using courseWeekFeatures for simplified config storage
 
 // User progress relations
 export const userProgressRelations = relations(userProgress, ({ one }) => ({
