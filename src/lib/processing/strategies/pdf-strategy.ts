@@ -18,7 +18,13 @@ const extractWithUnpdf = async (
 	try {
 		// Dynamic import to avoid evaluating browser-dependent code at build time
 		const { extractText } = await import("unpdf");
-		const result = await extractText(buffer);
+		// unpdf expects Uint8Array rather than Node Buffer
+		const uint8 = new Uint8Array(
+			buffer.buffer,
+			buffer.byteOffset,
+			buffer.byteLength
+		);
+		const result = await extractText(uint8);
 		// Handle both string and array responses from unpdf
 		const text = Array.isArray(result)
 			? result.join(" ")
