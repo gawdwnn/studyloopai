@@ -1,12 +1,8 @@
-import {
-	DOCUMENT_PROCESSING_CONFIG,
-	detectDocumentType,
-} from "@/lib/config/document-processing";
+import { detectDocumentType } from "@/lib/config/document-processing";
 import { logger } from "@/lib/utils/logger";
 import type { ProcessorStrategy } from "./strategies/base-strategy";
 import { OCRPDFStrategy } from "./strategies/ocr-pdf-strategy";
 import { OfficeStrategy } from "./strategies/office-strategy";
-import { PDFStrategy } from "./strategies/pdf-strategy";
 import { TextStrategy } from "./strategies/text-strategy";
 import type { DocumentProcessor } from "./types";
 
@@ -36,16 +32,7 @@ export async function getDocumentProcessor(
 		// Route based on document type
 		switch (documentType) {
 			case "pdf": {
-				// Requirement: 3.1 PDF is used in development for now
-				if (DOCUMENT_PROCESSING_CONFIG.ENVIRONMENT.isDevelopment) {
-					logger.info("Using basic PDF strategy (development mode)", {
-						documentType,
-						mimeType,
-					});
-					return createDocumentProcessorFromStrategy(PDFStrategy);
-				}
-				// In production we use OCR by default. OCR access is governed by quota, not plan gating here.
-				logger.info("Using OCR PDF strategy (production mode)", {
+				logger.info("Using OCR PDF strategy", {
 					documentType,
 					mimeType,
 				});
