@@ -13,7 +13,7 @@ const PolarWebhookPayload = z.object({
 	eventType: z.string(),
 	eventId: z.string(),
 	data: z.any(),
-	headers: z.record(z.string()),
+	headers: z.record(z.string(), z.string()),
 	rawBody: z.string(),
 	receivedAt: z.date(),
 	source: z.literal("polar"),
@@ -36,7 +36,7 @@ function calculateRetryDelay(
 	} = {}
 ): number {
 	const delay = Math.min(
-		baseDelayMs * Math.pow(backoffMultiplier, attemptNumber),
+		baseDelayMs * backoffMultiplier ** attemptNumber,
 		maxDelayMs
 	);
 	if (!jitter) return delay;

@@ -10,21 +10,25 @@ import {
 } from "@/lib/services/background-job-db-service";
 import { downloadCourseMaterial } from "@/lib/supabase/storage";
 import { logger, schemaTask, tags } from "@trigger.dev/sdk";
-import type { Document } from "langchain/document";
-import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import { z } from "zod";
+
+/**
+ * AI SDK native text chunking utility - as documented in their RAG examples
+ * Simple, reliable chunking based on sentence boundaries
+ */
+const generateChunks = (input: string): string[] => {
+	return input
+		.trim()
+		.split(".")
+		.filter((i) => i !== "" && i.trim().length > 0)
+		.map((chunk) => chunk.trim());
+};
 
 const ProcessAndEmbedIndividualPayload = z.object({
 	materialId: z.string().min(1, "Material ID is required"),
 	filePath: z.string().min(1, "File path is required"),
 	contentType: z.string().min(1, "Content type is required"),
 	userId: z.string().min(1, "User ID is required"),
-});
-
-const ProcessAndEmbedIndividualOutput = z.object({
-	success: z.boolean(),
-	materialId: z.string(),
-	contentType: z.string().optional(),
 });
 
 type ProcessAndEmbedIndividualPayloadType = z.infer<
@@ -125,48 +129,36 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 			}
 
 			const extractedText = processingResult.text;
-			logger.info("Document processing completed", {
-				materialId,
-				filePath,
-				contentType,
-				textLength: extractedText.length,
-				source: processingResult.metadata.source,
-				processor: processingResult.metadata.processor,
-				confidence: processingResult.metadata.confidence,
-				warnings: processingResult.metadata.warnings,
-			});
 
-			// 4. Chunk text
-			const splitter = new RecursiveCharacterTextSplitter({
-				chunkSize: 1000,
-				chunkOverlap: 200,
-			});
-			const chunks = await splitter.createDocuments([extractedText]);
+			// 4. Chunk text using AI SDK native approach - guaranteed string output
+			const textChunks = generateChunks(extractedText);
 
 			// 5. Generate embeddings
-			const result = await generateEmbeddings(
-				chunks.map((c: Document) => c.pageContent)
-			);
+			const result = await generateEmbeddings(textChunks);
 
 			if (!result.success) {
 				logger.error("Embedding generation failed", {
 					materialId,
-					chunksCount: chunks.length,
+					chunksCount: textChunks.length,
 					error: result.error,
 					step: "embedding",
 				});
 				throw new Error(`Embedding generation failed: ${result.error}`);
 			}
 
-			// 6. Save chunks to database (idempotent)
+			// 6. Save chunks to database (idempotent) - now with guaranteed string content
 			const chunksToInsert = result.embeddings.map(
-				(embedding: number[], i: number) => ({
-					material_id: materialId,
-					content: chunks[i].pageContent,
-					embedding: embedding,
-					chunk_index: i,
-					token_count: Math.round(chunks[i].pageContent.length / 4),
-				})
+				(embedding: number[], i: number) => {
+					const content = textChunks[i];
+
+					return {
+						material_id: materialId,
+						content: String(content), // Explicit string conversion as final safety
+						embedding: embedding,
+						chunk_index: i,
+						token_count: Math.round(String(content).length / 4),
+					};
+				}
 			);
 
 			// Idempotent write: remove existing chunks for this material before insert
@@ -200,7 +192,7 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 				await contentGenerationEvents.vectorEmbedding(
 					{
 						materialId,
-						chunkCount: chunks.length,
+						chunkCount: textChunks.length,
 						processingTime: 0, // Processing time not tracked in this context
 						embeddingModel: "text-embedding-3-small",
 						embeddingProvider: "openai",
@@ -253,31 +245,11 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 			throw error;
 		}
 	},
-	onSuccess: async ({
-		payload,
-		output,
-	}: {
-		payload: ProcessAndEmbedIndividualPayloadType;
-		output: z.infer<typeof ProcessAndEmbedIndividualOutput>;
-	}) => {
-		logger.info("Material processing completed successfully", {
-			materialId: payload.materialId,
-			filePath: payload.filePath,
-			contentType: payload.contentType,
-			success: output.success,
-		});
-	},
 	onFailure: async ({
 		payload,
 	}: {
 		payload: ProcessAndEmbedIndividualPayloadType;
 	}) => {
-		logger.error("Material processing failed permanently", {
-			materialId: payload.materialId,
-			filePath: payload.filePath,
-			contentType: payload.contentType,
-		});
-
 		await updateCourseMaterialStatus(payload.materialId, "failed", {
 			processingCompletedAt: new Date(),
 		});

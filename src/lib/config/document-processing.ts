@@ -77,7 +77,7 @@ export const DOCUMENT_PROCESSING_CONFIG = {
 	ENVIRONMENT: {
 		// Safe on both client and server (Next.js inlines NODE_ENV at build time)
 		isDevelopment: process.env.NODE_ENV === "development",
-		ocrDebug: false,
+		ocrDebug: false, // use this to enable testing ocr in development
 	} as const,
 } as const;
 

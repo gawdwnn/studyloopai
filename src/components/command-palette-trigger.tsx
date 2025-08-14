@@ -21,7 +21,7 @@ export function CommandPaletteTrigger() {
 	return (
 		<Button
 			variant="outline"
-			className="h-8 w-9 p-0 lg:w-auto lg:px-4"
+			className="h-8 w-8 p-0 lg:w-auto lg:px-4"
 			onClick={toggle}
 		>
 			<Search className="h-4 w-4 lg:mr-2" />
