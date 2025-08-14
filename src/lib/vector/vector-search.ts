@@ -1,15 +1,16 @@
 import { logger } from "@/lib/utils/logger";
-import { and, cosineDistance, desc, eq, sql } from "drizzle-orm";
+import { and, cosineDistance, desc, eq, gt, inArray, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { courseMaterials, documentChunks } from "../../db/schema";
 import { generateEmbeddings } from "../ai/embeddings";
 import { VectorSearchError } from "../ai/errors";
 import { isRateLimitError } from "../utils/error-handling";
 
-interface SearchOptions {
+interface VectorSearchOptions {
 	limit?: number; // Default: 10
 	threshold?: number; // Similarity threshold (0-1)
 	materialIds?: string[]; // Filter by specific materials
+	courseIds?: string[]; // Filter by specific courses
 	includeMetadata?: boolean; // Include chunk metadata
 	useHybridSearch?: boolean; // Enable hybrid search (vector + text)
 	textWeight?: number; // Weight for text search (0-1, default: 0.3)
@@ -46,163 +47,157 @@ function preprocessQuery(query: string): string {
 }
 
 /**
- * Prepare query for PostgreSQL full text search
- */
-function prepareTextSearchQuery(query: string): string {
-	// Split into tokens and join with & for AND search
-	const tokens = preprocessQuery(query)
-		.split(" ")
-		.filter((token) => token.length > 2) // Ignore very short words
-		.map((token) => `${token}:*`) // Add prefix matching
-		.join(" & ");
-
-	return tokens || query; // Fallback to original if no valid tokens
-}
-
-/**
- * Perform semantic search across document chunks
+ * Perform semantic search across document chunks using vector embeddings
  */
 export async function searchSimilarChunks(
 	query: string,
-	options: SearchOptions = {}
+	options: VectorSearchOptions = {}
 ): Promise<VectorSearchResponse> {
 	const startTime = Date.now();
 	const {
 		limit = 10,
-		threshold = 0.7,
+		threshold = 0.3, // Lower threshold for debugging - cosine similarity ranges 0-1
 		materialIds,
+		courseIds,
 		includeMetadata = true,
-		useHybridSearch = false,
-		textWeight = 0.3,
 	} = options;
 
+	let queryEmbedding: number[] | undefined;
+
 	try {
-		// Preprocess the query for better results
+		// Step 1: Preprocess the query
 		const processedQuery = preprocessQuery(query);
 
-		// Generate embedding for the preprocessed query
+		// Step 2: Generate vector embedding for the query
 		const embeddingResult = await generateEmbeddings([processedQuery]);
 
 		if (!embeddingResult.success || !embeddingResult.embeddings) {
 			throw new VectorSearchError(
 				"Failed to generate query embedding",
 				processedQuery,
-				useHybridSearch ? "hybrid" : "vector",
+				"vector",
 				{ originalQuery: query }
 			);
 		}
 
-		const queryEmbedding = embeddingResult.embeddings[0];
+		queryEmbedding = embeddingResult.embeddings[0];
 
-		// Build the search query using cosine similarity with Drizzle helper
-		const similarity = sql<number>`1 - ${cosineDistance(documentChunks.embedding, queryEmbedding)}`;
+		// Step 3: Build the query using Drizzle ORM's vector similarity functions
+		const similarity = sql<number>`1 - (${cosineDistance(documentChunks.embedding, queryEmbedding)})`;
 
-		let results: Array<{
-			id: string;
-			content: string;
-			similarity: number;
-			materialId: string;
-			chunkIndex: number;
-			metadata: unknown;
-			materialTitle: string | null;
-		}>;
+		// Build base query
+		const baseQuery = db
+			.select({
+				id: documentChunks.id,
+				content: documentChunks.content,
+				similarity,
+				materialId: documentChunks.materialId,
+				chunkIndex: documentChunks.chunkIndex,
+				metadata: includeMetadata ? documentChunks.metadata : sql<null>`NULL`,
+				materialTitle: courseMaterials.title,
+			})
+			.from(documentChunks)
+			.leftJoin(
+				courseMaterials,
+				eq(documentChunks.materialId, courseMaterials.id)
+			);
 
-		if (useHybridSearch) {
-			// Hybrid search: combine vector similarity with text search
-			const textSearchQuery = prepareTextSearchQuery(query);
-			const vectorWeight = 1 - textWeight;
+		// Apply where conditions
+		const whereConditions = [gt(similarity, threshold)];
 
-			// Calculate combined score
-			const combinedScore = sql<number>`
-				(${vectorWeight} * (1 - ${cosineDistance(documentChunks.embedding, queryEmbedding)})) +
-				(${textWeight} * 
-					CASE 
-						WHEN to_tsvector('english', ${documentChunks.content}) @@ to_tsquery('english', ${textSearchQuery})
-						THEN ts_rank(to_tsvector('english', ${documentChunks.content}), to_tsquery('english', ${textSearchQuery}))
-						ELSE 0
-					END
-				)
-			`;
-
-			results = await db
-				.select({
-					id: documentChunks.id,
-					content: documentChunks.content,
-					similarity: combinedScore,
-					materialId: documentChunks.materialId,
-					chunkIndex: documentChunks.chunkIndex,
-					metadata: includeMetadata ? documentChunks.metadata : sql`NULL`,
-					materialTitle: courseMaterials.title,
-				})
-				.from(documentChunks)
-				.leftJoin(
-					courseMaterials,
-					eq(documentChunks.materialId, courseMaterials.id)
-				)
-				.where(
-					and(
-						sql`${combinedScore} > ${threshold}`,
-						materialIds
-							? sql`${documentChunks.materialId} = ANY(${materialIds})`
-							: undefined
-					)
-				)
-				.orderBy(desc(combinedScore))
-				.limit(limit);
-		} else {
-			// Pure vector search
-			results = await db
-				.select({
-					id: documentChunks.id,
-					content: documentChunks.content,
-					similarity,
-					materialId: documentChunks.materialId,
-					chunkIndex: documentChunks.chunkIndex,
-					metadata: includeMetadata ? documentChunks.metadata : sql`NULL`,
-					materialTitle: courseMaterials.title,
-				})
-				.from(documentChunks)
-				.leftJoin(
-					courseMaterials,
-					eq(documentChunks.materialId, courseMaterials.id)
-				)
-				.where(
-					and(
-						sql`1 - ${cosineDistance(documentChunks.embedding, queryEmbedding)} > ${threshold}`,
-						materialIds
-							? sql`${documentChunks.materialId} = ANY(${materialIds})`
-							: undefined
-					)
-				)
-				.orderBy(desc(similarity))
-				.limit(limit);
+		if (courseIds && courseIds.length > 0) {
+			whereConditions.push(inArray(courseMaterials.courseId, courseIds));
 		}
+
+		if (materialIds && materialIds.length > 0) {
+			whereConditions.push(inArray(documentChunks.materialId, materialIds));
+		}
+
+		const finalQuery = baseQuery
+			.where(and(...whereConditions))
+			.orderBy(desc(similarity))
+			.limit(limit);
+
+		logger.info(
+			{
+				query: processedQuery,
+				courseIds,
+				materialIds,
+				threshold,
+				embeddingLength: queryEmbedding.length,
+			},
+			"Executing vector search"
+		);
+
+		const rawResults = await finalQuery;
+
+		// Debug: Log similarity scores and content validation
+		logger.info(
+			{
+				resultCount: rawResults.length,
+				similarities: rawResults.slice(0, 3).map((r) => r.similarity),
+				threshold,
+				hasResults: rawResults.length > 0,
+				firstResult: rawResults[0]
+					? {
+							id: rawResults[0].id,
+							similarity: rawResults[0].similarity,
+							materialId: rawResults[0].materialId,
+							contentPreview:
+								typeof rawResults[0].content === "string"
+									? rawResults[0].content.substring(0, 50)
+									: `[INVALID CONTENT TYPE: ${typeof rawResults[0].content}]`,
+							contentValid:
+								typeof rawResults[0].content === "string" &&
+								rawResults[0].content !== "[object Object]",
+						}
+					: null,
+			},
+			"Raw vector search results"
+		);
 
 		const searchTime = Date.now() - startTime;
 
+		const results: SearchResult[] = rawResults.map((row: any) => ({
+			id: row.id,
+			content: row.content,
+			similarity: row.similarity,
+			materialId: row.materialId,
+			chunkIndex: row.chunkIndex,
+			metadata: row.metadata as Record<string, unknown> | undefined,
+			materialTitle: row.materialTitle || undefined,
+		}));
+
+		logger.info(
+			{
+				resultsFound: results.length,
+				searchTime,
+				topSimilarity: results[0]?.similarity,
+				finalResultsAfterMapping: results.length,
+				query: processedQuery,
+			},
+			"Vector search completed"
+		);
+
 		return {
 			success: true,
-			results: results.map((row) => ({
-				id: row.id,
-				content: row.content,
-				similarity: row.similarity,
-				materialId: row.materialId,
-				chunkIndex: row.chunkIndex,
-				metadata: row.metadata as Record<string, unknown> | undefined,
-				materialTitle: row.materialTitle || undefined,
-			})),
+			results,
 			totalResults: results.length,
 			searchTime,
 		};
 	} catch (error) {
 		// Handle rate limit errors specifically
 		if (isRateLimitError(error)) {
-			logger.error("Vector search failed due to rate limit", {
-				remainingAttempts: error.remainingAttempts,
-				resetTime: error.resetTime,
-				query,
-				options,
-			});
+			logger.error(
+				{
+					remainingAttempts: error.remainingAttempts,
+					resetTime: error.resetTime,
+					query,
+					limit: options.limit,
+					threshold: options.threshold,
+				},
+				"Vector search failed due to rate limit"
+			);
 
 			return {
 				success: false,
@@ -211,12 +206,19 @@ export async function searchSimilarChunks(
 			};
 		}
 
-		logger.error("Vector search failed", {
-			message: error instanceof Error ? error.message : String(error),
-			stack: error instanceof Error ? error.stack : undefined,
-			query,
-			options,
-		});
+		logger.error(
+			{
+				err: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined,
+				query,
+				options: {
+					...options,
+					embeddingLength: queryEmbedding?.length || "unknown",
+				},
+			},
+			"Vector search failed"
+		);
+
 		return {
 			success: false,
 			error: error instanceof Error ? error.message : "Unknown error",
@@ -225,11 +227,11 @@ export async function searchSimilarChunks(
 }
 
 /**
- * Get similar chunks to a given chunk (for related content)
+ * Find similar chunks to a given chunk using vector similarity
  */
 export async function findSimilarChunks(
 	chunkId: string,
-	options: Omit<SearchOptions, "materialIds"> = {}
+	options: Omit<VectorSearchOptions, "materialIds"> = {}
 ): Promise<VectorSearchResponse> {
 	const { limit = 5, threshold = 0.8 } = options;
 
@@ -256,53 +258,52 @@ export async function findSimilarChunks(
 			};
 		}
 
-		// Find similar chunks (excluding the source chunk) using Drizzle helper
-		const similarity = sql<number>`1 - ${cosineDistance(documentChunks.embedding, embedding)}`;
+		// Build the SQL query using template literals
+		const query = sql`
+			SELECT 
+				dc.id,
+				dc.content,
+				1 - (dc.embedding <=> ${embedding}) as similarity,
+				dc.material_id as "materialId",
+				dc.chunk_index as "chunkIndex",
+				dc.metadata,
+				cm.title as "materialTitle"
+			FROM document_chunks dc
+			LEFT JOIN course_materials cm ON dc.material_id = cm.id
+			WHERE dc.id != ${chunkId}
+			AND (1 - (dc.embedding <=> ${embedding})) > ${threshold}
+			ORDER BY similarity DESC
+			LIMIT ${limit}
+		`;
 
-		const results = await db
-			.select({
-				id: documentChunks.id,
-				content: documentChunks.content,
-				similarity,
-				materialId: documentChunks.materialId,
-				chunkIndex: documentChunks.chunkIndex,
-				metadata: documentChunks.metadata,
-				materialTitle: courseMaterials.title,
-			})
-			.from(documentChunks)
-			.leftJoin(
-				courseMaterials,
-				eq(documentChunks.materialId, courseMaterials.id)
-			)
-			.where(
-				and(
-					sql`${documentChunks.id} != ${chunkId}`,
-					sql`1 - ${cosineDistance(documentChunks.embedding, embedding)} > ${threshold}`
-				)
-			)
-			.orderBy(desc(similarity))
-			.limit(limit);
+		const rawResults = await db.execute(query);
+
+		const results: SearchResult[] = rawResults.map((row: any) => ({
+			id: row.id,
+			content: row.content,
+			similarity: row.similarity,
+			materialId: row.materialId,
+			chunkIndex: row.chunkIndex,
+			metadata: row.metadata as Record<string, unknown> | undefined,
+			materialTitle: row.materialTitle || undefined,
+		}));
 
 		return {
 			success: true,
-			results: results.map((row) => ({
-				id: row.id,
-				content: row.content,
-				similarity: row.similarity,
-				materialId: row.materialId,
-				chunkIndex: row.chunkIndex,
-				metadata: row.metadata as Record<string, unknown> | undefined,
-				materialTitle: row.materialTitle || undefined,
-			})),
+			results,
 			totalResults: results.length,
 		};
 	} catch (error) {
-		logger.error("Similar chunks search failed", {
-			message: error instanceof Error ? error.message : String(error),
-			stack: error instanceof Error ? error.stack : undefined,
-			chunkId,
-			options,
-		});
+		logger.error(
+			{
+				err: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined,
+				chunkId,
+				options,
+			},
+			"Similar chunks search failed"
+		);
+
 		return {
 			success: false,
 			error: error instanceof Error ? error.message : "Unknown error",
@@ -320,40 +321,47 @@ export async function getChunksForMaterial(
 	const { limit = 50, offset = 0 } = options;
 
 	try {
-		const results = await db
-			.select({
-				id: documentChunks.id,
-				content: documentChunks.content,
-				similarity: sql<number>`1`, // No similarity calculation needed
-				materialId: documentChunks.materialId,
-				chunkIndex: documentChunks.chunkIndex,
-				metadata: documentChunks.metadata,
-			})
-			.from(documentChunks)
-			.where(eq(documentChunks.materialId, materialId))
-			.orderBy(documentChunks.chunkIndex)
-			.limit(limit)
-			.offset(offset);
+		const query = sql`
+			SELECT
+				dc.id,
+				dc.content,
+				1 as similarity,
+				dc.material_id as "materialId",
+				dc.chunk_index as "chunkIndex",
+				dc.metadata
+			FROM document_chunks dc
+			WHERE dc.material_id = ${materialId}
+			ORDER BY dc.chunk_index
+			LIMIT ${limit} OFFSET ${offset}
+		`;
+
+		const rawResults = await db.execute(query);
+
+		const results: SearchResult[] = rawResults.map((row: any) => ({
+			id: row.id,
+			content: row.content,
+			similarity: 1,
+			materialId: row.materialId,
+			chunkIndex: row.chunkIndex,
+			metadata: row.metadata as Record<string, unknown> | undefined,
+		}));
 
 		return {
 			success: true,
-			results: results.map((row) => ({
-				id: row.id,
-				content: row.content,
-				similarity: 1,
-				materialId: row.materialId,
-				chunkIndex: row.chunkIndex,
-				metadata: row.metadata as Record<string, unknown> | undefined,
-			})),
+			results,
 			totalResults: results.length,
 		};
 	} catch (error) {
-		logger.error("Failed to get chunks for material", {
-			message: error instanceof Error ? error.message : String(error),
-			stack: error instanceof Error ? error.stack : undefined,
-			materialId,
-			options,
-		});
+		logger.error(
+			{
+				err: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined,
+				materialId,
+				options,
+			},
+			"Failed to get chunks for material"
+		);
+
 		return {
 			success: false,
 			error: error instanceof Error ? error.message : "Unknown error",

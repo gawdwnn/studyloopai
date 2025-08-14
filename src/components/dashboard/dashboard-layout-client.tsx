@@ -27,7 +27,7 @@ export function DashboardLayoutClient({
 			<div className="flex min-h-screen bg-background w-full">
 				<AppSidebar />
 				<SidebarInset className="relative flex-1 w-0 min-w-0 flex flex-col">
-					<header className="sticky top-0 z-10 border-b bg-background">
+					<header className="sticky top-0 z-10 bg-background">
 						<div className="flex h-14 items-center px-4">
 							<div className="flex items-center gap-4">
 								<SidebarTrigger />

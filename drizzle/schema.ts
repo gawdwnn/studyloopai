@@ -1108,3 +1108,73 @@ export const idempotencyKeys = pgTable(
 		}).onDelete("cascade"),
 	]
 );
+
+// Chat sessions table - RAG chat session persistence
+export const chatSessions = pgTable(
+	"chat_sessions",
+	{
+		id: uuid().defaultRandom().primaryKey().notNull(),
+		userId: uuid("user_id").notNull(),
+		title: text(),
+		courseIds: jsonb("course_ids").$type<string[]>().default([]),
+		createdAt: timestamp("created_at").defaultNow().notNull(),
+		updatedAt: timestamp("updated_at").defaultNow().notNull(),
+	},
+	(table) => [
+		index("idx_chat_sessions_user_id").using("btree", table.userId),
+		index("idx_chat_sessions_created_at").using(
+			"btree",
+			table.createdAt.desc()
+		),
+		index("idx_chat_sessions_updated_at").using(
+			"btree",
+			table.updatedAt.desc()
+		),
+		// GIN index for course_ids JSONB array queries
+		index("idx_chat_sessions_course_ids").using("gin", table.courseIds),
+		// Composite index for user's recent sessions
+		index("idx_chat_sessions_user_recent").using(
+			"btree",
+			table.userId,
+			table.updatedAt.desc()
+		),
+		foreignKey({
+			columns: [table.userId],
+			foreignColumns: [usersInAuth.id],
+			name: "chat_sessions_user_id_fkey",
+		}).onDelete("cascade"),
+	]
+);
+
+// Chat messages table - Individual messages within chat sessions
+export const chatMessages = pgTable(
+	"chat_messages",
+	{
+		id: uuid().defaultRandom().primaryKey().notNull(),
+		sessionId: uuid("session_id").notNull(),
+		role: text().notNull(), // 'user', 'assistant', 'system'
+		content: text().notNull(),
+		citations: jsonb().$type<unknown[]>().default([]),
+		toolCalls: jsonb("tool_calls").$type<unknown[]>().default([]),
+		createdAt: timestamp("created_at").defaultNow().notNull(),
+	},
+	(table) => [
+		index("idx_chat_messages_session_id").using("btree", table.sessionId),
+		index("idx_chat_messages_role").using("btree", table.role),
+		index("idx_chat_messages_created_at").using("btree", table.createdAt),
+		// Composite index for session messages in chronological order
+		index("idx_chat_messages_session_chronological").using(
+			"btree",
+			table.sessionId,
+			table.createdAt
+		),
+		// GIN indexes for JSONB columns
+		index("idx_chat_messages_citations").using("gin", table.citations),
+		index("idx_chat_messages_tool_calls").using("gin", table.toolCalls),
+		foreignKey({
+			columns: [table.sessionId],
+			foreignColumns: [chatSessions.id],
+			name: "chat_messages_session_id_fkey",
+		}).onDelete("cascade"),
+	]
+);

@@ -42,6 +42,7 @@ export interface OCROptions {
 	maxRetries?: number;
 	maxOutputTokens?: number;
 	preferredModel?: string;
+	includeImageBase64?: boolean;
 }
 
 export type UserPlan = "free" | "monthly" | "yearly";

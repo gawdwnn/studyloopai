@@ -8,6 +8,7 @@ import { type NextRequest, NextResponse } from "next/server";
 interface SearchRequest {
 	query: string;
 	materialIds?: string[];
+	courseIds?: string[];
 	limit?: number;
 	threshold?: number;
 }
@@ -56,7 +57,7 @@ export async function POST(request: NextRequest) {
 		}
 
 		const body: SearchRequest = await request.json();
-		const { query, materialIds, limit = 10, threshold = 0.7 } = body;
+		const { query, materialIds, courseIds, limit = 10, threshold = 0.7 } = body;
 
 		if (!query || typeof query !== "string") {
 			return NextResponse.json({ error: "Query is required" }, { status: 400 });
@@ -66,6 +67,7 @@ export async function POST(request: NextRequest) {
 		const cacheKey = `search:${user.id}:${JSON.stringify({
 			query: query.toLowerCase().trim(),
 			materialIds: materialIds?.sort(),
+			courseIds: courseIds?.sort(),
 			limit,
 			threshold,
 		})}`;
@@ -76,6 +78,7 @@ export async function POST(request: NextRequest) {
 				limit,
 				threshold,
 				materialIds,
+				courseIds,
 				includeMetadata: true,
 			});
 		});
@@ -106,12 +109,10 @@ export async function POST(request: NextRequest) {
 
 		return response;
 	} catch (error) {
-		logger.error("Search API operation failed", {
-			message: error instanceof Error ? error.message : String(error),
-			stack: error instanceof Error ? error.stack : undefined,
-			route: "/api/search",
-			method: "POST",
-		});
+		logger.error(
+			{ err: error, route: "/api/search", method: "POST" },
+			"Search API operation failed"
+		);
 		return NextResponse.json(
 			{ error: "Internal server error" },
 			{ status: 500 }
