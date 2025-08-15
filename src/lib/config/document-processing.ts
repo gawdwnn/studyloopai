@@ -64,12 +64,12 @@ export const DOCUMENT_PROCESSING_CONFIG = {
 
 	// Upload configuration
 	UPLOAD: {
-		maxBatchSize: 10, // Maximum files per upload batch
+		maxBatchSize: 5, // Maximum files per upload batch
 		// Global max file size in bytes. Validation must happen in UI and API.
 		// Background jobs must not perform file size validation.
 		maxFileSizeBytes: Number.parseInt(
-			process.env.NEXT_PUBLIC_UPLOAD_MAX_BYTES || "10485760"
-		), // default 10MB
+			process.env.NEXT_PUBLIC_UPLOAD_MAX_BYTES || "2097152"
+		), // default 2MB
 	} as const,
 
 	// Environment configuration
@@ -80,41 +80,23 @@ export const DOCUMENT_PROCESSING_CONFIG = {
 	} as const,
 } as const;
 
-// Content type constants for UI display (backward compatibility)
+// Content type constants for UI display
 export const CONTENT_TYPES = {
 	PDF: "pdf",
 	OFFICE: "office",
 	TEXT: "text",
-	// Legacy types (for existing data)
-	VIDEO: "video",
-	AUDIO: "audio",
-	IMAGE: "image",
-	WEBLINK: "weblink",
-	TRANSCRIPT: "transcript",
 } as const;
 
 export const CONTENT_TYPE_LABELS = {
 	[CONTENT_TYPES.PDF]: "PDF Document",
 	[CONTENT_TYPES.OFFICE]: "Office Document",
 	[CONTENT_TYPES.TEXT]: "Text File",
-	// Legacy labels (for existing data)
-	[CONTENT_TYPES.VIDEO]: "Video",
-	[CONTENT_TYPES.AUDIO]: "Audio",
-	[CONTENT_TYPES.IMAGE]: "Image",
-	[CONTENT_TYPES.WEBLINK]: "Web Link",
-	[CONTENT_TYPES.TRANSCRIPT]: "Transcript",
 } as const;
 
 export const CONTENT_TYPE_ICONS = {
 	[CONTENT_TYPES.PDF]: "FileText",
 	[CONTENT_TYPES.OFFICE]: "FileText",
 	[CONTENT_TYPES.TEXT]: "FileText",
-	// Legacy icons (for existing data)
-	[CONTENT_TYPES.VIDEO]: "Video",
-	[CONTENT_TYPES.AUDIO]: "AudioLines",
-	[CONTENT_TYPES.IMAGE]: "Image",
-	[CONTENT_TYPES.WEBLINK]: "Link",
-	[CONTENT_TYPES.TRANSCRIPT]: "FileText",
 } as const;
 
 // Helper functions for document processing configuration

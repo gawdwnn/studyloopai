@@ -48,7 +48,7 @@ function calculateRetryDelay(
 export const handlePolarWebhook = schemaTask({
 	id: "handle-polar-webhook",
 	schema: PolarWebhookPayload,
-	maxDuration: 600,
+	maxDuration: 600, // 10 minutes for webhook processing with retries
 	run: async (payload: PolarWebhookPayloadType) => {
 		const idempotencyKey = generateWebhookIdempotencyKey(
 			payload.eventId,

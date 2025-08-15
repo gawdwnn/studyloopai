@@ -13,6 +13,10 @@ export const quotaResetCron = schedules.task({
 	id: "quota-reset-cron",
 	// Run every hour at minute 0
 	cron: "0 * * * *",
+	retry: {
+		maxAttempts: 1, // No retries for cron jobs to avoid double processing
+	},
+	maxDuration: 300, // 5 minutes should be sufficient for quota resets
 	run: async (payload) => {
 		const startTime = new Date();
 

@@ -23,6 +23,13 @@ export const generateSummaries = schemaTask({
 	id: "generate-summaries",
 	schema: GenerateSummariesPayload,
 	maxDuration: 300, // 5 minutes for individual content type
+	retry: {
+		maxAttempts: 5, // Higher retries for AI API calls
+		factor: 1.8, // Recommended for AI tasks
+		minTimeoutInMs: 500,
+		maxTimeoutInMs: 30000,
+		randomize: true,
+	},
 	run: async (payload: GenerateSummariesPayloadType, { ctx: _ctx }) => {
 		const { weekId, courseId, materialIds, configId, cacheKey, userId } =
 			payload;

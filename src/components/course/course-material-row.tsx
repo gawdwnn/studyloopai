@@ -16,15 +16,7 @@ import type {
 	CourseMaterial,
 	CourseWeek,
 } from "@/types/database-types";
-import {
-	AudioLines,
-	File,
-	FileText,
-	Image,
-	Link,
-	TrashIcon,
-	Video,
-} from "lucide-react";
+import { File, FileText, TrashIcon } from "lucide-react";
 
 type CourseMaterialWithRelations = CourseMaterial & {
 	course?: Pick<Course, "name"> | null;
@@ -61,14 +53,10 @@ export function CourseMaterialRow({
 		switch (contentType) {
 			case CONTENT_TYPES.PDF:
 				return <FileText className="h-4 w-4 text-red-500" />;
-			case CONTENT_TYPES.VIDEO:
-				return <Video className="h-4 w-4 text-blue-500" />;
-			case CONTENT_TYPES.AUDIO:
-				return <AudioLines className="h-4 w-4 text-green-500" />;
-			case CONTENT_TYPES.IMAGE:
-				return <Image className="h-4 w-4 text-purple-500" />;
-			case CONTENT_TYPES.WEBLINK:
-				return <Link className="h-4 w-4 text-cyan-500" />;
+			case CONTENT_TYPES.OFFICE:
+				return <FileText className="h-4 w-4 text-blue-500" />;
+			case CONTENT_TYPES.TEXT:
+				return <FileText className="h-4 w-4 text-green-500" />;
 			default:
 				return <File className="h-4 w-4 text-gray-500" />;
 		}

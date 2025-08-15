@@ -26,10 +26,10 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 	schema: ProcessAndEmbedIndividualPayload,
 	maxDuration: 900, // Allow up to 15 minutes for processing & embedding very large materials
 	retry: {
-		maxAttempts: 1,
+		maxAttempts: 2, // Limited retries for document processing
 		factor: 2,
-		minTimeoutInMs: 1000,
-		maxTimeoutInMs: 10000,
+		minTimeoutInMs: 2000, // Longer initial delay for file operations
+		maxTimeoutInMs: 30000, // Match config default for AI embedding calls
 		randomize: true,
 	},
 	onStart: async ({
