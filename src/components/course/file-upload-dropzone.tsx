@@ -15,7 +15,7 @@ import { toast } from "sonner";
 
 interface FileUploadDropzoneProps {
 	onFilesAdded: (files: File[]) => void;
-	userPlan: UserPlan; // Required - must be passed from server component
+	userPlan: UserPlan; // Keep for future plan-based features
 	className?: string;
 	files: File[];
 	onRemoveFile: (index: number) => void;
@@ -23,24 +23,23 @@ interface FileUploadDropzoneProps {
 
 export function FileUploadDropzone({
 	onFilesAdded,
-	userPlan,
+	userPlan: _,
 	className,
 	files,
 	onRemoveFile,
 }: FileUploadDropzoneProps) {
-	// Get plan-aware configuration
-	const supportedFileTypes = getSupportedFileTypes(userPlan);
-	const dropzoneDescription = getDropzoneDescription(userPlan);
+	// Get file type configuration
+	const supportedFileTypes = getSupportedFileTypes();
+	const dropzoneDescription = getDropzoneDescription();
 	const onDrop = useCallback(
 		(acceptedFiles: File[], fileRejections: FileRejection[]) => {
 			// Handle rejected files from dropzone
 			if (fileRejections.length > 0) {
 				for (const rejection of fileRejections) {
-					const validation = validateFile(rejection.file, userPlan);
+					const validation = validateFile(rejection.file);
 					logger.warn("File validation error", {
 						fileName: rejection.file.name,
 						fileSize: rejection.file.size,
-						userPlan,
 						validationError: validation.error,
 					});
 
@@ -54,7 +53,7 @@ export function FileUploadDropzone({
 			// Additional validation for accepted files using our consolidated config
 			const validFiles: File[] = [];
 			for (const file of acceptedFiles) {
-				const validation = validateFile(file, userPlan);
+				const validation = validateFile(file);
 				if (validation.isValid) {
 					validFiles.push(file);
 				} else {
@@ -62,7 +61,6 @@ export function FileUploadDropzone({
 					logger.warn("File failed additional validation", {
 						fileName: file.name,
 						fileSize: file.size,
-						userPlan,
 						validationError: validation.error,
 					});
 				}
@@ -72,7 +70,7 @@ export function FileUploadDropzone({
 				onFilesAdded(validFiles);
 			}
 		},
-		[onFilesAdded, userPlan]
+		[onFilesAdded]
 	);
 
 	const { getRootProps, getInputProps, isDragActive } = useDropzone({

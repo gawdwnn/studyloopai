@@ -41,7 +41,7 @@ export const PolarProductSchema = z.object({
 	is_archived: z.boolean().optional(),
 	created_at: timestampSchema.optional(),
 	modified_at: timestampSchema.nullable().optional(),
-	metadata: z.record(z.any()).optional(),
+	metadata: z.record(z.string(), z.any()).optional(),
 	prices: z.array(PolarPriceSchema).optional(),
 	benefits: z.array(z.any()).optional(),
 	medias: z.array(z.any()).optional(),
@@ -71,7 +71,7 @@ export const PolarCustomerSchema = z.object({
 	tax_id: z.string().nullable().optional(),
 	external_id: z.string().nullable().optional(),
 	deleted_at: timestampSchema.nullable().optional(),
-	metadata: z.record(z.any()).optional(),
+	metadata: z.record(z.string(), z.any()).optional(),
 });
 
 // Subscription schema matching actual Polar webhook payload
@@ -108,7 +108,7 @@ const subscriptionSchema = z.object({
 	customer_cancellation_reason: z.string().nullable().optional(),
 	customer_cancellation_comment: z.string().nullable().optional(),
 	metadata: PolarMetadataSchema.optional(),
-	custom_field_data: z.record(z.any()).optional(),
+	custom_field_data: z.record(z.string(), z.any()).optional(),
 	// Nested objects
 	customer: PolarCustomerSchema.optional(),
 	user: z
@@ -149,7 +149,7 @@ export const PolarCheckoutCreatedSchema = z.object({
 		id: z.string(),
 		created_at: timestampSchema,
 		modified_at: timestampSchema.nullable().optional(),
-		custom_field_data: z.record(z.any()).optional(),
+		custom_field_data: z.record(z.string(), z.any()).optional(),
 		payment_processor: z.string(),
 		status: z.enum(["open", "expired", "confirmed"]),
 		client_secret: z.string(),
@@ -181,10 +181,10 @@ export const PolarCheckoutCreatedSchema = z.object({
 		customer_billing_name: z.string().nullable().optional(),
 		customer_billing_address: z.any().nullable().optional(),
 		customer_tax_id: z.string().nullable().optional(),
-		payment_processor_metadata: z.record(z.any()),
+		payment_processor_metadata: z.record(z.string(), z.any()),
 		subtotal_amount: z.number(),
-		customer_billing_address_fields: z.record(z.any()).optional(),
-		billing_address_fields: z.record(z.any()),
+		customer_billing_address_fields: z.record(z.string(), z.any()).optional(),
+		billing_address_fields: z.record(z.string(), z.any()),
 		metadata: PolarMetadataSchema,
 		external_customer_id: z.string().nullable().optional(),
 		customer_external_id: z.string().nullable().optional(),
@@ -194,7 +194,7 @@ export const PolarCheckoutCreatedSchema = z.object({
 		discount: z.any().nullable().optional(),
 		subscription_id: z.string().nullable().optional(),
 		attached_custom_fields: z.array(z.any()),
-		customer_metadata: z.record(z.any()),
+		customer_metadata: z.record(z.string(), z.any()),
 	}),
 });
 
@@ -235,7 +235,7 @@ export const PolarOrderCreatedSchema = z.object({
 		subscription_id: z.string().optional(),
 		checkout_id: z.string(),
 		metadata: PolarMetadataSchema,
-		custom_field_data: z.record(z.any()),
+		custom_field_data: z.record(z.string(), z.any()),
 		user_id: z.string().optional(),
 		// Nested objects
 		customer: PolarCustomerSchema,

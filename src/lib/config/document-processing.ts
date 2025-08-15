@@ -2,8 +2,7 @@
  * Document Processing Configuration - Consolidated
  * Single source of truth for all document processing settings
  */
-import type { UserPlan } from "@/lib/processing/types";
-export type { UserPlan };
+export type UserPlan = "free" | "monthly" | "yearly";
 
 export interface DocumentTypeConfig {
 	mimeTypes: string[];
@@ -118,12 +117,12 @@ export const CONTENT_TYPE_ICONS = {
 	[CONTENT_TYPES.TRANSCRIPT]: "FileText",
 } as const;
 
-// Helper functions for plan-aware configuration
+// Helper functions for document processing configuration
 
 /**
- * Get document processing limits for a specific user plan
+ * Get document processing limits (plan-agnostic for now)
  */
-export function getDocumentLimits(_userPlan: UserPlan): PlanLimits {
+export function getDocumentLimits(): PlanLimits {
 	const supportedTypes: string[] = [];
 
 	for (const [typeName, config] of Object.entries(
@@ -140,11 +139,9 @@ export function getDocumentLimits(_userPlan: UserPlan): PlanLimits {
 }
 
 /**
- * Get supported file types (MIME type mapping) for a user plan
+ * Get supported file types (MIME type mapping) - plan-agnostic for now
  */
-export function getSupportedFileTypes(
-	_userPlan: UserPlan
-): Record<string, string[]> {
+export function getSupportedFileTypes(): Record<string, string[]> {
 	const supportedTypes: Record<string, string[]> = {};
 
 	for (const [_, config] of Object.entries(
@@ -161,9 +158,9 @@ export function getSupportedFileTypes(
 }
 
 /**
- * Generate dropzone description text for user plan
+ * Generate dropzone description text - plan-agnostic for now
  */
-export function getDropzoneDescription(_userPlan?: UserPlan): string {
+export function getDropzoneDescription(): string {
 	const typeNames: string[] = [];
 
 	for (const [typeName, config] of Object.entries(
@@ -188,9 +185,9 @@ export function getDropzoneDescription(_userPlan?: UserPlan): string {
 }
 
 /**
- * Get all supported extensions for a user plan
+ * Get all supported extensions - plan-agnostic for now
  */
-export function getSupportedExtensions(_userPlan: UserPlan): string[] {
+export function getSupportedExtensions(): string[] {
 	const extensions: string[] = [];
 
 	for (const config of Object.values(
@@ -205,7 +202,7 @@ export function getSupportedExtensions(_userPlan: UserPlan): string[] {
 }
 
 /**
- * Plan-agnostic helpers for API routes and server code
+ * Utility helpers for API routes and server code
  */
 export function getAllSupportedMimeTypes(): readonly string[] {
 	return Object.values(DOCUMENT_PROCESSING_CONFIG.SUPPORTED_TYPES).flatMap(
@@ -220,14 +217,21 @@ export function getAllSupportedExtensions(): readonly string[] {
 }
 
 /**
- * Validate file against user plan limits
+ * Check if a document type is supported
  */
-export function validateFile(
-	file: File,
-	userPlan: UserPlan
-): { isValid: boolean; error?: string } {
-	const supportedTypes = getSupportedFileTypes(userPlan);
-	const supportedExtensions = getSupportedExtensions(userPlan);
+export function isSupportedDocumentType(mimeType: string): boolean {
+	const allMimeTypes: string[] = Object.values(
+		DOCUMENT_PROCESSING_CONFIG.SUPPORTED_TYPES
+	).flatMap((t) => t.mimeTypes as unknown as string[]);
+	return allMimeTypes.includes(mimeType);
+}
+
+/**
+ * Validate file against supported types and size limits
+ */
+export function validateFile(file: File): { isValid: boolean; error?: string } {
+	const supportedTypes = getSupportedFileTypes();
+	const supportedExtensions = getSupportedExtensions();
 	const maxBytes = DOCUMENT_PROCESSING_CONFIG.UPLOAD.maxFileSizeBytes;
 
 	// Prefer MIME type validation when available
