@@ -2,7 +2,7 @@
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { CourseWeekFeature } from "@/components/course/course-week-feature";
-import { RealtimeCourseMaterialStatus } from "@/components/course/realtime-course-material-status";
+import { EnhancedMaterialStatus } from "@/components/course/enhanced-material-status";
 import type { TableColumn } from "@/components/course/table-column-config";
 import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
@@ -98,7 +98,7 @@ export function CourseMaterialRow({
 					</div>
 				);
 			case "status":
-				return <RealtimeCourseMaterialStatus courseMaterial={material} />;
+				return <EnhancedMaterialStatus courseMaterial={material} />;
 			case "notes":
 				return (
 					<CourseWeekFeature
