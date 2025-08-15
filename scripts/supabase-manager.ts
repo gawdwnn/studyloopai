@@ -90,7 +90,7 @@ const createOutputHandler = (mode: UIMode): OutputHandler => {
 			: () => {},
 		error: (msg, ...args) => console.error(chalk.red("✗"), msg, ...args),
 		success: shouldLog
-			? (msg, ...args) => console.log(chalk.green("✓"), msg, ...args)
+			? (_msg, ..._args) => console.log(chalk.green("✓"), _msg, ..._args)
 			: () => {},
 		prompt: async <T>(fn: () => Promise<T>): Promise<T> => {
 			if (mode === "interactive") {

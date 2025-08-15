@@ -28,6 +28,13 @@ export const ingestCourseMaterials = schemaTask({
 	},
 	// Allow up to 30 minutes to safely ingest & embed large batches
 	maxDuration: 1800,
+	retry: {
+		maxAttempts: 2, // Limited retries for batch orchestration
+		factor: 2,
+		minTimeoutInMs: 3000, // Longer delay for batch operations
+		maxTimeoutInMs: 60000, // Longer max timeout for large batches
+		randomize: true,
+	},
 	run: async (payload: IngestBatchPayloadType) => {
 		// Add contextual tags for observability
 		await tags.add([`userId:${payload.userId}`, "phase:ingest"]);

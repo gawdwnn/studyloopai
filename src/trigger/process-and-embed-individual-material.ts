@@ -1,9 +1,7 @@
 import { generateEmbeddings } from "@/lib/ai/embeddings";
-import { contentGenerationEvents } from "@/lib/analytics/events";
-import {
-	getDocumentProcessor,
-	isSupportedDocumentType,
-} from "@/lib/processing";
+import { generateChunks } from "@/lib/ai/generate-chunks";
+import { isSupportedDocumentType } from "@/lib/config/document-processing";
+import { getDocumentProcessor } from "@/lib/processing/processor-factory";
 import {
 	insertDocumentChunks,
 	updateCourseMaterialStatus,
@@ -11,18 +9,6 @@ import {
 import { downloadCourseMaterial } from "@/lib/supabase/storage";
 import { logger, schemaTask, tags } from "@trigger.dev/sdk";
 import { z } from "zod";
-
-/**
- * AI SDK native text chunking utility - as documented in their RAG examples
- * Simple, reliable chunking based on sentence boundaries
- */
-const generateChunks = (input: string): string[] => {
-	return input
-		.trim()
-		.split(".")
-		.filter((i) => i !== "" && i.trim().length > 0)
-		.map((chunk) => chunk.trim());
-};
 
 const ProcessAndEmbedIndividualPayload = z.object({
 	materialId: z.string().min(1, "Material ID is required"),
@@ -40,10 +26,10 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 	schema: ProcessAndEmbedIndividualPayload,
 	maxDuration: 900, // Allow up to 15 minutes for processing & embedding very large materials
 	retry: {
-		maxAttempts: 1,
+		maxAttempts: 2, // Limited retries for document processing
 		factor: 2,
-		minTimeoutInMs: 1000,
-		maxTimeoutInMs: 10000,
+		minTimeoutInMs: 2000, // Longer initial delay for file operations
+		maxTimeoutInMs: 30000, // Match config default for AI embedding calls
 		randomize: true,
 	},
 	onStart: async ({
@@ -62,7 +48,7 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 		});
 	},
 	run: async (payload: ProcessAndEmbedIndividualPayloadType) => {
-		const { materialId, filePath, contentType, userId } = payload;
+		const { materialId, filePath, contentType } = payload;
 
 		// Tag this run for enhanced observability
 		await tags.add([`materialId:${payload.materialId}`, "phase:embedding"]);
@@ -94,7 +80,7 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 
 			const buffer = downloadResult.buffer;
 
-			// 2. Check if the document type is supported
+			// 2. Check if the document type is supported (contentType is actually MIME type)
 			if (!isSupportedDocumentType(contentType)) {
 				logger.error("Unsupported document type", {
 					materialId,
@@ -107,21 +93,18 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 				);
 			}
 
-			// 3. Process document directly for easier traceability
+			// 3. Process document directly for easier traceability (contentType is actually MIME type)
 			const processor = await getDocumentProcessor(contentType);
-			const processingResult = await processor.process(buffer, {
-				materialId,
-			});
+			const processingResult = await processor.process(buffer);
 
-			if (!processingResult.success || !processingResult.text.trim()) {
+			if (!processingResult.success || !processingResult.text?.trim()) {
 				logger.error("Document processing failed", {
 					materialId,
 					filePath,
 					contentType,
 					error: processingResult.error,
-					source: processingResult.metadata.source,
-					processor: processingResult.metadata.processor,
-					step: "text_extraction",
+					source: processingResult.source,
+					step: "document_processing",
 				});
 				throw new Error(
 					`Failed to extract text from document: ${filePath}. Error: ${processingResult.error || "No extractable text found"}`
@@ -132,6 +115,17 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 
 			// 4. Chunk text using AI SDK native approach - guaranteed string output
 			const textChunks = generateChunks(extractedText);
+
+			if (!textChunks || textChunks.length === 0) {
+				logger.error("Text chunking failed - no valid chunks generated", {
+					materialId,
+					filePath,
+					step: "text_chunking",
+				});
+				throw new Error(
+					`Failed to generate text chunks from document: ${filePath}`
+				);
+			}
 
 			// 5. Generate embeddings
 			const result = await generateEmbeddings(textChunks);
@@ -181,42 +175,36 @@ export const processAndEmbedIndividualMaterial = schemaTask({
 				// Continue; insert will still proceed
 			}
 
-			await insertDocumentChunks(chunksToInsert);
-
-			// 7. Track embedding generation for analytics and billing
 			try {
-				const totalTokens = chunksToInsert.reduce(
-					(sum, chunk) => sum + chunk.token_count,
-					0
-				);
-				await contentGenerationEvents.vectorEmbedding(
-					{
-						materialId,
-						chunkCount: textChunks.length,
-						processingTime: 0, // Processing time not tracked in this context
-						embeddingModel: "text-embedding-3-small",
-						embeddingProvider: "openai",
-						totalTokens,
-						courseId: undefined, // Could be retrieved if needed
-						success: true,
-					},
-					userId
-				);
-			} catch (trackingError) {
-				// Don't fail the job if tracking fails
-				logger.error("Failed to track embedding generation", {
-					error:
-						trackingError instanceof Error
-							? trackingError.message
-							: String(trackingError),
+				await insertDocumentChunks(chunksToInsert);
+			} catch (insertError) {
+				logger.error("Failed to insert document chunks", {
 					materialId,
+					error:
+						insertError instanceof Error
+							? insertError.message
+							: String(insertError),
+					step: "database_insert",
 				});
+				throw insertError;
 			}
 
 			// 9. Update final status to 'completed'
-			await updateCourseMaterialStatus(materialId, "completed", {
-				processingCompletedAt: new Date(),
-			});
+			try {
+				await updateCourseMaterialStatus(materialId, "completed", {
+					processingCompletedAt: new Date(),
+				});
+			} catch (statusError) {
+				logger.error("Failed to update material status to completed", {
+					materialId,
+					error:
+						statusError instanceof Error
+							? statusError.message
+							: String(statusError),
+					step: "status_update",
+				});
+				throw statusError;
+			}
 
 			logger.info("Material processing pipeline completed successfully", {
 				materialId,

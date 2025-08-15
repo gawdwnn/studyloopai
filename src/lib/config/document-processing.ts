@@ -2,8 +2,7 @@
  * Document Processing Configuration - Consolidated
  * Single source of truth for all document processing settings
  */
-import type { UserPlan } from "@/lib/processing/types";
-export type { UserPlan };
+export type UserPlan = "free" | "monthly" | "yearly";
 
 export interface DocumentTypeConfig {
 	mimeTypes: string[];
@@ -65,12 +64,12 @@ export const DOCUMENT_PROCESSING_CONFIG = {
 
 	// Upload configuration
 	UPLOAD: {
-		maxBatchSize: 10, // Maximum files per upload batch
+		maxBatchSize: 5, // Maximum files per upload batch
 		// Global max file size in bytes. Validation must happen in UI and API.
 		// Background jobs must not perform file size validation.
 		maxFileSizeBytes: Number.parseInt(
-			process.env.NEXT_PUBLIC_UPLOAD_MAX_BYTES || "10485760"
-		), // default 10MB
+			process.env.NEXT_PUBLIC_UPLOAD_MAX_BYTES || "2097152"
+		), // default 2MB
 	} as const,
 
 	// Environment configuration
@@ -81,49 +80,31 @@ export const DOCUMENT_PROCESSING_CONFIG = {
 	} as const,
 } as const;
 
-// Content type constants for UI display (backward compatibility)
+// Content type constants for UI display
 export const CONTENT_TYPES = {
 	PDF: "pdf",
 	OFFICE: "office",
 	TEXT: "text",
-	// Legacy types (for existing data)
-	VIDEO: "video",
-	AUDIO: "audio",
-	IMAGE: "image",
-	WEBLINK: "weblink",
-	TRANSCRIPT: "transcript",
 } as const;
 
 export const CONTENT_TYPE_LABELS = {
 	[CONTENT_TYPES.PDF]: "PDF Document",
 	[CONTENT_TYPES.OFFICE]: "Office Document",
 	[CONTENT_TYPES.TEXT]: "Text File",
-	// Legacy labels (for existing data)
-	[CONTENT_TYPES.VIDEO]: "Video",
-	[CONTENT_TYPES.AUDIO]: "Audio",
-	[CONTENT_TYPES.IMAGE]: "Image",
-	[CONTENT_TYPES.WEBLINK]: "Web Link",
-	[CONTENT_TYPES.TRANSCRIPT]: "Transcript",
 } as const;
 
 export const CONTENT_TYPE_ICONS = {
 	[CONTENT_TYPES.PDF]: "FileText",
 	[CONTENT_TYPES.OFFICE]: "FileText",
 	[CONTENT_TYPES.TEXT]: "FileText",
-	// Legacy icons (for existing data)
-	[CONTENT_TYPES.VIDEO]: "Video",
-	[CONTENT_TYPES.AUDIO]: "AudioLines",
-	[CONTENT_TYPES.IMAGE]: "Image",
-	[CONTENT_TYPES.WEBLINK]: "Link",
-	[CONTENT_TYPES.TRANSCRIPT]: "FileText",
 } as const;
 
-// Helper functions for plan-aware configuration
+// Helper functions for document processing configuration
 
 /**
- * Get document processing limits for a specific user plan
+ * Get document processing limits (plan-agnostic for now)
  */
-export function getDocumentLimits(_userPlan: UserPlan): PlanLimits {
+export function getDocumentLimits(): PlanLimits {
 	const supportedTypes: string[] = [];
 
 	for (const [typeName, config] of Object.entries(
@@ -140,11 +121,9 @@ export function getDocumentLimits(_userPlan: UserPlan): PlanLimits {
 }
 
 /**
- * Get supported file types (MIME type mapping) for a user plan
+ * Get supported file types (MIME type mapping) - plan-agnostic for now
  */
-export function getSupportedFileTypes(
-	_userPlan: UserPlan
-): Record<string, string[]> {
+export function getSupportedFileTypes(): Record<string, string[]> {
 	const supportedTypes: Record<string, string[]> = {};
 
 	for (const [_, config] of Object.entries(
@@ -161,9 +140,9 @@ export function getSupportedFileTypes(
 }
 
 /**
- * Generate dropzone description text for user plan
+ * Generate dropzone description text - plan-agnostic for now
  */
-export function getDropzoneDescription(_userPlan?: UserPlan): string {
+export function getDropzoneDescription(): string {
 	const typeNames: string[] = [];
 
 	for (const [typeName, config] of Object.entries(
@@ -188,9 +167,9 @@ export function getDropzoneDescription(_userPlan?: UserPlan): string {
 }
 
 /**
- * Get all supported extensions for a user plan
+ * Get all supported extensions - plan-agnostic for now
  */
-export function getSupportedExtensions(_userPlan: UserPlan): string[] {
+export function getSupportedExtensions(): string[] {
 	const extensions: string[] = [];
 
 	for (const config of Object.values(
@@ -205,7 +184,7 @@ export function getSupportedExtensions(_userPlan: UserPlan): string[] {
 }
 
 /**
- * Plan-agnostic helpers for API routes and server code
+ * Utility helpers for API routes and server code
  */
 export function getAllSupportedMimeTypes(): readonly string[] {
 	return Object.values(DOCUMENT_PROCESSING_CONFIG.SUPPORTED_TYPES).flatMap(
@@ -220,14 +199,21 @@ export function getAllSupportedExtensions(): readonly string[] {
 }
 
 /**
- * Validate file against user plan limits
+ * Check if a document type is supported
  */
-export function validateFile(
-	file: File,
-	userPlan: UserPlan
-): { isValid: boolean; error?: string } {
-	const supportedTypes = getSupportedFileTypes(userPlan);
-	const supportedExtensions = getSupportedExtensions(userPlan);
+export function isSupportedDocumentType(mimeType: string): boolean {
+	const allMimeTypes: string[] = Object.values(
+		DOCUMENT_PROCESSING_CONFIG.SUPPORTED_TYPES
+	).flatMap((t) => t.mimeTypes as unknown as string[]);
+	return allMimeTypes.includes(mimeType);
+}
+
+/**
+ * Validate file against supported types and size limits
+ */
+export function validateFile(file: File): { isValid: boolean; error?: string } {
+	const supportedTypes = getSupportedFileTypes();
+	const supportedExtensions = getSupportedExtensions();
 	const maxBytes = DOCUMENT_PROCESSING_CONFIG.UPLOAD.maxFileSizeBytes;
 
 	// Prefer MIME type validation when available

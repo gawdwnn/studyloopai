@@ -25,8 +25,8 @@ const allSupportedMimeTypes = getAllSupportedMimeTypes();
 const allSupportedExtensions = getAllSupportedExtensions();
 
 const BodySchema = z.object({
-	courseId: z.string().uuid("Invalid course ID"),
-	weekId: z.string().uuid("Invalid week ID"),
+	courseId: z.uuid("Invalid course ID"),
+	weekId: z.uuid("Invalid week ID"),
 	fileName: z
 		.string()
 		.min(1, "File name is required")
@@ -141,9 +141,10 @@ export async function POST(req: NextRequest) {
 			);
 		}
 
-		// Validate that the file type is supported
+		// Validate that the file type is supported and get the content type
+		let detectedContentType: string;
 		try {
-			detectDocumentType({
+			detectedContentType = detectDocumentType({
 				mimeType: body.mimeType,
 				fileName: body.fileName,
 			});
@@ -198,7 +199,7 @@ export async function POST(req: NextRequest) {
 					fileName: body.fileName,
 					originalFilename: body.fileName,
 					mimeType: body.mimeType,
-					contentType: body.mimeType, // Store the actual MIME type for processing
+					contentType: detectedContentType, // Store the detected document type (e.g., "office", "pdf")
 					uploadStatus: "pending",
 					uploadedBy: user.id,
 				})
@@ -228,13 +229,14 @@ export async function POST(req: NextRequest) {
 			await createSignedUploadUrlForCourseMaterial(filePath);
 
 		if (!success || !signedUrl) {
-			logger.error("Failed to create signed URL for material upload", {
-				message: error || "Unknown error",
-				materialId: material.id,
-				filePath,
-				userId: user.id,
-				route: "/api/materials/presign",
-			});
+			logger.error(
+				{
+					message: error,
+					materialId: material.id,
+					userId: user.id,
+				},
+				"Failed to create signed URL for material upload"
+			);
 
 			// Mark the material as failed since signed URL creation failed
 			try {
@@ -243,14 +245,16 @@ export async function POST(req: NextRequest) {
 					.set({ uploadStatus: "failed" })
 					.where(eq(courseMaterials.id, material.id));
 			} catch (updateErr) {
-				logger.error("Failed to update material status to failed", {
-					message:
-						updateErr instanceof Error ? updateErr.message : String(updateErr),
-					stack: updateErr instanceof Error ? updateErr.stack : undefined,
-					materialId: material.id,
-					userId: user.id,
-					route: "/api/materials/presign",
-				});
+				logger.error(
+					{
+						message:
+							updateErr instanceof Error
+								? updateErr.message
+								: String(updateErr),
+						stack: updateErr instanceof Error ? updateErr.stack : undefined,
+					},
+					"Failed to update material status to failed"
+				);
 			}
 
 			return NextResponse.json(
@@ -294,12 +298,15 @@ export async function POST(req: NextRequest) {
 				);
 			}
 		}
-		logger.error("Materials presign operation failed", {
-			message: err instanceof Error ? err.message : String(err),
-			stack: err instanceof Error ? err.stack : undefined,
-			route: "/api/materials/presign",
-			method: "POST",
-		});
+		logger.error(
+			{
+				message: err instanceof Error ? err.message : String(err),
+				stack: err instanceof Error ? err.stack : undefined,
+				route: "/api/materials/presign",
+				method: "POST",
+			},
+			"Materials presign operation failed"
+		);
 
 		return NextResponse.json(
 			{ error: "Upload preparation failed. Please try again." },

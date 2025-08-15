@@ -25,7 +25,7 @@ import { Info } from "lucide-react";
 
 export function StepFileUpload({ userPlan }: { userPlan: UserPlan }) {
 	const { files, addFiles, removeFile } = useUploadWizardStore();
-	const dropzoneDescription = getDropzoneDescription(userPlan);
+	const dropzoneDescription = getDropzoneDescription();
 
 	const handleFilesAdded = (newFiles: File[]) => {
 		// Filter out duplicates
