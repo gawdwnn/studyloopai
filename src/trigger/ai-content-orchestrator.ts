@@ -18,7 +18,7 @@ const AiContentOrchestratorPayload = z.object({
 	materialIds: z
 		.array(z.string().uuid())
 		.min(1, "At least one material ID is required"),
-	configId: z.string().uuid().optional(),
+	configId: z.uuid().optional(),
 	cacheKey: z.string().optional(), // Cache key for pre-fetched chunks
 	userId: z.string().min(1, "User ID is required"),
 });
@@ -43,7 +43,14 @@ type AiContentOrchestratorPayloadType = z.infer<
 export const aiContentOrchestrator = schemaTask({
 	id: "ai-content-orchestrator",
 	schema: AiContentOrchestratorPayload,
-	maxDuration: 600, // 10 minutes for orchestrating parallel content generation
+	maxDuration: 900, // 15 minutes for orchestrating parallel content generation (increased for complex batches)
+	retry: {
+		maxAttempts: 2, // Limited retries for orchestration tasks
+		factor: 2,
+		minTimeoutInMs: 2000,
+		maxTimeoutInMs: 30000,
+		randomize: true,
+	},
 	onStart: async ({
 		payload,
 	}: {

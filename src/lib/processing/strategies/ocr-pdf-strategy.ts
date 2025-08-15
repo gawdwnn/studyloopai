@@ -8,18 +8,14 @@ import {
 import { DOCUMENT_PROCESSING_CONFIG } from "@/lib/config/document-processing";
 import { logger } from "@/lib/utils/logger";
 import { Mistral } from "@mistralai/mistralai";
-import type { ProcessingOptions, ProcessingResult } from "../types";
+import type { ProcessingResult } from "../types";
 import {
 	type ProcessorStrategy,
 	createMimeTypeCanProcess,
 	createProcessingResult,
 } from "./base-strategy";
 
-const process = async (
-	buffer: Buffer,
-	options: ProcessingOptions
-): Promise<ProcessingResult> => {
-	const strategyName = "pdf-ocr";
+const process = async (buffer: Buffer): Promise<ProcessingResult> => {
 	// Generate cache key based on file content
 	const fileHash = createHash("sha256").update(buffer).digest("hex");
 	const cacheKey = generateOCRCacheKey(fileHash, "mistral");
@@ -29,17 +25,13 @@ const process = async (
 	if (cachedResult) {
 		logger.info("OCR result found in cache", {
 			textLength: cachedResult.length,
-			materialId: options.materialId,
 		});
 
-		return createProcessingResult(
-			strategyName,
-			true,
-			cachedResult,
-			"cache",
-			undefined,
-			["OCR result retrieved from cache"]
-		);
+		return createProcessingResult({
+			success: true,
+			text: cachedResult,
+			source: "cache",
+		});
 	}
 
 	try {
@@ -83,28 +75,24 @@ const process = async (
 		// Cache successful OCR result
 		await cacheOCRResult(text, cacheKey);
 
-		return createProcessingResult(strategyName, true, text, "ocr", undefined, [
-			"OCR processing completed successfully",
-		]);
-	} catch (ocrError) {
-		const errorMessage =
-			ocrError instanceof Error ? ocrError.message : String(ocrError);
-
-		console.error("OCR processing failed:", errorMessage);
-
-		return createProcessingResult(
-			strategyName,
-			false,
-			"",
-			"ocr",
-			`OCR error: ${errorMessage}`
-		);
+		return createProcessingResult({
+			success: true,
+			text,
+			source: "mistral-ocr",
+		});
+	} catch (error) {
+		return createProcessingResult({
+			success: false,
+			text: "",
+			source: "mistral-ocr",
+			error: error instanceof Error ? error.message : String(error),
+		});
 	}
 };
 
 // Export the OCR PDF strategy
 export const OCRPDFStrategy: ProcessorStrategy = {
-	name: "pdf-ocr",
+	name: "mistral-ocr",
 	canProcess: createMimeTypeCanProcess(
 		DOCUMENT_PROCESSING_CONFIG.SUPPORTED_TYPES.PDF.mimeTypes
 	),

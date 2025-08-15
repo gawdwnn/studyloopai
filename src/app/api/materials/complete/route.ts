@@ -21,11 +21,11 @@ import { z } from "zod";
 
 const BodySchema = z.object({
 	materialIds: z
-		.array(z.string().uuid("Invalid material ID"))
+		.array(z.uuid("Invalid material ID"))
 		.min(1, "At least one material ID is required")
 		.max(5, "Maximum 5 materials allowed per batch"),
-	weekId: z.string().uuid("Invalid week ID"),
-	courseId: z.string().uuid("Invalid course ID"),
+	weekId: z.uuid("Invalid week ID"),
+	courseId: z.uuid("Invalid course ID"),
 	selectiveConfig: SelectiveGenerationConfigSchema,
 });
 
@@ -93,6 +93,7 @@ export async function POST(req: NextRequest) {
 					id: courseMaterials.id,
 					filePath: courseMaterials.filePath,
 					contentType: courseMaterials.contentType,
+					mimeType: courseMaterials.mimeType,
 				});
 
 			if (materials.length === 0) {
@@ -196,7 +197,7 @@ export async function POST(req: NextRequest) {
 					materials: updatedMaterials.map((m) => ({
 						materialId: m.id,
 						filePath: m.filePath as string,
-						contentType: m.contentType as string,
+						contentType: m.mimeType as string, // Pass MIME type, not detected document type
 					})),
 					configId: savedConfigId,
 				}
