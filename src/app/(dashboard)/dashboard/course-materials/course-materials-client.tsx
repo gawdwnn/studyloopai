@@ -2,7 +2,6 @@
 
 import { deleteCourseMaterial } from "@/lib/actions/course-materials";
 import { getAllUserMaterials } from "@/lib/actions/courses";
-import { useCourseMaterialProcessingCleanup } from "@/stores/course-material-processing-store";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -34,7 +33,6 @@ export function CourseMaterialsClient({
 		new Set()
 	);
 	const queryClient = useQueryClient();
-	const { clearExpiredJobs } = useCourseMaterialProcessingCleanup();
 
 	// Use initial data and enable refetching
 	const {
@@ -46,18 +44,6 @@ export function CourseMaterialsClient({
 		initialData: initialMaterials,
 		refetchInterval: 30000, // Refetch every 30 seconds to get status updates
 	});
-
-	// Clean up expired processing jobs
-	useEffect(() => {
-		clearExpiredJobs();
-		const interval = setInterval(
-			() => {
-				clearExpiredJobs();
-			},
-			10 * 60 * 1000
-		);
-		return () => clearInterval(interval);
-	}, [clearExpiredJobs]);
 
 	const handleDeleteMaterial = async (
 		materialId: string,

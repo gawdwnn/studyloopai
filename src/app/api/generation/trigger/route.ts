@@ -38,7 +38,6 @@ const TriggerGenerationSchema = z.object({
 		)
 		.min(1, "At least one content type is required"),
 	config: SelectiveGenerationConfigSchema,
-	// REMOVED: configSource field - no longer needed with simplified config storage
 });
 
 export async function POST(req: NextRequest) {

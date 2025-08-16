@@ -12,7 +12,6 @@ export interface TriggerOnDemandGenerationRequest {
 	weekId: string;
 	featureTypes: FeatureType[];
 	config: SelectiveGenerationConfig;
-	// REMOVED: configSource field - no longer needed with simplified config storage
 }
 
 /** Response from generation trigger API */
@@ -63,7 +62,6 @@ export async function triggerOnDemandGeneration(
 				weekId: params.weekIds[0],
 				featureTypes: [params.featureType],
 				config: params.generationConfig,
-				// REMOVED: configSource field - no longer needed
 			} satisfies TriggerOnDemandGenerationRequest),
 		});
 
