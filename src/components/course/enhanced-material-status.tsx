@@ -44,6 +44,7 @@ export function EnhancedMaterialStatus({
 	const [lastToastedStatus, setLastToastedStatus] = useState<string | null>(
 		null
 	);
+	const [hasInitialized, setHasInitialized] = useState(false);
 
 	const {
 		getCourseMaterialProcessingJob,
@@ -206,9 +207,16 @@ export function EnhancedMaterialStatus({
 		}
 	}, [phase2Runs, courseMaterial.id, storedError, setErrorDetails]);
 
-	// Toast effect with cleanup
+	// Toast effect with cleanup and mount protection
 	useEffect(() => {
 		let isMounted = true;
+
+		// Initialize tracking on first render without toasting
+		if (!hasInitialized) {
+			setLastToastedStatus(state);
+			setHasInitialized(true);
+			return;
+		}
 
 		if (shouldToast && isMounted) {
 			if (state === "failed" && storedError) {
@@ -241,12 +249,14 @@ export function EnhancedMaterialStatus({
 		courseMaterial.title,
 		onRetry,
 		handleRetry,
+		hasInitialized,
 	]);
 
 	// Reset cleanup on new processing
 	useEffect(() => {
 		if (state === "processing") {
-			setLastToastedStatus(null);
+			setLastToastedStatus(null); // Reset toast tracking for new processing cycle
+			// Keep hasInitialized as true - we don't want to re-initialize
 			toast.dismiss(); // Clear existing toasts for this material
 		}
 	}, [state]);
@@ -256,6 +266,7 @@ export function EnhancedMaterialStatus({
 	useEffect(() => {
 		if (prevMaterialIdRef.current !== courseMaterial.id) {
 			setLastToastedStatus(null);
+			setHasInitialized(false); // Reset initialization flag for completely new material
 			prevMaterialIdRef.current = courseMaterial.id;
 		}
 	});
