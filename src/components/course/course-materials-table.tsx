@@ -147,8 +147,8 @@ export function CourseMaterialsTable({
 										className="text-center py-8 text-muted-foreground"
 									>
 										{searchTerm
-											? "No materials found matching your search."
-											: "No materials uploaded yet."}
+											? "No course materials found matching your search."
+											: "No course materials uploaded yet."}
 									</TableCell>
 								</TableRow>
 							)}

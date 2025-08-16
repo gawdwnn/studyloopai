@@ -225,6 +225,13 @@
 			"when": 1755022703218,
 			"tag": "0031_bright_glorian",
 			"breakpoints": true
+		},
+		{
+			"idx": 32,
+			"version": "7",
+			"when": 1755332392671,
+			"tag": "0032_tense_lightspeed",
+			"breakpoints": true
 		}
 	]
 }

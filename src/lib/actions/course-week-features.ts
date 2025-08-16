@@ -1,9 +1,10 @@
 "use server";
 
 import { db } from "@/db";
-import { courseWeekFeatures } from "@/db/schema";
+import { courseMaterials, courseWeekFeatures } from "@/db/schema";
 import { getServerClient } from "@/lib/supabase/server";
 import { withErrorHandling } from "@/lib/utils/error-handling";
+import type { CourseMaterial } from "@/types/database-types";
 import type { FeatureAvailability } from "@/types/generation-types";
 import { and, eq } from "drizzle-orm";
 
@@ -46,6 +47,76 @@ function transformToFeatureAvailability(
 			generatedAt: record.conceptMapsGeneratedAt,
 		},
 	};
+}
+
+/**
+ * Comprehensive status tracking for a specific course material and its week features
+ * Combines data from both courseMaterials and courseWeekFeatures tables
+ * @param courseId - The course ID to query
+ * @param weekId - The week ID to query
+ * @param materialId - The specific material ID to track
+ * @returns Combined status data for the specific material and its week features
+ */
+export async function getStatusTrackingData(
+	courseId: string,
+	weekId: string,
+	materialId: string
+): Promise<{
+	material: Pick<
+		CourseMaterial,
+		"id" | "uploadStatus" | "embeddingStatus" | "fileName" | "title"
+	> | null;
+	weekFeatures: { generationStatus: string | null } | null;
+} | null> {
+	return await withErrorHandling(
+		async () => {
+			const {
+				data: { user },
+			} = await (await getServerClient()).auth.getUser();
+
+			if (!user) {
+				throw new Error("Authentication required");
+			}
+
+			// Fetch specific course material data (Phase 1 tracking)
+			const materials = await db
+				.select({
+					id: courseMaterials.id,
+					uploadStatus: courseMaterials.uploadStatus,
+					embeddingStatus: courseMaterials.embeddingStatus,
+					fileName: courseMaterials.fileName,
+					title: courseMaterials.title,
+				})
+				.from(courseMaterials)
+				.where(
+					and(
+						eq(courseMaterials.courseId, courseId),
+						eq(courseMaterials.weekId, weekId),
+						eq(courseMaterials.id, materialId)
+					)
+				);
+
+			// Fetch week features data (Phase 2 tracking)
+			const features = await db
+				.select({
+					generationStatus: courseWeekFeatures.generationStatus,
+				})
+				.from(courseWeekFeatures)
+				.where(
+					and(
+						eq(courseWeekFeatures.courseId, courseId),
+						eq(courseWeekFeatures.weekId, weekId)
+					)
+				);
+
+			return {
+				material: materials[0] || null,
+				weekFeatures: features[0] || null,
+			};
+		},
+		"getStatusTrackingData",
+		null
+	);
 }
 
 /**
