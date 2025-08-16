@@ -46,7 +46,7 @@ export const courseMaterials = pgTable(
 	{
 		id: uuid().defaultRandom().primaryKey().notNull(),
 		courseId: uuid("course_id").notNull(),
-		weekId: uuid("week_id"),
+		weekId: uuid("week_id").notNull(),
 		title: varchar({ length: 255 }).notNull(),
 		fileName: varchar("file_name", { length: 255 }),
 		filePath: varchar("file_path", { length: 500 }),
@@ -679,31 +679,7 @@ export const courseWeekFeatures = pgTable(
 		conceptMapsGeneratedAt: timestamp("concept_maps_generated_at"),
 
 		// Configuration data - migrated from generation_configs table
-		configData: jsonb("config_data")
-			.$type<SelectiveGenerationConfig>()
-			.notNull()
-			.default({
-				selectedFeatures: {
-					cuecards: false,
-					mcqs: false,
-					openQuestions: false,
-					summaries: false,
-					goldenNotes: false,
-					conceptMaps: false,
-				},
-				featureConfigs: {
-					goldenNotes: {
-						count: 5,
-						focus: "conceptual",
-						difficulty: "intermediate",
-					},
-					mcqs: {
-						count: 10,
-						focus: "practical",
-						difficulty: "intermediate",
-					},
-				},
-			}),
+		configData: jsonb("config_data").$type<SelectiveGenerationConfig>(),
 
 		// Generation status tracking - migrated from generation_configs table
 		generationStatus: varchar("generation_status", { length: 20 }).default(

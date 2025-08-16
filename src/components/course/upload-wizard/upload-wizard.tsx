@@ -32,7 +32,6 @@ import {
 	weekHasMaterials,
 } from "@/lib/utils/upload-wizard-utils";
 import { validateSelectiveGenerationConfig } from "@/lib/validation/generation-config";
-import { useCourseMaterialProcessingStore } from "@/stores/course-material-processing-store";
 import { useUploadWizardStore } from "@/stores/upload-wizard-store";
 import type { Course } from "@/types/database-types";
 import { useQuery } from "@tanstack/react-query";
@@ -137,8 +136,6 @@ export function UploadWizard({
 		setUploadProgress,
 	} = useUploadWizardStore();
 
-	const { setBatchProcessingJob } = useCourseMaterialProcessingStore();
-
 	const { data: courseWeeks = [], isLoading: isLoadingCourseWeeks } = useQuery({
 		queryKey: ["course-weeks", selectedCourseId],
 		queryFn: () => getCourseWeeks(selectedCourseId),
@@ -215,16 +212,6 @@ export function UploadWizard({
 					throw new Error("Failed to start generation");
 				}
 
-				const result = await response.json();
-
-				// Store processing job information for real-time tracking
-				setBatchProcessingJob([], {
-					runId: result.runId,
-					publicAccessToken: result.publicAccessToken,
-					weekId: selectedWeekId,
-					courseId: selectedCourseId,
-				});
-
 				toast.success(
 					"Content generation started using existing materials. Processing will continue in background."
 				);
@@ -289,20 +276,12 @@ export function UploadWizard({
 			}
 
 			// Complete upload and trigger processing
-			const result = await completeUpload(
+			await completeUpload(
 				uploadedMaterialIds,
 				selectedWeekId,
 				selectedCourseId,
 				selectiveConfig
 			);
-
-			// Store processing job information for real-time tracking
-			setBatchProcessingJob(uploadedMaterialIds, {
-				runId: result.runId,
-				publicAccessToken: result.publicAccessToken,
-				weekId: result.weekId,
-				courseId: result.courseId,
-			});
 
 			const successMessage =
 				uploadedMaterialIds.length === files.length

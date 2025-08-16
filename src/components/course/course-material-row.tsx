@@ -1,12 +1,13 @@
 "use client";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { CourseMaterialStatus } from "@/components/course/course-material-status";
 import { CourseWeekFeature } from "@/components/course/course-week-feature";
-import { EnhancedMaterialStatus } from "@/components/course/enhanced-material-status";
 import type { TableColumn } from "@/components/course/table-column-config";
 import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { useFeatureAvailability } from "@/hooks/use-feature-availability";
+import { useStatusTracking } from "@/hooks/use-status-tracking";
 import {
 	CONTENT_TYPES,
 	CONTENT_TYPE_LABELS,
@@ -46,19 +47,26 @@ export function CourseMaterialRow({
 	);
 	const weekFeatures = data ?? null;
 
+	// Fetch comprehensive status tracking data for both tables
+	const { data: statusTrackingData } = useStatusTracking(
+		material.courseId,
+		material.weekId,
+		material.id
+	);
+
 	// Get processing job for this material
 
 	// Helper function to get content type icon
 	const getContentTypeIcon = (contentType: string) => {
 		switch (contentType) {
 			case CONTENT_TYPES.PDF:
-				return <FileText className="h-4 w-4 text-red-500" />;
+				return <FileText className="h-4 w-4 text-muted-foreground" />;
 			case CONTENT_TYPES.OFFICE:
-				return <FileText className="h-4 w-4 text-blue-500" />;
+				return <FileText className="h-4 w-4 text-muted-foreground" />;
 			case CONTENT_TYPES.TEXT:
-				return <FileText className="h-4 w-4 text-green-500" />;
+				return <FileText className="h-4 w-4 text-muted-foreground" />;
 			default:
-				return <File className="h-4 w-4 text-gray-500" />;
+				return <File className="h-4 w-4 text-muted-foreground" />;
 		}
 	};
 
@@ -98,7 +106,13 @@ export function CourseMaterialRow({
 					</div>
 				);
 			case "status":
-				return <EnhancedMaterialStatus courseMaterial={material} />;
+				return (
+					<CourseMaterialStatus
+						courseMaterial={material}
+						weekId={material.weekId}
+						statusTrackingData={statusTrackingData}
+					/>
+				);
 			case "notes":
 				return (
 					<CourseWeekFeature
