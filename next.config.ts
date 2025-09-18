@@ -16,10 +16,6 @@ const nextConfig: NextConfig = {
 				source: "/(.*)",
 				headers: [
 					{
-						key: "X-Frame-Options",
-						value: "DENY",
-					},
-					{
 						key: "X-Content-Type-Options",
 						value: "nosniff",
 					},
@@ -33,7 +29,7 @@ const nextConfig: NextConfig = {
 					},
 					{
 						key: "Content-Security-Policy",
-						value: "frame-ancestors 'self' https://godwn.dev",
+						value: "frame-ancestors *",
 					},
 				],
 			},
