@@ -54,12 +54,14 @@ export function FullscreenProvider({ children }: FullscreenProviderProps) {
 		try {
 			await screenfull.toggle();
 		} catch (error) {
-			logger.error("Failed to toggle fullscreen mode", {
-				message: error instanceof Error ? error.message : String(error),
-				stack: error instanceof Error ? error.stack : undefined,
-				isFullscreen: screenfull.isFullscreen,
-				isEnabled: screenfull.isEnabled,
-			});
+			logger.error(
+				{
+					err: error,
+					isFullscreen: screenfull.isFullscreen,
+					isEnabled: screenfull.isEnabled,
+				},
+				"Failed to toggle fullscreen mode"
+			);
 		}
 	};
 
@@ -69,12 +71,14 @@ export function FullscreenProvider({ children }: FullscreenProviderProps) {
 		try {
 			await screenfull.request();
 		} catch (error) {
-			logger.error("Failed to enter fullscreen mode", {
-				message: error instanceof Error ? error.message : String(error),
-				stack: error instanceof Error ? error.stack : undefined,
-				isFullscreen: screenfull.isFullscreen,
-				isEnabled: screenfull.isEnabled,
-			});
+			logger.error(
+				{
+					err: error,
+					isFullscreen: screenfull.isFullscreen,
+					isEnabled: screenfull.isEnabled,
+				},
+				"Failed to enter fullscreen mode"
+			);
 		}
 	};
 
@@ -84,12 +88,14 @@ export function FullscreenProvider({ children }: FullscreenProviderProps) {
 		try {
 			await screenfull.exit();
 		} catch (error) {
-			logger.error("Failed to exit fullscreen mode", {
-				message: error instanceof Error ? error.message : String(error),
-				stack: error instanceof Error ? error.stack : undefined,
-				isFullscreen: screenfull.isFullscreen,
-				isEnabled: screenfull.isEnabled,
-			});
+			logger.error(
+				{
+					err: error,
+					isFullscreen: screenfull.isFullscreen,
+					isEnabled: screenfull.isEnabled,
+				},
+				"Failed to exit fullscreen mode"
+			);
 		}
 	};
 

@@ -179,15 +179,17 @@ export async function updateCuecardScheduling({
 			.returning();
 		return newScheduling;
 	} catch (error) {
-		logger.error("Failed to update cuecard scheduling", {
-			message: error instanceof Error ? error.message : String(error),
-			stack: error instanceof Error ? error.stack : undefined,
-			action: "updateCuecardScheduling",
-			cardId,
-			userId,
-			isCorrect,
-			responseTime,
-		});
+		logger.error(
+			{
+				err: error,
+				action: "updateCuecardScheduling",
+				cardId,
+				userId,
+				isCorrect,
+				responseTime,
+			},
+			"Failed to update cuecard scheduling"
+		);
 		return null;
 	}
 }

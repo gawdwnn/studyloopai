@@ -127,11 +127,13 @@ export function useUpdateGoldenNote() {
 			});
 		},
 		onError: (error) => {
-			logger.error("Failed to update note", {
-				message: error instanceof Error ? error.message : String(error),
-				stack: error instanceof Error ? error.stack : undefined,
-				action: "updateGoldenNote",
-			});
+			logger.error(
+				{
+					err: error,
+					action: "updateGoldenNote",
+				},
+				"Failed to update note"
+			);
 			toast.error("Unable to save note. Please try again.");
 		},
 	});
@@ -149,11 +151,13 @@ export function useDeleteGoldenNote() {
 			});
 		},
 		onError: (error) => {
-			logger.error("Failed to delete note", {
-				message: error instanceof Error ? error.message : String(error),
-				stack: error instanceof Error ? error.stack : undefined,
-				action: "deleteGoldenNote",
-			});
+			logger.error(
+				{
+					err: error,
+					action: "deleteGoldenNote",
+				},
+				"Failed to delete note"
+			);
 			toast.error("Unable to delete note. Please try again.");
 		},
 	});

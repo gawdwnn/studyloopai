@@ -81,12 +81,14 @@ export async function getOnboardingProgress() {
 			skipped: userData.onboardingSkipped,
 		};
 	} catch (error) {
-		logger.error("Failed to get onboarding progress", {
-			message: error instanceof Error ? error.message : String(error),
-			stack: error instanceof Error ? error.stack : undefined,
-			action: "getOnboardingProgress",
-			userId: user.id,
-		});
+		logger.error(
+			{
+				err: error,
+				action: "getOnboardingProgress",
+				userId: user.id,
+			},
+			"Failed to get onboarding progress"
+		);
 		// Return fallback on error
 		return {
 			success: false,
@@ -146,12 +148,14 @@ export async function skipOnboarding() {
 		revalidatePath("/", "layout");
 		return { success: true };
 	} catch (error) {
-		logger.error("Failed to skip onboarding", {
-			message: error instanceof Error ? error.message : String(error),
-			stack: error instanceof Error ? error.stack : undefined,
-			action: "skipOnboarding",
-			userId: user.id,
-		});
+		logger.error(
+			{
+				err: error,
+				action: "skipOnboarding",
+				userId: user.id,
+			},
+			"Failed to skip onboarding"
+		);
 		throw new Error("Could not update your onboarding status.");
 	}
 }
@@ -252,12 +256,15 @@ export async function trackStepSkipped(
 
 		return { success: true };
 	} catch (error) {
-		logger.error("Failed to track step skip", {
-			message: error instanceof Error ? error.message : String(error),
-			userId: user.id,
-			step,
-			reason,
-		});
+		logger.error(
+			{
+				err: error,
+				userId: user.id,
+				step,
+				reason,
+			},
+			"Failed to track step skip"
+		);
 		throw new Error("Analytics tracking failed");
 	}
 }
@@ -286,11 +293,14 @@ export async function trackStepStarted(step: number) {
 
 		return { success: true };
 	} catch (error) {
-		logger.error("Failed to track step start", {
-			message: error instanceof Error ? error.message : String(error),
-			userId: user.id,
-			step,
-		});
+		logger.error(
+			{
+				err: error,
+				userId: user.id,
+				step,
+			},
+			"Failed to track step start"
+		);
 		throw new Error("Analytics tracking failed");
 	}
 }
@@ -326,14 +336,16 @@ export async function updateOnboardingStep(
 		revalidatePath("/", "layout");
 		return { success: true, step, data: updatedData };
 	} catch (error) {
-		logger.error("Failed to update onboarding step", {
-			message: error instanceof Error ? error.message : String(error),
-			stack: error instanceof Error ? error.stack : undefined,
-			action: "updateOnboardingStep",
-			userId: user.id,
-			step,
-			data,
-		});
+		logger.error(
+			{
+				err: error,
+				action: "updateOnboardingStep",
+				userId: user.id,
+				step,
+				data,
+			},
+			"Failed to update onboarding step"
+		);
 		throw new Error("Could not update your onboarding progress.");
 	}
 }
@@ -405,12 +417,14 @@ export async function completeOnboarding() {
 		revalidatePath("/", "layout");
 		return { success: true };
 	} catch (error) {
-		logger.error("Failed to complete onboarding", {
-			message: error instanceof Error ? error.message : String(error),
-			stack: error instanceof Error ? error.stack : undefined,
-			action: "completeOnboarding",
-			userId: user.id,
-		});
+		logger.error(
+			{
+				err: error,
+				action: "completeOnboarding",
+				userId: user.id,
+			},
+			"Failed to complete onboarding"
+		);
 		throw new Error("Could not update your onboarding status.");
 	}
 }

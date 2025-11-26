@@ -19,7 +19,7 @@ import {
 	DOCUMENT_PROCESSING_CONFIG,
 	getDropzoneDescription,
 } from "@/lib/config/document-processing";
-import type { UserPlan } from "@/lib/processing/types";
+import type { UserPlan } from "@/lib/document-processor/types";
 import { useUploadWizardStore } from "@/stores/upload-wizard-store";
 import { Info } from "lucide-react";
 

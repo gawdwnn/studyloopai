@@ -40,12 +40,14 @@ export async function cleanupStorageFiles(
 	} catch (error) {
 		const errorMsg = error instanceof Error ? error.message : "Unknown error";
 		storageErrors.push(errorMsg);
-		logger.error("Exception deleting files from storage", {
-			filePaths,
-			filesCount: filePaths.length,
-			message: error instanceof Error ? error.message : String(error),
-			stack: error instanceof Error ? error.stack : undefined,
-		});
+		logger.error(
+			{
+				err: error,
+				filePaths,
+				filesCount: filePaths.length,
+			},
+			"Exception deleting files from storage"
+		);
 	}
 
 	return {

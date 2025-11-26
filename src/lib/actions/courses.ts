@@ -61,15 +61,17 @@ export async function createCourse(formData: CourseCreationData) {
 		revalidatePath("/dashboard");
 		return newCourse;
 	} catch (error) {
-		logger.error("Failed to create course", {
-			message: error instanceof Error ? error.message : String(error),
-			stack: error instanceof Error ? error.stack : undefined,
-			action: "createCourse",
-			courseData: {
-				name: formData.name,
-				durationWeeks: formData.durationWeeks,
+		logger.error(
+			{
+				err: error,
+				action: "createCourse",
+				courseData: {
+					name: formData.name,
+					durationWeeks: formData.durationWeeks,
+				},
 			},
-		});
+			"Failed to create course"
+		);
 
 		// Re-throw for UI error handling, but with user-friendly message
 		if (error instanceof Error && error.message.includes("logged in")) {
@@ -211,13 +213,15 @@ export async function updateCourse(
 		revalidatePath("/dashboard");
 		return updatedCourse;
 	} catch (error) {
-		logger.error("Failed to update course", {
-			message: error instanceof Error ? error.message : String(error),
-			stack: error instanceof Error ? error.stack : undefined,
-			action: "updateCourse",
-			courseId,
-			updateData: data,
-		});
+		logger.error(
+			{
+				err: error,
+				action: "updateCourse",
+				courseId,
+				updateData: data,
+			},
+			"Failed to update course"
+		);
 
 		// Re-throw for UI error handling, but with user-friendly message
 		if (error instanceof Error && error.message.includes("logged in")) {
@@ -313,14 +317,16 @@ export async function deleteCourse(courseId: string) {
 		const errorMessage =
 			error instanceof Error ? error.message : "Unknown error occurred";
 
-		logger.error("Failed to delete course", {
-			message: errorMessage,
-			stack: error instanceof Error ? error.stack : undefined,
-			action: "deleteCourse",
-			courseId,
-			userId: user.id,
-			courseExists: !!course,
-		});
+		logger.error(
+			{
+				err: error,
+				action: "deleteCourse",
+				courseId,
+				userId: user.id,
+				courseExists: !!course,
+			},
+			"Failed to delete course"
+		);
 
 		// Re-throw with user-friendly message
 		if (error instanceof Error) {

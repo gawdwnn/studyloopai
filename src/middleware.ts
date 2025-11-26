@@ -165,11 +165,13 @@ export async function middleware(request: NextRequest) {
 			}
 		}
 	} catch (error) {
-		logger.error("Middleware error", {
-			pathname,
-			message: error instanceof Error ? error.message : String(error),
-			stack: error instanceof Error ? error.stack : undefined,
-		});
+		logger.error(
+			{
+				err: error,
+				pathname,
+			},
+			"Middleware error"
+		);
 	} finally {
 		// Log slow middleware execution for performance monitoring
 	}

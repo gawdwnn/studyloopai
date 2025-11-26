@@ -171,13 +171,16 @@ export async function POST(req: NextRequest) {
 				userId: user.id,
 			});
 		} catch (taskErr) {
-			logger.error("Failed to queue orchestrator task", {
-				message: taskErr instanceof Error ? taskErr.message : String(taskErr),
-				route: "/api/generation/trigger",
-				userId: user.id,
-				courseId: body.courseId,
-				weekId: body.weekId,
-			});
+			logger.error(
+				{
+					err: taskErr,
+					route: "/api/generation/trigger",
+					userId: user.id,
+					courseId: body.courseId,
+					weekId: body.weekId,
+				},
+				"Failed to queue orchestrator task"
+			);
 			return NextResponse.json(
 				{
 					error: "Failed to queue generation task",
@@ -208,12 +211,14 @@ export async function POST(req: NextRequest) {
 
 		return response;
 	} catch (error) {
-		logger.error("On-demand generation trigger failed", {
-			message: error instanceof Error ? error.message : String(error),
-			stack: error instanceof Error ? error.stack : undefined,
-			route: "/api/generation/trigger",
-			method: "POST",
-		});
+		logger.error(
+			{
+				err: error,
+				route: "/api/generation/trigger",
+				method: "POST",
+			},
+			"On-demand generation trigger failed"
+		);
 
 		return NextResponse.json(
 			{ error: error instanceof Error ? error.message : "Unknown error" },

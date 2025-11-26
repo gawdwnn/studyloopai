@@ -19,7 +19,7 @@ import {
 import { getCourseWeeks } from "@/lib/actions/courses";
 import { DOCUMENT_PROCESSING_CONFIG } from "@/lib/config/document-processing";
 import { COURSE_MATERIALS_BUCKET } from "@/lib/config/storage";
-import type { UserPlan } from "@/lib/processing/types";
+import type { UserPlan } from "@/lib/document-processor/types";
 import {
 	completeUpload,
 	presignUpload,
@@ -297,10 +297,7 @@ export function UploadWizard({
 			setIsOpen(false);
 			onUploadSuccess?.();
 		} catch (error) {
-			logger.error("Failed to complete upload", {
-				message: error instanceof Error ? error.message : String(error),
-				stack: error instanceof Error ? error.stack : undefined,
-			});
+			logger.error({ err: error }, "Failed to complete upload");
 			toast.error("Failed to complete upload. Please try again.");
 		} finally {
 			setIsUploading(false);

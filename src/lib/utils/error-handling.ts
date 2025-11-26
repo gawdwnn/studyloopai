@@ -46,12 +46,14 @@ export async function withErrorHandling<T>(
 	} catch (error) {
 		// Use centralized error logging
 		if (process.env.NODE_ENV === "development") {
-			logger.error(`Database operation failed: ${operationName}`, {
-				message: error instanceof Error ? error.message : String(error),
-				stack: error instanceof Error ? error.stack : undefined,
-				operation: operationName,
-				timestamp: new Date().toISOString(),
-			});
+			logger.error(
+				{
+					err: error,
+					operation: operationName,
+					timestamp: new Date().toISOString(),
+				},
+				`Database operation failed: ${operationName}`
+			);
 		}
 
 		// Always return fallback value to prevent UI crashes

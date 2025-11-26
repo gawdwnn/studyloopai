@@ -231,7 +231,7 @@ export async function POST(req: NextRequest) {
 		if (!success || !signedUrl) {
 			logger.error(
 				{
-					message: error,
+					err: error,
 					materialId: material.id,
 					userId: user.id,
 				},
@@ -244,15 +244,9 @@ export async function POST(req: NextRequest) {
 					.update(courseMaterials)
 					.set({ uploadStatus: "failed" })
 					.where(eq(courseMaterials.id, material.id));
-			} catch (updateErr) {
+			} catch (err) {
 				logger.error(
-					{
-						message:
-							updateErr instanceof Error
-								? updateErr.message
-								: String(updateErr),
-						stack: updateErr instanceof Error ? updateErr.stack : undefined,
-					},
+					{ err: err },
 					"Failed to update material status to failed"
 				);
 			}
@@ -300,8 +294,7 @@ export async function POST(req: NextRequest) {
 		}
 		logger.error(
 			{
-				message: err instanceof Error ? err.message : String(err),
-				stack: err instanceof Error ? err.stack : undefined,
+				err,
 				route: "/api/materials/presign",
 				method: "POST",
 			},

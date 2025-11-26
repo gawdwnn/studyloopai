@@ -21,7 +21,7 @@ export async function POST(req: Request) {
 		const webhookSecret = env.POLAR_WEBHOOK_SECRET;
 
 		if (!webhookSecret) {
-			logger.error("Polar webhook secret not configured");
+			logger.error({}, "Polar webhook secret not configured");
 			return Response.json(
 				{ error: "Webhook not configured" },
 				{ status: 500 }
@@ -35,10 +35,13 @@ export async function POST(req: Request) {
 		} catch (error) {
 			// Handle signature verification errors
 			if (error instanceof WebhookVerificationError) {
-				logger.warn("Webhook signature verification failed", {
-					error: error.message,
-					userAgent: req.headers.get("user-agent"),
-				});
+				logger.warn(
+					{
+						err: error,
+						userAgent: req.headers.get("user-agent"),
+					},
+					"Webhook signature verification failed"
+				);
 				return Response.json(
 					{ error: "Invalid webhook signature" },
 					{ status: 403 }
@@ -81,16 +84,7 @@ export async function POST(req: Request) {
 		return Response.json({ received: true });
 	} catch (error) {
 		// Handle unexpected errors
-		logger.error("Webhook endpoint error", {
-			error:
-				error instanceof Error
-					? {
-							message: error.message,
-							name: error.name,
-							stack: error.stack,
-						}
-					: error,
-		});
+		logger.error({ err: error }, "Webhook endpoint error");
 
 		return Response.json({ error: "Internal server error" }, { status: 500 });
 	}

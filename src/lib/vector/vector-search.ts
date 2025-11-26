@@ -26,6 +26,16 @@ interface SearchResult {
 	materialTitle?: string;
 }
 
+interface RawSearchResultRow {
+	id: string;
+	content: string;
+	similarity: number;
+	materialId: string;
+	chunkIndex: number;
+	metadata?: Record<string, unknown>;
+	materialTitle?: string | null;
+}
+
 interface VectorSearchResponse {
 	success: boolean;
 	results?: SearchResult[];
@@ -158,15 +168,17 @@ export async function searchSimilarChunks(
 
 		const searchTime = Date.now() - startTime;
 
-		const results: SearchResult[] = rawResults.map((row: any) => ({
-			id: row.id,
-			content: row.content,
-			similarity: row.similarity,
-			materialId: row.materialId,
-			chunkIndex: row.chunkIndex,
-			metadata: row.metadata as Record<string, unknown> | undefined,
-			materialTitle: row.materialTitle || undefined,
-		}));
+		const results: SearchResult[] = rawResults.map(
+			(row: RawSearchResultRow) => ({
+				id: row.id,
+				content: row.content,
+				similarity: row.similarity,
+				materialId: row.materialId,
+				chunkIndex: row.chunkIndex,
+				metadata: row.metadata as Record<string, unknown> | undefined,
+				materialTitle: row.materialTitle || undefined,
+			})
+		);
 
 		logger.info(
 			{
@@ -208,8 +220,7 @@ export async function searchSimilarChunks(
 
 		logger.error(
 			{
-				err: error instanceof Error ? error.message : String(error),
-				stack: error instanceof Error ? error.stack : undefined,
+				err: error,
 				query,
 				options: {
 					...options,
@@ -278,15 +289,17 @@ export async function findSimilarChunks(
 
 		const rawResults = await db.execute(query);
 
-		const results: SearchResult[] = rawResults.map((row: any) => ({
-			id: row.id,
-			content: row.content,
-			similarity: row.similarity,
-			materialId: row.materialId,
-			chunkIndex: row.chunkIndex,
-			metadata: row.metadata as Record<string, unknown> | undefined,
-			materialTitle: row.materialTitle || undefined,
-		}));
+		const results: SearchResult[] = rawResults.map(
+			(row: RawSearchResultRow) => ({
+				id: row.id,
+				content: row.content,
+				similarity: row.similarity,
+				materialId: row.materialId,
+				chunkIndex: row.chunkIndex,
+				metadata: row.metadata as Record<string, unknown> | undefined,
+				materialTitle: row.materialTitle || undefined,
+			})
+		);
 
 		return {
 			success: true,
@@ -296,8 +309,7 @@ export async function findSimilarChunks(
 	} catch (error) {
 		logger.error(
 			{
-				err: error instanceof Error ? error.message : String(error),
-				stack: error instanceof Error ? error.stack : undefined,
+				err: error,
 				chunkId,
 				options,
 			},
@@ -337,14 +349,16 @@ export async function getChunksForMaterial(
 
 		const rawResults = await db.execute(query);
 
-		const results: SearchResult[] = rawResults.map((row: any) => ({
-			id: row.id,
-			content: row.content,
-			similarity: 1,
-			materialId: row.materialId,
-			chunkIndex: row.chunkIndex,
-			metadata: row.metadata as Record<string, unknown> | undefined,
-		}));
+		const results: SearchResult[] = rawResults.map(
+			(row: RawSearchResultRow) => ({
+				id: row.id,
+				content: row.content,
+				similarity: 1,
+				materialId: row.materialId,
+				chunkIndex: row.chunkIndex,
+				metadata: row.metadata as Record<string, unknown> | undefined,
+			})
+		);
 
 		return {
 			success: true,
@@ -354,8 +368,7 @@ export async function getChunksForMaterial(
 	} catch (error) {
 		logger.error(
 			{
-				err: error instanceof Error ? error.message : String(error),
-				stack: error instanceof Error ? error.stack : undefined,
+				err: error,
 				materialId,
 				options,
 			},

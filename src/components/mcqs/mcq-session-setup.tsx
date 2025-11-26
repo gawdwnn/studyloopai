@@ -218,11 +218,13 @@ export function McqSessionSetup({
 						await existingMCQsData.startSessionInstantly(config);
 						toast.success("MCQ session started!");
 					} catch (error) {
-						logger.error("Failed to start MCQ session", {
-							message: error instanceof Error ? error.message : String(error),
-							stack: error instanceof Error ? error.stack : undefined,
-							sessionConfig: config,
-						});
+						logger.error(
+							{
+								err: error,
+								sessionConfig: config,
+							},
+							"Failed to start MCQ session"
+						);
 						toast.error("Failed to start session. Please try again.");
 					}
 				},
@@ -243,14 +245,13 @@ export function McqSessionSetup({
 						);
 					} catch (error) {
 						logger.error(
-							"Failed to trigger MCQ generation from session setup",
 							{
-								message: error instanceof Error ? error.message : String(error),
-								stack: error instanceof Error ? error.stack : undefined,
+								err: error,
 								courseId: selectedCourse,
 								weekId: selectedWeek,
 								generationConfig,
-							}
+							},
+							"Failed to trigger MCQ generation from session setup"
 						);
 						toast.error("Failed to generate MCQs. Please try again.");
 					}

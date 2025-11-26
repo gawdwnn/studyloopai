@@ -71,12 +71,14 @@ export async function signInWithOAuth(
 			throw error;
 		}
 
-		logger.error("OAuth sign-in failed", {
-			message: error instanceof Error ? error.message : String(error),
-			stack: error instanceof Error ? error.stack : undefined,
-			action: "signInWithOAuth",
-			provider: "google",
-		});
+		logger.error(
+			{
+				err: error,
+				action: "signInWithOAuth",
+				provider: "google",
+			},
+			"OAuth sign-in failed"
+		);
 		return {
 			error: getAuthErrorMessage(error),
 		};
@@ -88,11 +90,13 @@ export async function signOut() {
 	const { error } = await supabase.auth.signOut();
 
 	if (error) {
-		logger.error("Sign out failed", {
-			message: error instanceof Error ? error.message : String(error),
-			stack: error instanceof Error ? error.stack : undefined,
-			action: "signOut",
-		});
+		logger.error(
+			{
+				err: error,
+				action: "signOut",
+			},
+			"Sign out failed"
+		);
 		throw new Error("Could not sign out.");
 	}
 

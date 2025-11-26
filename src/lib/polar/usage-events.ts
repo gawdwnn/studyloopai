@@ -13,7 +13,7 @@ const logger = createLogger("polar:usage-events");
 export async function sendUsageEvent(
 	userId: string,
 	eventName: string,
-	metadata: Record<string, any>,
+	metadata: Record<string, unknown>,
 	polarCustomerId?: string
 ): Promise<void> {
 	try {
@@ -57,12 +57,14 @@ export async function sendUsageEvent(
 		});
 	} catch (error) {
 		// Silent failure - log but don't throw to avoid breaking user operations
-		logger.error("Failed to send usage event to Polar", {
-			error: error instanceof Error ? error.message : String(error),
-			eventName,
-			userId,
-			stack: error instanceof Error ? error.stack : undefined,
-		});
+		logger.error(
+			{
+				err: error,
+				eventName,
+				userId,
+			},
+			"Failed to send usage event to Polar"
+		);
 	}
 }
 
@@ -74,7 +76,7 @@ export async function sendBatchUsageEvents(
 	userId: string,
 	events: Array<{
 		name: string;
-		metadata: Record<string, any>;
+		metadata: Record<string, unknown>;
 	}>,
 	polarCustomerId?: string
 ): Promise<void> {
@@ -117,12 +119,14 @@ export async function sendBatchUsageEvents(
 		});
 	} catch (error) {
 		// Silent failure - log but don't throw to avoid breaking user operations
-		logger.error("Failed to send batch usage events to Polar", {
-			error: error instanceof Error ? error.message : String(error),
-			userId,
-			eventCount: events.length,
-			stack: error instanceof Error ? error.stack : undefined,
-		});
+		logger.error(
+			{
+				err: error,
+				userId,
+				eventCount: events.length,
+			},
+			"Failed to send batch usage events to Polar"
+		);
 	}
 }
 

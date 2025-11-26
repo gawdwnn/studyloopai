@@ -61,12 +61,14 @@ export async function POST(req: NextRequest) {
 			updatedCount: updateResult.length,
 		});
 	} catch (err) {
-		logger.error("Upload failure tracking operation failed", {
-			message: err instanceof Error ? err.message : String(err),
-			stack: err instanceof Error ? err.stack : undefined,
-			route: "/api/materials/upload-failed",
-			method: "POST",
-		});
+		logger.error(
+			{
+				err,
+				route: "/api/materials/upload-failed",
+				method: "POST",
+			},
+			"Upload failure tracking operation failed"
+		);
 
 		return NextResponse.json(
 			{ error: "Failed to update upload status. Please try again." },

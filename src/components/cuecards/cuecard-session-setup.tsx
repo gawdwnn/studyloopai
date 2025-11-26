@@ -215,11 +215,13 @@ export function CuecardSessionSetup({
 						await existingCuecardsData.startSessionInstantly(config);
 						toast.success("Cuecard session started!");
 					} catch (error) {
-						logger.error("Failed to start cuecard session", {
-							message: error instanceof Error ? error.message : String(error),
-							stack: error instanceof Error ? error.stack : undefined,
-							sessionConfig: config,
-						});
+						logger.error(
+							{
+								err: error,
+								sessionConfig: config,
+							},
+							"Failed to start cuecard session"
+						);
 						toast.error("Failed to start session. Please try again.");
 					}
 				},
@@ -242,14 +244,13 @@ export function CuecardSessionSetup({
 						);
 					} catch (error) {
 						logger.error(
-							"Failed to trigger cuecard generation from session setup",
 							{
-								message: error instanceof Error ? error.message : String(error),
-								stack: error instanceof Error ? error.stack : undefined,
+								err: error,
 								courseId: selectedCourse,
 								weekId: selectedWeek,
 								generationConfig,
-							}
+							},
+							"Failed to trigger cuecard generation from session setup"
 						);
 						toast.error("Failed to generate cuecards. Please try again.");
 					}

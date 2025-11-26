@@ -121,12 +121,13 @@ export function CuecardSessionManager({
 	// Handle generation errors
 	useEffect(() => {
 		if (runError) {
-			logger.error("Realtime tracking error during cuecard generation", {
-				message:
-					runError instanceof Error ? runError.message : String(runError),
-				stack: runError instanceof Error ? runError.stack : undefined,
-				runId: cuecardState.generationRunId,
-			});
+			logger.error(
+				{
+					err: runError,
+					runId: cuecardState.generationRunId,
+				},
+				"Realtime tracking error during cuecard generation"
+			);
 		}
 	}, [runError, cuecardState.generationRunId]);
 
@@ -156,13 +157,15 @@ export function CuecardSessionManager({
 				}
 			} catch (error) {
 				setGenerationInProgress(false);
-				logger.error("Failed to trigger cuecard generation", {
-					message: error instanceof Error ? error.message : String(error),
-					stack: error instanceof Error ? error.stack : undefined,
-					courseId,
-					weekIds,
-					generationConfig,
-				});
+				logger.error(
+					{
+						err: error,
+						courseId,
+						weekIds,
+						generationConfig,
+					},
+					"Failed to trigger cuecard generation"
+				);
 				toast.error("Failed to start cuecard generation. Please try again.");
 			}
 		},
@@ -186,12 +189,14 @@ export function CuecardSessionManager({
 			// Use store's endSession method which now handles all adaptive learning logic
 			await cuecardActions.endSession();
 		} catch (error) {
-			logger.error("Failed to end cuecard session", {
-				message: error instanceof Error ? error.message : String(error),
-				stack: error instanceof Error ? error.stack : undefined,
-				sessionStatus: cuecardState.status,
-				currentIndex: cuecardState.currentIndex,
-			});
+			logger.error(
+				{
+					err: error,
+					sessionStatus: cuecardState.status,
+					currentIndex: cuecardState.currentIndex,
+				},
+				"Failed to end cuecard session"
+			);
 			toast.error("Session end failed, please try again");
 		} finally {
 			setIsEndingSession(false);

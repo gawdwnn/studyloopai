@@ -7,7 +7,7 @@ import { EmptyState } from "@/components/empty-state";
 import { PageHeading } from "@/components/page-heading";
 import { Button } from "@/components/ui/button";
 import { getUserPlan } from "@/lib/actions/plans";
-import type { UserPlan } from "@/lib/processing/types";
+import type { UserPlan } from "@/lib/document-processor/types";
 import { CourseMaterialsClient } from "./course-materials-client";
 
 export const metadata = {
