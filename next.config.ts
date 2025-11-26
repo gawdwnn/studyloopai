@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
 	/* config options here */
-	serverExternalPackages: ["pdf-parse", "pino", "pino-pretty"],
+	serverExternalPackages: ["pdf-parse", "pino", "pino-pretty", "posthog-node"],
 	transpilePackages: ["@mdxeditor/editor"],
 
 	// Production optimizations

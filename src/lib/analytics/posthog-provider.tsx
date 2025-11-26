@@ -1,6 +1,5 @@
 "use client";
 
-import { env } from "@/env";
 import { usePathname } from "next/navigation";
 import posthog from "posthog-js";
 import { PostHogProvider as PHProvider } from "posthog-js/react";
@@ -13,11 +12,12 @@ import { useEffect } from "react";
 // Initialize PostHog on the client side only
 if (
 	typeof window !== "undefined" &&
-	env.NEXT_PUBLIC_POSTHOG_KEY &&
+	process.env.NEXT_PUBLIC_POSTHOG_KEY &&
 	process.env.DISABLE_POSTHOG !== "true"
 ) {
-	posthog.init(env.NEXT_PUBLIC_POSTHOG_KEY, {
-		api_host: env.NEXT_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com",
+	posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY, {
+		api_host:
+			process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com",
 		person_profiles: "identified_only",
 		capture_pageleave: false,
 		session_recording: {
@@ -68,7 +68,10 @@ function PostHogPageView() {
  */
 export function PostHogProvider({ children }: { children: React.ReactNode }) {
 	// If PostHog is not configured or disabled, render children without analytics
-	if (!env.NEXT_PUBLIC_POSTHOG_KEY || process.env.DISABLE_POSTHOG === "true") {
+	if (
+		!process.env.NEXT_PUBLIC_POSTHOG_KEY ||
+		process.env.DISABLE_POSTHOG === "true"
+	) {
 		if (process.env.NODE_ENV === "development") {
 			console.warn("PostHog disabled - analytics turned off");
 		}
