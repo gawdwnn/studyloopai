@@ -164,7 +164,9 @@ export async function searchSimilarChunks(
 			similarity: row.similarity,
 			materialId: row.materialId,
 			chunkIndex: row.chunkIndex,
-			metadata: row.metadata ? (row.metadata as Record<string, unknown>) : undefined,
+			metadata: row.metadata
+				? (row.metadata as Record<string, unknown>)
+				: undefined,
 			materialTitle: row.materialTitle ?? undefined,
 		}));
 
