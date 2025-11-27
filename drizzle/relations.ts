@@ -31,7 +31,6 @@ export const courseMaterialsRelations = relations(
 			references: [courseWeeks.id],
 		}),
 		documentChunks: many(documentChunks),
-		ownNotes: many(ownNotes),
 	})
 );
 

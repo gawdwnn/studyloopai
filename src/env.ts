@@ -14,7 +14,6 @@ export const env = createEnv({
 		DATABASE_URL: sanitizeString(z.string().url()),
 		DEV_DATABASE_PASSWORD: sanitizeString(z.string().min(1)).optional(),
 		PROD_DATABASE_PASSWORD: sanitizeString(z.string().min(1)).optional(),
-		DIRECT_DATABASE_URL: sanitizeString(z.string().url()),
 		NODE_ENV: z
 			.enum(["development", "test", "production"])
 			.default("development"),
@@ -66,7 +65,6 @@ export const env = createEnv({
 		DATABASE_URL: process.env.DATABASE_URL,
 		DEV_DATABASE_PASSWORD: process.env.DEV_DATABASE_PASSWORD,
 		PROD_DATABASE_PASSWORD: process.env.PROD_DATABASE_PASSWORD,
-		DIRECT_DATABASE_URL: process.env.DIRECT_DATABASE_URL,
 		NODE_ENV: process.env.NODE_ENV,
 		SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
 		OPENAI_API_KEY: process.env.OPENAI_API_KEY,
