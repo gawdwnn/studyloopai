@@ -232,6 +232,13 @@
 			"when": 1755332392671,
 			"tag": "0032_tense_lightspeed",
 			"breakpoints": true
+		},
+		{
+			"idx": 33,
+			"version": "7",
+			"when": 1737916800000,
+			"tag": "0033_fix_user_trigger",
+			"breakpoints": true
 		}
 	]
 }
