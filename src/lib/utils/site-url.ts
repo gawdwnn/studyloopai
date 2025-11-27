@@ -1,5 +1,3 @@
-import { env } from "@/env";
-
 /**
  * Helper function to get the correct site URL.
  * It's designed to work in both server-side and client-side environments.
@@ -16,8 +14,9 @@ export const getSiteUrl = (): string => {
 		return window.location.origin;
 	}
 
-	// For server-side rendering, we use environment variables.
-	let url = env.NEXT_PUBLIC_SITE_URL;
+	// For server-side rendering, we use environment variables directly
+	// This avoids issues during build time when env validation might be skipped
+	let url = process.env.NEXT_PUBLIC_SITE_URL;
 
 	// Vercel provides this environment variable, which can be a fallback.
 	if (!url && process.env.NEXT_PUBLIC_VERCEL_URL) {

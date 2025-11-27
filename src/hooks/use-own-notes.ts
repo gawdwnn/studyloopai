@@ -108,11 +108,13 @@ export function useCreateOwnNote(
 			options?.onSuccess?.(data, variables, context);
 		},
 		onError: (error, variables, context) => {
-			logger.error("Failed to create note", {
-				variables,
-				message: error instanceof Error ? error.message : String(error),
-				stack: error instanceof Error ? error.stack : undefined,
-			});
+			logger.error(
+				{
+					err: error,
+					variables,
+				},
+				"Failed to create note"
+			);
 			options?.onError?.(error, variables, context);
 		},
 	});
@@ -142,11 +144,13 @@ export function useUpdateOwnNote(
 			options?.onSuccess?.(data, variables, context);
 		},
 		onError: (error, variables, context) => {
-			logger.error("Failed to update note", {
-				variables,
-				message: error instanceof Error ? error.message : String(error),
-				stack: error instanceof Error ? error.stack : undefined,
-			});
+			logger.error(
+				{
+					err: error,
+					variables,
+				},
+				"Failed to update note"
+			);
 			options?.onError?.(error, variables, context);
 		},
 	});
@@ -168,11 +172,13 @@ export function useDeleteOwnNote(
 			options?.onSuccess?.(data, variables, context);
 		},
 		onError: (error, variables, context) => {
-			logger.error("Failed to delete note", {
-				noteId: variables,
-				message: error instanceof Error ? error.message : String(error),
-				stack: error instanceof Error ? error.stack : undefined,
-			});
+			logger.error(
+				{
+					err: error,
+					noteId: variables,
+				},
+				"Failed to delete note"
+			);
 			options?.onError?.(error, variables, context);
 		},
 	});

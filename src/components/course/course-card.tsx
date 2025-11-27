@@ -53,13 +53,15 @@ export function CourseCard({
 				try {
 					await updateCourse(course.id, { name: title.trim() });
 				} catch (error) {
-					logger.error("Failed to update course name", {
-						message: error instanceof Error ? error.message : String(error),
-						stack: error instanceof Error ? error.stack : undefined,
-						courseId: course.id,
-						originalName: course.name,
-						newName: title.trim(),
-					});
+					logger.error(
+						{
+							err: error,
+							courseId: course.id,
+							originalName: course.name,
+							newName: title.trim(),
+						},
+						"Failed to update course name"
+					);
 					alert("Failed to update course. Please try again.");
 					setTitle(course.name);
 				}

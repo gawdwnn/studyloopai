@@ -110,8 +110,10 @@ export async function POST(req: Request) {
 						stopWhen: stepCountIs(20),
 						tools: tools({ courseIds, writer }),
 						onError: (error) => {
-							logger.error("Error communicating with AI");
-							logger.error(JSON.stringify(error, null, 2));
+							logger.error(
+								{ err: error, route: "/api/chat" },
+								"Error communicating with AI Model"
+							);
 						},
 						onFinish: async (completion) => {
 							// Save assistant response if we have a session
@@ -141,7 +143,10 @@ export async function POST(req: Request) {
 			}),
 		});
 	} catch (error) {
-		logger.error("Error in chat route:", error);
+		logger.error(
+			{ err: error, route: "/api/chat", method: "POST" },
+			"Error in chat route"
+		);
 		return NextResponse.json(
 			{ error: "Internal server error" },
 			{ status: 500 }

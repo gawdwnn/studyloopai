@@ -4,21 +4,41 @@ AI-powered adaptive learning platform that transforms course materials into pers
 
 ## Features
 
-- **Adaptive Learning Engine**: AI-driven personalized study paths based on performance analytics
-- **Content Generation**: Auto-generate summaries, flashcards, quizzes, and study notes from PDFs
-- **Vector Search**: Semantic search across all course materials using pgvector embeddings  
-- **Real-time Processing**: Background document processing with live progress updates
-- **Learning Analytics**: Progress tracking, knowledge gap identification, and study optimization
-- **Security-First**: Comprehensive Row Level Security policies protecting user data
+- **Secure Authentication & Onboarding**  
+  Supabase Auth with guided onboarding, multi-step signup enforcement, and strict RLS-backed session management.
+- **Agentic RAG Chat**  
+  Conversational assistant grounded in course materials with live citations for every response.
+- **Document Processing Pipeline**  
+  Upload → Ingestor → Processor → Content Generator → Storage. Strategy-based extraction with automatic format detection: PDF parsing (unpdf), OCR for scanned PDFs (Mistral OCR with intelligent caching), Office documents (DOCX/Excel/PowerPoint via officeparser), and text files. Includes validation, metadata extraction, structure preservation, smart chunking, cleaning, normalization, and real-time progress tracking.
+- **Adaptive Learning Engine**  
+  Spaced Repetition System + knowledge graph-powered personalization, performance-based difficulty adjustments, and real-time progress analytics.
+- **Content Generation**  
+  Vercel AI SDK orchestrates OpenAI GPT-4 and xAI Grok to create summaries, quizzes, cuecards, Golden Notes, concept maps, all via reusable templates and batch processing.
+- **Vector Search & Retrieval**  
+  pgvector (1536-dim embeddings), HNSW indexing, configurable similarity thresholds, and contextual retrieval tuned for adaptive learning.
+- **Detailed Learning Analytics**  
+  Tracks study sessions, exposes knowledge gaps, and transforms insights into actionable recommendations.
+- **Subscription & Quota Management**  
+  Polar.sh billing, plan enforcement, and quota tracking baked into user experience.
+- **Real-time Asynchronous Processing**  
+  Trigger.dev background jobs with retries, error recovery, and live status updates for document ingest + AI generation.
+- **Multi-Tier Caching**  
+  Redis caching speeds up expensive operations: OCR results cached for 7 days, embeddings for 24 hours, content chunks for 1 hour. API responses and database queries cached with shorter TTLs for optimal performance.
+- **Rate Limiting**  
+  Protects system resources with operation-specific limits: authentication (5 requests per 5 minutes), API calls (100 per hour), AI operations (20 per hour with burst capacity), course creation (10 per hour). Enforced per user and IP address.
+- **Security & Performance**  
+  RLS policies ensure strict tenant isolation and data security. Resilient error boundaries provide graceful degradation and system stability.
 
 ## Technology Stack
 
-**Frontend**: Next.js 15 • React Server Components • Tailwind CSS v4 • Shadcn UI • Framer Motion  
-**Backend**: PostgreSQL • Drizzle ORM • Supabase Auth • Row Level Security  
-**AI/ML**: Vercel AI SDK • OpenAI GPT-4 • xAI Grok • pgvector embeddings (1536-dim)  
-**Processing**: Trigger.dev v4 • PDF-parse • Text chunking • Semantic embedding  
-**Infrastructure**: Vercel • Upstash Redis • Polar.sh payments • PostHog analytics  
-**State**: Zustand • TanStack Query • Server Actions • Real-time subscriptions  
+**Frontend**: Next.js 15 • React 19 • React Server Components • Tailwind CSS v4 • Shadcn UI • Radix UI
+**Backend**: PostgreSQL • pgvector • Drizzle ORM • Supabase (Auth, Database, Storage, VectorDB, RLS)
+**AI & ML**: Vercel AI SDK • OpenAI (GPT-4, Embeddings) • Anthropic Claude • xAI Grok • Mistral (OCR, Text)
+**Document Processing**: unpdf • officeparser • Firecrawl
+**Infrastructure**: Vercel • Upstash (Redis, Rate-limit) • Polar.sh • PostHog • Trigger.dev
+**State Management**: Zustand • TanStack Query • Server Actions • Supabase Realtime
+**Forms & Validation**: React Hook Form • Zod
+**Email**: Resend • React Email
 **DevTools**: Bun • Biome.js • TypeScript • Drizzle Studio
 
 ## Quick Start
@@ -72,57 +92,6 @@ bun run trigger:dev    # Start Trigger.dev development
 bun run trigger:deploy # Deploy jobs to production
 ```
 
-## System Architecture
-
-### Document Processing Pipeline
-
-```
-Upload → Ingestor → Processor → Content Generator → Storage
-```
-
-**1. Document Ingestor**
-
-- Multi-format support (PDF, DOCX, TXT, images)
-- File validation and security scanning
-- Metadata extraction and indexing
-
-**2. Document Processor**  
-
-- PDF parsing with structure preservation
-- Intelligent text chunking with overlap
-- Content cleaning and normalization
-- Progress tracking with real-time updates
-
-**3. Content Generator**
-
-- **Vercel AI SDK** orchestrates multi-model AI generation
-- **OpenAI GPT-4** for summaries, quizzes, and explanations
-- **xAI Grok** for alternative perspectives and advanced reasoning
-- **Template system** for consistent content structure
-- **Batch processing** for efficient resource utilization
-
-**4. Vector Storage & Search**
-
-- **pgvector** with 1536-dimensional OpenAI embeddings
-- **HNSW indexing** for sub-second semantic search
-- **Similarity scoring** with configurable thresholds
-- **Contextual retrieval** for adaptive learning
-
-### Learning Engine Architecture
-
-- **Adaptive Algorithms**: Performance-based content difficulty adjustment
-- **Knowledge Graph**: Concept relationships and learning dependencies  
-- **Progress Analytics**: Real-time learning pattern analysis
-- **Personalization**: Individual learning style adaptation
-
-### Security & Performance
-
-- **Row Level Security**: 34+ RLS policies for multi-tenant data isolation
-- **Rate Limiting**: Upstash Redis with user-specific quotas and burst handling
-- **Multi-level Caching**: Database queries, AI responses, embeddings, static assets
-- **Background Jobs**: Trigger.dev with retry logic, error recovery, and scaling
-- **Error Boundaries**: Comprehensive error handling with graceful degradation
-
 ## Project Structure
 
 ```bash
@@ -168,5 +137,3 @@ scripts/
 ```
 
 ---
-
-**Modern AI-powered learning platform** built with Next.js 15, React Server Components, pgvector, OpenAI, and Trigger.dev.

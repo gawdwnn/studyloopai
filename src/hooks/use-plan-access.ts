@@ -13,10 +13,7 @@ export function usePlanAccess() {
 				const active = await isPlanActive();
 				setIsActive(active);
 			} catch (error) {
-				logger.error("Failed to check plan status", {
-					message: error instanceof Error ? error.message : String(error),
-					stack: error instanceof Error ? error.stack : undefined,
-				});
+				logger.error({ err: error }, "Failed to check plan status");
 				setIsActive(false);
 			} finally {
 				setLoading(false);
@@ -30,11 +27,13 @@ export function usePlanAccess() {
 		try {
 			return await hasFeatureAccess(featureId);
 		} catch (error) {
-			logger.error("Failed to check feature access", {
-				featureId,
-				message: error instanceof Error ? error.message : String(error),
-				stack: error instanceof Error ? error.stack : undefined,
-			});
+			logger.error(
+				{
+					err: error,
+					featureId,
+				},
+				"Failed to check feature access"
+			);
 			return false;
 		}
 	}, []);

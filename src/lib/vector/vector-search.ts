@@ -158,14 +158,14 @@ export async function searchSimilarChunks(
 
 		const searchTime = Date.now() - startTime;
 
-		const results: SearchResult[] = rawResults.map((row: any) => ({
+		const results: SearchResult[] = rawResults.map((row) => ({
 			id: row.id,
 			content: row.content,
 			similarity: row.similarity,
 			materialId: row.materialId,
 			chunkIndex: row.chunkIndex,
-			metadata: row.metadata as Record<string, unknown> | undefined,
-			materialTitle: row.materialTitle || undefined,
+			metadata: row.metadata ? (row.metadata as Record<string, unknown>) : undefined,
+			materialTitle: row.materialTitle ?? undefined,
 		}));
 
 		logger.info(
@@ -208,8 +208,7 @@ export async function searchSimilarChunks(
 
 		logger.error(
 			{
-				err: error instanceof Error ? error.message : String(error),
-				stack: error instanceof Error ? error.stack : undefined,
+				err: error,
 				query,
 				options: {
 					...options,
@@ -217,149 +216,6 @@ export async function searchSimilarChunks(
 				},
 			},
 			"Vector search failed"
-		);
-
-		return {
-			success: false,
-			error: error instanceof Error ? error.message : "Unknown error",
-		};
-	}
-}
-
-/**
- * Find similar chunks to a given chunk using vector similarity
- */
-export async function findSimilarChunks(
-	chunkId: string,
-	options: Omit<VectorSearchOptions, "materialIds"> = {}
-): Promise<VectorSearchResponse> {
-	const { limit = 5, threshold = 0.8 } = options;
-
-	try {
-		// Get the source chunk
-		const sourceChunk = await db
-			.select()
-			.from(documentChunks)
-			.where(eq(documentChunks.id, chunkId))
-			.limit(1);
-
-		if (sourceChunk.length === 0) {
-			return {
-				success: false,
-				error: "Source chunk not found",
-			};
-		}
-
-		const embedding = sourceChunk[0].embedding;
-		if (!embedding) {
-			return {
-				success: false,
-				error: "Source chunk has no embedding",
-			};
-		}
-
-		// Build the SQL query using template literals
-		const query = sql`
-			SELECT 
-				dc.id,
-				dc.content,
-				1 - (dc.embedding <=> ${embedding}) as similarity,
-				dc.material_id as "materialId",
-				dc.chunk_index as "chunkIndex",
-				dc.metadata,
-				cm.title as "materialTitle"
-			FROM document_chunks dc
-			LEFT JOIN course_materials cm ON dc.material_id = cm.id
-			WHERE dc.id != ${chunkId}
-			AND (1 - (dc.embedding <=> ${embedding})) > ${threshold}
-			ORDER BY similarity DESC
-			LIMIT ${limit}
-		`;
-
-		const rawResults = await db.execute(query);
-
-		const results: SearchResult[] = rawResults.map((row: any) => ({
-			id: row.id,
-			content: row.content,
-			similarity: row.similarity,
-			materialId: row.materialId,
-			chunkIndex: row.chunkIndex,
-			metadata: row.metadata as Record<string, unknown> | undefined,
-			materialTitle: row.materialTitle || undefined,
-		}));
-
-		return {
-			success: true,
-			results,
-			totalResults: results.length,
-		};
-	} catch (error) {
-		logger.error(
-			{
-				err: error instanceof Error ? error.message : String(error),
-				stack: error instanceof Error ? error.stack : undefined,
-				chunkId,
-				options,
-			},
-			"Similar chunks search failed"
-		);
-
-		return {
-			success: false,
-			error: error instanceof Error ? error.message : "Unknown error",
-		};
-	}
-}
-
-/**
- * Get chunks for a specific material (for context building)
- */
-export async function getChunksForMaterial(
-	materialId: string,
-	options: { limit?: number; offset?: number } = {}
-): Promise<VectorSearchResponse> {
-	const { limit = 50, offset = 0 } = options;
-
-	try {
-		const query = sql`
-			SELECT
-				dc.id,
-				dc.content,
-				1 as similarity,
-				dc.material_id as "materialId",
-				dc.chunk_index as "chunkIndex",
-				dc.metadata
-			FROM document_chunks dc
-			WHERE dc.material_id = ${materialId}
-			ORDER BY dc.chunk_index
-			LIMIT ${limit} OFFSET ${offset}
-		`;
-
-		const rawResults = await db.execute(query);
-
-		const results: SearchResult[] = rawResults.map((row: any) => ({
-			id: row.id,
-			content: row.content,
-			similarity: 1,
-			materialId: row.materialId,
-			chunkIndex: row.chunkIndex,
-			metadata: row.metadata as Record<string, unknown> | undefined,
-		}));
-
-		return {
-			success: true,
-			results,
-			totalResults: results.length,
-		};
-	} catch (error) {
-		logger.error(
-			{
-				err: error instanceof Error ? error.message : String(error),
-				stack: error instanceof Error ? error.stack : undefined,
-				materialId,
-				options,
-			},
-			"Failed to get chunks for material"
 		);
 
 		return {

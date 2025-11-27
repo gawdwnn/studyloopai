@@ -62,13 +62,15 @@ export function AccountBillingSettings({
 				toast.error("Unable to update plan. Please try again.");
 			}
 		} catch (error) {
-			logger.error("Plan selection failed", {
-				error: error instanceof Error ? error.message : String(error),
-				stack: error instanceof Error ? error.stack : undefined,
-				planId,
-				userId,
-				context: { action: "selectPlan" },
-			});
+			logger.error(
+				{
+					err: error,
+					planId,
+					userId,
+					context: { action: "selectPlan" },
+				},
+				"Plan selection failed"
+			);
 			toast.error("Unable to update plan. Please try again.");
 		} finally {
 			setIsLoading(false);

@@ -122,12 +122,14 @@ export async function markMaterialsUploadFailed(materialIds: string[]) {
 		const result = await response.json();
 		return result;
 	} catch (error) {
-		logger.error("Failed to mark materials upload as failed", {
-			message: error instanceof Error ? error.message : String(error),
-			stack: error instanceof Error ? error.stack : undefined,
-			action: "markMaterialsUploadFailed",
-			materialIds,
-		});
+		logger.error(
+			{
+				err: error,
+				action: "markMaterialsUploadFailed",
+				materialIds,
+			},
+			"Failed to mark materials upload as failed"
+		);
 		throw error;
 	}
 }
@@ -246,14 +248,16 @@ export async function deleteCourseMaterial(
 		const errorMessage =
 			error instanceof Error ? error.message : "Unknown error occurred";
 
-		logger.error("Failed to delete course material", {
-			message: errorMessage,
-			stack: error instanceof Error ? error.stack : undefined,
-			action: "deleteCourseMaterial",
-			materialId,
-			userId: user.id,
-			materialExists: !!material,
-		});
+		logger.error(
+			{
+				err: error,
+				action: "deleteCourseMaterial",
+				materialId,
+				userId: user.id,
+				materialExists: !!material,
+			},
+			"Failed to delete course material"
+		);
 
 		// Re-throw with user-friendly message
 		if (error instanceof Error) {

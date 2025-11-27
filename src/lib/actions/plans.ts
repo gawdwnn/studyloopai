@@ -205,9 +205,7 @@ export async function selectPlan(
 					yearlyProductId: products.yearlyProductId,
 				});
 			} catch (error) {
-				logger.error("SelectPlan: Failed to get products", {
-					error: error instanceof Error ? error.message : error,
-				});
+				logger.error({ err: error }, "SelectPlan: Failed to get products");
 				return { success: false, error: "Products not configured properly" };
 			}
 
@@ -264,11 +262,14 @@ export async function selectPlan(
 					hasUrl: !!checkout?.url,
 				});
 			} catch (error) {
-				logger.error("SelectPlan: Polar checkout creation failed", {
-					error: error instanceof Error ? error.message : error,
-					productId,
-					successUrl,
-				});
+				logger.error(
+					{
+						err: error,
+						productId,
+						successUrl,
+					},
+					"SelectPlan: Polar checkout creation failed"
+				);
 				return { success: false, error: "Failed to create checkout session" };
 			}
 

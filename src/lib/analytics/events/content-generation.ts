@@ -49,7 +49,7 @@ export const contentGenerationEvents = {
 
 		// Send to Polar (billing usage tracking)
 		if (userId) {
-			await sendUsageEvent(userId, "ai_generation", {
+			const metadata: { [k: string]: string | number | boolean } = {
 				content_type: contentType,
 				model: properties.modelUsed,
 				provider: properties.provider,
@@ -59,10 +59,14 @@ export const contentGenerationEvents = {
 				generated_count: properties.generatedCount || 1,
 				course_id: properties.courseId,
 				week_id: properties.weekId,
-				material_ids: properties.materialId
-					? [properties.materialId]
-					: undefined,
-			});
+			};
+
+			// Add material_id only if present
+			if (properties.materialId) {
+				metadata.material_id = properties.materialId;
+			}
+
+			await sendUsageEvent(userId, "ai_generation", metadata);
 		}
 	},
 
@@ -232,7 +236,7 @@ export const contentGenerationEvents = {
 
 		// Send to Polar (billing usage tracking)
 		if (userId) {
-			await sendUsageEvent(userId, "embedding_generation", {
+			const metadata: { [k: string]: string | number | boolean } = {
 				tokens: properties.totalTokens || 0,
 				chunks: properties.chunkCount || 1,
 				model: properties.embeddingModel,
@@ -240,8 +244,14 @@ export const contentGenerationEvents = {
 				processing_time_ms: properties.processingTime || 0,
 				success: properties.success !== false,
 				material_id: properties.materialId,
-				course_id: properties.courseId,
-			});
+			};
+
+			// Add course_id only if present
+			if (properties.courseId) {
+				metadata.course_id = properties.courseId;
+			}
+
+			await sendUsageEvent(userId, "embedding_generation", metadata);
 		}
 	},
 };

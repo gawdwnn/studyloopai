@@ -1,7 +1,7 @@
 import { generateEmbeddings } from "@/lib/ai/embeddings";
 import { generateChunks } from "@/lib/ai/generate-chunks";
 import { isSupportedDocumentType } from "@/lib/config/document-processing";
-import { getDocumentProcessor } from "@/lib/processing/processor-factory";
+import { getDocumentProcessor } from "@/lib/document-processor/processor-factory";
 import {
 	insertDocumentChunks,
 	updateCourseMaterialStatus,

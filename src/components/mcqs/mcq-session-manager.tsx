@@ -143,10 +143,13 @@ export function McqSessionManager({
 			// Don't reset or navigate immediately - let the results view show
 			// Navigation will happen when user clicks "Close" or "Start New Session"
 		} catch (error) {
-			logger.error("Failed to end MCQ session", {
-				error: error instanceof Error ? error.message : String(error),
-				context: { action: "handleEndSession" },
-			});
+			logger.error(
+				{
+					err: error,
+					context: { action: "handleEndSession" },
+				},
+				"Failed to end MCQ session"
+			);
 			toast.error("Failed to end session properly");
 		}
 	}, [mcqActions]);
@@ -200,14 +203,16 @@ export function McqSessionManager({
 				}
 			} catch (error) {
 				setGenerationInProgress(false);
-				logger.error("Failed to generate MCQs", {
-					error: error instanceof Error ? error.message : String(error),
-					stack: error instanceof Error ? error.stack : undefined,
-					courseId,
-					weekIds,
-					config,
-					context: { action: "generateContent" },
-				});
+				logger.error(
+					{
+						err: error,
+						courseId,
+						weekIds,
+						config,
+						context: { action: "generateContent" },
+					},
+					"Failed to generate MCQs"
+				);
 				toast.error("Unable to generate MCQs. Please try again.");
 			}
 		},

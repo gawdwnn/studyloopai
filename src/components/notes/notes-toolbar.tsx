@@ -54,12 +54,14 @@ export function NotesToolbar({
 			exportNotes(type, exportData);
 			toast.success(`Notes exported as ${type.toUpperCase()} successfully!`);
 		} catch (error) {
-			logger.error("Failed to export notes", {
-				message: error instanceof Error ? error.message : String(error),
-				stack: error instanceof Error ? error.stack : undefined,
-				exportType: type,
-				notesCount: goldenNotes.length + summaries.length,
-			});
+			logger.error(
+				{
+					err: error,
+					exportType: type,
+					notesCount: goldenNotes.length + summaries.length,
+				},
+				"Failed to export notes"
+			);
 			toast.error(
 				`Failed to export notes as ${type.toUpperCase()}. Please try again.`
 			);
