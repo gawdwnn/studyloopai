@@ -13,7 +13,7 @@ const logger = createLogger("polar:usage-events");
 export async function sendUsageEvent(
 	userId: string,
 	eventName: string,
-	metadata: Record<string, unknown>,
+	metadata: { [k: string]: string | number | boolean },
 	polarCustomerId?: string
 ): Promise<void> {
 	try {
@@ -65,90 +65,5 @@ export async function sendUsageEvent(
 			},
 			"Failed to send usage event to Polar"
 		);
-	}
-}
-
-/**
- * Batch send multiple usage events to Polar
- * Useful for sending multiple related events together
- */
-export async function sendBatchUsageEvents(
-	userId: string,
-	events: Array<{
-		name: string;
-		metadata: Record<string, unknown>;
-	}>,
-	polarCustomerId?: string
-): Promise<void> {
-	try {
-		// Get polarCustomerId if not provided
-		let customerId = polarCustomerId;
-		if (!customerId) {
-			const user = await db.query.users.findFirst({
-				where: eq(users.userId, userId),
-				columns: { polarCustomerId: true },
-			});
-
-			if (!user?.polarCustomerId) {
-				logger.warn("No Polar customer ID found for batch events", {
-					userId,
-					eventCount: events.length,
-					hasUser: !!user,
-				});
-				return;
-			}
-
-			customerId = user.polarCustomerId;
-		}
-
-		// Send batch events to Polar
-		const polar = createPolarClient();
-		await polar.events.ingest({
-			events: events.map((event) => ({
-				name: event.name,
-				externalCustomerId: customerId,
-				metadata: event.metadata,
-			})),
-		});
-
-		logger.info("Batch usage events sent to Polar", {
-			userId,
-			customerId: `${customerId.substring(0, 8)}...`, // Log partial ID for privacy
-			eventCount: events.length,
-			eventNames: events.map((e) => e.name),
-		});
-	} catch (error) {
-		// Silent failure - log but don't throw to avoid breaking user operations
-		logger.error(
-			{
-				err: error,
-				userId,
-				eventCount: events.length,
-			},
-			"Failed to send batch usage events to Polar"
-		);
-	}
-}
-
-/**
- * Helper to resolve Polar customer ID for a user
- * Returns null if not found to allow graceful handling
- */
-export async function getUserPolarCustomerId(
-	userId: string
-): Promise<string | null> {
-	try {
-		const user = await db.query.users.findFirst({
-			where: eq(users.userId, userId),
-			columns: { polarCustomerId: true },
-		});
-
-		return user?.polarCustomerId || null;
-	} catch (error) {
-		logger.error("Failed to resolve Polar customer ID", {
-			error: error instanceof Error ? error.message : String(error),
-			userId,
-		});
-		return null;
 	}
 }
