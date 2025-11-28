@@ -35,12 +35,13 @@ export async function trackServerEvent(
 			properties,
 		});
 
-		// Important: Ensure events are flushed in serverless environments
-		await posthog.shutdown();
+		// Flush immediately in serverless (flushAt: 1 already configured)
+		// Don't shutdown - let PostHog reuse the connection for multiple events
 	} catch (error) {
 		if (process.env.NODE_ENV === "development") {
 			console.error("PostHog server tracking error:", error);
 		}
+		// Don't throw - analytics failures shouldn't block user operations
 	}
 }
 
@@ -94,11 +95,12 @@ export async function identifyUser(
 			properties,
 		});
 
-		await posthog.shutdown();
+		// Don't shutdown - let PostHog reuse the connection
 	} catch (error) {
 		if (process.env.NODE_ENV === "development") {
 			console.error("PostHog user identification error:", error);
 		}
+		// Don't throw - analytics failures shouldn't block user operations
 	}
 }
 
@@ -125,10 +127,11 @@ export async function setUserProperties(
 			},
 		});
 
-		await posthog.shutdown();
+		// Don't shutdown - let PostHog reuse the connection
 	} catch (error) {
 		if (process.env.NODE_ENV === "development") {
 			console.error("PostHog set user properties error:", error);
 		}
+		// Don't throw - analytics failures shouldn't block user operations
 	}
 }

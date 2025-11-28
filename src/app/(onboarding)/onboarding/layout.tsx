@@ -106,16 +106,17 @@ export default function OnboardingLayout({
 			startTransition(async () => {
 				// Save current step data if available
 				if (stepData) {
-					try {
-						await updateOnboardingStep(currentStep + 1, stepData);
-					} catch (error) {
+					const result = await updateOnboardingStep(currentStep + 1, stepData);
+
+					if (!result.success) {
 						logger.error("Failed to save onboarding progress", {
-							error: error instanceof Error ? error.message : String(error),
-							stack: error instanceof Error ? error.stack : undefined,
+							error: result.error,
 							currentStep,
 							stepData,
 						});
-						toast.error("Unable to save your progress. Please try again.");
+						toast.error(
+							result.error || "Unable to save your progress. Please try again."
+						);
 						return;
 					}
 				}
@@ -159,31 +160,33 @@ export default function OnboardingLayout({
 		}
 
 		startTransition(async () => {
-			try {
-				// Track step skip analytics
-				await trackStepSkipped(currentStep, "user_skip");
+			// Track step skip analytics
+			await trackStepSkipped(currentStep, "user_skip");
 
-				// Save current step data with skip marker if available
-				const currentData = stepData || {};
-				const skippedData = {
-					...currentData,
-					[`step${currentStep}Skipped`]: true,
-				};
+			// Save current step data with skip marker if available
+			const currentData = stepData || {};
+			const skippedData = {
+				...currentData,
+				[`step${currentStep}Skipped`]: true,
+			};
 
-				// Move to next step with skip data
-				await updateOnboardingStep(currentStep + 1, skippedData);
+			// Move to next step with skip data
+			const result = await updateOnboardingStep(currentStep + 1, skippedData);
 
-				const nextSlug = getStepInfo(currentStep + 1).slug;
-				router.push(`/onboarding/${nextSlug}`);
-			} catch (error) {
+			if (!result.success) {
 				logger.error("Failed to skip onboarding step", {
-					error: error instanceof Error ? error.message : String(error),
-					stack: error instanceof Error ? error.stack : undefined,
+					error: result.error,
 					currentStep,
 					stepData,
 				});
-				toast.error("Unable to skip this step. Please try again.");
+				toast.error(
+					result.error || "Unable to skip this step. Please try again."
+				);
+				return;
 			}
+
+			const nextSlug = getStepInfo(currentStep + 1).slug;
+			router.push(`/onboarding/${nextSlug}`);
 		});
 	}, [currentStep, handleNext, router, stepData, getStepInfo]);
 
