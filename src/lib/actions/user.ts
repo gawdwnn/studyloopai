@@ -308,14 +308,30 @@ export async function trackStepStarted(step: number) {
 export async function updateOnboardingStep(
 	step: number,
 	data?: Record<string, unknown>
-) {
+): Promise<{
+	success: boolean;
+	step?: number;
+	data?: Record<string, unknown>;
+	error?: string;
+}> {
 	const supabase = await getServerClient();
 	const {
 		data: { user },
 	} = await supabase.auth.getUser();
 
 	if (!user) {
-		throw new Error("Authentication required");
+		logger.error(
+			{
+				action: "updateOnboardingStep",
+				step,
+				data,
+			},
+			"Authentication required"
+		);
+		return {
+			success: false,
+			error: "Authentication required",
+		};
 	}
 
 	try {
@@ -346,7 +362,10 @@ export async function updateOnboardingStep(
 			},
 			"Failed to update onboarding step"
 		);
-		throw new Error("Could not update your onboarding progress.");
+		return {
+			success: false,
+			error: "Could not update your onboarding progress.",
+		};
 	}
 }
 
