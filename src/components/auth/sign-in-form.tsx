@@ -32,7 +32,12 @@ export function SignInForm() {
 		setError(null);
 
 		try {
-			await sendMagicLink(data);
+			const result = await sendMagicLink(data);
+
+			if (!result.success && result.error) {
+				setError(result.error);
+				throw new Error(result.error.message);
+			}
 		} catch (e) {
 			const errorDetails = getAuthErrorMessage(e);
 			setError(errorDetails);

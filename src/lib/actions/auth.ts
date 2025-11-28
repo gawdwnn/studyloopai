@@ -8,30 +8,63 @@ import { logger } from "@/lib/utils/logger";
 import { getSiteUrl } from "@/lib/utils/site-url";
 import { redirect } from "next/navigation";
 
-export async function sendMagicLink(formData: MagicLinkFormData) {
-	const rateLimitResult = await checkAuthRateLimit(formData.email);
+export async function sendMagicLink(formData: MagicLinkFormData): Promise<{
+	success: boolean;
+	data?: unknown;
+	remainingAttempts?: number;
+	error?: AuthErrorDetails;
+}> {
+	try {
+		const rateLimitResult = await checkAuthRateLimit(formData.email);
 
-	await enforceRateLimit(async () => rateLimitResult, "magic link");
+		await enforceRateLimit(async () => rateLimitResult, "magic link");
 
-	const supabase = await getServerClient();
+		const supabase = await getServerClient();
 
-	const { data, error } = await supabase.auth.signInWithOtp({
-		email: formData.email,
-		options: {
-			emailRedirectTo: `${getSiteUrl()}/auth/callback`,
-			shouldCreateUser: true,
-		},
-	});
+		const { data, error } = await supabase.auth.signInWithOtp({
+			email: formData.email,
+			options: {
+				emailRedirectTo: `${getSiteUrl()}/auth/callback`,
+				shouldCreateUser: true,
+			},
+		});
 
-	if (error) {
-		throw error;
+		if (error) {
+			logger.error(
+				{
+					err: error,
+					email: formData.email,
+					action: "sendMagicLink",
+				},
+				"Magic link send failed"
+			);
+
+			return {
+				success: false,
+				error: getAuthErrorMessage(error),
+			};
+		}
+
+		return {
+			success: true,
+			data,
+			remainingAttempts: rateLimitResult.remaining,
+		};
+	} catch (error) {
+		logger.error(
+			{
+				err: error,
+				email: formData.email,
+				action: "sendMagicLink",
+			},
+			"Magic link send error"
+		);
+
+		return {
+			success: false,
+			error: getAuthErrorMessage(error),
+		};
 	}
-
-	return {
-		success: true,
-		data,
-		remainingAttempts: rateLimitResult.remaining,
-	};
 }
 
 type FormState = {
