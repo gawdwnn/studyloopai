@@ -31,6 +31,3 @@ CREATE POLICY "ai_recommendations_delete_own"
   ON "ai_recommendations" FOR DELETE 
   TO authenticated 
   USING ((SELECT auth.uid()) = user_id);
-
--- Performance index for RLS filtering (already exists in migration)
--- CREATE INDEX "idx_ai_recommendations_user_id" ON "ai_recommendations" USING btree ("user_id");

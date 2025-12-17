@@ -54,6 +54,3 @@ CREATE POLICY "session_responses_delete_own"
       WHERE user_id = (SELECT auth.uid())
     )
   );
-
--- Performance index for RLS filtering (already exists in migration)
--- CREATE INDEX "idx_session_responses_session_id" ON "session_responses" USING btree ("session_id");

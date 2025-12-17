@@ -10,7 +10,7 @@ CREATE POLICY "chat_messages_select_own"
   TO authenticated 
   USING (session_id IN (
     SELECT id FROM chat_sessions 
-    WHERE user_id = auth.uid()
+    WHERE user_id = (SELECT auth.uid())
   ));
 
 -- Policy: Users can insert messages into their own chat sessions
@@ -19,7 +19,7 @@ CREATE POLICY "chat_messages_insert_own"
   TO authenticated 
   WITH CHECK (session_id IN (
     SELECT id FROM chat_sessions 
-    WHERE user_id = auth.uid()
+    WHERE user_id = (SELECT auth.uid())
   ));
 
 -- Policy: Users can update messages in their own chat sessions
@@ -28,11 +28,11 @@ CREATE POLICY "chat_messages_update_own"
   TO authenticated 
   USING (session_id IN (
     SELECT id FROM chat_sessions 
-    WHERE user_id = auth.uid()
+    WHERE user_id = (SELECT auth.uid())
   ))
   WITH CHECK (session_id IN (
     SELECT id FROM chat_sessions 
-    WHERE user_id = auth.uid()
+    WHERE user_id = (SELECT auth.uid())
   ));
 
 -- Policy: Users can delete messages from their own chat sessions
@@ -41,8 +41,5 @@ CREATE POLICY "chat_messages_delete_own"
   TO authenticated 
   USING (session_id IN (
     SELECT id FROM chat_sessions 
-    WHERE user_id = auth.uid()
+    WHERE user_id = (SELECT auth.uid())
   ));
-
--- Performance index for RLS filtering
-CREATE INDEX IF NOT EXISTS "idx_chat_messages_session_id_rls" ON "chat_messages" USING btree ("session_id");

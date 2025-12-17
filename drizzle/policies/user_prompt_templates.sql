@@ -21,6 +21,3 @@ CREATE POLICY "Users can update own templates" ON user_prompt_templates
 CREATE POLICY "Users can delete own templates" ON user_prompt_templates
     FOR DELETE TO authenticated
     USING ((SELECT auth.uid()) = user_id);
-
--- Create index for performance (RLS filtering)
-CREATE INDEX IF NOT EXISTS idx_user_prompt_templates_user_id_rls ON user_prompt_templates (user_id);
