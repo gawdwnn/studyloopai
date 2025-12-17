@@ -11,8 +11,12 @@ export default async function MultipleChoicePage({
 	const courses = await getUserCourses();
 	const resolvedSearchParams = await searchParams;
 
+	if (courses.length === 0) {
+		return <McqSessionManager courses={courses} initialData={null} />;
+	}
+
 	// Pre-load data for initial course (URL param or first course)
-	const initialCourseId = resolvedSearchParams.course || courses[0]?.id;
+	const initialCourseId = resolvedSearchParams.course || courses[0].id;
 	const initialWeekIds = resolvedSearchParams.weeks?.split(",") || [];
 
 	let initialData = null;
@@ -26,7 +30,7 @@ export default async function MultipleChoicePage({
 
 		initialData = {
 			courseId: initialCourseId,
-			weekIds: initialWeekIds, // Store the initial week selection
+			weekIds: initialWeekIds,
 			weeks: initialWeeks,
 			mcqs: mcqData.mcqs,
 			availability: mcqData.availability,
