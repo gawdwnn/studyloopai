@@ -29,6 +29,3 @@ CREATE POLICY "learning_sessions_delete_own"
   ON "learning_sessions" FOR DELETE 
   TO authenticated 
   USING ((SELECT auth.uid()) = user_id);
-
--- Performance index for RLS filtering (already exists in migration)
--- CREATE INDEX "idx_learning_sessions_user_id" ON "learning_sessions" USING btree ("user_id");

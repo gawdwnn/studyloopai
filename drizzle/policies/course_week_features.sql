@@ -14,6 +14,3 @@ WITH CHECK (
     SELECT id FROM courses WHERE user_id = (SELECT auth.uid())
   )
 );
-
--- Index for RLS performance
-CREATE INDEX IF NOT EXISTS idx_course_week_features_rls ON course_week_features (course_id);

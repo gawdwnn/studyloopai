@@ -8,6 +8,3 @@ ALTER TABLE concept_maps ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users manage concept maps from own courses" ON concept_maps FOR ALL TO authenticated 
 USING (course_id IN (SELECT id FROM courses WHERE user_id = (SELECT auth.uid()))) 
 WITH CHECK (course_id IN (SELECT id FROM courses WHERE user_id = (SELECT auth.uid())));
-
--- Performance index for RLS filtering
-CREATE INDEX IF NOT EXISTS idx_concept_maps_user_id_via_course ON concept_maps (course_id);

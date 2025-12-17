@@ -13,7 +13,7 @@ CREATE POLICY "document_chunks_select_own_materials"
       SELECT cm.id 
       FROM course_materials cm
       JOIN courses c ON c.id = cm.course_id
-      WHERE c.user_id = auth.uid()
+      WHERE c.user_id = (SELECT auth.uid())
     )
   );
 
@@ -26,7 +26,7 @@ CREATE POLICY "document_chunks_insert_own_materials"
       SELECT cm.id 
       FROM course_materials cm
       JOIN courses c ON c.id = cm.course_id
-      WHERE c.user_id = auth.uid()
+      WHERE c.user_id = (SELECT auth.uid())
     )
   );
 
@@ -39,7 +39,7 @@ CREATE POLICY "document_chunks_update_own_materials"
       SELECT cm.id 
       FROM course_materials cm
       JOIN courses c ON c.id = cm.course_id
-      WHERE c.user_id = auth.uid()
+      WHERE c.user_id = (SELECT auth.uid())
     )
   )
   WITH CHECK (
@@ -47,7 +47,7 @@ CREATE POLICY "document_chunks_update_own_materials"
       SELECT cm.id 
       FROM course_materials cm
       JOIN courses c ON c.id = cm.course_id
-      WHERE c.user_id = auth.uid()
+      WHERE c.user_id = (SELECT auth.uid())
     )
   );
 
@@ -60,11 +60,6 @@ CREATE POLICY "document_chunks_delete_own_materials"
       SELECT cm.id 
       FROM course_materials cm
       JOIN courses c ON c.id = cm.course_id
-      WHERE c.user_id = auth.uid()
+      WHERE c.user_id = (SELECT auth.uid())
     )
   );
-
--- Performance indexes for RLS filtering
-CREATE INDEX IF NOT EXISTS "idx_document_chunks_material_id_rls" ON "document_chunks" USING btree ("material_id");
-CREATE INDEX IF NOT EXISTS "idx_course_materials_course_id_rls" ON "course_materials" USING btree ("course_id");
-CREATE INDEX IF NOT EXISTS "idx_courses_user_id_rls" ON "courses" USING btree ("user_id");

@@ -29,6 +29,3 @@ CREATE POLICY "cuecard_scheduling_delete_own"
   ON "cuecard_scheduling" FOR DELETE 
   TO authenticated 
   USING ((SELECT auth.uid()) = user_id);
-
--- Performance index for RLS filtering (already exists in migration)
--- CREATE INDEX "idx_cuecard_scheduling_user_id" ON "cuecard_scheduling" USING btree ("user_id");

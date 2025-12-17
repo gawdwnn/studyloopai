@@ -29,6 +29,3 @@ CREATE POLICY "learning_gaps_delete_own"
   ON "learning_gaps" FOR DELETE 
   TO authenticated 
   USING ((SELECT auth.uid()) = user_id);
-
--- Performance index for RLS filtering (already exists in migration)
--- CREATE INDEX "idx_learning_gaps_user_id" ON "learning_gaps" USING btree ("user_id");

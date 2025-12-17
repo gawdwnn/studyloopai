@@ -115,7 +115,7 @@ export function CuecardSessionSetup({
 	const { data: fetchedWeeks = [], isLoading: loadingWeeks } = useCourseWeeks(
 		selectedCourse,
 		{
-			enabled: !shouldUseInitialData,
+			enabled: !shouldUseInitialData && Boolean(selectedCourse),
 		}
 	);
 

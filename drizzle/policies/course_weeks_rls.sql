@@ -10,9 +10,9 @@ CREATE POLICY "course_weeks_select_own_courses"
   TO authenticated 
   USING (
     EXISTS (
-      SELECT 1 FROM courses 
-      WHERE courses.id = course_weeks.course_id 
-      AND courses.user_id = auth.uid()
+      SELECT 1 FROM courses
+      WHERE courses.id = course_weeks.course_id
+      AND courses.user_id = (SELECT auth.uid())
     )
   );
 
@@ -22,28 +22,28 @@ CREATE POLICY "course_weeks_insert_own_courses"
   TO authenticated 
   WITH CHECK (
     EXISTS (
-      SELECT 1 FROM courses 
-      WHERE courses.id = course_weeks.course_id 
-      AND courses.user_id = auth.uid()
+      SELECT 1 FROM courses
+      WHERE courses.id = course_weeks.course_id
+      AND courses.user_id = (SELECT auth.uid())
     )
   );
 
 -- Policy: Users can update course weeks from their own courses
 CREATE POLICY "course_weeks_update_own_courses"
-  ON "course_weeks" FOR UPDATE 
-  TO authenticated 
+  ON "course_weeks" FOR UPDATE
+  TO authenticated
   USING (
     EXISTS (
-      SELECT 1 FROM courses 
-      WHERE courses.id = course_weeks.course_id 
-      AND courses.user_id = auth.uid()
+      SELECT 1 FROM courses
+      WHERE courses.id = course_weeks.course_id
+      AND courses.user_id = (SELECT auth.uid())
     )
   )
   WITH CHECK (
     EXISTS (
-      SELECT 1 FROM courses 
-      WHERE courses.id = course_weeks.course_id 
-      AND courses.user_id = auth.uid()
+      SELECT 1 FROM courses
+      WHERE courses.id = course_weeks.course_id
+      AND courses.user_id = (SELECT auth.uid())
     )
   );
 
@@ -53,12 +53,8 @@ CREATE POLICY "course_weeks_delete_own_courses"
   TO authenticated 
   USING (
     EXISTS (
-      SELECT 1 FROM courses 
-      WHERE courses.id = course_weeks.course_id 
-      AND courses.user_id = auth.uid()
+      SELECT 1 FROM courses
+      WHERE courses.id = course_weeks.course_id
+      AND courses.user_id = (SELECT auth.uid())
     )
   );
-
--- Performance indexes for RLS filtering
-CREATE INDEX IF NOT EXISTS "idx_course_weeks_course_id_rls" ON "course_weeks" USING btree ("course_id");
-CREATE INDEX IF NOT EXISTS "idx_courses_user_id_rls" ON "courses" USING btree ("user_id");
